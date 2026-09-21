@@ -255,6 +255,11 @@ DUOTONE_SVGS: Dict[str, str] = {
         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
         <rect x="6" y="14" width="12" height="8"/>
     </svg>''',
+
+    "fifo_alloc": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 6h16M4 12h10M4 18h14"/>
+        <polyline points="15 9 18 12 15 15"/>
+    </svg>''',
 }
 
 def get_duotone_icon(name: str, size: int = 64) -> QIcon:
