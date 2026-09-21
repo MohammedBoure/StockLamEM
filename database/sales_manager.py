@@ -1197,8 +1197,8 @@ class SalesManager:
                         COALESCE((SELECT SUM(pp.Change_Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID), 0) AS Change_Amount,
                         t.Terminal_Name, s.Session_No,
                         c.Client_Name,
-                        COALESCE(u.Full_Name, u.Username) AS User_Name,
-                        SUM(sd.Line_Total_HT - (sd.Qty_Sold * b.Unit_Price_Received)) AS Total_Profit
+                        COALESCE(SUM(sd.Qty_Sold * COALESCE(b.Unit_Price_Received, 0)), 0) AS Total_Cost,
+                        COALESCE(SUM(sd.Line_Total_HT - (sd.Qty_Sold * COALESCE(b.Unit_Price_Received, 0))), 0) AS Total_Profit
                     FROM Sales_Invoices i
                     LEFT JOIN Clients c ON i.Client_ID = c.Client_ID
                     LEFT JOIN POS_Terminals t ON i.Terminal_ID = t.Terminal_ID
@@ -1314,6 +1314,7 @@ class SalesManager:
                     'Status': 'Open',
                     'Total_Amount_HT': 0,
                     'Total_Amount_TTC': 0,
+                    'Total_Cost': 0,
                     'Total_Profit': 0,
                     'Payment_Method': '-',
                     'Terminal_Name': caisse_label,
@@ -1345,6 +1346,7 @@ class SalesManager:
                     'Status': 'Closed',
                     'Total_Amount_HT': 0,
                     'Total_Amount_TTC': expected_total,
+                    'Total_Cost': 0,
                     'Total_Profit': 0,
                     'Payment_Method': '-',
                     'Terminal_Name': caisse_label,

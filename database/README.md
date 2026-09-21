@@ -45,6 +45,7 @@ Ce dossier regroupe tous les gestionnaires d'accès aux données (Managers), les
   - Génération de numérotation séquentielle par type de document (`DEV`, `BC`, `BL`, `FAC`).
   - Suivi des échéances (`Due_Date`) et calcul du vieillissement des créances (`Days_Overdue`).
   - Distinction formelle du type de vente (`Sale_Type` : `Retail_POS` vs `Wholesale`).
+  - Extraction de l'historique financier avec calcul dynamique du coût d'achat des sorties (`Total_Cost`) et du bénéfice net (`Total_Profit`).
 - **`statistics_manager.py`** : Calculs statistiques avancés, indicateurs clés (KPIs), valorisation de stock, flux réels, tendances d'achats/consommation et analyse détaillée des pertes et rebuts (`get_waste_analysis`, `get_waste_products_detailed`).
 - **`stock_movement_log_manager.py`** : Traçabilité et historique immuable de tous les mouvements de stock (`Stock_Movement_Log`).
 - **`supplier_manager.py`** : Gestion du référentiel des fournisseurs et historique des relations commerciales.

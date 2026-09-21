@@ -1,6 +1,7 @@
 # ui/widgets/sales_history/sales_history_tab.py
 
 import csv
+import logging
 from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTableWidget, QHeaderView, QPushButton,
@@ -33,8 +34,10 @@ class SalesHistoryTab(QWidget):
         self.can_view_profit = self._has_permission("act_pos_view_profit")
         self.raw_data = []
         self.filtered_data = []
-        self.current_page = 1
-        self.page_size = 100
+        self.current_offset = 0
+        self.batch_size = 50
+        self.is_loading = False
+        self.has_more_data = True
         self.init_ui()
         self.load_filters()
         self.load_sales_data()
@@ -290,32 +293,110 @@ class SalesHistoryTab(QWidget):
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.doubleClicked.connect(self.show_full_details)
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
+        self.table.verticalScrollBar().valueChanged.connect(self._on_scroll)
 
         layout.addWidget(self.table)
 
-        pagination_layout = QHBoxLayout()
-        self.btn_prev_page = QPushButton("Page precedente")
-        self.btn_next_page = QPushButton("Page suivante")
-        self.lbl_page = QLabel("Page 1")
-        self.btn_prev_page.clicked.connect(self.go_previous_page)
-        self.btn_next_page.clicked.connect(self.go_next_page)
-        pagination_layout.addStretch()
-        pagination_layout.addWidget(self.btn_prev_page)
-        pagination_layout.addWidget(self.lbl_page)
-        pagination_layout.addWidget(self.btn_next_page)
-        layout.addLayout(pagination_layout)
+        # --- 3. Bottom Status & Summary Bar (Single thin line) ---
+        bottom_bar = QFrame()
+        bottom_bar.setObjectName("SalesHistoryBottomBar")
+        bottom_bar.setFixedHeight(34)
+        bottom_bar.setStyleSheet("""
+            QFrame#SalesHistoryBottomBar {
+                background-color: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 0px 6px;
+            }
+            QLabel {
+                font-size: 12px;
+                font-weight: 600;
+            }
+        """)
+        bottom_layout = QHBoxLayout(bottom_bar)
+        bottom_layout.setContentsMargins(6, 2, 6, 2)
+        bottom_layout.setSpacing(10)
 
-        # --- 3. Summary Section ---
-        summary_layout = QHBoxLayout()
-        summary_layout.addStretch()
-        self.lbl_total_period_profit = QLabel("Bénéfice Total Période : 0.00 DA")
+        # 1. Lazy loading status indicator (like Traçabilité)
+        self.lbl_status = QLabel("0/0")
+        self.lbl_status.setToolTip("Enregistrements affichés / Total filtré")
+        self.lbl_status.setStyleSheet("""
+            QLabel {
+                font-weight: bold;
+                font-size: 12px;
+                color: #334155;
+                background-color: #f1f5f9;
+                border: 1px solid #cbd5e1;
+                border-radius: 4px;
+                padding: 2px 8px;
+            }
+        """)
+        bottom_layout.addWidget(self.lbl_status)
+
+        bottom_layout.addStretch(1)
+
+        # 2. Number of sales operations
+        self.lbl_sales_count = QLabel("Ventes : 0")
+        self.lbl_sales_count.setToolTip("Nombre d'opérations de vente de la période")
+        self.lbl_sales_count.setStyleSheet("""
+            QLabel {
+                color: #0f172a;
+                background-color: #f8fafc;
+                border: 1px solid #cbd5e1;
+                border-radius: 4px;
+                padding: 2px 8px;
+            }
+        """)
+        bottom_layout.addWidget(self.lbl_sales_count)
+
+        # 3. Total money that went out (purchase cost of goods sold)
+        self.lbl_total_cost = QLabel("Coût Achat : 0.00 DA")
+        self.lbl_total_cost.setToolTip("Total sorties au prix d'achat des produits vendus")
+        self.lbl_total_cost.setStyleSheet("""
+            QLabel {
+                color: #c2410c;
+                background-color: #fff7ed;
+                border: 1px solid #fed7aa;
+                border-radius: 4px;
+                padding: 2px 8px;
+            }
+        """)
+        bottom_layout.addWidget(self.lbl_total_cost)
+
+        # 4. Total money that came in (total sales revenue TTC)
+        self.lbl_total_sales = QLabel("Total Ventes : 0.00 DA")
+        self.lbl_total_sales.setToolTip("Total entrées / Chiffre d'affaires des ventes TTC")
+        self.lbl_total_sales.setStyleSheet("""
+            QLabel {
+                color: #1d4ed8;
+                background-color: #eff6ff;
+                border: 1px solid #bfdbfe;
+                border-radius: 4px;
+                padding: 2px 8px;
+            }
+        """)
+        bottom_layout.addWidget(self.lbl_total_sales)
+
+        # 5. Total net profit / interest (bénéfice / intérêt)
+        self.lbl_total_period_profit = QLabel("Bénéfice : 0.00 DA")
         self.lbl_total_period_profit.setObjectName("ProfitLabel")
-        self.lbl_total_period_profit.setStyleSheet("font-size: 18px; padding: 10px; background-color: #eafaf1; border-radius: 8px; border: 1px solid #2ecc71;")
-        summary_layout.addWidget(self.lbl_total_period_profit)
-        if not self.can_view_profit:
-            self.lbl_total_period_profit.setText("Bénéfice Total Période : accès restreint")
+        self.lbl_total_period_profit.setToolTip("Marge bénéficiaire nette de la période")
+        self.lbl_total_period_profit.setStyleSheet("""
+            QLabel {
+                color: #047857;
+                background-color: #ecfdf5;
+                border: 1px solid #a7f3d0;
+                border-radius: 4px;
+                padding: 2px 8px;
+            }
+        """)
+        bottom_layout.addWidget(self.lbl_total_period_profit)
 
-        layout.addLayout(summary_layout)
+        if not self.can_view_profit:
+            self.lbl_total_cost.setText("Coût Achat : accès restreint")
+            self.lbl_total_period_profit.setText("Bénéfice : accès restreint")
+
+        layout.addWidget(bottom_bar)
 
     def _show_context_menu(self, pos):
         item = self.table.itemAt(pos)
@@ -463,35 +544,82 @@ class SalesHistoryTab(QWidget):
             filtered.append(inv)
 
         self.filtered_data = filtered
-        self.current_page = 1
-        self._refresh_page()
+        self.update_summary_metrics()
+        self.reset_and_reload()
 
-    def _refresh_page(self):
-        total_pages = max(1, (len(self.filtered_data) + self.page_size - 1) // self.page_size)
-        self.current_page = min(max(1, self.current_page), total_pages)
-        start = (self.current_page - 1) * self.page_size
-        self._populate_table(self.filtered_data[start:start + self.page_size])
-        self.lbl_page.setText(f"Page {self.current_page}/{total_pages} ({len(self.filtered_data)} lignes)")
-        self.btn_prev_page.setEnabled(self.current_page > 1)
-        self.btn_next_page.setEnabled(self.current_page < total_pages)
+    def _on_scroll(self, value):
+        scroll_bar = self.table.verticalScrollBar()
+        if scroll_bar.maximum() > 0 and value >= scroll_bar.maximum() - 20:
+            self.load_next_batch()
 
-    def go_previous_page(self):
-        if self.current_page > 1:
-            self.current_page -= 1
-            self._refresh_page()
+    def reset_and_reload(self):
+        self.current_offset = 0
+        self.has_more_data = True
+        self.table.setRowCount(0)
+        self.load_next_batch()
 
-    def go_next_page(self):
-        total_pages = max(1, (len(self.filtered_data) + self.page_size - 1) // self.page_size)
-        if self.current_page < total_pages:
-            self.current_page += 1
-            self._refresh_page()
+    def load_data(self):
+        """Compatibility entry point used by MainWindow and tabs."""
+        self.load_sales_data()
+
+    def load_next_batch(self):
+        if self.is_loading or not self.has_more_data:
+            return
+
+        self.is_loading = True
+        self.lbl_status.setText("⏳ Chargement...")
+
+        try:
+            batch = self.filtered_data[self.current_offset : self.current_offset + self.batch_size]
+            if not batch:
+                self.has_more_data = False
+            else:
+                self._append_rows_to_table(batch)
+                self.current_offset += len(batch)
+                if self.current_offset >= len(self.filtered_data):
+                    self.has_more_data = False
+
+            self.update_status_ui()
+        except Exception as error:
+            logging.error("Error fetching lazy sales batch: %s", error)
+            self.lbl_status.setText("⚠️ Erreur lors du chargement")
+        finally:
+            self.is_loading = False
+
+    def update_status_ui(self):
+        total = len(self.filtered_data)
+        self.lbl_status.setText(f"{self.table.rowCount()}/{total}")
+
+    def update_summary_metrics(self):
+        status_filter = self.cb_status.currentData() if hasattr(self, 'cb_status') else None
+        sales_ops = [inv for inv in self.filtered_data if inv.get('Row_Type') == 'Sale']
+        valid_sales = [inv for inv in sales_ops if inv.get('Status') != 'Cancelled'] if status_filter != 'Cancelled' else sales_ops
+
+        sales_count = len(valid_sales)
+        total_cost = sum(float(inv.get('Total_Cost') or 0.0) for inv in valid_sales)
+        total_sales = sum(float(inv.get('Total_Amount_TTC') or 0.0) for inv in valid_sales)
+        total_profit = sum(float(inv.get('Total_Profit') or 0.0) for inv in valid_sales)
+
+        self.lbl_sales_count.setText(f"🧾 Ventes : {sales_count}")
+        self.lbl_total_sales.setText(f"💰 Total Ventes : {format_money(total_sales)} DA")
+
+        if self.can_view_profit:
+            self.lbl_total_cost.setText(f"📦 Coût Achat : {format_money(total_cost)} DA")
+            self.lbl_total_period_profit.setText(f"📈 Bénéfice : {format_money(total_profit)} DA")
+        else:
+            self.lbl_total_cost.setText("📦 Coût Achat : accès restreint")
+            self.lbl_total_period_profit.setText("📈 Bénéfice : accès restreint")
 
     def _populate_table(self, data):
-        self.table.setSortingEnabled(False)
-        self.table.setRowCount(0)
-        total_profit_period = 0.0
+        """Compatibility wrapper for appending rows."""
+        self._append_rows_to_table(data)
 
-        for r, inv in enumerate(data):
+    def _append_rows_to_table(self, data):
+        self.table.setSortingEnabled(False)
+        start_row = self.table.rowCount()
+
+        for i, inv in enumerate(data):
+            r = start_row + i
             self.table.insertRow(r)
 
             def item(text, align=Qt.AlignCenter, color=None, font=None):
@@ -592,8 +720,6 @@ class SalesHistoryTab(QWidget):
                 self.table.setItem(r, 10, item(format_money(inv.get('Total_Amount_TTC', 0))))
 
             profit = float(inv.get('Total_Profit') or 0) if self.can_view_profit else 0
-            if row_type == 'Sale':
-                total_profit_period += profit
             profit_item = item(format_money(profit), Qt.AlignCenter, "#27ae60" if profit > 0 else "#c0392b", QFont("Segoe UI", 9, QFont.Bold)) if row_type == 'Sale' else item("---")
             self.table.setItem(r, 11, profit_item)
 
@@ -647,9 +773,6 @@ class SalesHistoryTab(QWidget):
                         cell.setBackground(QBrush(row_bg))
                         cell.setFont(row_font)
 
-        self.table.setSortingEnabled(True)
-        self.lbl_total_period_profit.setText(f"Bénéfice Total Période : {format_money(total_profit_period)} DA")
-
     def show_full_details(self):
         row = self.table.currentRow()
         if row < 0:
@@ -689,7 +812,7 @@ class SalesHistoryTab(QWidget):
             return
         headers = [
             "ID", "Date", "Operation", "Client", "Statut",
-            "Retard (Jours)", "Caisse", "Utilisateur", "Paiement", "Paye", "Total TTC", "Profit"
+            "Retard (Jours)", "Caisse", "Utilisateur", "Paiement", "Paye", "Total TTC", "Cout Achat", "Profit"
         ]
         try:
             with open(path, "w", newline="", encoding="utf-8-sig") as handle:
@@ -708,7 +831,8 @@ class SalesHistoryTab(QWidget):
                         inv.get("Payment_Summary") or inv.get("Payment_Method") or "-",
                         inv.get("Paid_Amount") if inv.get("Row_Type") == "Sale" else inv.get("Amount_Entered"),
                         inv.get("Total_Amount_TTC") or 0,
-                        inv.get("Total_Profit") or 0,
+                        (inv.get("Total_Cost") or 0) if self.can_view_profit else "-",
+                        (inv.get("Total_Profit") or 0) if self.can_view_profit else "-",
                     ])
             QMessageBox.information(self, "Export", "Historique exporte avec succes.")
         except OSError as exc:
