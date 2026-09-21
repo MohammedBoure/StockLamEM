@@ -365,5 +365,95 @@ class TestSearchableClientComboBox(unittest.TestCase):
         self.assertEqual(resolved_name, 2)
 
 
+class TestDebtsManagementUI(unittest.TestCase):
+    """Tests unitaires des composants UI de la gestion des créances et dialogues de règlement."""
+
+    @classmethod
+    def setUpClass(cls):
+        if HAS_QT:
+            cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        if not HAS_QT:
+            self.skipTest("PySide6 not available in headless test environment.")
+        self.mock_dm = MagicMock()
+        self.mock_dm.clients = MagicMock()
+        self.mock_dm.client_payments = MagicMock()
+        self.mock_dm.clients.get_debtor_clients_summary.return_value = []
+        self.mock_dm.clients.get_debts_analytics.return_value = {
+            'total_receivables': 125000.0,
+            'overdue_receivables': 45000.0,
+            'debtor_clients_count': 5,
+            'recovered_this_month': 30000.0
+        }
+        self.mock_dm.clients.get_all_clients.return_value = []
+
+    def test_debts_summary_bar_and_tables(self):
+        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        tab = DebtsManagementTab(self.mock_dm)
+
+        # Check KPI summary bar labels exist and display correct data
+        self.assertIn("125", tab.lbl_kpi_total_receivables.text())
+        self.assertIn("45", tab.lbl_kpi_overdue_receivables.text())
+        self.assertIn("5 client", tab.lbl_kpi_debtor_count.text())
+        self.assertIn("30", tab.lbl_kpi_month_recovered.text())
+
+        # Check font sizes are calm (14px) and not bulky 22px
+        self.assertIn("14px", tab.lbl_kpi_overdue_receivables.styleSheet())
+        self.assertNotIn("22px", tab.lbl_kpi_overdue_receivables.styleSheet())
+
+        # Check tables column widths and row height
+        self.assertEqual(tab.table_clients.columnWidth(9), 200)
+        self.assertEqual(tab.table_clients.verticalHeader().defaultSectionSize(), 38)
+        self.assertEqual(tab.table_invoices.columnWidth(8), 200)
+        self.assertEqual(tab.table_invoices.verticalHeader().defaultSectionSize(), 38)
+
+    def test_global_payment_dialog_styling_and_heights(self):
+        from ui.widgets.sales.debts_management_tab import GlobalPaymentDialog
+        client_row = {
+            'Client_ID': 12,
+            'Client_Name': 'Laboratoire BioTest',
+            'Current_Balance': 50000.0,
+            'Credit_Limit': 100000.0
+        }
+        dlg = GlobalPaymentDialog(self.mock_dm, client_row)
+
+        # Confirm 100% solid white opaque dialog without backdrop overlay
+        self.assertIn("#FFFFFF", dlg.styleSheet())
+        self.assertIn("#DDE3EA", dlg.styleSheet())
+
+        # Check input comfortable heights
+        self.assertEqual(dlg.edit_date.height(), 36)
+        self.assertEqual(dlg.spin_amount.height(), 38)
+        self.assertEqual(dlg.cb_method.height(), 36)
+        self.assertEqual(dlg.edit_ref.height(), 36)
+        self.assertEqual(dlg.edit_notes.height(), 36)
+
+    def test_invoice_payment_dialog_styling_and_heights(self):
+        from ui.widgets.sales.invoice_payment_dialog import InvoicePaymentDialog
+        inv_row = {
+            'Invoice_ID': 201,
+            'Invoice_No': 'FAC-2026-0042',
+            'Client_ID': 12,
+            'Client_Name': 'Laboratoire BioTest',
+            'Total_Amount_TTC': 75000.0,
+            'Paid_Amount': 25000.0,
+            'Invoice_Date': '2026-02-01',
+            'Due_Date': '2026-02-28'
+        }
+        dlg = InvoicePaymentDialog(self.mock_dm, inv_row)
+
+        # Confirm 100% solid white opaque dialog without backdrop overlay
+        self.assertIn("#FFFFFF", dlg.styleSheet())
+        self.assertIn("#DDE3EA", dlg.styleSheet())
+
+        # Check input comfortable heights
+        self.assertEqual(dlg.edit_date.height(), 36)
+        self.assertEqual(dlg.spin_amount.height(), 38)
+        self.assertEqual(dlg.cb_method.height(), 36)
+        self.assertEqual(dlg.edit_ref.height(), 36)
+        self.assertEqual(dlg.edit_notes.height(), 36)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -5,12 +5,13 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QDateEdit, QDoubleSpinBox, QLineEdit, QPushButton,
-    QFrame, QMessageBox, QGroupBox, QFormLayout
+    QFrame, QMessageBox, QFormLayout
 )
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QDate, QSize
+from PySide6.QtGui import QColor
 
 from ui.formatting import format_money
+from ui.icons import get_duotone_icon
 
 
 class InvoicePaymentDialog(QDialog):
@@ -32,8 +33,40 @@ class InvoicePaymentDialog(QDialog):
         
         doc_ref = invoice_data.get('Invoice_No') or f"#{self.invoice_id}"
         self.setWindowTitle(f"Encaisser Paiement - Facture {doc_ref}")
-        self.resize(500, 460)
+        self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
+        self.setModal(True)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAttribute(Qt.WA_OpaquePaintEvent, True)
+        self.setAutoFillBackground(True)
+
+        pal = self.palette()
+        pal.setColor(self.backgroundRole(), QColor("#FFFFFF"))
+        self.setPalette(pal)
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 8px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        self.resize(520, 520)
+        self.setMinimumSize(480, 480)
         self._init_ui()
+
+    def exec(self):
+        parent_widget = self.parent()
+        if parent_widget:
+            self.raise_()
+            self.activateWindow()
+        return super().exec()
+
+    def exec_(self):
+        return self.exec()
 
     def _current_user_id(self):
         try:
@@ -45,90 +78,159 @@ class InvoicePaymentDialog(QDialog):
     def _init_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
-        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         # Header Title
-        lbl_title = QLabel("💳 Enregistrement d'un Règlement Client")
-        lbl_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #0f766e;")
+        lbl_title = QLabel("Enregistrement d'un Règlement de Facture")
+        lbl_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #0E7471; border: none; background: transparent;")
         layout.addWidget(lbl_title)
 
-        # Summary Group
-        summary_group = QGroupBox("Détails de la Facture")
-        summary_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #cbd5e1;
+        # 1. Section Détails de la Facture
+        lbl_sec_invoice = QLabel("DÉTAILS DE LA FACTURE")
+        lbl_sec_invoice.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 0.5px; border: none; background: transparent; margin-top: 2px;")
+        layout.addWidget(lbl_sec_invoice)
+
+        summary_frame = QFrame()
+        summary_frame.setStyleSheet("""
+            QFrame {
+                background-color: #F8FAFC;
+                border: 1px solid #DDE3EA;
                 border-radius: 6px;
-                margin-top: 8px;
-                padding-top: 10px;
-                background-color: #f8fafc;
             }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 4px;
-                color: #334155;
+            QLabel {
+                border: none;
+                background: transparent;
             }
         """)
-        summary_layout = QFormLayout(summary_group)
-        summary_layout.setSpacing(6)
-        summary_layout.setContentsMargins(12, 12, 12, 12)
+        summary_layout = QFormLayout(summary_frame)
+        summary_layout.setContentsMargins(14, 10, 14, 10)
+        summary_layout.setSpacing(8)
+
+        def make_tag(t):
+            l = QLabel(t)
+            l.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B; border: none; background: transparent;")
+            return l
 
         client_name = self.invoice_data.get('Client_Name') or "Client Comptoir"
         doc_ref = self.invoice_data.get('Invoice_No') or f"#{self.invoice_id}"
         inv_date = str(self.invoice_data.get('Invoice_Date') or self.invoice_data.get('Event_Date') or "-")
         due_date = str(self.invoice_data.get('Due_Date') or "-")
 
-        summary_layout.addRow("<b>Client :</b>", QLabel(client_name))
-        summary_layout.addRow("<b>Facture N° :</b>", QLabel(doc_ref))
-        summary_layout.addRow("<b>Date Facture :</b>", QLabel(inv_date))
-        summary_layout.addRow("<b>Date d'Échéance :</b>", QLabel(due_date))
-        summary_layout.addRow("<b>Montant Total TTC :</b>", QLabel(f"{format_money(self.total_ttc)} DA"))
-        summary_layout.addRow("<b>Déjà Réglé :</b>", QLabel(f"{format_money(self.paid_amount)} DA"))
+        lbl_client = QLabel(client_name)
+        lbl_client.setStyleSheet("font-size: 13px; font-weight: 700; color: #1F2937;")
+        summary_layout.addRow(make_tag("Client :"), lbl_client)
+
+        lbl_doc = QLabel(doc_ref)
+        lbl_doc.setStyleSheet("font-size: 12px; font-weight: 700; color: #0E7471;")
+        summary_layout.addRow(make_tag("Facture N° :"), lbl_doc)
+
+        lbl_dates = QLabel(f"{inv_date}  (Échéance : {due_date})")
+        lbl_dates.setStyleSheet("font-size: 12px; color: #475569;")
+        summary_layout.addRow(make_tag("Date / Échéance :"), lbl_dates)
+
+        lbl_total = QLabel(f"{format_money(self.total_ttc)} DA  (Déjà réglé : {format_money(self.paid_amount)} DA)")
+        lbl_total.setStyleSheet("font-size: 12px; font-weight: 600; color: #334155;")
+        summary_layout.addRow(make_tag("Montant Facturé :"), lbl_total)
 
         lbl_balance = QLabel(f"{format_money(self.remaining_balance)} DA")
-        lbl_balance.setStyleSheet("font-size: 14px; font-weight: bold; color: #dc2626;")
-        summary_layout.addRow("<b>Reste à Payer :</b>", lbl_balance)
+        lbl_balance.setStyleSheet("font-size: 14px; font-weight: 800; color: #DC2626;" if self.remaining_balance > 0 else "font-size: 14px; font-weight: 800; color: #16A34A;")
+        summary_layout.addRow(make_tag("Reste à Payer :"), lbl_balance)
 
-        layout.addWidget(summary_group)
+        layout.addWidget(summary_frame)
 
-        # Form Group
-        form_group = QGroupBox("Paramètres du Paiement")
-        form_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                margin-top: 8px;
-                padding-top: 10px;
-                background-color: #ffffff;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 4px;
-                color: #334155;
-            }
-        """)
-        form_layout = QFormLayout(form_group)
-        form_layout.setSpacing(8)
-        form_layout.setContentsMargins(12, 12, 12, 12)
+        # 2. Section Paramètres de Règlement
+        lbl_sec_params = QLabel("PARAMÈTRES DE RÈGLEMENT")
+        lbl_sec_params.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 0.5px; border: none; background: transparent; margin-top: 4px;")
+        layout.addWidget(lbl_sec_params)
+
+        form_layout = QFormLayout()
+        form_layout.setContentsMargins(0, 2, 0, 2)
+        form_layout.setSpacing(10)
+        form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+        def make_form_label(text):
+            lbl = QLabel(text)
+            lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569; border: none; background: transparent;")
+            return lbl
 
         # Date de paiement
         self.edit_date = QDateEdit(QDate.currentDate())
         self.edit_date.setCalendarPopup(True)
         self.edit_date.setDisplayFormat("yyyy-MM-dd")
-        form_layout.addRow("Date de règlement :", self.edit_date)
+        self.edit_date.setFixedHeight(36)
+        self.edit_date.setStyleSheet("""
+            QDateEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #1F2937;
+            }
+            QDateEdit:focus {
+                border: 1.5px solid #0E7471;
+            }
+            QDateEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #DDE3EA;
+                background-color: #F8FAFC;
+                border-top-right-radius: 5px;
+                border-bottom-right-radius: 5px;
+            }
+        """)
+        form_layout.addRow(make_form_label("Date de règlement :"), self.edit_date)
 
-        # Montant
+        # Montant avec bouton Solder
+        amt_container = QHBoxLayout()
+        amt_container.setSpacing(8)
+
         self.spin_amount = QDoubleSpinBox()
         self.spin_amount.setRange(0.01, 999999999.0)
         self.spin_amount.setDecimals(2)
         self.spin_amount.setSingleStep(100.0)
         self.spin_amount.setSuffix(" DA")
-        self.spin_amount.setValue(self.remaining_balance if self.remaining_balance > 0 else self.total_ttc)
-        self.spin_amount.setStyleSheet("font-size: 13px; font-weight: bold; color: #047857; min-height: 28px;")
-        form_layout.addRow("Montant versé :", self.spin_amount)
+        initial_val = self.remaining_balance if self.remaining_balance > 0 else self.total_ttc
+        self.spin_amount.setValue(initial_val)
+        self.spin_amount.setFixedHeight(38)
+        self.spin_amount.setStyleSheet("""
+            QDoubleSpinBox {
+                background-color: #FFFFFF;
+                border: 1.5px solid #0E7471;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 14px;
+                font-weight: 800;
+                color: #0E7471;
+            }
+            QDoubleSpinBox:focus {
+                border: 2px solid #0E7471;
+            }
+        """)
+        amt_container.addWidget(self.spin_amount, 1)
+
+        btn_solder = QPushButton("Solder")
+        btn_solder.setCursor(Qt.PointingHandCursor)
+        btn_solder.setFixedHeight(38)
+        btn_solder.setStyleSheet("""
+            QPushButton {
+                background-color: #E6F4F1;
+                color: #0E7471;
+                border: 1px solid #BCE3DC;
+                border-radius: 6px;
+                padding: 0 14px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover { background-color: #CCEBE5; }
+            QPushButton:pressed { background-color: #B2DFD8; }
+        """)
+        btn_solder.clicked.connect(lambda: self.spin_amount.setValue(max(0.01, self.remaining_balance)))
+        amt_container.addWidget(btn_solder)
+
+        form_layout.addRow(make_form_label("Montant versé :"), amt_container)
 
         # Mode de paiement
         self.cb_method = QComboBox()
@@ -141,19 +243,71 @@ class InvoicePaymentDialog(QDialog):
         ]
         for label, val in methods:
             self.cb_method.addItem(label, val)
-        form_layout.addRow("Mode de paiement :", self.cb_method)
+        self.cb_method.setFixedHeight(36)
+        self.cb_method.setStyleSheet("""
+            QComboBox {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #1F2937;
+            }
+            QComboBox:focus {
+                border: 1.5px solid #0E7471;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #DDE3EA;
+                background-color: #F8FAFC;
+                border-top-right-radius: 5px;
+                border-bottom-right-radius: 5px;
+            }
+        """)
+        form_layout.addRow(make_form_label("Mode de paiement :"), self.cb_method)
 
         # Reference
         self.edit_ref = QLineEdit()
         self.edit_ref.setPlaceholderText("Ex: N° Chèque, Référence virement...")
-        form_layout.addRow("Référence / N° Pièce :", self.edit_ref)
+        self.edit_ref.setFixedHeight(36)
+        self.edit_ref.setStyleSheet("""
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                color: #1F2937;
+            }
+            QLineEdit:focus {
+                border: 1.5px solid #0E7471;
+            }
+        """)
+        form_layout.addRow(make_form_label("Référence / N° Pièce :"), self.edit_ref)
 
         # Notes
         self.edit_notes = QLineEdit()
         self.edit_notes.setPlaceholderText("Remarques ou observations...")
-        form_layout.addRow("Observations :", self.edit_notes)
+        self.edit_notes.setFixedHeight(36)
+        self.edit_notes.setStyleSheet("""
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                color: #1F2937;
+            }
+            QLineEdit:focus {
+                border: 1.5px solid #0E7471;
+            }
+        """)
+        form_layout.addRow(make_form_label("Observations :"), self.edit_notes)
 
-        layout.addWidget(form_group)
+        layout.addLayout(form_layout)
 
         # Action Buttons
         btn_layout = QHBoxLayout()
@@ -161,22 +315,41 @@ class InvoicePaymentDialog(QDialog):
 
         btn_cancel = QPushButton("Annuler")
         btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.setFixedHeight(38)
+        btn_cancel.setMinimumWidth(100)
+        btn_cancel.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+                padding: 0 16px;
+                font-weight: 600;
+                font-size: 12px;
+            }
+            QPushButton:hover { background-color: #F8FAFC; border-color: #CBD5E1; color: #1E293B; }
+            QPushButton:pressed { background-color: #F1F5F9; }
+        """)
         btn_cancel.clicked.connect(self.reject)
 
-        self.btn_submit = QPushButton("💾 Valider le Règlement")
+        self.btn_submit = QPushButton("Valider le Règlement")
+        self.btn_submit.setIcon(get_duotone_icon("payment_white", 16))
+        self.btn_submit.setIconSize(QSize(16, 16))
         self.btn_submit.setCursor(Qt.PointingHandCursor)
+        self.btn_submit.setFixedHeight(38)
+        self.btn_submit.setMinimumWidth(180)
         self.btn_submit.setStyleSheet("""
             QPushButton {
-                background-color: #0f766e;
-                color: white;
-                font-weight: bold;
-                padding: 6px 16px;
-                border-radius: 4px;
-                min-height: 30px;
+                background-color: #0E7471;
+                color: #FFFFFF;
+                font-weight: 700;
+                font-size: 13px;
+                padding: 0 20px;
+                border-radius: 6px;
+                border: none;
             }
-            QPushButton:hover {
-                background-color: #115e59;
-            }
+            QPushButton:hover { background-color: #0A5C59; }
+            QPushButton:pressed { background-color: #084846; }
         """)
         self.btn_submit.clicked.connect(self._validate_and_submit)
 
