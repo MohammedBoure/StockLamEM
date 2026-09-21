@@ -152,19 +152,19 @@ DUOTONE_SVGS: Dict[str, str] = {
 
     # 13: Créances Clients (Debts & Receivables)
     "debts": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-        <rect x="5" y="4" width="22" height="24" rx="2" fill="#E6F4F1" stroke="#007572" stroke-width="2"/>
+        <rect x="5" y="4" width="22" height="24" rx="2" fill="#E6F4F1" stroke="#0E7471" stroke-width="2"/>
         <line x1="9" y1="10" x2="23" y2="10" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
         <line x1="9" y1="15" x2="23" y2="15" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
-        <line x1="9" y1="20" x2="16" y2="20" stroke="#007572" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="22" cy="22" r="5" fill="#FFFFFF" stroke="#007572" stroke-width="2"/>
-        <text x="22" y="25" font-family="sans-serif" font-size="7" font-weight="bold" fill="#007572" text-anchor="middle">D</text>
+        <line x1="9" y1="20" x2="16" y2="20" stroke="#0E7471" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="22" cy="22" r="5" fill="#FFFFFF" stroke="#0E7471" stroke-width="2"/>
+        <text x="22" y="25" font-family="sans-serif" font-size="7" font-weight="bold" fill="#0E7471" text-anchor="middle">D</text>
     </svg>''',
 
     # KPI & Debts Specific Vector Icons
-    "kpi_wallet": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#007572" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    "kpi_wallet": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="5" width="20" height="14" rx="2" fill="#E6F4F1"/>
         <line x1="2" y1="10" x2="22" y2="10"/>
-        <circle cx="17" cy="14" r="1.5" fill="#007572"/>
+        <circle cx="17" cy="14" r="1.5" fill="#0E7471"/>
     </svg>''',
 
     "kpi_overdue": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -188,15 +188,32 @@ DUOTONE_SVGS: Dict[str, str] = {
         <rect x="16" y="8" width="32" height="48" rx="4" fill="#F8FAFC" stroke="#CBD5E1"/>
         <line x1="24" y1="20" x2="40" y2="20" stroke="#CBD5E1"/>
         <line x1="24" y1="28" x2="36" y2="28" stroke="#CBD5E1"/>
-        <circle cx="32" cy="42" r="9" fill="#E6F4F1" stroke="#007572"/>
-        <polyline points="28 42 31 45 36 39" stroke="#007572" stroke-width="2.5"/>
+        <circle cx="32" cy="42" r="9" fill="#E6F4F1" stroke="#0E7471"/>
+        <polyline points="28 42 31 45 36 39" stroke="#0E7471" stroke-width="2.5"/>
     </svg>''',
 
-    "filter": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#007572" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    "success_circle": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="22" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+        <polyline points="15 25 21 31 33 17" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>''',
+
+    "client_select": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="22" fill="#E6F4F1" stroke="#0E7471" stroke-width="2"/>
+        <circle cx="24" cy="18" r="6" stroke="#0E7471" stroke-width="2.5" fill="#FFFFFF"/>
+        <path d="M14 36c0-5.523 4.477-10 10-10s10 4.477 10 10" stroke="#0E7471" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>''',
+
+    "filter": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
     </svg>''',
 
-    "refresh": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#007572" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    "refresh": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>''',
+
+    "refresh_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="23 4 23 10 17 10"/>
         <polyline points="1 20 1 14 7 14"/>
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -208,7 +225,7 @@ DUOTONE_SVGS: Dict[str, str] = {
         <line x1="12" y1="15" x2="12" y2="3"/>
     </svg>''',
 
-    "payment": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#007572" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    "payment": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="1" y="4" width="22" height="16" rx="2" fill="#E6F4F1"/>
         <line x1="1" y1="10" x2="23" y2="10"/>
     </svg>''',
@@ -218,7 +235,7 @@ DUOTONE_SVGS: Dict[str, str] = {
         <line x1="1" y1="10" x2="23" y2="10"/>
     </svg>''',
 
-    "statement": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#007572" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    "statement": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
         <line x1="16" y1="13" x2="8" y2="13"/>
@@ -226,7 +243,7 @@ DUOTONE_SVGS: Dict[str, str] = {
         <line x1="10" y1="9" x2="8" y2="9"/>
     </svg>''',
 
-    "audit": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#007572" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    "audit": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/>
         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         <line x1="11" y1="8" x2="11" y2="14"/>

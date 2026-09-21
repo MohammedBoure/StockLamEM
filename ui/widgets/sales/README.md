@@ -18,18 +18,17 @@ Composants PySide6 pour le point de vente tactile au détail (POS), les règleme
   - Grille des résultats complète affichant Produit, Code-barres/SKU, N° Lot, Stock, Péremption, Prix Vente HT/TTC.
   - Configuration du retour : Quantité avec garde-fou, emplacement de destination (priorité automatique à la zone Quarantaine/Retour), motif du retour (liste déroulante normalisée) et mode de remboursement.
   - Traitement transactionnel atomique avec incrémentation du stock, écriture dans l'historique de mouvements et génération d'un Bon de Retour (Avoir) A4 ReportLab.
-- `debts_management_tab.py` : Interface complète de gestion des créances et suivi des dettes clients (`DebtsManagementTab`) :
-  - Cartes KPI modernisées à fond blanc unifié, typographie hiérarchisée (titre 11px semi-bold, valeur 20px extra-bold) avec badge icône vectoriel 2D et alerte dynamique conditionnelle rouge (`#dc2626`) en cas de retard.
-  - Barre de filtrage ergonomique avec étiquettes supérieures normalisées (Top Labels), autocomplétion nom/téléphone (`SearchableClientComboBox`), statut et seuil minimum de dette.
-  - Séparateur équilibré (Splitter 50/50 avec persistance) entre le répertoire maître des clients débiteurs et le détail des pièces.
-  - Entêtes de tables à fort contraste (`#0f172a` sur fond `#f8fafc` avec bordure inférieure `2px solid #007572`), alignement rigoureux des données (texte à gauche, montants financiers et soldes à droite, dates et statuts au centre).
-  - Boutons d'actions vectoriels à largeur fixe (`185px` pour la colonne, `80px` par bouton) évitant tout tronquage horizontal.
-  - Gestion contextuelle de l'état vide (Empty State via `QStackedWidget`) guidant l'utilisateur lorsqu'aucun client n'est sélectionné ou qu'aucune facture impayée n'existe.
-  - Dialogue de règlement global / acompte (`GlobalPaymentDialog`) avec ventilation automatique FIFO ou acompte libre.
+- `debts_management_tab.py` : Interface complète de gestion des créances et suivi des dettes clients (`DebtsManagementTab`) alignée à 100% sur le design system de StockLam :
+  - Palette officielle : couleur pétrole de référence `#0E7471`, arrière-plan doux `#F4F6F8`, cartes blanches `#FFFFFF` avec bordures soignées `#DDE3EA`, rouge d'alerte `#DC2626` et vert de succès `#16A34A`.
+  - 4 cartes KPI d'analyse supérieure : ligne d'accentuation haute de 3px, badges d'icônes circulaires réguliers (36x36px, rayon 18px) sur fond teinté doux, et typographie renforcée de fort contraste (22px, font-weight: 900).
+  - Barre de filtrage standardisée à une hauteur de 38px : autocomplétion nom/téléphone (`SearchableClientComboBox`), sélecteur de statut de créance, seuil de dette en DA, bouton Actualiser plein pétrole (`#0E7471`) avec icône blanche et bouton Exporter CSV à encadrement élégant conforme à l'écran d'inventaire.
+  - Table des Débiteurs et Table des Factures au format "Dense Data Table" : lignes compactes (hauteur 32px), quadrillage précis de cellules (`#E2E8F0`), montants monétaires rigoureusement alignés à droite, et boutons d'actions compacts de 24px de hauteur (Solder/Relevé, Encaisser/Imprimer).
+  - Panneau de détail inférieur et état vide sans bordures discontinues : conteneur blanc épuré (`1px solid #DDE3EA`, rayon 8px) avec badge circulaire de 54px et messagerie contextuelle réactive (sélection client vs créances 100% soldées).
+  - Dialogue de règlement global / acompte (`GlobalPaymentDialog`) avec ventilation FIFO ou acompte libre.
   - Dialogue d'audit d'intégrité comptable (`ClientDebtAuditDialog`).
 - `searchable_client_combo.py` : Widget de sélection client avec autocomplétion instantanée (`SearchableClientComboBox`) :
   - Recherche bi-mode en temps réel par Nom du Client et par Numéro de Téléphone (`Qt.MatchContains`).
-  - Formatage standardisé `Nom Client (Téléphone)` et préservation de l'élément spécial `Tous les Clients`.
+  - Formatage standardisé `Nom Client (Téléphone)` et conformité stylistique pétrole `#0E7471`.
 - `pos_payment_dialog.py` : Dialogue de règlement multi-moyens pour le POS (espèces, carte, virement, crédit).
 - `invoice_payment_dialog.py` : Dialogue d'encaissement et de règlement direct d'une facture client impayée ou échue avec enregistrement dans `Client_Payments`.
 - `dialogs.py` : Dialogues auxiliaires de caisse (`ClientDialog`, `OpenSessionDialog`, `CloseSessionDialog`, `CashSessionDetailsDialog`, `QuickCashPaymentDialog`, `SelectBatchBarcodeDialog`, `EnterProductBarcodeDialog`).

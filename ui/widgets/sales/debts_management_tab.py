@@ -55,7 +55,7 @@ class GlobalPaymentDialog(QDialog):
 
         # Header Title
         lbl_title = QLabel("Enregistrement d'un Règlement Global ou Acompte")
-        lbl_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #007572;")
+        lbl_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #0E7471;")
         layout.addWidget(lbl_title)
 
         # Client Summary Card
@@ -63,11 +63,11 @@ class GlobalPaymentDialog(QDialog):
         summary_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #cbd5e1;
+                border: 1px solid #DDE3EA;
                 border-radius: 4px;
                 margin-top: 8px;
                 padding-top: 10px;
-                background-color: #f8fafc;
+                background-color: #F8FAFC;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -84,7 +84,7 @@ class GlobalPaymentDialog(QDialog):
         summary_layout.addRow("Client :", lbl_client)
 
         lbl_bal = QLabel(f"{format_money(self.current_balance)} DA")
-        lbl_bal.setStyleSheet("font-size: 14px; font-weight: bold; color: #dc2626;" if self.current_balance > 0 else "font-size: 14px; font-weight: bold; color: #059669;")
+        lbl_bal.setStyleSheet("font-size: 14px; font-weight: bold; color: #DC2626;" if self.current_balance > 0 else "font-size: 14px; font-weight: bold; color: #16A34A;")
         summary_layout.addRow("Solde Dû Actuel :", lbl_bal)
 
         lbl_limit = QLabel(f"{format_money(self.credit_limit)} DA" if self.credit_limit > 0 else "Illimité")
@@ -97,11 +97,11 @@ class GlobalPaymentDialog(QDialog):
         form_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #cbd5e1;
+                border: 1px solid #DDE3EA;
                 border-radius: 4px;
                 margin-top: 8px;
                 padding-top: 10px;
-                background-color: #ffffff;
+                background-color: #FFFFFF;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -130,7 +130,7 @@ class GlobalPaymentDialog(QDialog):
         initial_val = self.current_balance if self.current_balance > 0 else 1000.0
         self.spin_amount.setValue(initial_val)
         self.spin_amount.setMinimumHeight(32)
-        self.spin_amount.setStyleSheet("font-size: 14px; font-weight: bold; color: #007572;")
+        self.spin_amount.setStyleSheet("font-size: 14px; font-weight: bold; color: #0E7471;")
         amt_container.addWidget(self.spin_amount, 1)
 
         btn_full = QPushButton("Solder Tout")
@@ -159,7 +159,7 @@ class GlobalPaymentDialog(QDialog):
         alloc_vbox = QVBoxLayout()
         self.rb_fifo = QRadioButton("Ventilation automatique FIFO (imputer sur factures les plus anciennes)")
         self.rb_fifo.setChecked(True)
-        self.rb_fifo.setStyleSheet("font-size: 12px; color: #0f766e; font-weight: 600;")
+        self.rb_fifo.setStyleSheet("font-size: 12px; color: #0E7471; font-weight: 600;")
 
         self.rb_free = QRadioButton("Acompte libre non lettré (déduit directement du solde global)")
         self.rb_free.setStyleSheet("font-size: 12px; color: #475569;")
@@ -201,7 +201,7 @@ class GlobalPaymentDialog(QDialog):
         self.btn_submit.setMinimumHeight(34)
         self.btn_submit.setStyleSheet("""
             QPushButton {
-                background-color: #007572;
+                background-color: #0E7471;
                 color: white;
                 font-weight: bold;
                 font-size: 13px;
@@ -209,7 +209,7 @@ class GlobalPaymentDialog(QDialog):
                 border-radius: 4px;
                 border: none;
             }
-            QPushButton:hover { background-color: #005a57; }
+            QPushButton:hover { background-color: #0A5C59; }
         """)
         self.btn_submit.clicked.connect(self._validate_and_submit)
 
@@ -300,7 +300,7 @@ class ClientDebtAuditDialog(QDialog):
         layout.addWidget(header_frame)
 
         form_group = QGroupBox("Détail de la Réconciliation")
-        form_group.setStyleSheet("font-weight: bold; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 6px; padding-top: 8px;")
+        form_group.setStyleSheet("font-weight: bold; border: 1px solid #DDE3EA; border-radius: 4px; margin-top: 6px; padding-top: 8px;")
         form_layout = QFormLayout(form_group)
         form_layout.setSpacing(8)
 
@@ -310,7 +310,7 @@ class ClientDebtAuditDialog(QDialog):
 
         discrepancy = self.audit.get('discrepancy', 0.0)
         lbl_disc = QLabel(f"{format_money(discrepancy)} DA")
-        lbl_disc.setStyleSheet("font-weight: bold; color: #16a34a;" if abs(discrepancy) < 0.01 else "font-weight: bold; color: #dc2626;")
+        lbl_disc.setStyleSheet("font-weight: bold; color: #16A34A;" if abs(discrepancy) < 0.01 else "font-weight: bold; color: #DC2626;")
         form_layout.addRow("Écart Net :", lbl_disc)
 
         form_layout.addRow("Total Facturé & BL (+) :", QLabel(f"{format_money(self.audit.get('total_invoiced', 0.0))} DA ({self.audit.get('count_invoices', 0)} pièces)"))
@@ -321,7 +321,7 @@ class ClientDebtAuditDialog(QDialog):
 
         btn_close = QPushButton("Fermer")
         btn_close.setCursor(Qt.PointingHandCursor)
-        btn_close.setStyleSheet("background-color: #007572; color: white; font-weight: bold; padding: 6px 18px; border-radius: 4px;")
+        btn_close.setStyleSheet("background-color: #0E7471; color: white; font-weight: bold; padding: 6px 18px; border-radius: 4px;")
         btn_close.clicked.connect(self.accept)
 
         h_btn = QHBoxLayout()
@@ -343,6 +343,8 @@ class DebtsManagementTab(QWidget):
         self.data_manager = data_manager
         self.clients_summary = []
         self.selected_client_id = None
+        self.setObjectName("DebtsManagementTab")
+        self.setStyleSheet("QWidget#DebtsManagementTab { background-color: #F4F6F8; }")
         self._init_ui()
         self.refresh_all()
 
@@ -360,6 +362,17 @@ class DebtsManagementTab(QWidget):
         # 3. Master-Detail Splitter
         self.splitter = QSplitter(Qt.Vertical)
         self.splitter.setChildrenCollapsible(False)
+        self.splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #E2E8F0;
+                height: 4px;
+                margin: 2px 0;
+                border-radius: 2px;
+            }
+            QSplitter::handle:hover {
+                background-color: #0E7471;
+            }
+        """)
 
         # Master Table (Clients débiteurs)
         self.master_container = QFrame()
@@ -376,7 +389,7 @@ class DebtsManagementTab(QWidget):
         header_master_layout.addWidget(lbl_master_icon)
 
         lbl_master_header = QLabel("Répertoire des Clients Débiteurs")
-        lbl_master_header.setStyleSheet("font-size: 13px; font-weight: 800; color: #1e293b;")
+        lbl_master_header.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         header_master_layout.addWidget(lbl_master_header)
         header_master_layout.addStretch()
 
@@ -407,30 +420,32 @@ class DebtsManagementTab(QWidget):
         for col_idx in [2, 3, 4, 5, 6, 7, 8]:
             self.table_clients.horizontalHeader().setSectionResizeMode(col_idx, QHeaderView.ResizeToContents)
         self.table_clients.horizontalHeader().setSectionResizeMode(9, QHeaderView.Fixed)
-        self.table_clients.setColumnWidth(9, 185)
+        self.table_clients.setColumnWidth(9, 175)
 
         table_style = """
             QTableWidget {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
                 border-radius: 6px;
-                gridline-color: #f1f5f9;
-                selection-background-color: #e6f4f1;
-                selection-color: #0f172a;
-                alternate-background-color: #fafbfc;
+                gridline-color: #E2E8F0;
+                selection-background-color: #E6F4F1;
+                selection-color: #0F172A;
+                alternate-background-color: #F8FAFC;
             }
             QHeaderView::section {
-                background-color: #f8fafc;
-                color: #0f172a;
+                background-color: #F8FAFC;
+                color: #0F172A;
                 font-weight: 700;
                 font-size: 12px;
-                padding: 8px 10px;
+                padding: 7px 10px;
                 border: none;
-                border-bottom: 2px solid #007572;
-                border-right: 1px solid #e2e8f0;
+                border-bottom: 2px solid #0E7471;
+                border-right: 1px solid #E2E8F0;
             }
         """
         self.table_clients.setStyleSheet(table_style)
+        self.table_clients.verticalHeader().setDefaultSectionSize(32)
+        self.table_clients.setShowGrid(True)
         self.table_clients.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_clients.setSelectionMode(QTableWidget.SingleSelection)
         self.table_clients.setAlternatingRowColors(True)
@@ -457,7 +472,7 @@ class DebtsManagementTab(QWidget):
         detail_header_layout.addWidget(lbl_detail_icon)
 
         self.lbl_detail_title = QLabel("Factures & Créances Impayées : (Sélectionnez un client)")
-        self.lbl_detail_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #007572;")
+        self.lbl_detail_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #0E7471;")
         detail_header_layout.addWidget(self.lbl_detail_title)
         detail_header_layout.addStretch()
 
@@ -465,13 +480,20 @@ class DebtsManagementTab(QWidget):
         self.btn_detail_global_pay.setIcon(get_duotone_icon("payment_white", 14))
         self.btn_detail_global_pay.setIconSize(QSize(14, 14))
         self.btn_detail_global_pay.setCursor(Qt.PointingHandCursor)
+        self.btn_detail_global_pay.setFixedHeight(32)
         self.btn_detail_global_pay.setStyleSheet("""
             QPushButton {
-                background-color: #007572; color: white; font-weight: bold;
-                padding: 6px 14px; border-radius: 6px; font-size: 12px;
+                background-color: #0E7471;
+                color: #FFFFFF;
+                font-weight: 700;
+                padding: 0 14px;
+                border-radius: 6px;
+                font-size: 12px;
+                border: none;
             }
-            QPushButton:hover { background-color: #005a57; }
-            QPushButton:disabled { background-color: #cbd5e1; color: #94a3b8; }
+            QPushButton:hover { background-color: #0A5C59; }
+            QPushButton:pressed { background-color: #084846; }
+            QPushButton:disabled { background-color: #CBD5E1; color: #94A3B8; }
         """)
         self.btn_detail_global_pay.setEnabled(False)
         self.btn_detail_global_pay.clicked.connect(self._open_global_payment_dialog)
@@ -481,13 +503,20 @@ class DebtsManagementTab(QWidget):
         self.btn_detail_statement.setIcon(get_duotone_icon("statement", 14))
         self.btn_detail_statement.setIconSize(QSize(14, 14))
         self.btn_detail_statement.setCursor(Qt.PointingHandCursor)
+        self.btn_detail_statement.setFixedHeight(32)
         self.btn_detail_statement.setStyleSheet("""
             QPushButton {
-                background-color: #f8fafc; color: #007572; border: 1.5px solid #007572;
-                font-weight: bold; padding: 6px 14px; border-radius: 6px; font-size: 12px;
+                background-color: #FFFFFF;
+                color: #0E7471;
+                border: 1.5px solid #0E7471;
+                font-weight: 700;
+                padding: 0 14px;
+                border-radius: 6px;
+                font-size: 12px;
             }
-            QPushButton:hover { background-color: #e6f4f1; }
-            QPushButton:disabled { border-color: #cbd5e1; color: #94a3b8; }
+            QPushButton:hover { background-color: #E6F4F1; border-color: #0A5C59; color: #0A5C59; }
+            QPushButton:pressed { background-color: #CCEBE5; }
+            QPushButton:disabled { border-color: #CBD5E1; color: #94A3B8; background-color: #F8FAFC; }
         """)
         self.btn_detail_statement.setEnabled(False)
         self.btn_detail_statement.clicked.connect(self._open_client_statement_dialog)
@@ -520,40 +549,57 @@ class DebtsManagementTab(QWidget):
         for c_idx in [1, 2, 3, 4, 5, 6, 7]:
             self.table_invoices.horizontalHeader().setSectionResizeMode(c_idx, QHeaderView.ResizeToContents)
         self.table_invoices.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)
-        self.table_invoices.setColumnWidth(8, 185)
+        self.table_invoices.setColumnWidth(8, 175)
         self.table_invoices.setStyleSheet(table_style)
+        self.table_invoices.verticalHeader().setDefaultSectionSize(32)
+        self.table_invoices.setShowGrid(True)
         self.table_invoices.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_invoices.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table_invoices.setAlternatingRowColors(True)
 
         self.detail_stack.addWidget(self.table_invoices)
 
-        # Empty State Card
+        # Empty State Card (Clean single container, no dashed border)
         self.empty_invoices_card = QFrame()
         self.empty_invoices_card.setStyleSheet("""
             QFrame {
-                background-color: #ffffff;
-                border: 1.5px dashed #cbd5e1;
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
                 border-radius: 8px;
             }
         """)
         empty_layout = QVBoxLayout(self.empty_invoices_card)
         empty_layout.setAlignment(Qt.AlignCenter)
-        empty_layout.setSpacing(6)
+        empty_layout.setSpacing(10)
 
-        lbl_empty_icon = QLabel()
-        lbl_empty_icon.setAlignment(Qt.AlignCenter)
-        lbl_empty_icon.setPixmap(get_duotone_icon("empty_invoices", 48).pixmap(48, 48))
-        empty_layout.addWidget(lbl_empty_icon)
+        self.lbl_empty_icon_container = QFrame()
+        self.lbl_empty_icon_container.setFixedSize(54, 54)
+        self.lbl_empty_icon_container.setStyleSheet("""
+            QFrame {
+                background-color: #E6F4F1;
+                border: 1px solid #BCE3DC;
+                border-radius: 27px;
+            }
+        """)
+        icon_box_layout = QVBoxLayout(self.lbl_empty_icon_container)
+        icon_box_layout.setContentsMargins(0, 0, 0, 0)
+        icon_box_layout.setAlignment(Qt.AlignCenter)
+        self.lbl_empty_icon = QLabel()
+        self.lbl_empty_icon.setAlignment(Qt.AlignCenter)
+        self.lbl_empty_icon.setPixmap(get_duotone_icon("client_select", 32).pixmap(32, 32))
+        icon_box_layout.addWidget(self.lbl_empty_icon)
+
+        empty_layout.addWidget(self.lbl_empty_icon_container, 0, Qt.AlignCenter)
 
         self.lbl_empty_title = QLabel("Sélectionnez un client")
         self.lbl_empty_title.setAlignment(Qt.AlignCenter)
-        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #334155;")
+        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #1E293B;")
         empty_layout.addWidget(self.lbl_empty_title)
 
         self.lbl_empty_desc = QLabel("Cliquez sur un client dans la liste ci-dessus pour afficher ses factures impayées.")
         self.lbl_empty_desc.setAlignment(Qt.AlignCenter)
-        self.lbl_empty_desc.setStyleSheet("font-size: 12px; color: #64748b;")
+        self.lbl_empty_desc.setStyleSheet("font-size: 12px; color: #64748B; max-width: 420px;")
+        self.lbl_empty_desc.setWordWrap(True)
         empty_layout.addWidget(self.lbl_empty_desc)
 
         self.detail_stack.addWidget(self.empty_invoices_card)
@@ -574,15 +620,16 @@ class DebtsManagementTab(QWidget):
         kpi_layout.setContentsMargins(0, 0, 0, 0)
         kpi_layout.setSpacing(12)
 
-        def make_card(title, value_attr, icon_name, subtext):
+        def make_card(title, value_attr, icon_name, subtext, top_color, badge_bg, badge_border):
             card = QFrame()
-            card.setStyleSheet("""
-                QFrame {
-                    background-color: #ffffff;
-                    border: 1px solid #e2e8f0;
+            card.setStyleSheet(f"""
+                QFrame {{
+                    background-color: #FFFFFF;
+                    border: 1px solid #DDE3EA;
+                    border-top: 3px solid {top_color};
                     border-radius: 8px;
                     padding: 12px 14px;
-                }
+                }}
             """)
             c_lay = QVBoxLayout(card)
             c_lay.setContentsMargins(0, 0, 0, 0)
@@ -593,35 +640,51 @@ class DebtsManagementTab(QWidget):
             top_row.setSpacing(8)
 
             lbl_t = QLabel(title)
-            lbl_t.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;")
+            lbl_t.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;")
             top_row.addWidget(lbl_t)
             top_row.addStretch()
 
             lbl_icon = QLabel()
-            lbl_icon.setFixedSize(28, 28)
-            lbl_icon.setStyleSheet("background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;")
+            lbl_icon.setFixedSize(36, 36)
+            lbl_icon.setStyleSheet(f"background-color: {badge_bg}; border: 1px solid {badge_border}; border-radius: 18px;")
             lbl_icon.setAlignment(Qt.AlignCenter)
-            icon = get_duotone_icon(icon_name, size=18)
-            lbl_icon.setPixmap(icon.pixmap(18, 18))
+            icon = get_duotone_icon(icon_name, size=20)
+            lbl_icon.setPixmap(icon.pixmap(20, 20))
             top_row.addWidget(lbl_icon)
 
             c_lay.addLayout(top_row)
 
             lbl_v = QLabel("0.00 DA")
-            lbl_v.setStyleSheet("font-size: 20px; font-weight: 800; color: #0f172a;")
+            lbl_v.setStyleSheet("font-size: 22px; font-weight: 900; color: #0F172A;")
             c_lay.addWidget(lbl_v)
 
             lbl_sub = QLabel(subtext)
-            lbl_sub.setStyleSheet("font-size: 11px; color: #94a3b8; font-weight: 500;")
+            lbl_sub.setStyleSheet("font-size: 11px; color: #64748B; font-weight: 500;")
             c_lay.addWidget(lbl_sub)
 
             setattr(self, value_attr, lbl_v)
             return card
 
-        kpi_layout.addWidget(make_card("Total Créances Clients", "lbl_kpi_total_receivables", "kpi_wallet", "Portefeuille global exigible"), 1)
-        kpi_layout.addWidget(make_card("Créances Échues (En Retard)", "lbl_kpi_overdue_receivables", "kpi_overdue", "Dettes ayant dépassé l'échéance"), 1)
-        kpi_layout.addWidget(make_card("Clients Débiteurs", "lbl_kpi_debtor_count", "kpi_debtors", "Comptes présentant un solde dû"), 1)
-        kpi_layout.addWidget(make_card("Règlements ce Mois", "lbl_kpi_month_recovered", "kpi_recovered", "Total encaissé depuis le 1er"), 1)
+        kpi_layout.addWidget(make_card(
+            "Total Créances Clients", "lbl_kpi_total_receivables",
+            "kpi_wallet", "Portefeuille global exigible",
+            "#0E7471", "#E6F4F1", "#BCE3DC"
+        ), 1)
+        kpi_layout.addWidget(make_card(
+            "Créances Échues (En Retard)", "lbl_kpi_overdue_receivables",
+            "kpi_overdue", "Dettes ayant dépassé l'échéance",
+            "#DC2626", "#FEE2E2", "#FECACA"
+        ), 1)
+        kpi_layout.addWidget(make_card(
+            "Clients Débiteurs", "lbl_kpi_debtor_count",
+            "kpi_debtors", "Comptes présentant un solde dû",
+            "#D97706", "#FEF3C7", "#FDE68A"
+        ), 1)
+        kpi_layout.addWidget(make_card(
+            "Règlements ce Mois", "lbl_kpi_month_recovered",
+            "kpi_recovered", "Total encaissé depuis le 1er",
+            "#16A34A", "#DCFCE7", "#BBF7D0"
+        ), 1)
 
         parent_layout.addWidget(kpi_frame)
 
@@ -629,14 +692,13 @@ class DebtsManagementTab(QWidget):
         filter_frame = QFrame()
         filter_frame.setStyleSheet("""
             QFrame {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
                 border-radius: 8px;
-                padding: 10px 14px;
             }
         """)
         f_layout = QHBoxLayout(filter_frame)
-        f_layout.setContentsMargins(4, 4, 4, 4)
+        f_layout.setContentsMargins(12, 10, 12, 10)
         f_layout.setSpacing(14)
 
         def make_filter_col(label_text, widget):
@@ -649,15 +711,36 @@ class DebtsManagementTab(QWidget):
             v.addWidget(widget)
             return v
 
+        filter_input_style = """
+            QComboBox, QDoubleSpinBox {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                color: #0F172A;
+            }
+            QComboBox:focus, QDoubleSpinBox:focus {
+                border: 1.5px solid #0E7471;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left-width: 0px;
+            }
+        """
+
         # 1. Searchable Client Filter
         self.cb_client_filter = SearchableClientComboBox(self, placeholder="Rechercher nom ou tél...")
         self.cb_client_filter.setMinimumWidth(250)
-        self.cb_client_filter.setFixedHeight(34)
+        self.cb_client_filter.setFixedHeight(38)
         self.cb_client_filter.client_changed.connect(self._on_client_filter_changed)
         f_layout.addLayout(make_filter_col("Client", self.cb_client_filter))
 
         # 2. Status Filter
         self.cb_status_filter = QComboBox()
+        self.cb_status_filter.setStyleSheet(filter_input_style)
         self.cb_status_filter.addItems([
             "Tous",
             "Dépassant le Plafond",
@@ -666,19 +749,20 @@ class DebtsManagementTab(QWidget):
             "Soldés"
         ])
         self.cb_status_filter.setMinimumWidth(180)
-        self.cb_status_filter.setFixedHeight(34)
+        self.cb_status_filter.setFixedHeight(38)
         self.cb_status_filter.currentIndexChanged.connect(self.load_debtors_table)
         f_layout.addLayout(make_filter_col("Statut de Créance", self.cb_status_filter))
 
         # 3. Minimum Debt Threshold
         self.spin_min_debt = QDoubleSpinBox()
+        self.spin_min_debt.setStyleSheet(filter_input_style)
         self.spin_min_debt.setRange(0.0, 99999999.0)
         self.spin_min_debt.setSingleStep(1000.0)
         self.spin_min_debt.setDecimals(2)
         self.spin_min_debt.setSuffix(" DA")
         self.spin_min_debt.setValue(0.0)
         self.spin_min_debt.setMinimumWidth(130)
-        self.spin_min_debt.setFixedHeight(34)
+        self.spin_min_debt.setFixedHeight(38)
         self.spin_min_debt.valueChanged.connect(self.load_debtors_table)
         f_layout.addLayout(make_filter_col("Seuil Minimum", self.spin_min_debt))
 
@@ -697,16 +781,26 @@ class DebtsManagementTab(QWidget):
         h_btn_actions.setSpacing(8)
 
         btn_refresh = QPushButton("Actualiser")
-        btn_refresh.setIcon(get_duotone_icon("refresh", 16))
+        btn_refresh.setIcon(get_duotone_icon("refresh_white", 16))
         btn_refresh.setIconSize(QSize(16, 16))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(34)
+        btn_refresh.setFixedHeight(38)
         btn_refresh.setStyleSheet("""
             QPushButton {
-                background-color: #f8fafc; color: #007572; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 4px 14px; font-weight: 700; font-size: 12px;
+                background-color: #0E7471;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 6px;
+                padding: 0 16px;
+                font-weight: 700;
+                font-size: 12px;
             }
-            QPushButton:hover { background-color: #e6f4f1; border-color: #007572; }
+            QPushButton:hover {
+                background-color: #0A5C59;
+            }
+            QPushButton:pressed {
+                background-color: #084846;
+            }
         """)
         btn_refresh.clicked.connect(self.refresh_all)
         h_btn_actions.addWidget(btn_refresh)
@@ -715,13 +809,25 @@ class DebtsManagementTab(QWidget):
         btn_export.setIcon(get_duotone_icon("export", 16))
         btn_export.setIconSize(QSize(16, 16))
         btn_export.setCursor(Qt.PointingHandCursor)
-        btn_export.setFixedHeight(34)
+        btn_export.setFixedHeight(38)
         btn_export.setStyleSheet("""
             QPushButton {
-                background-color: #f8fafc; color: #334155; border: 1px solid #cbd5e1;
-                border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 12px;
+                background-color: #FFFFFF;
+                color: #0E7471;
+                border: 1.5px solid #0E7471;
+                border-radius: 6px;
+                padding: 0 16px;
+                font-weight: 700;
+                font-size: 12px;
             }
-            QPushButton:hover { background-color: #e2e8f0; }
+            QPushButton:hover {
+                background-color: #E6F4F1;
+                border-color: #0A5C59;
+                color: #0A5C59;
+            }
+            QPushButton:pressed {
+                background-color: #CCEBE5;
+            }
         """)
         btn_export.clicked.connect(self.export_csv)
         h_btn_actions.addWidget(btn_export)
@@ -748,9 +854,9 @@ class DebtsManagementTab(QWidget):
             self.lbl_kpi_total_receivables.setText(f"{format_money(total_rec)} DA")
             self.lbl_kpi_overdue_receivables.setText(f"{format_money(overdue_rec)} DA")
             if overdue_rec > 0.009:
-                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 20px; font-weight: 800; color: #dc2626;")
+                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 22px; font-weight: 900; color: #DC2626;")
             else:
-                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 20px; font-weight: 800; color: #0f172a;")
+                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 22px; font-weight: 900; color: #0F172A;")
 
             self.lbl_kpi_debtor_count.setText(f"{debtor_cnt} client(s)")
             self.lbl_kpi_month_recovered.setText(f"{format_money(rec_month)} DA")
@@ -822,18 +928,20 @@ class DebtsManagementTab(QWidget):
                 it_bal = QTableWidgetItem(f"{format_money(bal)} DA")
                 it_bal.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 it_bal.setFont(QFont("Segoe UI", 9, QFont.Bold))
-                if bal > (limit if limit > 0 else 0):
-                    it_bal.setForeground(QBrush(QColor("#b91c1c")))
-                    it_bal.setBackground(QBrush(QColor("#fee2e2")))
+                if bal > (limit if limit > 0 else 0) and bal > 0:
+                    it_bal.setForeground(QBrush(QColor("#DC2626")))
+                    it_bal.setBackground(QBrush(QColor("#FEE2E2")))
                 elif bal > 0:
-                    it_bal.setForeground(QBrush(QColor("#b45309")))
+                    it_bal.setForeground(QBrush(QColor("#D97706")))
                 else:
-                    it_bal.setForeground(QBrush(QColor("#15803d")))
+                    it_bal.setForeground(QBrush(QColor("#16A34A")))
                 self.table_clients.setItem(row_idx, 6, it_bal)
 
                 # 7: Dernier Règlement
                 last_pay = str(c.get('Last_Payment_Date') or '-')
-                self.table_clients.setItem(row_idx, 7, QTableWidgetItem(last_pay))
+                it_pay = QTableWidgetItem(last_pay)
+                it_pay.setTextAlignment(Qt.AlignCenter)
+                self.table_clients.setItem(row_idx, 7, it_pay)
 
                 # 8: Statut / Badge
                 badge = c.get('Status_Badge', 'Normal')
@@ -841,54 +949,66 @@ class DebtsManagementTab(QWidget):
                 it_badge.setTextAlignment(Qt.AlignCenter)
                 it_badge.setFont(QFont("Segoe UI", 8, QFont.Bold))
                 if badge == "Plafond Dépassé":
-                    it_badge.setBackground(QBrush(QColor("#fee2e2")))
-                    it_badge.setForeground(QBrush(QColor("#b91c1c")))
+                    it_badge.setBackground(QBrush(QColor("#FEE2E2")))
+                    it_badge.setForeground(QBrush(QColor("#DC2626")))
                 elif badge == "Alerte Retard":
-                    it_badge.setBackground(QBrush(QColor("#ffedd5")))
-                    it_badge.setForeground(QBrush(QColor("#c2410c")))
+                    it_badge.setBackground(QBrush(QColor("#FEF3C7")))
+                    it_badge.setForeground(QBrush(QColor("#D97706")))
                 elif badge == "Normal":
-                    it_badge.setBackground(QBrush(QColor("#dcfce7")))
-                    it_badge.setForeground(QBrush(QColor("#15803d")))
+                    it_badge.setBackground(QBrush(QColor("#DCFCE7")))
+                    it_badge.setForeground(QBrush(QColor("#16A34A")))
                 else:
-                    it_badge.setBackground(QBrush(QColor("#f1f5f9")))
-                    it_badge.setForeground(QBrush(QColor("#64748b")))
+                    it_badge.setBackground(QBrush(QColor("#F1F5F9")))
+                    it_badge.setForeground(QBrush(QColor("#475569")))
                 self.table_clients.setItem(row_idx, 8, it_badge)
 
-                # 9: Actions container
+                # 9: Actions container (compact 24px control buttons)
                 act_container = QWidget()
                 act_container.setStyleSheet("background: transparent;")
                 act_layout = QHBoxLayout(act_container)
-                act_layout.setContentsMargins(4, 2, 4, 2)
-                act_layout.setSpacing(6)
+                act_layout.setContentsMargins(2, 2, 2, 2)
+                act_layout.setSpacing(4)
 
                 btn_pay = QPushButton("Solder")
-                btn_pay.setIcon(get_duotone_icon("payment_white", 14))
-                btn_pay.setIconSize(QSize(14, 14))
+                btn_pay.setIcon(get_duotone_icon("payment_white", 12))
+                btn_pay.setIconSize(QSize(12, 12))
                 btn_pay.setCursor(Qt.PointingHandCursor)
-                btn_pay.setMinimumWidth(80)
-                btn_pay.setFixedHeight(28)
+                btn_pay.setMinimumWidth(75)
+                btn_pay.setFixedHeight(24)
                 btn_pay.setStyleSheet("""
                     QPushButton {
-                        background-color: #007572; color: white; font-size: 11px; font-weight: 700;
-                        border-radius: 4px; padding: 2px 8px; border: none;
+                        background-color: #0E7471;
+                        color: #FFFFFF;
+                        font-size: 11px;
+                        font-weight: 700;
+                        border-radius: 4px;
+                        padding: 0 8px;
+                        border: none;
                     }
-                    QPushButton:hover { background-color: #005c5a; }
+                    QPushButton:hover { background-color: #0A5C59; }
+                    QPushButton:pressed { background-color: #084846; }
                 """)
                 btn_pay.clicked.connect(lambda _, client_row=c: self._open_global_payment_dialog(client_row))
                 act_layout.addWidget(btn_pay)
 
                 btn_stmt = QPushButton("Relevé")
-                btn_stmt.setIcon(get_duotone_icon("statement", 14))
-                btn_stmt.setIconSize(QSize(14, 14))
+                btn_stmt.setIcon(get_duotone_icon("statement", 12))
+                btn_stmt.setIconSize(QSize(12, 12))
                 btn_stmt.setCursor(Qt.PointingHandCursor)
-                btn_stmt.setMinimumWidth(80)
-                btn_stmt.setFixedHeight(28)
+                btn_stmt.setMinimumWidth(75)
+                btn_stmt.setFixedHeight(24)
                 btn_stmt.setStyleSheet("""
                     QPushButton {
-                        background-color: #f8fafc; color: #007572; font-size: 11px; font-weight: 700;
-                        border-radius: 4px; padding: 2px 8px; border: 1px solid #cbd5e1;
+                        background-color: #FFFFFF;
+                        color: #0E7471;
+                        font-size: 11px;
+                        font-weight: 700;
+                        border-radius: 4px;
+                        padding: 0 8px;
+                        border: 1px solid #DDE3EA;
                     }
-                    QPushButton:hover { background-color: #e6f4f1; border-color: #007572; }
+                    QPushButton:hover { background-color: #E6F4F1; border-color: #0E7471; }
+                    QPushButton:pressed { background-color: #CCEBE5; }
                 """)
                 btn_stmt.clicked.connect(lambda _, client_row=c: self._open_client_statement_dialog(client_row))
                 act_layout.addWidget(btn_stmt)
@@ -934,6 +1054,9 @@ class DebtsManagementTab(QWidget):
         self.btn_detail_global_pay.setEnabled(False)
         self.btn_detail_statement.setEnabled(False)
         self.table_invoices.setRowCount(0)
+        self.lbl_empty_icon_container.setStyleSheet("background-color: #E6F4F1; border: 1px solid #BCE3DC; border-radius: 27px;")
+        self.lbl_empty_icon.setPixmap(get_duotone_icon("client_select", 32).pixmap(32, 32))
+        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #1E293B;")
         self.lbl_empty_title.setText("Sélectionnez un client")
         self.lbl_empty_desc.setText("Cliquez sur un client dans la liste ci-dessus pour afficher ses factures impayées.")
         self.detail_stack.setCurrentIndex(1)
@@ -951,8 +1074,11 @@ class DebtsManagementTab(QWidget):
             invoices = self.data_manager.clients.get_client_unpaid_invoices(c_id)
             if not invoices:
                 self.table_invoices.setRowCount(0)
-                self.lbl_empty_title.setText("Aucune facture impayée pour ce client")
-                self.lbl_empty_desc.setText(f"Toutes les factures de « {c_name} » sont entièrement soldées ou aucune créance n'est en attente.")
+                self.lbl_empty_icon_container.setStyleSheet("background-color: #DCFCE7; border: 1px solid #BBF7D0; border-radius: 27px;")
+                self.lbl_empty_icon.setPixmap(get_duotone_icon("success_circle", 32).pixmap(32, 32))
+                self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #166534;")
+                self.lbl_empty_title.setText("Aucune créance impayée pour ce client")
+                self.lbl_empty_desc.setText(f"Toutes les factures de « {c_name} » sont entièrement soldées. La situation comptable est parfaitement à jour.")
                 self.detail_stack.setCurrentIndex(1)
                 return
 
@@ -986,11 +1112,11 @@ class DebtsManagementTab(QWidget):
                 it_retard = QTableWidgetItem(f"+{days} j" if days > 0 else "0 j")
                 it_retard.setTextAlignment(Qt.AlignCenter)
                 if is_overdue:
-                    it_retard.setForeground(QBrush(QColor("#b91c1c")))
-                    it_retard.setBackground(QBrush(QColor("#fee2e2")))
+                    it_retard.setForeground(QBrush(QColor("#DC2626")))
+                    it_retard.setBackground(QBrush(QColor("#FEE2E2")))
                     it_retard.setFont(QFont("Segoe UI", 9, QFont.Bold))
                 else:
-                    it_retard.setForeground(QBrush(QColor("#0284c7")))
+                    it_retard.setForeground(QBrush(QColor("#0284C7")))
                 self.table_invoices.setItem(r_idx, 3, it_retard)
 
                 # 4: Total TTC
@@ -1010,7 +1136,7 @@ class DebtsManagementTab(QWidget):
                 it_rem = QTableWidgetItem(f"{format_money(rem)} DA")
                 it_rem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 it_rem.setFont(QFont("Segoe UI", 9, QFont.Bold))
-                it_rem.setForeground(QBrush(QColor("#dc2626")))
+                it_rem.setForeground(QBrush(QColor("#DC2626")))
                 self.table_invoices.setItem(r_idx, 6, it_rem)
 
                 # 7: Statut
@@ -1018,25 +1144,31 @@ class DebtsManagementTab(QWidget):
                 it_status.setTextAlignment(Qt.AlignCenter)
                 self.table_invoices.setItem(r_idx, 7, it_status)
 
-                # 8: Actions Container
+                # 8: Actions Container (compact 24px control buttons)
                 act_box = QWidget()
                 act_box.setStyleSheet("background: transparent;")
                 act_lay = QHBoxLayout(act_box)
-                act_lay.setContentsMargins(4, 2, 4, 2)
-                act_lay.setSpacing(6)
+                act_lay.setContentsMargins(2, 2, 2, 2)
+                act_lay.setSpacing(4)
 
                 btn_pay_inv = QPushButton("Encaisser")
-                btn_pay_inv.setIcon(get_duotone_icon("payment_white", 14))
-                btn_pay_inv.setIconSize(QSize(14, 14))
+                btn_pay_inv.setIcon(get_duotone_icon("payment_white", 12))
+                btn_pay_inv.setIconSize(QSize(12, 12))
                 btn_pay_inv.setCursor(Qt.PointingHandCursor)
-                btn_pay_inv.setMinimumWidth(80)
-                btn_pay_inv.setFixedHeight(28)
+                btn_pay_inv.setMinimumWidth(75)
+                btn_pay_inv.setFixedHeight(24)
                 btn_pay_inv.setStyleSheet("""
                     QPushButton {
-                        background-color: #0f766e; color: white; font-weight: 700;
-                        font-size: 11px; border-radius: 4px; padding: 2px 8px; border: none;
+                        background-color: #0E7471;
+                        color: #FFFFFF;
+                        font-weight: 700;
+                        font-size: 11px;
+                        border-radius: 4px;
+                        padding: 0 8px;
+                        border: none;
                     }
-                    QPushButton:hover { background-color: #115e59; }
+                    QPushButton:hover { background-color: #0A5C59; }
+                    QPushButton:pressed { background-color: #084846; }
                 """)
                 # Prepare invoice data dict for InvoicePaymentDialog
                 inv_dict = {
@@ -1053,22 +1185,29 @@ class DebtsManagementTab(QWidget):
                 act_lay.addWidget(btn_pay_inv)
 
                 btn_print_inv = QPushButton("Imprimer")
-                btn_print_inv.setIcon(get_duotone_icon("print", 14))
-                btn_print_inv.setIconSize(QSize(14, 14))
+                btn_print_inv.setIcon(get_duotone_icon("print", 12))
+                btn_print_inv.setIconSize(QSize(12, 12))
                 btn_print_inv.setCursor(Qt.PointingHandCursor)
-                btn_print_inv.setMinimumWidth(80)
-                btn_print_inv.setFixedHeight(28)
+                btn_print_inv.setMinimumWidth(75)
+                btn_print_inv.setFixedHeight(24)
                 btn_print_inv.setStyleSheet("""
                     QPushButton {
-                        background-color: #f8fafc; color: #334155; font-weight: 700;
-                        font-size: 11px; border-radius: 4px; padding: 2px 8px; border: 1px solid #cbd5e1;
+                        background-color: #FFFFFF;
+                        color: #334155;
+                        font-weight: 700;
+                        font-size: 11px;
+                        border-radius: 4px;
+                        padding: 0 8px;
+                        border: 1px solid #DDE3EA;
                     }
-                    QPushButton:hover { background-color: #e2e8f0; }
+                    QPushButton:hover { background-color: #F1F5F9; border-color: #CBD5E1; }
+                    QPushButton:pressed { background-color: #E2E8F0; }
                 """)
                 btn_print_inv.clicked.connect(lambda _, iv=inv_dict: self._print_invoice(iv))
                 act_lay.addWidget(btn_print_inv)
 
                 self.table_invoices.setCellWidget(r_idx, 8, act_box)
+
 
         except Exception as e:
             logging.error(f"Error loading detail invoices: {e}", exc_info=True)
@@ -1134,16 +1273,17 @@ class DebtsManagementTab(QWidget):
         menu = QMenu(self)
         menu.setStyleSheet("""
             QMenu {
-                background-color: #ffffff;
-                border: 1px solid #cbd5e1;
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
                 padding: 4px;
             }
             QMenu::item {
                 padding: 6px 20px;
-                border-radius: 3px;
+                border-radius: 4px;
+                color: #0F172A;
             }
             QMenu::item:selected {
-                background-color: #007572;
+                background-color: #0E7471;
                 color: white;
             }
         """)

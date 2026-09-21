@@ -42,21 +42,21 @@ class SearchableClientComboBox(QComboBox):
 
         self.setStyleSheet("""
             QComboBox {
-                background-color: #ffffff;
-                border: 1px solid #cbd5e1;
-                border-radius: 4px;
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
                 padding: 3px 8px;
                 font-size: 12px;
                 min-height: 28px;
             }
             QComboBox:focus {
-                border-color: #007572;
+                border-color: #0E7471;
             }
             QComboBox QAbstractItemView {
-                background-color: #ffffff;
-                border: 1px solid #cbd5e1;
-                selection-background-color: #007572;
-                selection-color: #ffffff;
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                selection-background-color: #0E7471;
+                selection-color: #FFFFFF;
                 padding: 4px;
             }
         """)
