@@ -117,23 +117,23 @@ class InvoicePaymentDialog(QDialog):
         due_date = str(self.invoice_data.get('Due_Date') or "-")
 
         lbl_client = QLabel(client_name)
-        lbl_client.setStyleSheet("font-size: 13px; font-weight: 700; color: #1F2937;")
+        lbl_client.setStyleSheet("font-size: 13px; font-weight: 700; color: #1F2937; border: none; background: transparent;")
         summary_layout.addRow(make_tag("Client :"), lbl_client)
 
         lbl_doc = QLabel(doc_ref)
-        lbl_doc.setStyleSheet("font-size: 12px; font-weight: 700; color: #0E7471;")
+        lbl_doc.setStyleSheet("font-size: 12px; font-weight: 700; color: #0E7471; border: none; background: transparent;")
         summary_layout.addRow(make_tag("Facture N° :"), lbl_doc)
 
         lbl_dates = QLabel(f"{inv_date}  (Échéance : {due_date})")
-        lbl_dates.setStyleSheet("font-size: 12px; color: #475569;")
+        lbl_dates.setStyleSheet("font-size: 12px; color: #475569; border: none; background: transparent;")
         summary_layout.addRow(make_tag("Date / Échéance :"), lbl_dates)
 
         lbl_total = QLabel(f"{format_money(self.total_ttc)} DA  (Déjà réglé : {format_money(self.paid_amount)} DA)")
-        lbl_total.setStyleSheet("font-size: 12px; font-weight: 600; color: #334155;")
+        lbl_total.setStyleSheet("font-size: 12px; font-weight: 600; color: #334155; border: none; background: transparent;")
         summary_layout.addRow(make_tag("Montant Facturé :"), lbl_total)
 
         lbl_balance = QLabel(f"{format_money(self.remaining_balance)} DA")
-        lbl_balance.setStyleSheet("font-size: 14px; font-weight: 800; color: #DC2626;" if self.remaining_balance > 0 else "font-size: 14px; font-weight: 800; color: #16A34A;")
+        lbl_balance.setStyleSheet("font-size: 14px; font-weight: 800; color: #DC2626; border: none; background: transparent;" if self.remaining_balance > 0 else "font-size: 14px; font-weight: 800; color: #16A34A; border: none; background: transparent;")
         summary_layout.addRow(make_tag("Reste à Payer :"), lbl_balance)
 
         layout.addWidget(summary_frame)
@@ -157,14 +157,23 @@ class InvoicePaymentDialog(QDialog):
         self.edit_date = QDateEdit(QDate.currentDate())
         self.edit_date.setCalendarPopup(True)
         self.edit_date.setDisplayFormat("yyyy-MM-dd")
-        self.edit_date.setFixedHeight(36)
+        self.edit_date.setFixedHeight(38)
         self.edit_date.setStyleSheet("""
             QDateEdit {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
-                padding: 4px 10px;
-                font-size: 12px;
+                padding: 2px 8px;
+                font-size: 13px;
+                font-weight: 600;
+                color: #1F2937;
+            }
+            QDateEdit QLineEdit {
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+                font-size: 13px;
                 font-weight: 600;
                 color: #1F2937;
             }
@@ -174,7 +183,7 @@ class InvoicePaymentDialog(QDialog):
             QDateEdit::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 24px;
+                width: 28px;
                 border-left: 1px solid #DDE3EA;
                 background-color: #F8FAFC;
                 border-top-right-radius: 5px;
@@ -200,7 +209,16 @@ class InvoicePaymentDialog(QDialog):
                 background-color: #FFFFFF;
                 border: 1.5px solid #0E7471;
                 border-radius: 6px;
-                padding: 4px 12px;
+                padding: 2px 10px;
+                font-size: 14px;
+                font-weight: 800;
+                color: #0E7471;
+            }
+            QDoubleSpinBox QLineEdit {
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
                 font-size: 14px;
                 font-weight: 800;
                 color: #0E7471;
@@ -243,14 +261,14 @@ class InvoicePaymentDialog(QDialog):
         ]
         for label, val in methods:
             self.cb_method.addItem(label, val)
-        self.cb_method.setFixedHeight(36)
+        self.cb_method.setFixedHeight(38)
         self.cb_method.setStyleSheet("""
             QComboBox {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
-                padding: 4px 10px;
-                font-size: 12px;
+                padding: 2px 10px;
+                font-size: 13px;
                 font-weight: 600;
                 color: #1F2937;
             }
@@ -260,7 +278,7 @@ class InvoicePaymentDialog(QDialog):
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 24px;
+                width: 28px;
                 border-left: 1px solid #DDE3EA;
                 background-color: #F8FAFC;
                 border-top-right-radius: 5px;
@@ -272,14 +290,14 @@ class InvoicePaymentDialog(QDialog):
         # Reference
         self.edit_ref = QLineEdit()
         self.edit_ref.setPlaceholderText("Ex: N° Chèque, Référence virement...")
-        self.edit_ref.setFixedHeight(36)
+        self.edit_ref.setFixedHeight(38)
         self.edit_ref.setStyleSheet("""
             QLineEdit {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
                 padding: 4px 10px;
-                font-size: 12px;
+                font-size: 13px;
                 color: #1F2937;
             }
             QLineEdit:focus {
@@ -291,14 +309,14 @@ class InvoicePaymentDialog(QDialog):
         # Notes
         self.edit_notes = QLineEdit()
         self.edit_notes.setPlaceholderText("Remarques ou observations...")
-        self.edit_notes.setFixedHeight(36)
+        self.edit_notes.setFixedHeight(38)
         self.edit_notes.setStyleSheet("""
             QLineEdit {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
                 padding: 4px 10px;
-                font-size: 12px;
+                font-size: 13px;
                 color: #1F2937;
             }
             QLineEdit:focus {

@@ -398,8 +398,8 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertIn("5 client", tab.lbl_kpi_debtor_count.text())
         self.assertIn("30", tab.lbl_kpi_month_recovered.text())
 
-        # Check font sizes are calm (14px) and not bulky 22px
-        self.assertIn("14px", tab.lbl_kpi_overdue_receivables.styleSheet())
+        # Check font sizes are calm (13px) and not bulky 22px
+        self.assertIn("13px", tab.lbl_kpi_overdue_receivables.styleSheet())
         self.assertNotIn("22px", tab.lbl_kpi_overdue_receivables.styleSheet())
 
         # Check tables column widths and row height
@@ -423,11 +423,11 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertIn("#DDE3EA", dlg.styleSheet())
 
         # Check input comfortable heights
-        self.assertEqual(dlg.edit_date.height(), 36)
+        self.assertEqual(dlg.edit_date.height(), 38)
         self.assertEqual(dlg.spin_amount.height(), 38)
-        self.assertEqual(dlg.cb_method.height(), 36)
-        self.assertEqual(dlg.edit_ref.height(), 36)
-        self.assertEqual(dlg.edit_notes.height(), 36)
+        self.assertEqual(dlg.cb_method.height(), 38)
+        self.assertEqual(dlg.edit_ref.height(), 38)
+        self.assertEqual(dlg.edit_notes.height(), 38)
 
     def test_invoice_payment_dialog_styling_and_heights(self):
         from ui.widgets.sales.invoice_payment_dialog import InvoicePaymentDialog
@@ -448,11 +448,11 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertIn("#DDE3EA", dlg.styleSheet())
 
         # Check input comfortable heights
-        self.assertEqual(dlg.edit_date.height(), 36)
+        self.assertEqual(dlg.edit_date.height(), 38)
         self.assertEqual(dlg.spin_amount.height(), 38)
-        self.assertEqual(dlg.cb_method.height(), 36)
-        self.assertEqual(dlg.edit_ref.height(), 36)
-        self.assertEqual(dlg.edit_notes.height(), 36)
+        self.assertEqual(dlg.cb_method.height(), 38)
+        self.assertEqual(dlg.edit_ref.height(), 38)
+        self.assertEqual(dlg.edit_notes.height(), 38)
 
     def test_client_statement_dialog_redesign_and_modalless_details(self):
         from ui.widgets.master_data.client_statement_dialog import ClientStatementDialog, TransactionDetailsDialog

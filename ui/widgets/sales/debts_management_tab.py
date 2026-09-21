@@ -108,21 +108,21 @@ class GlobalPaymentDialog(QDialog):
         summary_layout.setSpacing(8)
 
         lbl_c_tag = QLabel("Client :")
-        lbl_c_tag.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B;")
+        lbl_c_tag.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B; border: none; background: transparent;")
         lbl_client = QLabel(self.client_name)
-        lbl_client.setStyleSheet("font-size: 13px; font-weight: 700; color: #1F2937;")
+        lbl_client.setStyleSheet("font-size: 13px; font-weight: 700; color: #1F2937; border: none; background: transparent;")
         summary_layout.addRow(lbl_c_tag, lbl_client)
 
         lbl_b_tag = QLabel("Solde Dû Actuel :")
-        lbl_b_tag.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B;")
+        lbl_b_tag.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B; border: none; background: transparent;")
         lbl_bal = QLabel(f"{format_money(self.current_balance)} DA")
-        lbl_bal.setStyleSheet("font-size: 14px; font-weight: 800; color: #DC2626;" if self.current_balance > 0 else "font-size: 14px; font-weight: 800; color: #16A34A;")
+        lbl_bal.setStyleSheet("font-size: 14px; font-weight: 800; color: #DC2626; border: none; background: transparent;" if self.current_balance > 0 else "font-size: 14px; font-weight: 800; color: #16A34A; border: none; background: transparent;")
         summary_layout.addRow(lbl_b_tag, lbl_bal)
 
         lbl_l_tag = QLabel("Plafond de Crédit :")
-        lbl_l_tag.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B;")
+        lbl_l_tag.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B; border: none; background: transparent;")
         lbl_limit = QLabel(f"{format_money(self.credit_limit)} DA" if self.credit_limit > 0 else "Illimité")
-        lbl_limit.setStyleSheet("font-size: 12px; font-weight: 600; color: #1F2937;")
+        lbl_limit.setStyleSheet("font-size: 12px; font-weight: 600; color: #1F2937; border: none; background: transparent;")
         summary_layout.addRow(lbl_l_tag, lbl_limit)
 
         layout.addWidget(summary_frame)
@@ -146,14 +146,23 @@ class GlobalPaymentDialog(QDialog):
         self.edit_date = QDateEdit(QDate.currentDate())
         self.edit_date.setCalendarPopup(True)
         self.edit_date.setDisplayFormat("yyyy-MM-dd")
-        self.edit_date.setFixedHeight(36)
+        self.edit_date.setFixedHeight(38)
         self.edit_date.setStyleSheet("""
             QDateEdit {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
-                padding: 4px 10px;
-                font-size: 12px;
+                padding: 2px 8px;
+                font-size: 13px;
+                font-weight: 600;
+                color: #1F2937;
+            }
+            QDateEdit QLineEdit {
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+                font-size: 13px;
                 font-weight: 600;
                 color: #1F2937;
             }
@@ -163,7 +172,7 @@ class GlobalPaymentDialog(QDialog):
             QDateEdit::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 24px;
+                width: 28px;
                 border-left: 1px solid #DDE3EA;
                 background-color: #F8FAFC;
                 border-top-right-radius: 5px;
@@ -188,7 +197,16 @@ class GlobalPaymentDialog(QDialog):
                 background-color: #FFFFFF;
                 border: 1.5px solid #0E7471;
                 border-radius: 6px;
-                padding: 4px 12px;
+                padding: 2px 10px;
+                font-size: 14px;
+                font-weight: 800;
+                color: #0E7471;
+            }
+            QDoubleSpinBox QLineEdit {
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
                 font-size: 14px;
                 font-weight: 800;
                 color: #0E7471;
@@ -231,14 +249,14 @@ class GlobalPaymentDialog(QDialog):
         ]
         for label, val in methods:
             self.cb_method.addItem(label, val)
-        self.cb_method.setFixedHeight(36)
+        self.cb_method.setFixedHeight(38)
         self.cb_method.setStyleSheet("""
             QComboBox {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
-                padding: 4px 10px;
-                font-size: 12px;
+                padding: 2px 10px;
+                font-size: 13px;
                 font-weight: 600;
                 color: #1F2937;
             }
@@ -248,7 +266,7 @@ class GlobalPaymentDialog(QDialog):
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 24px;
+                width: 28px;
                 border-left: 1px solid #DDE3EA;
                 background-color: #F8FAFC;
                 border-top-right-radius: 5px;
@@ -280,8 +298,8 @@ class GlobalPaymentDialog(QDialog):
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
-                padding: 6px 10px;
-                font-size: 12px;
+                padding: 4px 10px;
+                font-size: 13px;
                 color: #1F2937;
             }
             QLineEdit:focus {
@@ -292,14 +310,14 @@ class GlobalPaymentDialog(QDialog):
         # Reference
         self.edit_ref = QLineEdit()
         self.edit_ref.setPlaceholderText("Ex: N° Chèque, Référence virement...")
-        self.edit_ref.setFixedHeight(36)
+        self.edit_ref.setFixedHeight(38)
         self.edit_ref.setStyleSheet(input_style)
         form_layout.addRow(make_form_label("Référence / N° Pièce :"), self.edit_ref)
 
         # Notes
         self.edit_notes = QLineEdit()
         self.edit_notes.setPlaceholderText("Observations ou remarques...")
-        self.edit_notes.setFixedHeight(36)
+        self.edit_notes.setFixedHeight(38)
         self.edit_notes.setStyleSheet(input_style)
         form_layout.addRow(make_form_label("Observations :"), self.edit_notes)
 
@@ -817,12 +835,12 @@ class DebtsManagementTab(QWidget):
     def _build_summary_bar(self, parent_layout):
         summary_bar = QFrame()
         summary_bar.setObjectName("SummaryBarFrame")
-        summary_bar.setFixedHeight(48)
+        summary_bar.setFixedHeight(38)
         summary_bar.setStyleSheet("""
             QFrame#SummaryBarFrame {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
-                border-radius: 8px;
+                border-radius: 6px;
             }
             QLabel {
                 border: none;
@@ -830,19 +848,19 @@ class DebtsManagementTab(QWidget):
             }
         """)
         s_layout = QHBoxLayout(summary_bar)
-        s_layout.setContentsMargins(18, 4, 18, 4)
-        s_layout.setSpacing(16)
+        s_layout.setContentsMargins(16, 2, 16, 2)
+        s_layout.setSpacing(18)
 
         def make_summary_item(tag_text, val_attr, color_hex):
             h = QHBoxLayout()
             h.setContentsMargins(0, 0, 0, 0)
-            h.setSpacing(8)
+            h.setSpacing(6)
             lbl_tag = QLabel(tag_text)
-            lbl_tag.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 0.5px;")
+            lbl_tag.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 0.5px; border: none; background: transparent;")
             h.addWidget(lbl_tag)
 
             lbl_v = QLabel("0.00 DA")
-            lbl_v.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {color_hex};")
+            lbl_v.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {color_hex}; border: none; background: transparent;")
             h.addWidget(lbl_v)
             setattr(self, val_attr, lbl_v)
             return h
@@ -850,7 +868,7 @@ class DebtsManagementTab(QWidget):
         def make_sep():
             sep = QFrame()
             sep.setFrameShape(QFrame.VLine)
-            sep.setStyleSheet("color: #E2E8F0; max-width: 1px; max-height: 22px;")
+            sep.setStyleSheet("color: #E2E8F0; max-width: 1px; max-height: 18px; border: none; background-color: #E2E8F0;")
             return sep
 
         # 1. Total Créances
@@ -881,6 +899,10 @@ class DebtsManagementTab(QWidget):
                 border: 1px solid #DDE3EA;
                 border-radius: 8px;
             }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
         """)
         f_layout = QHBoxLayout(filter_frame)
         f_layout.setContentsMargins(12, 10, 12, 10)
@@ -891,7 +913,7 @@ class DebtsManagementTab(QWidget):
             v.setContentsMargins(0, 0, 0, 0)
             v.setSpacing(4)
             lbl = QLabel(label_text)
-            lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;")
+            lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border: none; background: transparent;")
             v.addWidget(lbl)
             v.addWidget(widget)
             return v
@@ -1039,9 +1061,9 @@ class DebtsManagementTab(QWidget):
             self.lbl_kpi_total_receivables.setText(f"{format_money(total_rec)} DA")
             self.lbl_kpi_overdue_receivables.setText(f"{format_money(overdue_rec)} DA")
             if overdue_rec > 0.009:
-                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 14px; font-weight: 800; color: #DC2626;")
+                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 13px; font-weight: 800; color: #DC2626; border: none; background: transparent;")
             else:
-                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 14px; font-weight: 800; color: #0F172A;")
+                self.lbl_kpi_overdue_receivables.setStyleSheet("font-size: 13px; font-weight: 800; color: #0F172A; border: none; background: transparent;")
 
             self.lbl_kpi_debtor_count.setText(f"{debtor_cnt} client(s)")
             self.lbl_kpi_month_recovered.setText(f"{format_money(rec_month)} DA")
@@ -1147,18 +1169,19 @@ class DebtsManagementTab(QWidget):
                     it_badge.setForeground(QBrush(QColor("#475569")))
                 self.table_clients.setItem(row_idx, 8, it_badge)
 
-                # 9: Actions container (refined 28px mini action buttons)
+                # 9: Actions container (elegant 28px mini buttons with crisp borders)
                 act_container = QWidget()
-                act_container.setStyleSheet("background: transparent;")
+                act_container.setStyleSheet("background: transparent; border: none;")
                 act_layout = QHBoxLayout(act_container)
                 act_layout.setContentsMargins(4, 2, 4, 2)
                 act_layout.setSpacing(6)
+                act_layout.setAlignment(Qt.AlignCenter)
 
                 btn_pay = QPushButton("Solder")
                 btn_pay.setIcon(get_duotone_icon("payment_white", 12))
                 btn_pay.setIconSize(QSize(12, 12))
                 btn_pay.setCursor(Qt.PointingHandCursor)
-                btn_pay.setMinimumWidth(86)
+                btn_pay.setMinimumWidth(84)
                 btn_pay.setFixedHeight(28)
                 btn_pay.setStyleSheet("""
                     QPushButton {
@@ -1166,12 +1189,11 @@ class DebtsManagementTab(QWidget):
                         color: #FFFFFF;
                         font-size: 11px;
                         font-weight: 700;
+                        border: 1px solid #0E7471;
                         border-radius: 4px;
-                        padding: 0 10px;
-                        border: none;
-                        white-space: nowrap;
+                        padding: 3px 8px;
                     }
-                    QPushButton:hover { background-color: #0A5C59; }
+                    QPushButton:hover { background-color: #0A5C59; border-color: #0A5C59; }
                     QPushButton:pressed { background-color: #084846; }
                 """)
                 btn_pay.clicked.connect(lambda _, client_row=c: self._open_global_payment_dialog(client_row))
@@ -1181,7 +1203,7 @@ class DebtsManagementTab(QWidget):
                 btn_stmt.setIcon(get_duotone_icon("statement", 12))
                 btn_stmt.setIconSize(QSize(12, 12))
                 btn_stmt.setCursor(Qt.PointingHandCursor)
-                btn_stmt.setMinimumWidth(86)
+                btn_stmt.setMinimumWidth(84)
                 btn_stmt.setFixedHeight(28)
                 btn_stmt.setStyleSheet("""
                     QPushButton {
@@ -1189,10 +1211,9 @@ class DebtsManagementTab(QWidget):
                         color: #0E7471;
                         font-size: 11px;
                         font-weight: 700;
-                        border-radius: 4px;
-                        padding: 0 10px;
                         border: 1px solid #DDE3EA;
-                        white-space: nowrap;
+                        border-radius: 4px;
+                        padding: 3px 8px;
                     }
                     QPushButton:hover { background-color: #E6F4F1; border-color: #0E7471; }
                     QPushButton:pressed { background-color: #CCEBE5; }
@@ -1331,18 +1352,19 @@ class DebtsManagementTab(QWidget):
                 it_status.setTextAlignment(Qt.AlignCenter)
                 self.table_invoices.setItem(r_idx, 7, it_status)
 
-                # 8: Actions Container (refined 28px mini action buttons)
+                # 8: Actions Container (elegant 28px mini buttons with crisp borders)
                 act_box = QWidget()
-                act_box.setStyleSheet("background: transparent;")
+                act_box.setStyleSheet("background: transparent; border: none;")
                 act_lay = QHBoxLayout(act_box)
                 act_lay.setContentsMargins(4, 2, 4, 2)
                 act_lay.setSpacing(6)
+                act_lay.setAlignment(Qt.AlignCenter)
 
                 btn_pay_inv = QPushButton("Encaisser")
                 btn_pay_inv.setIcon(get_duotone_icon("payment_white", 12))
                 btn_pay_inv.setIconSize(QSize(12, 12))
                 btn_pay_inv.setCursor(Qt.PointingHandCursor)
-                btn_pay_inv.setMinimumWidth(88)
+                btn_pay_inv.setMinimumWidth(84)
                 btn_pay_inv.setFixedHeight(28)
                 btn_pay_inv.setStyleSheet("""
                     QPushButton {
@@ -1350,12 +1372,11 @@ class DebtsManagementTab(QWidget):
                         color: #FFFFFF;
                         font-weight: 700;
                         font-size: 11px;
+                        border: 1px solid #0E7471;
                         border-radius: 4px;
-                        padding: 0 10px;
-                        border: none;
-                        white-space: nowrap;
+                        padding: 3px 8px;
                     }
-                    QPushButton:hover { background-color: #0A5C59; }
+                    QPushButton:hover { background-color: #0A5C59; border-color: #0A5C59; }
                     QPushButton:pressed { background-color: #084846; }
                 """)
                 # Prepare invoice data dict for InvoicePaymentDialog
@@ -1376,7 +1397,7 @@ class DebtsManagementTab(QWidget):
                 btn_print_inv.setIcon(get_duotone_icon("print", 12))
                 btn_print_inv.setIconSize(QSize(12, 12))
                 btn_print_inv.setCursor(Qt.PointingHandCursor)
-                btn_print_inv.setMinimumWidth(88)
+                btn_print_inv.setMinimumWidth(84)
                 btn_print_inv.setFixedHeight(28)
                 btn_print_inv.setStyleSheet("""
                     QPushButton {
@@ -1384,10 +1405,9 @@ class DebtsManagementTab(QWidget):
                         color: #334155;
                         font-weight: 700;
                         font-size: 11px;
-                        border-radius: 4px;
-                        padding: 0 10px;
                         border: 1px solid #DDE3EA;
-                        white-space: nowrap;
+                        border-radius: 4px;
+                        padding: 3px 8px;
                     }
                     QPushButton:hover { background-color: #F1F5F9; border-color: #CBD5E1; }
                     QPushButton:pressed { background-color: #E2E8F0; }
