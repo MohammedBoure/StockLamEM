@@ -29,7 +29,7 @@ from database.client_payment_manager import ClientPaymentManager
 from ui.navigation_permissions import has_navigation_permission, has_permission
 
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QLabel
     from ui.widgets.sales.searchable_client_combo import SearchableClientComboBox
     HAS_QT = True
 except (ImportError, RuntimeError):
@@ -453,6 +453,80 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertEqual(dlg.cb_method.height(), 36)
         self.assertEqual(dlg.edit_ref.height(), 36)
         self.assertEqual(dlg.edit_notes.height(), 36)
+
+    def test_client_statement_dialog_redesign_and_modalless_details(self):
+        from ui.widgets.master_data.client_statement_dialog import ClientStatementDialog, TransactionDetailsDialog
+        self.mock_dm.clients.get_client_ledger.return_value = {
+            'client': {
+                'Client_ID': 12,
+                'Client_Name': 'Laboratoire BioTest',
+                'Phone': '0550112233',
+                'City': 'Alger',
+                'Price_Tier': 'Prix_2',
+                'Credit_Limit': 100000.0
+            },
+            'initial_balance': 25000.0,
+            'final_balance': 65000.0,
+            'transactions': [
+                {
+                    'date': '2026-02-10',
+                    'type': 'Facture (Vente Gros)',
+                    'reference': 'FAC-2026-0099',
+                    'debit': 50000.0,
+                    'credit': 0.0,
+                    'balance': 75000.0,
+                    'notes': 'Vente à terme',
+                    'doc_id': 99,
+                    'doc_category': 'invoice'
+                },
+                {
+                    'date': '2026-02-15',
+                    'type': 'Règlement (Chèque)',
+                    'reference': 'REG-45',
+                    'debit': 0.0,
+                    'credit': 10000.0,
+                    'balance': 65000.0,
+                    'notes': 'Chèque BNA',
+                    'doc_id': 45,
+                    'doc_category': 'client_payment'
+                }
+            ]
+        }
+
+        dlg = ClientStatementDialog(self.mock_dm, 12)
+
+        # 1. Check table columns: 8 columns including Actions
+        self.assertEqual(dlg.table.columnCount(), 8)
+        self.assertEqual(dlg.table.rowCount(), 2)
+
+        # 2. Check no duplicate bottom close button
+        self.assertFalse(hasattr(dlg, 'btn_close'))
+        self.assertTrue(hasattr(dlg, 'btn_top_close'))
+
+        # 3. Check KPI cards exist with bold contrast
+        self.assertIn("25", dlg.card_initial.findChild(QLabel, "val").text())
+        self.assertIn("65", dlg.card_final.findChild(QLabel, "val").text())
+
+        # 4. Open non-modal TransactionDetailsDialog
+        dlg.open_transaction_details(0)
+        self.assertEqual(len(dlg._open_detail_dialogs), 1)
+        sub_dlg = dlg._open_detail_dialogs[0]
+
+        # Verify it is modalless (non-modal)
+        self.assertFalse(sub_dlg.isModal())
+        self.assertIn("#FFFFFF", sub_dlg.styleSheet())
+        self.assertIn("#DDE3EA", sub_dlg.styleSheet())
+
+        # Open a second details dialog simultaneously (supports multiple compare windows)
+        dlg.open_transaction_details(1)
+        self.assertEqual(len(dlg._open_detail_dialogs), 2)
+        sub_dlg2 = dlg._open_detail_dialogs[1]
+        self.assertFalse(sub_dlg2.isModal())
+
+        # Cleanup
+        sub_dlg.close()
+        sub_dlg2.close()
+        dlg.close()
 
 
 if __name__ == "__main__":

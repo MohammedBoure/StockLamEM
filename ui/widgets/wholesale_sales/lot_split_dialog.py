@@ -68,11 +68,30 @@ class MultiLotSelectionDialog(QDialog):
                 border-radius: 8px;
             }
         """)
-        self.resize(980, 560)
-        self.setMinimumSize(920, 480)
+        nb_batches = max(1, len(self.batches))
+        calc_tbl_h = max(116, min(360, 36 + (nb_batches * 40) + 4))
+        dialog_h = calc_tbl_h + 200
+        self.resize(1020, dialog_h)
+        self.setMinimumSize(980, dialog_h)
 
         self.init_ui()
         self._auto_allocate_fifo()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._center_on_parent()
+
+    def _center_on_parent(self):
+        parent = self.parent()
+        if parent:
+            try:
+                parent_window = parent.window()
+                parent_rect = parent_window.geometry()
+                x = parent_rect.x() + (parent_rect.width() - self.width()) // 2
+                y = parent_rect.y() + (parent_rect.height() - self.height()) // 2
+                self.move(max(0, x), max(0, y))
+            except Exception:
+                pass
 
     def exec(self):
         parent_widget = self.parent()
@@ -109,10 +128,11 @@ class MultiLotSelectionDialog(QDialog):
         lbl_pname.setStyleSheet("font-size: 15px; font-weight: 800; color: #0E7471;")
         total_avail = sum(float(b.get('Quantity_Current') or b.get('Current_Stock') or 0.0) for b in self.batches)
         lbl_sub = QLabel(f"Total disponible en stock (tous lots confondus) : {total_avail:g} unités | {len(self.batches)} lot(s) disponible(s)")
-        lbl_sub.setStyleSheet("font-size: 11px; color: #64748B; font-weight: 500;")
+        lbl_sub.setStyleSheet("font-size: 11px; color: #64748B; font-weight: 600;")
+        lbl_sub.setWordWrap(False)
         v_prod.addWidget(lbl_pname)
         v_prod.addWidget(lbl_sub)
-        h_layout.addLayout(v_prod, 1)
+        h_layout.addLayout(v_prod, 2)
 
         # Target requested quantity box
         lbl_req = QLabel("Quantité demandée :")
@@ -277,10 +297,11 @@ class MultiLotSelectionDialog(QDialog):
         self.table.horizontalHeaderItem(2).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.horizontalHeaderItem(3).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table.horizontalHeaderItem(4).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.horizontalHeaderItem(5).setTextAlignment(Qt.AlignCenter)
-
         self._populate_table()
-        root_layout.addWidget(self.table, 1)
+        nb_batches = max(1, len(self.batches))
+        calc_tbl_h = max(116, min(360, 36 + (nb_batches * 42) + 4))
+        self.table.setFixedHeight(calc_tbl_h)
+        root_layout.addWidget(self.table)
 
         # 3. Real-time Summary Cards & Action Bar
         self.summary_frame = QFrame()
@@ -503,6 +524,7 @@ class MultiLotSelectionDialog(QDialog):
             cell_layout.setAlignment(Qt.AlignCenter)
 
             spin = QDoubleSpinBox()
+            spin.setButtonSymbols(QDoubleSpinBox.NoButtons)
             spin.setRange(0.0, max_stock)
             spin.setValue(0.0)
             spin.setDecimals(2)
@@ -511,51 +533,25 @@ class MultiLotSelectionDialog(QDialog):
             spin.setFixedWidth(118)
             spin.setStyleSheet("""
                 QDoubleSpinBox {
-                    background-color: #FFFFFF;
+                    background-color: #FFFFFF !important;
                     border: 1px solid #DDE3EA;
                     border-radius: 4px;
                     font-weight: 700;
                     font-size: 13px;
-                    color: #1F2937;
-                    padding-left: 18px;
-                    padding-right: 18px;
-                    padding-top: 2px;
-                    padding-bottom: 2px;
+                    color: #1F2937 !important;
+                    padding: 2px 6px;
+                    selection-background-color: #0E7471;
+                    selection-color: #FFFFFF;
                 }
                 QDoubleSpinBox:focus {
                     border: 1.5px solid #0E7471;
-                    background-color: #FFFFFF;
+                    background-color: #FFFFFF !important;
+                    color: #1F2937 !important;
                 }
-                QDoubleSpinBox::up-button {
-                    subcontrol-origin: border;
-                    subcontrol-position: top right;
-                    width: 17px;
-                    height: 15px;
-                    border-left: 1px solid #DDE3EA;
-                    border-bottom: 1px solid #E2E8F0;
-                    background-color: #F8FAFC;
-                    border-top-right-radius: 3px;
-                }
-                QDoubleSpinBox::up-button:hover {
-                    background-color: #E6F4F1;
-                }
-                QDoubleSpinBox::up-button:pressed {
-                    background-color: #BCE3DC;
-                }
-                QDoubleSpinBox::down-button {
-                    subcontrol-origin: border;
-                    subcontrol-position: bottom right;
-                    width: 17px;
-                    height: 15px;
-                    border-left: 1px solid #DDE3EA;
-                    background-color: #F8FAFC;
-                    border-bottom-right-radius: 3px;
-                }
-                QDoubleSpinBox::down-button:hover {
-                    background-color: #E6F4F1;
-                }
-                QDoubleSpinBox::down-button:pressed {
-                    background-color: #BCE3DC;
+                QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                    width: 0px;
+                    height: 0px;
+                    border: none;
                 }
             """)
             spin.valueChanged.connect(self._recalculate_summary)

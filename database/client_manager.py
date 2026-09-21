@@ -402,7 +402,11 @@ class ClientManager:
                         'credit': 0.0,
                         'is_non_binding': is_quote_or_draft,
                         'raw_amount': float(r['Total_Amount_TTC'] or 0.0),
-                        'notes': note_str
+                        'notes': note_str,
+                        'doc_id': r.get('Invoice_ID'),
+                        'doc_category': 'invoice',
+                        'sale_type': r.get('Sale_Type'),
+                        'status': status_raw
                     })
 
                 # 2. Paiements au comptant lors de la vente dans la période
@@ -428,7 +432,11 @@ class ClientManager:
                         'reference': ref,
                         'debit': 0.0,
                         'credit': float(r['Amount'] or 0.0),
-                        'notes': "Paiement direct à la vente"
+                        'notes': "Paiement direct à la vente",
+                        'doc_id': r.get('Payment_ID'),
+                        'doc_category': 'pos_payment',
+                        'payment_method': r.get('Payment_Method'),
+                        'invoice_no': r.get('Invoice_No')
                     })
 
                 # 3. Règlements ultérieurs (Client_Payments)
@@ -453,7 +461,10 @@ class ClientManager:
                         'reference': ref,
                         'debit': 0.0,
                         'credit': float(r['Amount'] or 0.0),
-                        'notes': r.get('Notes') or ''
+                        'notes': r.get('Notes') or '',
+                        'doc_id': r.get('Payment_ID'),
+                        'doc_category': 'client_payment',
+                        'payment_method': r.get('Payment_Method')
                     })
 
                 # 4. Avoirs / Retours (Client_Credit_Notes)
@@ -477,7 +488,9 @@ class ClientManager:
                         'reference': f"AVR-{r['Credit_Note_ID']}",
                         'debit': 0.0,
                         'credit': float(r['Total_Amount_TTC'] or 0.0),
-                        'notes': r.get('Notes') or ''
+                        'notes': r.get('Notes') or '',
+                        'doc_id': r.get('Credit_Note_ID'),
+                        'doc_category': 'credit_note'
                     })
 
                 # Tri chronologique des transactions

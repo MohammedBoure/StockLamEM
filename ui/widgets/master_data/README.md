@@ -19,11 +19,13 @@ Ce dossier regroupe les interfaces de gestion des référentiels de données du 
   - Colonnes "Catégorie" (Prix 1 à 4), "Plafond Crédit" et "Solde Actuel" en temps réel.
   - Badge styling et coloration QBrush : Vert pastel lorsque Solde $\le$ Plafond de Crédit, et Rouge pastel en cas de dépassement (Solde > Plafond).
   - Bouton d'action et menu contextuel sur clic droit : "📄 Générer Relevé de Compte".
-- `client_statement_dialog.py` : Dialogue interactif de Relevé de Compte Client ("Extrait de Compte") :
-  - Affichage plein écran maximisé (`showMaximized()`, 100vw × 100vh) avec barre d'outils utilitaire supérieure dédiée (Période, Sélecteurs de dates, Actualiser, Imprimer, Exporter PDF, Fermer).
-  - Filtres temporels : Ce mois, Mois précédent, Dernier trimestre, 30 derniers jours, Cette année, Tout l'historique et Période personnalisée.
-  - Cartes KPI synthétiques : Solde Antérieur, Total Débit (Factures/BL validés), Total Crédit (Règlements), Nouveau Solde Dû.
-  - Grand livre chronologique avec solde progressif et alignement strict à droite en chiffres tabulaires `,0.00 DA` (Date, Type de Document, Référence, Débit +, Crédit -, Solde Progressif, Notes).
+- `client_statement_dialog.py` : Dialogue interactif de Relevé de Compte Client ("Extrait de Compte") et consultation détaillée modalless :
+  - En-tête épuré et libellés textuels ouverts (`<label>`) au-dessus des contrôles sans aucun encadrement parasite ni apparence de faux boutons.
+  - Cartes KPI synthétiques planes et contrastées (Solde Antérieur, Total Débit, Total Crédit, Nouveau Solde Dû) avec bordures douces régulières (`#DDE3EA`, rayon 8px) et typographie renforcée de fort contraste.
+  - Grand livre chronologique au format spreadsheet professionnel : quadrillage régulier de cellules (`#E2E8F0`), badges colorés distinctifs par type d'opération (Facture, BL, Règlement, Paiement caisse, Avoir, Hors bilan), solde progressif et alignement strict à droite en chiffres tabulaires `,0.00 DA`.
+  - Lignes d'opérations interactives (au double-clic ou via le bouton dédié "Détails") ouvrant une fenêtre détaillée `TransactionDetailsDialog`.
+  - Fenêtres de détail non-modales (Modalless Dialogs) : indépendantes, déplaçables et multi-instances, permettant à l'utilisateur d'ouvrir et de comparer plusieurs factures ou règlements simultanément sans bloquer l'interface parent.
+  - Barre d'outils utilitaire supérieure unifiée dans les tons pétrole `#0E7471` (Actualiser, Imprimer, Exporter PDF, Fermer) avec suppression du bouton fermer redondant en bas.
   - Ségrégation comptable stricte : les devis et commandes brouillons (`DEV-`, `BC-`) apparaissent marqués `[Hors bilan]` en gris avec débit nul sans altérer le solde progressif ni le solde antérieur.
   - Export PDF A4 ReportLab et impression directe unifiée avec en-tête d'entreprise, coordonnées fiscales du client (NIF, RC), récapitulatif KPI et tableau chronologique.
 - `caisses_tab.py` : Gestion et contrôle des caisses (Terminaux POS), statut actif/inactif et suivi du nombre de sessions.
