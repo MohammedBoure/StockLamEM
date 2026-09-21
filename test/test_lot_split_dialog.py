@@ -148,6 +148,35 @@ class TestMultiLotSelectionDialog(unittest.TestCase):
         self.assertIn("+5", dialog.lbl_remaining_val.text())
         dialog.close()
 
+    def test_modal_clean_formatting_and_elements(self):
+        """Test modal has solid white opaque background, no backdrop overlay, 32px centered spinboxes, and full button width."""
+        dialog = MultiLotSelectionDialog(
+            parent=None,
+            product_name="Doliprane 1000mg",
+            batches=self.sample_batches,
+            requested_qty=10.0
+        )
+
+        # 1. 100% Opaque Solid White Background
+        self.assertTrue(dialog.testAttribute(Qt.WA_OpaquePaintEvent))
+        self.assertTrue(dialog.testAttribute(Qt.WA_StyledBackground))
+        self.assertTrue(dialog.autoFillBackground())
+        self.assertIn("#FFFFFF", dialog.styleSheet())
+        self.assertIn("#DDE3EA", dialog.styleSheet())
+
+        # 2. Validation button has full text and adequate width
+        self.assertEqual(dialog.btn_confirm.text(), "Valider la Répartition (F10 / Enter)")
+        self.assertGreaterEqual(dialog.btn_confirm.minimumWidth(), 260)
+        self.assertEqual(dialog.btn_confirm.height(), 38)
+
+        # 3. Column 5 Spinbox has explicit 32px height and centered alignment
+        self.assertEqual(dialog.table.columnWidth(5), 150)
+        spin_0 = dialog.spinboxes[0][1]
+        self.assertEqual(spin_0.height(), 32)
+        self.assertEqual(spin_0.alignment(), Qt.AlignCenter)
+
+        dialog.close()
+
 
 if __name__ == "__main__":
     unittest.main()

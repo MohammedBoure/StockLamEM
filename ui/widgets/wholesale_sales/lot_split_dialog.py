@@ -14,34 +14,13 @@ from ui.icons import get_duotone_icon
 
 class ModalBackdropOverlay(QWidget):
     """
-    Overlay opaque / semi-transparent couvrant entièrement la fenêtre parente.
-    Résout les problèmes de transparence et de Z-Index/empilement,
-    empêchant l'entête du tableau de facture en arrière-plan d'apparaître
-    ou de chevaucher la boîte de dialogue modale.
+    (Deprecated) Overlay de fond désactivé conformément aux normes visuelles StockLam.
+    La boîte de dialogue modale assure sa propre opacité solide à 100% avec bordure et élévation.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("ModalBackdropOverlay")
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.setStyleSheet("""
-            QWidget#ModalBackdropOverlay {
-                background-color: rgba(15, 23, 42, 0.65);
-            }
-        """)
-        if parent:
-            self.setGeometry(parent.rect())
-            parent.installEventFilter(self)
-
-    def eventFilter(self, obj, event):
-        if obj == self.parent() and event.type() == QEvent.Resize:
-            self.setGeometry(self.parent().rect())
-        return super().eventFilter(obj, event)
-
-    def closeEvent(self, event):
-        if self.parent():
-            self.parent().removeEventFilter(self)
-        super().closeEvent(event)
+        self.hide()
 
 
 class MultiLotSelectionDialog(QDialog):
@@ -68,7 +47,6 @@ class MultiLotSelectionDialog(QDialog):
         self.resolve_price_fn = resolve_price_fn
         self.spinboxes = []
         self.allocations = []
-        self._overlay = None
 
         self.setWindowTitle("📦 Répartition Multi-Lots & Emplacements - Vente Gros")
         self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
@@ -77,13 +55,21 @@ class MultiLotSelectionDialog(QDialog):
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setAttribute(Qt.WA_OpaquePaintEvent, True)
         self.setAutoFillBackground(True)
+
+        # Fond blanc solide 100% opaque pour éliminer tout chevauchement ou transparence
+        pal = self.palette()
+        pal.setColor(self.backgroundRole(), QColor("#FFFFFF"))
+        self.setPalette(pal)
+
         self.setStyleSheet("""
             QDialog#MultiLotSelectionDialog {
-                background-color: #F4F6F8;
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 8px;
             }
         """)
-        self.resize(900, 530)
-        self.setMinimumSize(800, 440)
+        self.resize(980, 560)
+        self.setMinimumSize(920, 480)
 
         self.init_ui()
         self._auto_allocate_fifo()
@@ -91,20 +77,9 @@ class MultiLotSelectionDialog(QDialog):
     def exec(self):
         parent_widget = self.parent()
         if parent_widget:
-            target = parent_widget.window() or parent_widget
-            self._overlay = ModalBackdropOverlay(target)
-            self._overlay.show()
-            self._overlay.raise_()
             self.raise_()
             self.activateWindow()
-
-        try:
-            return super().exec()
-        finally:
-            if self._overlay:
-                self._overlay.hide()
-                self._overlay.deleteLater()
-                self._overlay = None
+        return super().exec()
 
     def exec_(self):
         return self.exec()
@@ -260,7 +235,7 @@ class MultiLotSelectionDialog(QDialog):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().setDefaultSectionSize(42)
         self.table.setShowGrid(True)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -295,7 +270,7 @@ class MultiLotSelectionDialog(QDialog):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 140)
+        self.table.setColumnWidth(5, 150)
 
         self.table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignCenter)
         self.table.horizontalHeaderItem(1).setTextAlignment(Qt.AlignCenter)
@@ -312,7 +287,7 @@ class MultiLotSelectionDialog(QDialog):
         self.summary_frame.setObjectName("SummaryBarFrame")
         self.summary_frame.setStyleSheet("""
             QFrame#SummaryBarFrame {
-                background-color: #FFFFFF;
+                background-color: #F8FAFC;
                 border: 1px solid #DDE3EA;
                 border-radius: 8px;
             }
@@ -325,7 +300,7 @@ class MultiLotSelectionDialog(QDialog):
         card_demand = QFrame()
         card_demand.setStyleSheet("""
             QFrame {
-                background-color: #F8FAFC;
+                background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
                 padding: 4px 12px;
@@ -390,6 +365,7 @@ class MultiLotSelectionDialog(QDialog):
         self.btn_cancel = QPushButton("Annuler (Échap)")
         self.btn_cancel.setCursor(Qt.PointingHandCursor)
         self.btn_cancel.setFixedHeight(38)
+        self.btn_cancel.setMinimumWidth(130)
         self.btn_cancel.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
@@ -414,6 +390,8 @@ class MultiLotSelectionDialog(QDialog):
         self.btn_confirm = QPushButton("Valider la Répartition (F10 / Enter)")
         self.btn_confirm.setCursor(Qt.PointingHandCursor)
         self.btn_confirm.setFixedHeight(38)
+        self.btn_confirm.setMinimumWidth(280)
+        self.btn_confirm.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
         self.btn_confirm.setStyleSheet("""
             QPushButton {
                 background-color: #16A34A;
@@ -422,7 +400,8 @@ class MultiLotSelectionDialog(QDialog):
                 border-radius: 6px;
                 padding: 0 20px;
                 font-weight: 700;
-                font-size: 13px;
+                font-size: 12px;
+                white-space: nowrap;
             }
             QPushButton:hover {
                 background-color: #15803D;
@@ -520,26 +499,28 @@ class MultiLotSelectionDialog(QDialog):
             cell_container = QWidget()
             cell_container.setStyleSheet("background: transparent;")
             cell_layout = QHBoxLayout(cell_container)
-            cell_layout.setContentsMargins(6, 3, 6, 3)
+            cell_layout.setContentsMargins(0, 0, 0, 0)
             cell_layout.setAlignment(Qt.AlignCenter)
 
             spin = QDoubleSpinBox()
             spin.setRange(0.0, max_stock)
             spin.setValue(0.0)
             spin.setDecimals(2)
-            spin.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            spin.setMinimumHeight(30)
-            spin.setMinimumWidth(90)
-            spin.setMaximumWidth(125)
+            spin.setAlignment(Qt.AlignCenter)
+            spin.setFixedHeight(32)
+            spin.setFixedWidth(118)
             spin.setStyleSheet("""
                 QDoubleSpinBox {
                     background-color: #FFFFFF;
                     border: 1px solid #DDE3EA;
                     border-radius: 4px;
                     font-weight: 700;
-                    font-size: 12px;
+                    font-size: 13px;
                     color: #1F2937;
-                    padding: 2px 6px;
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    padding-top: 2px;
+                    padding-bottom: 2px;
                 }
                 QDoubleSpinBox:focus {
                     border: 1.5px solid #0E7471;
@@ -548,7 +529,8 @@ class MultiLotSelectionDialog(QDialog):
                 QDoubleSpinBox::up-button {
                     subcontrol-origin: border;
                     subcontrol-position: top right;
-                    width: 16px;
+                    width: 17px;
+                    height: 15px;
                     border-left: 1px solid #DDE3EA;
                     border-bottom: 1px solid #E2E8F0;
                     background-color: #F8FAFC;
@@ -557,16 +539,23 @@ class MultiLotSelectionDialog(QDialog):
                 QDoubleSpinBox::up-button:hover {
                     background-color: #E6F4F1;
                 }
+                QDoubleSpinBox::up-button:pressed {
+                    background-color: #BCE3DC;
+                }
                 QDoubleSpinBox::down-button {
                     subcontrol-origin: border;
                     subcontrol-position: bottom right;
-                    width: 16px;
+                    width: 17px;
+                    height: 15px;
                     border-left: 1px solid #DDE3EA;
                     background-color: #F8FAFC;
                     border-bottom-right-radius: 3px;
                 }
                 QDoubleSpinBox::down-button:hover {
                     background-color: #E6F4F1;
+                }
+                QDoubleSpinBox::down-button:pressed {
+                    background-color: #BCE3DC;
                 }
             """)
             spin.valueChanged.connect(self._recalculate_summary)
