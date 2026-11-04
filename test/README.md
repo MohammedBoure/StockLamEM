@@ -1,25 +1,132 @@
-# Tests Unitaires (`test`)
+# Automated Verification Suites & Integration Test Harness (`test/`)
 
-Suite de tests automatisés vérifiant le bon fonctionnement des modules backend, des APIs mobiles et des utilitaires de formatage.
+## 1. Executive Summary & Scope
 
-## Fichiers et Rôles
+The `test/` directory contains the authoritative automated test harness, integration suites, and hardware concurrency simulations for the **StockLamPlus** enterprise management platform. 
 
-- `__init__.py` : Initialisation du package de tests.
-- `test_ui_formatting.py` : Validation du formatage monétaire (espace milliers, virgule décimale) et des quantités.
-- `test_inventory_mobile_api.py` : Tests d'intégration de l'API REST mobile (sessions, scans, consommations, transferts).
-- `test_inventory_count_manager.py` : Tests du gestionnaire de sessions d'inventaire physique.
-- `test_inventory_count_ui.py` : Tests de l'interface graphique de comptage d'inventaire.
-- `test_local_settings.py` : Tests du stockage des préférences locales.
-- `test_navigation_permissions.py` : Tests du contrôle d'accès et des permissions de navigation.
-- `test_receipt_config.py` : Tests de configuration des reçus et tickets.
-- `test_history_widget.py` : Tests de la vue d'historique et de traçabilité.
-- `test_theme_and_settings_fixes.py` : Tests de séparation des onglets de paramètres (Laboratoire et Sauvegarde Automatique) et corrections visuelles (tailles de champs dates, code-barres).
-- `test_wholesale_retail_migration.py` : Tests de validation unitaire de la migration de schéma idempotent pour le commerce de gros et détail.
-- `test_wholesale_b2b_features.py` : Tests des fonctionnalités de vente en gros B2B (génération de numéros de documents, paliers de prix, plafonds de crédit).
-- `test_touch_keypad_support.py` : Tests du pavé tactile/clavier virtuel partagé (`TouchKeypadDialog`), ergonomie tactile et intégration complète avec la Vente en Gros et le POS.
-- `test_wholesale_refactoring.py` : Tests de validation de la ségrégation comptable (exclusion des devis et commandes brouillons des soldes et grands livres clients) et de la résolution automatique des paliers de prix B2B.
-- `test_debts_management.py` : Tests des méthodes d'audit comptable du solde client, de ventilation FIFO des règlements globaux, des acomptes libres, des permissions de navigation `nav_debts`, de l'autocomplétion nom/téléphone (`SearchableClientComboBox`), et des tests d'interface utilisateur (`TestDebtsManagementUI` : bandeau de synthèse compact 48px, hauteurs d'entrées et absence d'overlay des dialogues, calibrage des boutons d'actions, refonte du Relevé de Compte Client `ClientStatementDialog` et consultation non-modale multi-instances `TransactionDetailsDialog`).
-- `test_sales_history_widget.py` : Tests de l'interface d'historique des ventes (`SalesHistoryTab`), chargement incrémental/lazy loading sur défilement, calculs métriques (nombre d'opérations, coût d'achat, total ventes, bénéfice) et barre inférieure unifiée.
-- `test_lot_split_dialog.py` : Tests unitaires de la boîte de dialogue de répartition multi-lots (`MultiLotSelectionDialog`) : fond blanc solide 100% opaque sans overlay, centrage vertical/horizontal, dimensionnement dynamique évitant le vide vertical superflu, pré-allocation FIFO, ajustement manuel des spinboxes numériques (32px, `NoButtons`, padding `2px 6px`, texte centré et complet sans coupure de 1.00 ou 0.00), bouton de validation F10/Entrée et en-tête élargi sans coupure du texte produit.
-- `test_wholesale_ui_improvements.py` : Tests unitaires de la refonte ergonomique de l'interface Vente en Gros B2B (`WholesaleSalesTab`) : barre de recherche code-barres élargie avec scan direct, suppression des champs rapides Qté/Remise en en-tête, défilement horizontal fluide de la grille panier, boutons d'action stylisés 32x32px et icône d'alerte tarifaire interactive avec pop-up modal.
-- `test_billing_unit_price_ttc.py` : Tests unitaires du calcul automatique du prix unitaire TTC (coût d'acquisition) pour les lignes de transferts et bons de livraison (`get_batch_unit_price_ttc`), gestion des remises/TVA et repli dynamique.
+This test suite enforces strict software quality gatekeeping across:
+- **Backend Domain Logic & Schema Evolution**: Multi-tier batch management (`Inventory_Batches`), wholesale B2B pricing tiers, debt ledger FIFO reconciliation, unit conversion pipelines, and document numbering sequences.
+- **High-Value Domestic Appliance Retail Validation**: Global serial number uniqueness, multi-desk concurrent scan race condition mitigation, physical till isolation during customer returns (`Bon de Retour`), dual-custody `Bon Crédit` administrative approvals, and 4-stage After-Sales Service (SAV) engine workflows.
+- **Hardware Isolation & Multi-Scanner Concurrency**: RawInput/HID character buffering tests preventing keystroke interleaving across multiple barcode scanners attached to a single workstation.
+- **Client UI & Desktop Interaction**: Qt-based UI regression testing, touch keypad dialog ergonomics, compact debt summary KPIs, and lazy-loading sales history tables.
+- **Mobile REST API**: Comprehensive integration tests verifying handheld inventory mobile scanner endpoints, batch transfers, and offline-first counting sessions.
+
+---
+
+## 2. Itemized Breakdown of Test Files & Harness Modules
+
+### 2.1. Specialized Appliance Retail, Concurrency & Security Gatekeeping
+- **[`docs/analysis_testing_and_validation_matrix.md`](file:///home/pluto/projects/StockLamPlus/docs/analysis_testing_and_validation_matrix.md)**:
+  - *Scope*: Master validation matrix, mathematical proof of physical cash drawer isolation, threat modeling, and acceptance criteria.
+- **`test_serial_uniqueness_and_concurrency.py`**:
+  - *Scope*: Validates global uniqueness constraints (`(Product_ID, Serial_Number)` and `Barcode_Serial_Composite`) across supplier consignments; simulates high-concurrency race conditions where two loading desks attempt to scan the identical serial number simultaneously.
+- **`test_financial_isolation_and_bon_credit.py`**:
+  - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
+- **`test_multiscanner_hid_concurrency.py`**:
+  - *Scope*: Simulates 100 simultaneous concurrent scans from dual physical scanners on a single PC to verify low-level RawInput/HID device character separation and zero payload interleaving.
+
+### 2.2. Core Financial, Billing & Debt Management
+- **[`test_debts_management.py`](file:///home/pluto/projects/StockLamPlus/test/test_debts_management.py)**:
+  - *Scope*: Verifies client balance calculation audits, FIFO settlement distribution of global payments, free downpayments (*acomptes libres*), `nav_debts` navigation permissions, autocomplete client dropdowns (`SearchableClientComboBox`), and debt UI dialog ergonomics (`ClientStatementDialog`, non-modal `TransactionDetailsDialog`).
+- **[`test_billing_unit_price_ttc.py`](file:///home/pluto/projects/StockLamPlus/test/test_billing_unit_price_ttc.py)**:
+  - *Scope*: Tests automatic unit acquisition price calculation (TTC) for transfer line items and delivery notes (`get_batch_unit_price_ttc`), tax/discount overrides, and dynamic fallback calculations.
+- **[`test_wholesale_refactoring.py`](file:///home/pluto/projects/StockLamPlus/test/test_wholesale_refactoring.py)**:
+  - *Scope*: Verifies accounting segregation ensuring quotes (*Devis*) and draft sales orders (*Bon de Commande*) are strictly excluded from client ledger debt totals, and validates dynamic B2B pricing tier selection.
+- **[`test_wholesale_b2b_features.py`](file:///home/pluto/projects/StockLamPlus/test/test_wholesale_b2b_features.py)**:
+  - *Scope*: Validates wholesale document sequential numbering, multi-tier volume discounts, and credit limit ceilings.
+
+### 2.3. Inventory Management, Batch Allocation & Unit Conversion
+- **[`test_inventory_count_manager.py`](file:///home/pluto/projects/StockLamPlus/test/test_inventory_count_manager.py)**:
+  - *Scope*: Validates physical inventory counting session lifecycles, discrepancy detection, theoretical vs. physical stock adjustments, and frozen inventory auditing.
+- **[`test_lot_split_dialog.py`](file:///home/pluto/projects/StockLamPlus/test/test_lot_split_dialog.py)**:
+  - *Scope*: Unit tests for the multi-lot allocation modal (`MultiLotSelectionDialog`), ensuring solid opaque dialog background, dynamic vertical sizing, FIFO pre-allocation, spinbox padding, and F10 validation hotkeys.
+- **[`test_wholesale_retail_migration.py`](file:///home/pluto/projects/StockLamPlus/test/test_wholesale_retail_migration.py)**:
+  - *Scope*: Verifies idempotent DDL migration scripts for unified depot/shelf inventory structures, location visibility flags (`Private` vs. `Public`), and parent-child batch links.
+
+### 2.4. POS, UI Components & Peripheral Integration
+- **[`test_inventory_mobile_api.py`](file:///home/pluto/projects/StockLamPlus/test/test_inventory_mobile_api.py)**:
+  - *Scope*: Integration tests for the mobile Flutter REST backend (authentication, batch lookups, offline barcode sync, internal movement requests).
+- **[`test_inventory_count_ui.py`](file:///home/pluto/projects/StockLamPlus/test/test_inventory_count_ui.py)**:
+  - *Scope*: Qt GUI test cases for inventory count sessions, table filtering, and batch reconciliation.
+- **[`test_touch_keypad_support.py`](file:///home/pluto/projects/StockLamPlus/test/test_touch_keypad_support.py)**:
+  - *Scope*: Tests the shared on-screen touch virtual keypad (`TouchKeypadDialog`), tactile numeric inputs, and POS checkout ergonomics.
+- **[`test_wholesale_ui_improvements.py`](file:///home/pluto/projects/StockLamPlus/test/test_wholesale_ui_improvements.py)**:
+  - *Scope*: Tests the redesigned B2B sales tab (`WholesaleSalesTab`), direct barcode search bar, fluid horizontal table scrolling, and pricing alert dialogs.
+- **[`test_sales_history_widget.py`](file:///home/pluto/projects/StockLamPlus/test/test_sales_history_widget.py)**:
+  - *Scope*: Validates sales history lazy-loading on scroll, KPI summary bar calculations (transaction counts, purchase cost, turnover, gross margin), and unified bottom action bars.
+- **[`test_ui_formatting.py`](file:///home/pluto/projects/StockLamPlus/test/test_ui_formatting.py)**:
+  - *Scope*: Tests currency and numeric formatting utilities (thousands space separation, decimal commas, quantity rounding).
+- **[`test_navigation_permissions.py`](file:///home/pluto/projects/StockLamPlus/test/test_navigation_permissions.py)**:
+  - *Scope*: Tests role-based sidebar and action bar permissions (`nav_pos`, `nav_sales`, `nav_debts`, `nav_inventory`).
+- **[`test_receipt_config.py`](file:///home/pluto/projects/StockLamPlus/test/test_receipt_config.py)**:
+  - *Scope*: Tests receipt printer layout, paper size configurations (80mm vs. 58mm thermal), and receipt header/footer templates.
+- **[`test_theme_and_settings_fixes.py`](file:///home/pluto/projects/StockLamPlus/test/test_theme_and_settings_fixes.py)**:
+  - *Scope*: Verifies separation of settings tabs (Experimental Laboratory vs. Auto Backup) and visual alignment fixes.
+- **[`test_local_settings.py`](file:///home/pluto/projects/StockLamPlus/test/test_local_settings.py)**:
+  - *Scope*: Tests local client preference persistence and workstation device configurations.
+- **[`test_pos_terminal_manager.py`](file:///home/pluto/projects/StockLamPlus/test/test_pos_terminal_manager.py)**:
+  - *Scope*: Validates POS workstation binding, cash drawer port communication, and terminal licensing.
+- **[`test_history_widget.py`](file:///home/pluto/projects/StockLamPlus/test/test_history_widget.py)**:
+  - *Scope*: Tests audit trail history logging and user action tracking.
+
+---
+
+## 3. Step-by-Step Test Execution Instructions
+
+### 3.1. Environment Setup
+Activate the certified Python environment:
+```bash
+source /home/pluto/Desktop/venv/ai/bin/activate
+cd /home/pluto/projects/StockLamPlus
+```
+
+### 3.2. Running Full Test Suite
+To run all automated test suites with standard verbosity:
+```bash
+pytest -v
+```
+
+### 3.3. Running Specialized Validation Suites
+To run specific domain test suites:
+
+- **Appliance Concurrency & Race Tests**:
+  ```bash
+  pytest -v test/test_serial_uniqueness_and_concurrency.py
+  ```
+- **Financial & Cashier Isolation Tests**:
+  ```bash
+  pytest -v test/test_financial_isolation_and_bon_credit.py
+  ```
+- **Hardware Multi-Scanner HID Stress Tests**:
+  ```bash
+  pytest -v test/test_multiscanner_hid_concurrency.py
+  ```
+- **Debts & Accounting Reconciliation Tests**:
+  ```bash
+  pytest -v test/test_debts_management.py
+  ```
+- **Mobile Inventory API Integration Tests**:
+  ```bash
+  pytest -v test/test_inventory_mobile_api.py
+  ```
+
+---
+
+## 4. Critical Edge Cases, Validation Boundaries & Dependencies
+
+1. **Pessimistic Concurrency Invariant**:
+   - In multi-desk dispatch environments, rows in `Product_Serials` must be selected with `FOR UPDATE`.
+   - When a collision occurs, the secondary desk must receive a clean `StateCollisionException` and never complete a duplicate exit voucher.
+2. **Strict Cash Drawer Isolation Firewall**:
+   - Customer returns (`Bon de Retour`) and irreparable SAV defect settlements (`Versement Virtuel`) must update `Client_Wallets` exclusively.
+   - Physical cash drawers (`POS_Cash_Sessions`) must experience $\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$.
+3. **Hardware Keystroke Interleaving**:
+   - USB barcode scanners sharing a single workstation must be decoupled via OS RawInput/HID handle separation.
+   - Keystrokes must be buffered in device-isolated queues to prevent garbled barcodes.
+4. **Administrative Dual-Custody Approval**:
+   - `Bon Crédit` term sales require cryptographic bcrypt verification of manager credentials and hard checks against client credit limits.
+
+---
+
+## 5. Maintenance Mandate
+This `README.md` must be dynamically updated whenever new test modules, fixtures, or verification scripts are introduced. All documentation must strictly adhere to the English language requirement.
