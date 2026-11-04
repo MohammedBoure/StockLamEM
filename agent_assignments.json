@@ -9,7 +9,7 @@
       "branch_name": "backend/agy11-appliance-architecture-analysis",
       "scope": "Comprehensive backend analysis and schema design: Batch management, Serial numbers tracking (Product_Serials), Theoretical vs Actual stock separation, RBAC permissions (Vente, Caisse, Magasin, SAV), Bond lifecycle (Bon C, Bon Credit with admin auth, Bon de Sortie, Bon de Retour with Versement Virtuel), and SAV 4-stage engine with wallet compensation.",
       "dependencies": [],
-      "current_state": "COMPLETED"
+      "current_state": "MERGED"
     },
     {
       "agent_id": "agy51",
@@ -18,7 +18,7 @@
       "branch_name": "frontend/agy51-multi-desk-scanner-ui-analysis",
       "scope": "Comprehensive frontend, UI/UX, and peripheral devices analysis: Multi-Scanner / Multi-Session concurrent input capture on single PC (RawInput/HID), 3-desk distinct workstation UIs (Order Desk, Cashier Desk, Dispatch Desk), barcode/serial scanning flow, and 4-stage SAV repair pipeline UI with virtual balance crediting.",
       "dependencies": [],
-      "current_state": "IN_PROGRESS"
+      "current_state": "MERGED"
     },
     {
       "agent_id": "agy100",
@@ -27,7 +27,9 @@
       "branch_name": "test/agy100-appliance-validation-matrix",
       "scope": "Comprehensive validation matrix, edge cases, financial & inventory audit checks: Serial duplication prevention, credit authorization security, cash vs virtual wallet ledger reconciliation, multi-scanner concurrency collisions, and repair ticket transition gates.",
       "dependencies": ["agy11", "agy51"],
-      "current_state": "IN_PROGRESS"
+      "current_state": "MERGED"
     }
-  ]
+  ],
+  "release_state": "RELEASED_TO_MAIN",
+  "commit": "845f6ce"
 }
