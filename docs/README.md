@@ -8,15 +8,40 @@ This directory serves as the centralized repository for system architectural blu
 
 The `docs/` module maintains the authoritative system specifications that govern:
 - **Core Inventory & Multi-tier Logistics**: Unified batch tracking (`Inventory_Batches`), warehouse vs. showroom separation (`Private` vs. `Public` locations), and unit transformation pipelines.
-- **High-Value Appliance Retail Systems**: Comprehensive backend specifications for electrical home appliance stores (*Magasins d'Électroménager*), serial number tracking (`Product_Serials`), theoretical vs. actual stock designation, four-desk operational segregation (Order Desk, Cashier, Dispatch Quai, SAV Repair Desk), and virtual store wallet settlements.
+- **High-Value Appliance Retail Systems**: Comprehensive backend and frontend specifications for electrical home appliance stores (*Magasins d'Électroménager*), serial number tracking (`Product_Serials`), theoretical vs. actual stock designation, four-desk operational segregation (Order Desk, Cashier, Dispatch Quai, SAV Repair Desk), and virtual store wallet settlements.
 - **Database Migrations & Evolution**: Safe DDL execution scripts, schema evolution documentation, legacy data reconciliation protocols, and audit logs.
-- **Peripheral & Mobile Integrations**: Mobile barcode scanning specifications, dual-input hardware concurrency, and POS device interfaces.
+- **Peripheral & Mobile Integrations**: Single-PC multi-scanner concurrency, USB Raw Input routing, mobile barcode scanning specifications, and POS device interfaces.
 
 ---
 
 ## 2. Itemized Breakdown of Directory Files
 
 ### 2.1. Core Architecture & Specialized Industry Blueprints
+- **[`analysis_backend_electrical_store.md`](file:///home/pluto/projects/StockLamPlus/docs/analysis_backend_electrical_store.md)**:
+  - *Purpose*: Production-grade technical architecture and schema specification for retail electrical home appliance stores (*Magasin d'Électroménager*).
+  - *Key Concepts*:
+    - Batch management tracking landed cost ($PUMP$), arrival timestamps, customs/freight allocations, and supplier warranties.
+    - Product attributes: Brand hierarchy (`Product_Brands`), appliance categorization (`Product_Categories`), finish/color, energy efficiency class, power wattage, and volumetric capacity.
+    - Unique serial numbers (`Product_Serials`) tracking 6 lifecycle states: `IN_STOCK`, `RESERVED`, `DISPATCHED`, `RETURNED`, `IN_SAV`, `SCRAPPED` with complete immutable history ledger (`Product_Serial_History`).
+    - Separation of Theoretical Allocation (*Désignation Théorique* at Order Desk) and Actual Physical Designation (*Désignation Réelle* at Dispatch Exit Desk).
+    - Multi-role RBAC permissions matrix covering Sales, Cashier, Logistics, SAV, and Admin.
+    - Bond lifecycle: Cash validation (`Bon C`), Admin-authorized term credit with credit limits and amortization schedule (`Bon Crédit`), Logistical gate pass without cash impact (`Bon de Sortie`), and non-cash customer store credit returns (`Bon de Retour`).
+    - 4-Stage After-Sales Service (SAV) engine (`SAV_RECEIVED` $\rightarrow$ `SAV_SENT_TO_TECH` $\rightarrow$ `SAV_RETURNED_FROM_TECH` $\rightarrow$ `SAV_CLOSED_DELIVERED`) with automated virtual wallet compensation for irreparable defects.
+    - Complete MySQL 8.0+ / InnoDB DDL schemas, constraints, foreign keys, indexes, and transactional Python service layer architectures.
+
+- **[`analysis_frontend_hardware_workflow.md`](file:///home/pluto/projects/StockLamPlus/docs/analysis_frontend_hardware_workflow.md)**:
+  - *Purpose*: Production-grade technical architecture, UI/UX specification, and hardware integration blueprints for retail home electrical appliance stores (*Magasin d'Électroménager*).
+  - *Key Concepts*:
+    - **Single-PC Multi-Scanner Concurrency**: Technical resolution of USB HID keyboard crosstalk using the Windows Raw Input API (`RegisterRawInputDevices`, `WM_INPUT`, `RIDI_DEVICENAME`, `RAWKEYBOARD`) and PySide6 native event filter (`WindowsRawInputFilter` subclassing `QAbstractNativeEventFilter`). Features unique physical device handle disambiguation, inter-keystroke timer burst buffering, and focus-independent dispatching via Qt signals. Cross-platform Linux architecture using `evdev` exclusive device grab (`EVIOCGRAB`) and `udev` hotplug monitoring.
+    - **Three-Desk Operational Segregation**:
+      - *Order Desk (`OrderDeskWidget`)*: Faceted filtering by Brand, Category, Color finish, Energy class, and Wattage. Two-tier inventory display (Showroom Expo vs. High-Bay Pallet Warehouse). Theoretical stock reservation with zero physical serial binding. Generation of temporary `Bon C` and `Bon Crédit` requests with thermal dispatch tickets.
+      - *Cashier Desk (`CashierDeskWidget`)*: Real-time incoming order queue, multi-tender payment settlement (Cash, Card/TPE, Virtual Wallet). Client virtual store credit wallet (*Versement Virtuel*) inspection and automatic deduction. Dual-custody `AdminAuthModal` requiring supervisor PIN/password for term credit approval. Issuance of official invoice and Logistics Exit Token (`Bon de Sortie Token`).
+      - *Dispatch Desk (`DispatchDeskWidget`)*: High-speed barcode and serial number scanning screen for warehousemen. Real-time integrity validation of scanned serial against expected product model, landed cost batch, and active state. Visual and audio feedback matrix (Green chime for match, yellow warning for duplicates, red harsh buzzer for mismatches). Gate pass (`Bon de Sortie`) and warranty certificate generation.
+    - **SAV / Repair 4-Stage Kanban Pipeline (`SAVKanbanWidget`)**:
+      - 4-stage visual pipeline: Reception (intake inspection, defect taxonomy, `Bon de Réparation` printing) $\rightarrow$ Technician Dispatch (workshop assignment) $\rightarrow$ Technician Return (diagnostic logging, bench test evaluation) $\rightarrow$ Customer Delivery (load test, digital signature).
+      - Irreparable Defect Settlement Modal (`IrreparableDefectModal`): Automated mathematical calculation of residual value based on usage duration and warranty terms. Liquidity guardrail crediting customer Virtual Wallet (*Versement Virtuel*) to protect store cash till from depletion.
+    - **Design Tokens & Theme**: Complete high-contrast professional dark mode QSS design system tokens (`@surface-base`, `@accent-brand`, `@status-success`, `@status-error`) optimized for retail showrooms and industrial dock monitors.
+    - **Edge Cases & Security**: Mitigation blueprints for mid-burst scanner disconnects, barcode injection attacks, double-selling race conditions, dock serial collisions, and cashier bypass attempts.
 - **[`analysis_backend_electrical_store.md`](file:///home/pluto/projects/StockLamPlus/docs/analysis_backend_electrical_store.md)**:
   - *Purpose*: Production-grade technical architecture and schema specification for retail electrical home appliance stores (*Magasin d'Électroménager*).
   - *Key Concepts*:
