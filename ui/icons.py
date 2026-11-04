@@ -272,10 +272,49 @@ DUOTONE_SVGS: Dict[str, str] = {
         <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
         <line x1="12" y1="22.08" x2="12" y2="12"/>
     </svg>''',
+
+    "barcode_scan": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+        <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+        <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+        <line x1="7" y1="8" x2="7" y2="16" stroke="#1E293B"/>
+        <line x1="10" y1="8" x2="10" y2="16"/>
+        <line x1="14" y1="8" x2="14" y2="16" stroke="#1E293B"/>
+        <line x1="17" y1="8" x2="17" y2="16"/>
+    </svg>''',
+
+    "wrench_sav": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill="#E6F4F1"/>
+    </svg>''',
+
+    "truck_delivery": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="3" width="15" height="13" rx="1" fill="#E6F4F1"/>
+        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+        <circle cx="5.5" cy="18.5" r="2.5" stroke="#1E293B"/>
+        <circle cx="18.5" cy="18.5" r="2.5" stroke="#1E293B"/>
+    </svg>''',
+
+    "shield_admin": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#E6F4F1"/>
+        <polyline points="9 12 11 14 15 10"/>
+    </svg>''',
+
+    "return_arrow": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 14 4 9 9 4"/>
+        <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+    </svg>''',
 }
 
-def get_duotone_icon(name: str, size: int = 64) -> QIcon:
+def get_duotone_icon(
+    name: str,
+    arg1: Optional[object] = None,
+    arg2: Optional[str] = None,
+    size: int = 64,
+) -> QIcon:
     """Returns a cached high-resolution QIcon in the dual-tone illustration theme."""
+    if isinstance(arg1, int):
+        size = arg1
     cache_key = f"{name}_{size}"
     if cache_key in _icon_cache:
         return _icon_cache[cache_key]

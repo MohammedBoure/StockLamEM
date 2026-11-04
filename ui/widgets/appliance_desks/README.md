@@ -1,11 +1,11 @@
 # `ui/widgets/appliance_desks` Directory Overview
 
-This directory contains the PySide6 UI desk modules implementing the 5-part Electrical Appliance Store & Multi-Desk Operational Workflow (مكتب الطلبات، مكتب الصندوق Caisse، مكتب الإخراج والمخزن، مصلحة ما بعد البيع SAV، وإدارة الدفعات والأرقام التسلسلية).
+This directory contains the PySide6 UI desk modules implementing the 5-part Electrical Appliance Store & Multi-Desk Operational Workflow (مكتب الطلبات، مكتب الصندوق Caisse، مكتب الإخراج والمخزن، مصلحة ما بعد البيع SAV، وإدارة الدفعات والأرقام التسلسلية), styled with scoped QSS selectors, proper table header/column proportions, and vector duotone SVG icons.
 
 ## Files in this Directory
 
 - **`__init__.py`**: Package initializer exporting all desk widgets and modal dialogs.
-- **`appliance_workflow_tab.py`**: Unified `ApplianceWorkflowTab` hub combining all five operational desks with real-time cross-desk Qt signal synchronization, RBAC tab visibility enforcement, and Multi-Scanner HID routing.
+- **`appliance_workflow_tab.py`**: Unified `ApplianceWorkflowTab` hub combining all five operational desks with real-time cross-desk Qt signal synchronization, RBAC tab visibility enforcement, vector duotone SVG tab icons, and Multi-Scanner HID routing.
 - **`order_desk_view.py`**: `OrderDeskWidget` and `OrderSessionCartWidget` for theoretical order creation (`Bon C`, `Bon Crédit`, `Bon de Livraison`), Mark/Name/Categorie/Coloure catalog filtering, and Multi-Scanner / Multi-Session (`MultiScannerHIDManager`) concurrent cart routing without locking physical serial numbers.
 - **`cashier_desk_view.py`**: `CashierDeskWidget`, `AdminAuthModal`, and `BonRetourDialog` for Caisse settlement (`Valider` on `Bon C`), Admin-authorized `Bon Crédit`, `Bon de Livraison` advance/COD collection, customer account deposits (`Versement`), and `Bon de Retour` issuing virtual wallet credit (`Versement Virtuel`) with zero physical Caisse liquidity impact.
 - **`dispatch_desk_view.py`**: `DispatchDeskWidget` for the Warehouse/Dispatch Desk (مكتب إخراج السلع), verifying literal product barcodes and unique serial numbers (`N° de Série`) and generating `Bon de Sortie` logistical vouchers.

@@ -15,14 +15,16 @@ import logging
 from decimal import Decimal
 from typing import Optional
 
-from PySide6.QtCore import QDate, Qt, Signal
+from PySide6.QtCore import QDate, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QCheckBox,
     QComboBox,
     QDateEdit,
     QDoubleSpinBox,
     QFormLayout,
-    QGroupBox,
+    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -37,8 +39,51 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ui.icons import get_duotone_icon
 
 logger = logging.getLogger(__name__)
+
+TABLE_STYLE = """
+    QTableWidget {
+        background-color: #FFFFFF;
+        alternate-background-color: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 6px;
+        gridline-color: #F1F5F9;
+        color: #1E293B;
+        font-size: 9.5pt;
+        selection-background-color: #CCFBF1;
+        selection-color: #0F172A;
+    }
+    QTableWidget::item {
+        padding: 4px 8px;
+        border: none;
+    }
+    QHeaderView::section {
+        background-color: #F8FAFC;
+        color: #334155;
+        font-weight: bold;
+        font-size: 9pt;
+        padding: 8px 10px;
+        border: none;
+        border-bottom: 2px solid #0E7471;
+        border-right: 1px solid #E2E8F0;
+    }
+"""
+
+INPUT_STYLE = """
+    QLineEdit, QComboBox, QDoubleSpinBox, QSpinBox, QDateEdit, QPlainTextEdit {
+        background-color: #FFFFFF;
+        border: 1px solid #CBD5E1;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 9.5pt;
+        color: #0F172A;
+    }
+    QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QSpinBox:focus, QDateEdit:focus, QPlainTextEdit:focus {
+        border: 1.5px solid #0E7471;
+    }
+"""
 
 
 class SerialBatchRegistryWidget(QWidget):
@@ -60,25 +105,52 @@ class SerialBatchRegistryWidget(QWidget):
         self.data_manager = data_manager or db_manager
         self.db_manager = self.data_manager
         self.current_user_id = current_user_id
-        self.setLayoutDirection(Qt.RightToLeft)
+        self.setStyleSheet(
+            """
+            QFrame#ProductCard, QFrame#BatchCard, QFrame#CatalogCard {
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+                color: #1E293B;
+            }
+            QCheckBox {
+                color: #334155;
+                font-weight: 600;
+                spacing: 6px;
+            }
+            """
+            + INPUT_STYLE
+        )
         self._build_ui()
         self.refresh_products()
 
     def _build_ui(self) -> None:
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(8, 8, 8, 8)
-
-        header = QLabel(
-            "📦 إدارة المنتجات والدفعات والأرقام التسلسلية (Batches & N° de Série)"
-        )
-        header.setStyleSheet("font-size: 15px; font-weight: bold; color: #1E3A8A;")
-        root_layout.addWidget(header)
+        root_layout.setContentsMargins(10, 10, 10, 10)
+        root_layout.setSpacing(10)
 
         splitter = QSplitter(Qt.Horizontal)
+        splitter.setHandleWidth(8)
 
         # Left Panel: Create / Update Appliance Product
-        product_group = QGroupBox("1. تعريف منتج كهرومنزلي (بيانات أساسية وقابلة للتوسع)")
-        product_form = QFormLayout(product_group)
+        product_group = QFrame()
+        product_group.setObjectName("ProductCard")
+        pg_layout = QVBoxLayout(product_group)
+        pg_layout.setContentsMargins(14, 14, 14, 14)
+        pg_layout.setSpacing(10)
+
+        pg_title = QLabel("1. تعريف منتج كهرومنزلي (بيانات أساسية وقابلة للتوسع)")
+        pg_title.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        pg_title.setStyleSheet("color: #0F172A; padding-bottom: 4px; border-bottom: 2px solid #0E7471;")
+        pg_layout.addWidget(pg_title)
+
+        product_form = QFormLayout()
+        product_form.setVerticalSpacing(8)
+        product_form.setHorizontalSpacing(10)
 
         self.mark_input = QLineEdit()
         self.mark_input.setPlaceholderText("مثال: Samsung, LG, Condor, Brandt...")
@@ -103,13 +175,13 @@ class SerialBatchRegistryWidget(QWidget):
         self.buy_price_spin = QDoubleSpinBox()
         self.buy_price_spin.setRange(0.0, 100_000_000.0)
         self.buy_price_spin.setDecimals(2)
-        self.buy_price_spin.setSuffix(" د.ج")
+        self.buy_price_spin.setSuffix(" DA")
         product_form.addRow("سعر الشراء المرجعي:", self.buy_price_spin)
 
         self.sell_price_spin = QDoubleSpinBox()
         self.sell_price_spin.setRange(0.0, 100_000_000.0)
         self.sell_price_spin.setDecimals(2)
-        self.sell_price_spin.setSuffix(" د.ج")
+        self.sell_price_spin.setSuffix(" DA")
         product_form.addRow("سعر البيع:", self.sell_price_spin)
 
         self.warranty_spin = QSpinBox()
@@ -126,19 +198,34 @@ class SerialBatchRegistryWidget(QWidget):
         self.ext_attrs_input.setPlaceholderText('{"energy": "A+++", "power_w": 2000}')
         product_form.addRow("خصائص إضافية (JSON):", self.ext_attrs_input)
 
-        self.save_product_btn = QPushButton("➕ حفظ / إضافة المنتج")
+        pg_layout.addLayout(product_form)
+
+        self.save_product_btn = QPushButton("+ حفظ / إضافة المنتج")
+        self.save_product_btn.setCursor(Qt.PointingHandCursor)
         self.save_product_btn.setStyleSheet(
-            "background-color: #2563EB; color: white; font-weight: bold; padding: 6px;"
+            "QPushButton { background-color: #0E7471; color: white; font-weight: bold; padding: 8px 14px; border: none; border-radius: 6px; }"
+            "QPushButton:hover { background-color: #0A5E5C; }"
         )
         self.save_product_btn.clicked.connect(self._on_create_product)
-        product_form.addRow("", self.save_product_btn)
+        pg_layout.addWidget(self.save_product_btn)
 
         splitter.addWidget(product_group)
 
         # Right Panel: Receive Batch with Serials
-        batch_group = QGroupBox("2. إدخال دفعة مخزنية جديدة (Batch) مع الأرقام التسلسلية (N° de Série)")
+        batch_group = QFrame()
+        batch_group.setObjectName("BatchCard")
         batch_layout = QVBoxLayout(batch_group)
+        batch_layout.setContentsMargins(14, 14, 14, 14)
+        batch_layout.setSpacing(10)
+
+        bg_title = QLabel("2. إدخال دفعة مخزنية جديدة (Batch) مع الأرقام التسلسلية (N° de Série)")
+        bg_title.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        bg_title.setStyleSheet("color: #0F172A; padding-bottom: 4px; border-bottom: 2px solid #0E7471;")
+        batch_layout.addWidget(bg_title)
+
         batch_form = QFormLayout()
+        batch_form.setVerticalSpacing(8)
+        batch_form.setHorizontalSpacing(10)
 
         self.product_combo = QComboBox()
         batch_form.addRow("المنتج:", self.product_combo)
@@ -155,21 +242,21 @@ class SerialBatchRegistryWidget(QWidget):
         self.batch_cost_spin = QDoubleSpinBox()
         self.batch_cost_spin.setRange(0.0, 100_000_000.0)
         self.batch_cost_spin.setDecimals(2)
-        self.batch_cost_spin.setSuffix(" د.ج")
+        self.batch_cost_spin.setSuffix(" DA")
         batch_form.addRow("تكلفة الوحدة في الدفعة:", self.batch_cost_spin)
 
         self.batch_sell_spin = QDoubleSpinBox()
         self.batch_sell_spin.setRange(0.0, 100_000_000.0)
         self.batch_sell_spin.setDecimals(2)
-        self.batch_sell_spin.setSuffix(" د.ج")
+        self.batch_sell_spin.setSuffix(" DA")
         batch_form.addRow("سعر البيع للدفعة:", self.batch_sell_spin)
 
         batch_layout.addLayout(batch_form)
 
         serials_lbl = QLabel(
-            "الأرقام التسلسلية للقطع المستلمة (N° de Série) - رقم تسلسلي واحد في كل سطر:"
+            "الأرقام التسلسلية للقطع المستلمة (N° de Série) — رقم تسلسلي واحد في كل سطر:"
         )
-        serials_lbl.setStyleSheet("font-weight: bold;")
+        serials_lbl.setStyleSheet("font-weight: 600; color: #334155;")
         batch_layout.addWidget(serials_lbl)
 
         self.serials_text = QPlainTextEdit()
@@ -179,43 +266,77 @@ class SerialBatchRegistryWidget(QWidget):
         )
         batch_layout.addWidget(self.serials_text)
 
-        self.receive_batch_btn = QPushButton("📥 تسجيل الدفعة والأرقام التسلسلية في المخزن")
+        self.receive_batch_btn = QPushButton("تسجيل الدفعة والأرقام التسلسلية في المخزن")
+        self.receive_batch_btn.setIcon(get_duotone_icon("barcode_scan", "#FFFFFF", "#CCFBF1", size=16))
+        self.receive_batch_btn.setCursor(Qt.PointingHandCursor)
         self.receive_batch_btn.setStyleSheet(
-            "background-color: #059669; color: white; font-weight: bold; padding: 8px;"
+            "QPushButton { background-color: #0E7471; color: white; font-weight: bold; padding: 9px 14px; border: none; border-radius: 6px; }"
+            "QPushButton:hover { background-color: #0A5E5C; }"
         )
         self.receive_batch_btn.clicked.connect(self._on_receive_batch)
         batch_layout.addWidget(self.receive_batch_btn)
 
         splitter.addWidget(batch_group)
-        root_layout.addWidget(splitter)
+        root_layout.addWidget(splitter, stretch=3)
 
         # Bottom Table: Overview of Catalog & Theoretical vs Physical Stock
+        cat_card = QFrame()
+        cat_card.setObjectName("CatalogCard")
+        cat_layout = QVBoxLayout(cat_card)
+        cat_layout.setContentsMargins(14, 12, 14, 12)
+        cat_layout.setSpacing(8)
+
         table_header_layout = QHBoxLayout()
-        table_lbl = QLabel("📋 قائمة المنتجات والمخزون النظري مقابل الفعلي:")
-        table_lbl.setStyleSheet("font-weight: bold;")
+        table_lbl = QLabel("قائمة المنتجات والمخزون النظري مقابل الفعلي")
+        table_lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        table_lbl.setStyleSheet("color: #0F172A;")
         table_header_layout.addWidget(table_lbl)
         table_header_layout.addStretch()
 
-        self.refresh_btn = QPushButton("🔄 تحديث الجدول")
+        self.refresh_btn = QPushButton("تحديث الجدول")
+        self.refresh_btn.setIcon(get_duotone_icon("refresh", "#0E7471", "#99F6E4", size=14))
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
+        self.refresh_btn.setStyleSheet(
+            "QPushButton { background: #F8FAFC; color: #334155; font-weight: 600; padding: 6px 12px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton:hover { background: #F1F5F9; border-color: #0E7471; color: #0E7471; }"
+        )
         self.refresh_btn.clicked.connect(self.refresh_products)
         table_header_layout.addWidget(self.refresh_btn)
-        root_layout.addLayout(table_header_layout)
+        cat_layout.addLayout(table_header_layout)
 
         self.catalog_table = QTableWidget(0, 8)
+        self.catalog_table.setStyleSheet(TABLE_STYLE)
         self.catalog_table.setHorizontalHeaderLabels(
             [
-                "المعرف",
-                "العلامة (Mark)",
-                "الاسم (Name)",
-                "الفئة (Categorie)",
-                "اللون (Coloure)",
-                "المخزون الفعلي",
-                "المحجوز نظرياً",
-                "المتاح للبيع النظري",
+                "ID",
+                "Mark (العلامة)",
+                "Désignation (الاسم)",
+                "Catégorie",
+                "Couleur",
+                "Stock Physique",
+                "Réservé (Théorique)",
+                "Disponible Vente",
             ]
         )
-        self.catalog_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        root_layout.addWidget(self.catalog_table)
+        self.catalog_table.verticalHeader().setVisible(False)
+        self.catalog_table.verticalHeader().setDefaultSectionSize(34)
+        self.catalog_table.setAlternatingRowColors(True)
+        self.catalog_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.catalog_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        c_hdr = self.catalog_table.horizontalHeader()
+        c_hdr.setFixedHeight(38)
+        c_hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        c_hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        c_hdr.setSectionResizeMode(2, QHeaderView.Stretch)
+        c_hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        c_hdr.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        c_hdr.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        c_hdr.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        c_hdr.setSectionResizeMode(7, QHeaderView.ResizeToContents)
+
+        cat_layout.addWidget(self.catalog_table)
+        root_layout.addWidget(cat_card, stretch=2)
 
     def refresh_products(self) -> None:
         if not self.data_manager or not hasattr(self.data_manager, "serials"):

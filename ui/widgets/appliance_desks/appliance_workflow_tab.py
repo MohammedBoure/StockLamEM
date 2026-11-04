@@ -2,19 +2,20 @@
 """
 ui/widgets/appliance_desks/appliance_workflow_tab.py
 ====================================================
-Unified Multi-Desk Operational Workflow Hub (تدفق العمليات بين المكاتب):
-1. مكتب الطلبات (Order Desk) - Theoretical orders & Multi-Scanner / Multi-Session
-2. مكتب الصندوق (Caisse Desk) - Bon C, Bon Crédit (Admin Auth), Bon de Livraison, Versement, Bon de Retour
-3. مكتب الإخراج والمخزن (Dispatch Desk) - Physical barcode & N° de Série scanning -> Bon de Sortie
-4. مصلحة ما بعد البيع والإصلاح (SAV / Réparation) - 4-stage pipeline & Irreparable Versement Virtuel
-5. إدارة المنتجات والدفعات (Batches & N° de Série) - Mark, Name, Categorie, Coloure, Batch Serials
+Unified Multi-Desk Operational Workflow Hub:
+1. Bureau des Commandes (Order Desk) - Theoretical orders & Multi-Scanner / Multi-Session
+2. Bureau Caisse (Caisse Desk) - Bon C, Bon Crédit (Admin Auth), Bon de Livraison, Versement, Bon de Retour
+3. Bureau de Sortie (Dispatch Desk) - Physical barcode & N° de Série scanning -> Bon de Sortie
+4. Service Après-Vente (SAV / Réparation) - 4-stage pipeline & Irreparable Versement Virtuel
+5. Lots & N° de Série (Batches & Serials) - Mark, Name, Categorie, Coloure, Batch Serials
 """
 
 import logging
 from typing import Optional, Set
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
+from ui.icons import get_duotone_icon
 from ui.widgets.appliance_desks.cashier_desk_view import CashierDeskWidget
 from ui.widgets.appliance_desks.dispatch_desk_view import DispatchDeskWidget
 from ui.widgets.appliance_desks.order_desk_view import OrderDeskWidget
@@ -56,33 +58,105 @@ class ApplianceWorkflowTab(QWidget):
         self.user_manager = user_manager or getattr(self.data_manager, "users", None)
         self.current_user_id = current_user_id
         self.user_permissions = user_permissions
-        self.hid_manager = hid_manager or MultiScannerHIDManager(self)
+        self.hid_manager = hid_manager or MultiScannerHIDManager()
 
-        self.setLayoutDirection(Qt.RightToLeft)
+        self.setObjectName("ApplianceWorkflowTab")
+        self.setStyleSheet("QWidget#ApplianceWorkflowTab { background-color: #F4F6F8; }")
         self._build_ui()
         self._connect_cross_desk_signals()
         self.apply_rbac_permissions(self.user_permissions)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
 
-        # Top Workflow Banner
-        banner_layout = QHBoxLayout()
+        # Top Compact Enterprise Header Bar
+        banner_frame = QFrame()
+        banner_frame.setObjectName("WorkflowBannerFrame")
+        banner_frame.setFixedHeight(46)
+        banner_frame.setStyleSheet("""
+            QFrame#WorkflowBannerFrame {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        banner_layout = QHBoxLayout(banner_frame)
+        banner_layout.setContentsMargins(14, 0, 14, 0)
+        banner_layout.setSpacing(10)
+
+        icon_lbl = QLabel()
+        icon_lbl.setPixmap(get_duotone_icon("pos", 20).pixmap(20, 20))
+        banner_layout.addWidget(icon_lbl)
+
         title_lbl = QLabel(
-            "🏢 منظومة تدفق العمليات بين المكاتب (مكتب الطلبات ⬅ الصندوق Caisse ⬅ مكتب الإخراج ⬅ مصلحة SAV)"
+            "Flux Opérationnel Multi-Bureaux  |  Commandes  •  Caisse  •  Sortie Magasin  •  SAV & Réparation"
         )
-        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #0F172A;")
+        title_lbl.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         banner_layout.addWidget(title_lbl)
         banner_layout.addStretch()
 
-        self.refresh_all_btn = QPushButton("🔄 مزامنة كافة المكاتب")
+        self.refresh_all_btn = QPushButton("Actualiser les Bureaux")
+        self.refresh_all_btn.setIcon(get_duotone_icon("refresh", 14))
+        self.refresh_all_btn.setIconSize(QSize(14, 14))
+        self.refresh_all_btn.setCursor(Qt.PointingHandCursor)
+        self.refresh_all_btn.setFixedHeight(32)
+        self.refresh_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #0E7471;
+                border: 1px solid #B2DFDB;
+                border-radius: 6px;
+                padding: 0 12px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #E6F4F1;
+                border-color: #0E7471;
+            }
+        """)
         self.refresh_all_btn.clicked.connect(self.refresh_all_desks)
         banner_layout.addWidget(self.refresh_all_btn)
-        layout.addLayout(banner_layout)
+        layout.addWidget(banner_frame)
 
         # Sub-Desk Tabs
         self.desk_tabs = QTabWidget()
+        self.desk_tabs.setIconSize(QSize(16, 16))
+        self.desk_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #DDE3EA;
+                background: #F4F6F8;
+                border-radius: 6px;
+                top: -1px;
+            }
+            QTabBar::tab {
+                background: #ECEFF1;
+                color: #475569;
+                border: 1px solid #DDE3EA;
+                border-bottom: none;
+                padding: 9px 18px;
+                margin-right: 4px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QTabBar::tab:selected {
+                background: #FFFFFF;
+                color: #0E7471;
+                border-top: 3px solid #0E7471;
+            }
+            QTabBar::tab:hover:!selected {
+                background: #E2E8F0;
+                color: #1E293B;
+            }
+        """)
 
         self.order_desk = OrderDeskWidget(
             data_manager=self.data_manager,
@@ -108,13 +182,33 @@ class ApplianceWorkflowTab(QWidget):
             parent=self,
         )
 
-        self.desk_tabs.addTab(self.order_desk, "🛒 1. مكتب الطلبات (Order Desk)")
-        self.desk_tabs.addTab(self.cashier_desk, "💰 2. مكتب الصندوق (Caisse)")
-        self.desk_tabs.addTab(self.dispatch_desk, "📦 3. مكتب الإخراج والمخزن (Bon de Sortie)")
-        self.desk_tabs.addTab(self.sav_desk, "🛠️ 4. مصلحة ما بعد البيع والإصلاح (SAV)")
-        self.desk_tabs.addTab(self.batch_registry_desk, "🏷️ 5. الدفعات والأرقام التسلسلية (Batches & N° de Série)")
+        self.desk_tabs.addTab(
+            self.order_desk,
+            get_duotone_icon("pos", 18),
+            "1. Bureau des Commandes (Order Desk)",
+        )
+        self.desk_tabs.addTab(
+            self.cashier_desk,
+            get_duotone_icon("payment", 18),
+            "2. Bureau Caisse / Règlements",
+        )
+        self.desk_tabs.addTab(
+            self.dispatch_desk,
+            get_duotone_icon("barcode_scan", 18),
+            "3. Bureau de Sortie (Bon de Sortie)",
+        )
+        self.desk_tabs.addTab(
+            self.sav_desk,
+            get_duotone_icon("wrench_sav", 18),
+            "4. Service Après-Vente (SAV)",
+        )
+        self.desk_tabs.addTab(
+            self.batch_registry_desk,
+            get_duotone_icon("edit_lots", 18),
+            "5. Lots / N° de Série (Batches)",
+        )
 
-        layout.addWidget(self.desk_tabs)
+        layout.addWidget(self.desk_tabs, 1)
 
     def _connect_cross_desk_signals(self) -> None:
         """Connect operational lifecycle transitions across desks in real time."""

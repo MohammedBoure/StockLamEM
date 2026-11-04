@@ -1,6 +1,8 @@
-# ui/widgets/appliance_desks/cashier_desk_view.py
+# -*- coding: utf-8 -*-
 """
-Cashier Desk UI (مكتب الصندوق - Caisse).
+ui/widgets/appliance_desks/cashier_desk_view.py
+===============================================
+Cashier Desk UI (Bureau Caisse & Règlements - مكتب الصندوق).
 Implements financial settlements and liquidity safeguards for all Caisse bond flows:
 1. Bon C (بيع مباشر): Confirm payment in cash/card/wallet and unlock Dispatch.
 2. Bon Crédit (أجل): Requires Admin password/PIN override (AdminAuthModal), supports partial advance or full debt.
@@ -12,13 +14,14 @@ Implements financial settlements and liquidity safeguards for all Caisse bond fl
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
+    QFormLayout,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -35,6 +38,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.formatting import format_money
+from ui.icons import get_duotone_icon
+from ui.widgets.appliance_desks.order_desk_view import (
+    OUTLINE_BTN_STYLE,
+    PRIMARY_BTN_STYLE,
+    SLATE_OUTLINE_BTN_STYLE,
+    TABLE_STYLE,
+)
+
 
 class AdminAuthModal(QDialog):
     """Dual-custody supervisor authentication dialog required to authorize a Bon Crédit."""
@@ -49,9 +61,18 @@ class AdminAuthModal(QDialog):
         parent=None,
     ):
         super().__init__(parent)
-        self.setWindowTitle("موافقة المشرف (Admin) - Bon Crédit")
-        self.setFixedSize(460, 390)
-        self.setStyleSheet("background-color: #FFFFFF; color: #1E293B;")
+        self.setWindowTitle("Autorisation Superviseur (Admin) — Bon Crédit")
+        self.setFixedSize(480, 390)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #1E293B;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
         self.data_manager = data_manager
         self.approved = False
         self.admin_user_id = 1
@@ -60,39 +81,77 @@ class AdminAuthModal(QDialog):
 
     def _init_ui(self, client_name: str, amount: float, prior_debt: float, credit_limit: float) -> None:
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
 
-        lbl_warn = QLabel("🔑 تصريح المشرف إجباري لتمرير Bon Crédit (بيع بالأجل)")
-        lbl_warn.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        lbl_warn.setStyleSheet("color: #D97706; border: none;")
-        layout.addWidget(lbl_warn)
+        header_row = QHBoxLayout()
+        header_row.setSpacing(8)
+        ic = QLabel()
+        ic.setPixmap(get_duotone_icon("shield_admin", 22).pixmap(22, 22))
+        header_row.addWidget(ic)
+        lbl_warn = QLabel("Validation Administrateur Requise (Bon Crédit)")
+        lbl_warn.setStyleSheet("font-size: 14px; font-weight: 800; color: #0E7471;")
+        header_row.addWidget(lbl_warn)
+        header_row.addStretch()
+        layout.addLayout(header_row)
 
-        info = QLabel(
-            f"الزبون: <b>{client_name}</b><br>"
-            f"مبلغ الدين المطلوب: <b>{amount:,.2f} DA</b><br>"
-            f"الدين السابق: <b>{prior_debt:,.2f} DA</b> | سقف الائتمان: <b>{credit_limit:,.2f} DA</b>"
+        info_card = QFrame()
+        info_card.setObjectName("AdminCreditSummaryCard")
+        info_card.setStyleSheet("""
+            QFrame#AdminCreditSummaryCard {
+                background-color: #F8FAFC;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        info_form = QFormLayout(info_card)
+        info_form.setContentsMargins(14, 10, 14, 10)
+        info_form.setSpacing(6)
+        info_form.addRow(QLabel("Client :"), QLabel(f"<b>{client_name}</b>"))
+        info_form.addRow(QLabel("Crédit Demandé :"), QLabel(f"<b style='color:#DC2626;'>{format_money(amount)} DA</b>"))
+        info_form.addRow(
+            QLabel("Encours / Plafond :"),
+            QLabel(f"{format_money(prior_debt)} DA  /  <b>{format_money(credit_limit)} DA</b>"),
         )
-        info.setStyleSheet("background: #F8FAFC; border: 1px solid #E2E8F0; padding: 10px; border-radius: 6px;")
-        layout.addWidget(info)
+        layout.addWidget(info_card)
 
-        layout.addWidget(QLabel("حساب المشرف (Admin Username / ID):"))
+        lbl_u = QLabel("Identifiant Administrateur :")
+        lbl_u.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        layout.addWidget(lbl_u)
         self.txt_admin_user = QLineEdit("admin")
+        self.txt_admin_user.setFixedHeight(36)
         layout.addWidget(self.txt_admin_user)
 
-        layout.addWidget(QLabel("كلمة مرور المشرف (Admin Password / PIN):"))
+        lbl_p = QLabel("Mot de passe ou Code PIN Administrateur :")
+        lbl_p.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        layout.addWidget(lbl_p)
         self.txt_pin = QLineEdit()
+        self.txt_pin.setFixedHeight(36)
         self.txt_pin.setEchoMode(QLineEdit.Password)
-        self.txt_pin.setPlaceholderText("أدخل كلمة مرور المشرف...")
+        self.txt_pin.setPlaceholderText("Saisissez le mot de passe superviseur...")
         layout.addWidget(self.txt_pin)
 
+        layout.addStretch()
+
         btn_box = QHBoxLayout()
-        btn_cancel = QPushButton("إلغاء")
-        btn_cancel.setStyleSheet("background: #64748B; color: white; padding: 8px; border-radius: 6px;")
+        btn_box.addStretch()
+        btn_cancel = QPushButton("Annuler")
+        btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.setFixedHeight(36)
+        btn_cancel.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(btn_cancel)
 
-        btn_auth = QPushButton("🔑 تأكيد وموافقة المشرف")
-        btn_auth.setStyleSheet("background: #059669; color: white; font-weight: bold; padding: 8px; border-radius: 6px;")
+        btn_auth = QPushButton("Autoriser le Bon Crédit")
+        btn_auth.setIcon(get_duotone_icon("shield_admin", 14))
+        btn_auth.setIconSize(QSize(14, 14))
+        btn_auth.setCursor(Qt.PointingHandCursor)
+        btn_auth.setFixedHeight(36)
+        btn_auth.setStyleSheet(PRIMARY_BTN_STYLE)
         btn_auth.clicked.connect(self._verify_credentials)
         btn_box.addWidget(btn_auth)
 
@@ -102,7 +161,7 @@ class AdminAuthModal(QDialog):
         secret = self.txt_pin.text().strip()
         username = self.txt_admin_user.text().strip() or "admin"
         if not secret:
-            QMessageBox.warning(self, "تنبيه", "يرجى إدخال كلمة مرور المشرف.")
+            QMessageBox.warning(self, "Champ requis", "Veuillez saisir le mot de passe Administrateur.")
             return
 
         if self.data_manager and hasattr(self.data_manager, "users"):
@@ -120,7 +179,7 @@ class AdminAuthModal(QDialog):
             self.admin_secret = secret
             self.accept()
         else:
-            QMessageBox.critical(self, "خطأ في التصريح", "بيانات المشرف غير صحيحة أو لا يملك صلاحية Admin.")
+            QMessageBox.critical(self, "Accès Refusé", "Identifiants Administrateur invalides ou droits insuffisants.")
 
 
 class BonRetourDialog(QDialog):
@@ -128,71 +187,112 @@ class BonRetourDialog(QDialog):
 
     def __init__(self, data_manager=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Bon de Retour - إرجاع منتج وإنشاء رصيد افتراضي (Versement Virtuel)")
-        self.setFixedSize(500, 400)
-        self.setStyleSheet("background-color: #FFFFFF; color: #1E293B;")
+        self.setWindowTitle("Bon de Retour — Avoir & Versement Virtuel")
+        self.setFixedSize(520, 430)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #1E293B;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
         self.data_manager = data_manager
         self.result_data: Optional[Dict[str, Any]] = None
         self._init_ui()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
 
-        banner = QLabel(
-            "🛡️ <b>حماية سيولة الصندوق (Cashier Firewall):</b><br>"
-            "إرجاع السلعة يُنشئ رصيداً مالياً افتراضياً (Versement Virtuel) في محفظة الزبون "
-            "دون إخراج أي سيولة نقدية من الصندوق (Δ Caisse = 0.00 DA)."
+        banner_card = QFrame()
+        banner_card.setObjectName("RetourFirewallBanner")
+        banner_card.setStyleSheet("""
+            QFrame#RetourFirewallBanner {
+                background-color: #F8FAFC;
+                border: 1px solid #DDE3EA;
+                border-left: 3px solid #0E7471;
+                border-radius: 4px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        b_layout = QVBoxLayout(banner_card)
+        b_layout.setContentsMargins(12, 8, 12, 8)
+        b_title = QLabel("Isolation Stricte de la Caisse (Versement Virtuel)")
+        b_title.setStyleSheet("font-size: 12px; font-weight: 800; color: #0E7471;")
+        b_layout.addWidget(b_title)
+        b_desc = QLabel(
+            "Le retour produit crédite exclusivement le portefeuille virtuel du client (Versement Virtuel) "
+            "sans aucune sortie d'espèces de la Caisse physique (Δ Caisse = 0.00 DA)."
         )
-        banner.setWordWrap(True)
-        banner.setStyleSheet("background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; padding: 8px; border-radius: 6px;")
-        layout.addWidget(banner)
+        b_desc.setWordWrap(True)
+        b_desc.setStyleSheet("font-size: 11px; color: #64748B;")
+        b_layout.addWidget(b_desc)
+        layout.addWidget(banner_card)
 
-        form = QGridLayout()
-        form.addWidget(QLabel("رقم الفاتورة الأصلية (Invoice ID):"), 0, 0)
+        form = QFormLayout()
+        form.setSpacing(10)
+
         self.spn_inv = QSpinBox()
+        self.spn_inv.setFixedHeight(34)
         self.spn_inv.setRange(1, 99999999)
         self.spn_inv.setValue(1)
-        form.addWidget(self.spn_inv, 0, 1)
+        form.addRow(QLabel("ID Facture d'origine :"), self.spn_inv)
 
-        form.addWidget(QLabel("معرف الزبون (Client ID):"), 1, 0)
         self.spn_client = QSpinBox()
+        self.spn_client.setFixedHeight(34)
         self.spn_client.setRange(1, 99999999)
         self.spn_client.setValue(1)
-        form.addWidget(self.spn_client, 1, 1)
+        form.addRow(QLabel("ID Client :"), self.spn_client)
 
-        form.addWidget(QLabel("الرقم التسلسلي للقطعة المرتجعة (N° de Série):"), 2, 0)
         self.txt_serial = QLineEdit()
-        self.txt_serial.setPlaceholderText("امسح الرقم التسلسلي للقطعة...")
-        form.addWidget(self.txt_serial, 2, 1)
+        self.txt_serial.setFixedHeight(34)
+        self.txt_serial.setPlaceholderText("Scanner ou saisir le N° de Série retourné...")
+        form.addRow(QLabel("N° de Série de l'article :"), self.txt_serial)
 
-        form.addWidget(QLabel("حالة الفحص عند الإرجاع:"), 3, 0)
         self.cbo_condition = QComboBox()
-        self.cbo_condition.addItem("سليمة - إعادة للمخزون (LIKE_NEW_RESTOCK)", "LIKE_NEW_RESTOCK")
-        self.cbo_condition.addItem("عطل مصنعي - تحويل للصيانة (DEFECTIVE_NEEDS_SAV)", "DEFECTIVE_NEEDS_SAV")
-        self.cbo_condition.addItem("تلف كلي (SCRAP_TOTAL_LOSS)", "SCRAP_TOTAL_LOSS")
-        form.addWidget(self.cbo_condition, 3, 1)
+        self.cbo_condition.setFixedHeight(34)
+        self.cbo_condition.addItem("Conforme — Réintégration Stock (LIKE_NEW_RESTOCK)", "LIKE_NEW_RESTOCK")
+        self.cbo_condition.addItem("Défectueux — Transfert SAV (DEFECTIVE_NEEDS_SAV)", "DEFECTIVE_NEEDS_SAV")
+        self.cbo_condition.addItem("Irrécupérable — Rebut (SCRAP_TOTAL_LOSS)", "SCRAP_TOTAL_LOSS")
+        form.addRow(QLabel("État après contrôle :"), self.cbo_condition)
 
-        form.addWidget(QLabel("قيمة التعويض الافتراضي (DA):"), 4, 0)
         self.spn_val = QDoubleSpinBox()
+        self.spn_val.setFixedHeight(34)
         self.spn_val.setRange(0.0, 10000000.0)
         self.spn_val.setDecimals(2)
         self.spn_val.setValue(45000.0)
-        form.addWidget(self.spn_val, 4, 1)
+        self.spn_val.setSuffix(" DA")
+        form.addRow(QLabel("Montant Avoir Virtuel :"), self.spn_val)
 
-        form.addWidget(QLabel("سبب الإرجاع:"), 5, 0)
-        self.txt_reason = QLineEdit("إرجاع زبون واستبدال برصيد افتراضي")
-        form.addWidget(self.txt_reason, 5, 1)
+        self.txt_reason = QLineEdit("Retour client — Avoir portefeuille virtuel")
+        self.txt_reason.setFixedHeight(34)
+        form.addRow(QLabel("Motif du retour :"), self.txt_reason)
 
         layout.addLayout(form)
+        layout.addStretch()
 
         btn_row = QHBoxLayout()
-        btn_cancel = QPushButton("إلغاء")
+        btn_row.addStretch()
+        btn_cancel = QPushButton("Annuler")
+        btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.setFixedHeight(36)
+        btn_cancel.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
-        btn_ok = QPushButton("↩️ تأكيد Bon de Retour وإصدار Versement Virtuel")
-        btn_ok.setStyleSheet("background: #0E7471; color: white; font-weight: bold; padding: 9px; border-radius: 6px;")
+        btn_ok = QPushButton("Valider Bon de Retour (Versement Virtuel)")
+        btn_ok.setIcon(get_duotone_icon("return_arrow", 14))
+        btn_ok.setIconSize(QSize(14, 14))
+        btn_ok.setCursor(Qt.PointingHandCursor)
+        btn_ok.setFixedHeight(36)
+        btn_ok.setStyleSheet(PRIMARY_BTN_STYLE)
         btn_ok.clicked.connect(self._process_return)
         btn_row.addWidget(btn_ok)
         layout.addLayout(btn_row)
@@ -200,7 +300,7 @@ class BonRetourDialog(QDialog):
     def _process_return(self) -> None:
         sn = self.txt_serial.text().strip()
         if not sn:
-            QMessageBox.warning(self, "بيانات ناقصة", "يرجى مسح أو إدخال الرقم التسلسلي للقطعة المرتجعة.")
+            QMessageBox.warning(self, "Champ manquant", "Veuillez scanner ou saisir le N° de Série de l'article retourné.")
             return
         try:
             if self.data_manager and hasattr(self.data_manager, "bonds"):
@@ -226,7 +326,7 @@ class BonRetourDialog(QDialog):
                 }
             self.accept()
         except Exception as err:
-            QMessageBox.critical(self, "خطأ في معالجة الإرجاع", str(err))
+            QMessageBox.critical(self, "Erreur Retour", str(err))
 
 
 class CashierDeskWidget(QWidget):
@@ -249,41 +349,87 @@ class CashierDeskWidget(QWidget):
 
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(14)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(12)
 
-        # 1. Left Column: Incoming Order Queue + Versement & Bon de Retour Quick Actions
+        # 1. Left Column: Incoming Order Queue + Versement & Bon de Retour Actions
         left_panel = QFrame()
-        left_panel.setStyleSheet("background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 8px; padding: 10px;")
+        left_panel.setObjectName("CaisseQueuePanel")
+        left_panel.setStyleSheet("""
+            QFrame#CaisseQueuePanel {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
         l_layout = QVBoxLayout(left_panel)
+        l_layout.setContentsMargins(14, 14, 14, 14)
+        l_layout.setSpacing(10)
 
         top_q = QHBoxLayout()
-        lbl_q = QLabel("📥 طابور السندات الواردة للصندوق (Caisse Queue)")
-        lbl_q.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        lbl_q.setStyleSheet("color: #0E7471; border: none;")
+        top_q.setSpacing(8)
+        q_icon = QLabel()
+        q_icon.setPixmap(get_duotone_icon("payment", 18).pixmap(18, 18))
+        top_q.addWidget(q_icon)
+
+        lbl_q = QLabel("File d'Attente des Bons en Caisse (Bon C, Bon Crédit, Bon de Livraison)")
+        lbl_q.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         top_q.addWidget(lbl_q)
         top_q.addStretch()
-        btn_ref = QPushButton("🔄 تحديث")
-        btn_ref.setStyleSheet("background: #0E7471; color: white; padding: 5px 10px; border-radius: 5px;")
+
+        btn_ref = QPushButton("Actualiser")
+        btn_ref.setIcon(get_duotone_icon("refresh", 14))
+        btn_ref.setIconSize(QSize(14, 14))
+        btn_ref.setCursor(Qt.PointingHandCursor)
+        btn_ref.setFixedHeight(32)
+        btn_ref.setStyleSheet(OUTLINE_BTN_STYLE)
         btn_ref.clicked.connect(self.refresh_queue)
         top_q.addWidget(btn_ref)
         l_layout.addLayout(top_q)
 
         self.queue_table = QTableWidget(0, 5)
-        self.queue_table.setHorizontalHeaderLabels(["رقم السند", "الزبون", "نوع السند", "المبلغ TTC", "الحالة"])
-        self.queue_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.queue_table.itemSelectionChanged.connect(self._on_order_selected)
-        l_layout.addWidget(self.queue_table)
+        self.queue_table.setHorizontalHeaderLabels(["N° Bon", "Client", "Type de Bon", "Montant TTC", "Statut"])
+        self.queue_table.setStyleSheet(TABLE_STYLE)
+        self.queue_table.verticalHeader().setVisible(False)
+        self.queue_table.verticalHeader().setDefaultSectionSize(38)
+        self.queue_table.horizontalHeader().setFixedHeight(38)
+        self.queue_table.setShowGrid(True)
+        self.queue_table.setAlternatingRowColors(True)
+        self.queue_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.queue_table.setEditTriggers(QTableWidget.NoEditTriggers)
 
-        # Standalone Caisse Operations: Versement (إيداع مالي) & Bon de Retour (إرجاع)
+        self.queue_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.queue_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.queue_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.queue_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.queue_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+
+        self.queue_table.itemSelectionChanged.connect(self._on_order_selected)
+        l_layout.addWidget(self.queue_table, 1)
+
+        # Standalone Caisse Operations: Versement & Bon de Retour
         ops_bar = QHBoxLayout()
-        btn_versement = QPushButton("💰 تسجيل Versement (إيداع مالي نقدي لحساب الزبون)")
-        btn_versement.setStyleSheet("background: #0284C7; color: white; font-weight: bold; padding: 9px; border-radius: 6px;")
+        ops_bar.setSpacing(10)
+
+        btn_versement = QPushButton("Enregistrer un Versement Client (Dépôt Espèces)")
+        btn_versement.setIcon(get_duotone_icon("kpi_wallet", 16))
+        btn_versement.setIconSize(QSize(16, 16))
+        btn_versement.setCursor(Qt.PointingHandCursor)
+        btn_versement.setFixedHeight(36)
+        btn_versement.setStyleSheet(OUTLINE_BTN_STYLE)
         btn_versement.clicked.connect(self._open_versement_dialog)
         ops_bar.addWidget(btn_versement)
 
-        btn_retour = QPushButton("↩️ إصدار Bon de Retour (رصيد افتراضي Versement Virtuel)")
-        btn_retour.setStyleSheet("background: #7C3AED; color: white; font-weight: bold; padding: 9px; border-radius: 6px;")
+        btn_retour = QPushButton("Émettre Bon de Retour (Versement Virtuel)")
+        btn_retour.setIcon(get_duotone_icon("return_arrow", 16))
+        btn_retour.setIconSize(QSize(16, 16))
+        btn_retour.setCursor(Qt.PointingHandCursor)
+        btn_retour.setFixedHeight(36)
+        btn_retour.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         btn_retour.clicked.connect(self._open_retour_dialog)
         ops_bar.addWidget(btn_retour)
         l_layout.addLayout(ops_bar)
@@ -292,64 +438,133 @@ class CashierDeskWidget(QWidget):
 
         # 2. Right Column: Settlement & Wallet Console
         right_panel = QFrame()
-        right_panel.setStyleSheet("background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 8px; padding: 12px;")
+        right_panel.setObjectName("CaisseSettlementPanel")
+        right_panel.setMinimumWidth(360)
+        right_panel.setStyleSheet("""
+            QFrame#CaisseSettlementPanel {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
         r_layout = QVBoxLayout(right_panel)
+        r_layout.setContentsMargins(16, 14, 16, 14)
+        r_layout.setSpacing(12)
 
-        lbl_settle = QLabel("💳 تسوية السند ومحفظة الزبون (Validation Caisse)")
-        lbl_settle.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        lbl_settle.setStyleSheet("color: #0E7471; border: none;")
-        r_layout.addWidget(lbl_settle)
+        s_hdr = QHBoxLayout()
+        s_hdr.setSpacing(8)
+        w_ic = QLabel()
+        w_ic.setPixmap(get_duotone_icon("kpi_wallet", 18).pixmap(18, 18))
+        s_hdr.addWidget(w_ic)
+        lbl_settle = QLabel("Console d'Encaissement & Validation Caisse")
+        lbl_settle.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        s_hdr.addWidget(lbl_settle)
+        s_hdr.addStretch()
+        r_layout.addLayout(s_hdr)
 
-        self.lbl_selected_info = QLabel("اختر سنداً من الطابور لمعالجته...")
-        self.lbl_selected_info.setStyleSheet("background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px; border-radius: 6px;")
-        r_layout.addWidget(self.lbl_selected_info)
+        self.selected_card = QFrame()
+        self.selected_card.setObjectName("SelectedOrderSummaryCard")
+        self.selected_card.setStyleSheet("""
+            QFrame#SelectedOrderSummaryCard {
+                background-color: #F8FAFC;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        sel_layout = QVBoxLayout(self.selected_card)
+        sel_layout.setContentsMargins(12, 10, 12, 10)
+        self.lbl_selected_info = QLabel("Sélectionnez un bon dans la file d'attente pour le traiter...")
+        self.lbl_selected_info.setWordWrap(True)
+        self.lbl_selected_info.setStyleSheet("font-size: 12px; color: #334155;")
+        sel_layout.addWidget(self.lbl_selected_info)
+        r_layout.addWidget(self.selected_card)
 
         # Customer Wallet Box (Real Versement + Virtual Credit)
         wallet_box = QFrame()
-        wallet_box.setStyleSheet("background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 8px;")
+        wallet_box.setObjectName("CustomerWalletCard")
+        wallet_box.setStyleSheet("""
+            QFrame#CustomerWalletCard {
+                background-color: #F0FDFA;
+                border: 1px solid #BCE3DC;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
         w_layout = QVBoxLayout(wallet_box)
+        w_layout.setContentsMargins(12, 10, 12, 10)
+        w_layout.setSpacing(6)
         self.lbl_wallet_details = QLabel(
-            "محفظة الزبون: <b>0.00 DA</b> (إيداع فعلي Versement: 0.00 DA | رصيد افتراضي Virtuel: 0.00 DA)"
+            "Portefeuille Client : <b>0.00 DA</b><br>"
+            "<span style='font-size:11px; color:#475569;'>Dépôt Espèces (Versement) : 0.00 DA  |  Avoir Virtuel : 0.00 DA</span>"
         )
-        self.lbl_wallet_details.setStyleSheet("color: #0F766E; border: none;")
+        self.lbl_wallet_details.setStyleSheet("font-size: 12px; color: #0F766E;")
         w_layout.addWidget(self.lbl_wallet_details)
 
-        self.cb_wallet = QCheckBox("خصم من رصيد محفظة الزبون (Versement / Versement Virtuel)")
-        self.cb_wallet.setStyleSheet("color: #0E7471; font-weight: bold;")
+        self.cb_wallet = QCheckBox("Déduire du solde portefeuille client (Versement / Virtuel)")
+        self.cb_wallet.setStyleSheet("color: #0E7471; font-weight: 700; font-size: 12px;")
         self.cb_wallet.toggled.connect(self._recalculate_amounts)
         w_layout.addWidget(self.cb_wallet)
         r_layout.addWidget(wallet_box)
 
-        self.lbl_rem_due = QLabel("المبلغ المتبقي للدفع: 0.00 DA")
-        self.lbl_rem_due.setFont(QFont("Segoe UI", 13, QFont.Bold))
-        self.lbl_rem_due.setStyleSheet("color: #DC2626; margin: 6px 0; border: none;")
+        self.lbl_rem_due = QLabel("Reste à Encaisser : 0.00 DA")
+        self.lbl_rem_due.setStyleSheet("font-size: 14px; font-weight: 800; color: #DC2626;")
         r_layout.addWidget(self.lbl_rem_due)
 
         form = QGridLayout()
-        form.addWidget(QLabel("المبلغ المستلم نقداً (Espèces / تسبيق):"), 0, 0)
+        form.setSpacing(10)
+        lbl_c = QLabel("Montant Espèces Reçu (DA) :")
+        lbl_c.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        form.addWidget(lbl_c, 0, 0)
         self.txt_cash = QLineEdit("0")
+        self.txt_cash.setFixedHeight(36)
         self.txt_cash.textChanged.connect(self._recalculate_amounts)
         form.addWidget(self.txt_cash, 0, 1)
 
-        form.addWidget(QLabel("الدفع بالبطاقة (TPE / CIB):"), 1, 0)
+        lbl_t = QLabel("Paiement Carte CIB / TPE (DA) :")
+        lbl_t.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        form.addWidget(lbl_t, 1, 0)
         self.txt_tpe = QLineEdit("0")
+        self.txt_tpe.setFixedHeight(36)
         self.txt_tpe.textChanged.connect(self._recalculate_amounts)
         form.addWidget(self.txt_tpe, 1, 1)
         r_layout.addLayout(form)
 
         # Action Buttons for the 3 Order Bond Types
-        self.btn_val_bon_c = QPushButton("✅ تأكيد Bon C (Valider Espèces/Wallet -> للإخراج)")
-        self.btn_val_bon_c.setStyleSheet("background: #059669; color: white; font-weight: bold; padding: 11px; border-radius: 6px;")
+        self.btn_val_bon_c = QPushButton("Valider Bon C (Encaissement Direct -> Sortie)")
+        self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 16))
+        self.btn_val_bon_c.setIconSize(QSize(16, 16))
+        self.btn_val_bon_c.setCursor(Qt.PointingHandCursor)
+        self.btn_val_bon_c.setFixedHeight(38)
+        self.btn_val_bon_c.setStyleSheet(PRIMARY_BTN_STYLE)
         self.btn_val_bon_c.clicked.connect(self._finalize_bon_c)
         r_layout.addWidget(self.btn_val_bon_c)
 
-        self.btn_val_credit = QPushButton("🔑 تأكيد Bon Crédit (بموافقة وكلمة مرور Admin)")
-        self.btn_val_credit.setStyleSheet("background: #D97706; color: white; font-weight: bold; padding: 11px; border-radius: 6px;")
+        self.btn_val_credit = QPushButton("Autoriser Bon Crédit (Validation Admin)")
+        self.btn_val_credit.setIcon(get_duotone_icon("shield_admin", 16))
+        self.btn_val_credit.setIconSize(QSize(16, 16))
+        self.btn_val_credit.setCursor(Qt.PointingHandCursor)
+        self.btn_val_credit.setFixedHeight(36)
+        self.btn_val_credit.setStyleSheet(OUTLINE_BTN_STYLE)
         self.btn_val_credit.clicked.connect(self._authorize_bon_credit)
         r_layout.addWidget(self.btn_val_credit)
 
-        self.btn_val_livraison = QPushButton("🚚 تأكيد Bon de Livraison (تسجيل تسبيق / استكمال بعد التوصيل)")
-        self.btn_val_livraison.setStyleSheet("background: #2563EB; color: white; font-weight: bold; padding: 11px; border-radius: 6px;")
+        self.btn_val_livraison = QPushButton("Valider Bon de Livraison (Acompte / Solde COD)")
+        self.btn_val_livraison.setIcon(get_duotone_icon("truck_delivery", 16))
+        self.btn_val_livraison.setIconSize(QSize(16, 16))
+        self.btn_val_livraison.setCursor(Qt.PointingHandCursor)
+        self.btn_val_livraison.setFixedHeight(36)
+        self.btn_val_livraison.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         self.btn_val_livraison.clicked.connect(self._handle_bon_livraison)
         r_layout.addWidget(self.btn_val_livraison)
 
@@ -392,11 +607,25 @@ class CashierDeskWidget(QWidget):
         for ord_item in orders:
             row = self.queue_table.rowCount()
             self.queue_table.insertRow(row)
-            self.queue_table.setItem(row, 0, QTableWidgetItem(str(ord_item.get("Order_Number") or "")))
+
+            it_num = QTableWidgetItem(str(ord_item.get("Order_Number") or ""))
+            it_num.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            self.queue_table.setItem(row, 0, it_num)
+
             self.queue_table.setItem(row, 1, QTableWidgetItem(str(ord_item.get("Client_Name") or "")))
-            self.queue_table.setItem(row, 2, QTableWidgetItem(str(ord_item.get("Bond_Type") or "BON_C")))
-            self.queue_table.setItem(row, 3, QTableWidgetItem(f"{float(ord_item.get('Total_Amount_TTC') or 0.0):,.2f} DA"))
-            self.queue_table.setItem(row, 4, QTableWidgetItem(str(ord_item.get("Status") or "")))
+
+            it_type = QTableWidgetItem(str(ord_item.get("Bond_Type") or "BON_C"))
+            it_type.setTextAlignment(Qt.AlignCenter)
+            self.queue_table.setItem(row, 2, it_type)
+
+            it_ttc = QTableWidgetItem(f"{format_money(float(ord_item.get('Total_Amount_TTC') or 0.0))} DA")
+            it_ttc.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            it_ttc.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            self.queue_table.setItem(row, 3, it_ttc)
+
+            it_st = QTableWidgetItem(str(ord_item.get("Status") or ""))
+            it_st.setTextAlignment(Qt.AlignCenter)
+            self.queue_table.setItem(row, 4, it_st)
 
         if orders and self.queue_table.rowCount() > 0:
             self.queue_table.selectRow(0)
@@ -422,13 +651,13 @@ class CashierDeskWidget(QWidget):
 
         tot = float(ord_item.get("Total_Amount_TTC") or 0.0)
         self.lbl_selected_info.setText(
-            f"السند: <b>{ord_item.get('Order_Number')}</b> | النوع: <b>{ord_item.get('Bond_Type')}</b><br>"
-            f"الزبون: <b>{ord_item.get('Client_Name')}</b> | الإجمالي: <b>{tot:,.2f} DA</b>"
+            f"Bon N° : <b>{ord_item.get('Order_Number')}</b>  |  Type : <b>{ord_item.get('Bond_Type')}</b><br>"
+            f"Client : <b>{ord_item.get('Client_Name')}</b>  |  Total TTC : <b style='color:#0E7471;'>{format_money(tot)} DA</b>"
         )
         self.lbl_wallet_details.setText(
-            f"محفظة الزبون: <b>{self._wallet_info['current_balance']:,.2f} DA</b> "
-            f"(إيداع فعلي Versement: {self._wallet_info['real_deposit_balance']:,.2f} DA | "
-            f"رصيد افتراضي Virtuel: {self._wallet_info['virtual_credit_balance']:,.2f} DA)"
+            f"Portefeuille Client : <b>{format_money(self._wallet_info['current_balance'])} DA</b><br>"
+            f"<span style='font-size:11px; color:#475569;'>Dépôt Espèces : {format_money(self._wallet_info['real_deposit_balance'])} DA  |  "
+            f"Avoir Virtuel : {format_money(self._wallet_info['virtual_credit_balance'])} DA</span>"
         )
         self.txt_cash.setText(str(int(tot)) if ord_item.get("Bond_Type") == "BON_C" else "0")
         self.txt_tpe.setText("0")
@@ -446,127 +675,195 @@ class CashierDeskWidget(QWidget):
         tot = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
         w_ded = self._get_wallet_deduction()
         rem = max(0.0, tot - w_ded)
-        self.lbl_rem_due.setText(f"المبلغ المتبقي بعد المحفظة: {rem:,.2f} DA")
+        self.lbl_rem_due.setText(f"Reste à Encaisser : {format_money(rem)} DA")
+
+    # =========================================================================
+    # 1. BON C VALIDATION (بيع مباشر)
+    # =========================================================================
 
     def _finalize_bon_c(self) -> None:
         if not self._selected_order:
+            QMessageBox.warning(self, "Sélection requise", "Veuillez sélectionner un bon dans la file d'attente.")
             return
-        try:
-            cash_val = Decimal(self.txt_cash.text().strip() or "0")
-            card_val = Decimal(self.txt_tpe.text().strip() or "0")
-            wallet_val = Decimal(str(self._get_wallet_deduction()))
-            order_id = int(self._selected_order["Order_ID"])
 
+        order_id = int(self._selected_order["Order_ID"])
+        order_num = str(self._selected_order["Order_Number"])
+        tot = float(self._selected_order["Total_Amount_TTC"])
+        w_ded = self._get_wallet_deduction()
+
+        try:
+            cash_val = float(self.txt_cash.text().strip() or "0")
+            card_val = float(self.txt_tpe.text().strip() or "0")
+        except ValueError:
+            QMessageBox.warning(self, "Montant invalide", "Veuillez saisir un montant numérique valide.")
+            return
+
+        if cash_val + card_val + w_ded < tot:
+            QMessageBox.warning(
+                self,
+                "Montant Insuffisant",
+                f"Le total encaissé ({format_money(cash_val + card_val + w_ded)} DA) est inférieur au montant du Bon C ({format_money(tot)} DA).",
+            )
+            return
+
+        try:
             if self.data_manager and hasattr(self.data_manager, "bonds"):
                 uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
                 self.data_manager.bonds.validate_bon_c_cash(
                     order_id=order_id,
                     cashier_user_id=uid,
-                    cash_session_id=0,
-                    amount_paid_cash=cash_val,
-                    amount_paid_card=card_val,
-                    amount_paid_wallet=wallet_val,
+                    cash_session_id=1,
+                    amount_paid_cash=Decimal(str(cash_val)),
+                    amount_paid_card=Decimal(str(card_val)),
+                    amount_paid_wallet=Decimal(str(w_ded)),
                 )
-
+            self.orderSettled.emit(order_num, "BON_C_PAID")
             QMessageBox.information(
                 self,
-                "تم تأكيد Bon C",
-                f"تم تحصيل المبلغ وتأكيد السند {self._selected_order.get('Order_Number')}.\n"
-                "تم توجيه المعاملة لمكتب الإخراج والمخزن (Dispatch Desk) لمسح الأرقام التسلسلية.",
+                "Bon C Validé",
+                f"Le Bon C ({order_num}) a été encaissé et validé.\nTransmis au Bureau de Sortie pour scan du N° de Série.",
             )
-            self.orderSettled.emit(str(self._selected_order.get("Order_Number")), "BON_C_VALIDATED")
             self.refresh_queue()
         except Exception as err:
-            QMessageBox.critical(self, "خطأ في تسوية Bon C", str(err))
+            QMessageBox.critical(self, "Erreur Validation Bon C", str(err))
+
+    # =========================================================================
+    # 2. BON CRÉDIT AUTHORIZATION (بيع بالأجل بموافقة المشرف)
+    # =========================================================================
 
     def _authorize_bon_credit(self) -> None:
         if not self._selected_order:
+            QMessageBox.warning(self, "Sélection requise", "Veuillez sélectionner un bon dans la file d'attente.")
             return
+
+        order_id = int(self._selected_order["Order_ID"])
+        order_num = str(self._selected_order["Order_Number"])
+        client_name = str(self._selected_order.get("Client_Name") or "Client")
+        tot = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
+        prior_debt = float(self._selected_order.get("Current_Debt") or 0.0)
+        credit_limit = float(self._selected_order.get("Credit_Limit") or 500000.0)
+
         try:
-            tot = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
-            dp_cash = float(self.txt_cash.text().strip() or 0.0)
-            dp_wallet = self._get_wallet_deduction()
-            req_credit = max(0.0, tot - dp_cash - dp_wallet)
+            dp_cash = float(self.txt_cash.text().strip() or "0")
+        except ValueError:
+            dp_cash = 0.0
+        dp_wallet = self._get_wallet_deduction()
+        rem_credit = max(0.0, tot - dp_cash - dp_wallet)
 
-            modal = AdminAuthModal(
-                client_name=str(self._selected_order.get("Client_Name") or ""),
-                requested_amount=req_credit,
-                prior_debt=float(self._selected_order.get("Current_Debt") or 0.0),
-                credit_limit=float(self._selected_order.get("Credit_Limit") or 500000.0),
-                data_manager=self.data_manager,
-                parent=self,
-            )
-            if modal.exec() != QDialog.Accepted or not modal.approved:
-                return
-
-            if self.data_manager and hasattr(self.data_manager, "bonds"):
-                uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
-                self.data_manager.bonds.authorize_bon_credit(
-                    order_id=int(self._selected_order["Order_ID"]),
-                    cashier_user_id=uid,
-                    cash_session_id=0,
-                    admin_user_id=modal.admin_user_id,
-                    admin_pin_or_pwd=modal.admin_secret,
-                    downpayment_cash=Decimal(str(dp_cash)),
-                    downpayment_wallet=Decimal(str(dp_wallet)),
+        modal = AdminAuthModal(
+            client_name=client_name,
+            requested_amount=rem_credit,
+            prior_debt=prior_debt,
+            credit_limit=credit_limit,
+            data_manager=self.data_manager,
+            parent=self,
+        )
+        if modal.exec() == QDialog.Accepted and modal.approved:
+            try:
+                if self.data_manager and hasattr(self.data_manager, "bonds"):
+                    uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
+                    self.data_manager.bonds.authorize_bon_credit(
+                        order_id=order_id,
+                        cashier_user_id=uid,
+                        cash_session_id=1,
+                        admin_user_id=modal.admin_user_id,
+                        admin_pin_or_pwd=modal.admin_secret,
+                        downpayment_cash=Decimal(str(dp_cash)),
+                        downpayment_wallet=Decimal(str(dp_wallet)),
+                    )
+                self.orderSettled.emit(order_num, "BON_CREDIT_APPROVED")
+                QMessageBox.information(
+                    self,
+                    "Bon Crédit Approuvé",
+                    f"Bon Crédit ({order_num}) autorisé par l'Administrateur.\n"
+                    f"Acompte : {format_money(dp_cash + dp_wallet)} DA | Crédit inscrit : {format_money(rem_credit)} DA.",
                 )
+                self.refresh_queue()
+            except Exception as err:
+                QMessageBox.critical(self, "Refus Bon Crédit", str(err))
 
-            QMessageBox.information(
-                self,
-                "تمت الموافقة على Bon Crédit",
-                f"تمت موافقة المشرف وتمرير السند ({self._selected_order.get('Order_Number')}) إلى مكتب الإخراج.",
-            )
-            self.orderSettled.emit(str(self._selected_order.get("Order_Number")), "BON_CREDIT_APPROVED")
-            self.refresh_queue()
-        except Exception as err:
-            QMessageBox.critical(self, "رفض Bon Crédit", str(err))
+    # =========================================================================
+    # 3. BON DE LIVRAISON (توصيل مع تسبيق واستكمال بعد التوصيل)
+    # =========================================================================
 
     def _handle_bon_livraison(self) -> None:
         if not self._selected_order:
+            QMessageBox.warning(self, "Sélection requise", "Veuillez sélectionner un bon dans la file d'attente.")
             return
+
+        order_id = int(self._selected_order["Order_ID"])
+        order_num = str(self._selected_order["Order_Number"])
+        status = str(self._selected_order.get("Status") or "")
+        w_ded = self._get_wallet_deduction()
         try:
-            adv_cash = Decimal(self.txt_cash.text().strip() or "0")
-            adv_wallet = Decimal(str(self._get_wallet_deduction()))
-            order_id = int(self._selected_order["Order_ID"])
+            cash_val = float(self.txt_cash.text().strip() or "0")
+        except ValueError:
+            cash_val = 0.0
 
-            if self.data_manager and hasattr(self.data_manager, "bonds"):
-                uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
-                res = self.data_manager.bonds.validate_bon_livraison_advance(
-                    order_id=order_id,
-                    cashier_user_id=uid,
-                    cash_session_id=None,
-                    advance_cash=adv_cash,
-                    advance_wallet=adv_wallet,
+        try:
+            uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
+            if status == "DISPATCHED_PENDING_COD":
+                if self.data_manager and hasattr(self.data_manager, "bonds"):
+                    inv_id = int(self._selected_order.get("Invoice_ID") or order_id)
+                    self.data_manager.bonds.settle_bon_livraison_cod(
+                        invoice_id=inv_id,
+                        cashier_user_id=uid,
+                        cash_session_id=1,
+                        collected_cash=Decimal(str(cash_val)),
+                    )
+                self.orderSettled.emit(order_num, "BON_LIVRAISON_COD_SETTLED")
+                QMessageBox.information(
+                    self,
+                    "Règlement Livraison Clôturé",
+                    f"Le solde restant du Bon de Livraison ({order_num}) a été encaissé.",
                 )
-                rem = res.get("remaining_on_delivery", 0.0)
             else:
-                rem = max(0.0, float(self._selected_order.get("Total_Amount_TTC") or 0.0) - float(adv_cash + adv_wallet))
-
-            QMessageBox.information(
-                self,
-                "تأكيد Bon de Livraison",
-                f"تم تسجيل التسبيق المالي وتحويل السند لمكتب الإخراج للتوصيل.\n"
-                f"الباقي للاستكمال بعد التوصيل: {rem:,.2f} DA",
-            )
-            self.orderSettled.emit(str(self._selected_order.get("Order_Number")), "BON_LIVRAISON_VALIDATED")
+                if self.data_manager and hasattr(self.data_manager, "bonds"):
+                    self.data_manager.bonds.validate_bon_livraison_advance(
+                        order_id=order_id,
+                        cashier_user_id=uid,
+                        cash_session_id=1,
+                        advance_cash=Decimal(str(cash_val)),
+                        advance_wallet=Decimal(str(w_ded)),
+                    )
+                self.orderSettled.emit(order_num, "BON_LIVRAISON_ADVANCE")
+                QMessageBox.information(
+                    self,
+                    "Bon de Livraison Validé",
+                    f"Acompte enregistré ({format_money(cash_val + w_ded)} DA) pour {order_num}.\n"
+                    "Le bon est déverrouillé au Bureau de Sortie pour expédition.",
+                )
             self.refresh_queue()
         except Exception as err:
-            QMessageBox.critical(self, "خطأ في Bon de Livraison", str(err))
+            QMessageBox.critical(self, "Erreur Bon de Livraison", str(err))
+
+    # =========================================================================
+    # 4. VERSEMENT (إيداع مالي فعلي) & 5. BON DE RETOUR (رصيد افتراضي)
+    # =========================================================================
 
     def _open_versement_dialog(self) -> None:
-        cid = int((self._selected_order or {}).get("Client_ID") or 1)
-        amt, ok = QInputDialog.getDouble(
+        cid_default = int((self._selected_order or {}).get("Client_ID") or 1)
+        cid, ok1 = QInputDialog.getInt(
             self,
-            "تسجيل Versement (إيداع مالي فعلي)",
-            f"أدخل مبلغ الإيداع النقدي الفعلي لحساب الزبون (Client #{cid}) بالـ DA:\n"
-            "(يدخل الصندوق الفعلي ويُصرف لاحقاً في أي عملية شراء)",
-            20000.0,
-            100.0,
-            10000000.0,
-            2,
+            "Versement Client (Dépôt Espèces)",
+            "ID du Client :",
+            value=cid_default,
+            minValue=1,
         )
-        if not ok:
+        if not ok1:
             return
+        amt, ok2 = QInputDialog.getDouble(
+            self,
+            "Versement Client (Dépôt Espèces)",
+            "Montant déposé en espèces (entre dans la Caisse physique) :",
+            value=10000.0,
+            minValue=1.0,
+            maxValue=100000000.0,
+            decimals=2,
+        )
+        if not ok2:
+            return
+
         try:
             if self.data_manager and hasattr(self.data_manager, "bonds"):
                 uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
@@ -574,27 +871,31 @@ class CashierDeskWidget(QWidget):
                     client_id=cid,
                     amount_cash=Decimal(str(amt)),
                     cashier_user_id=uid,
+                    cash_session_id=1,
                 )
-                new_bal = res.get("new_wallet_balance", amt)
+                new_bal = res["new_wallet_balance"]
             else:
-                new_bal = amt
+                new_bal = self._wallet_info.get("current_balance", 0.0) + amt
+
             QMessageBox.information(
                 self,
-                "تم تسجيل Versement",
-                f"تم إيداع {amt:,.2f} DA نقداً في الصندوق وإضافته لمحفظة الزبون.\nالرصيد الجديد: {new_bal:,.2f} DA",
+                "Versement Enregistré",
+                f"Versement de {format_money(amt)} DA enregistré dans la Caisse physique.\n"
+                f"Nouveau solde portefeuille Client #{cid} : {format_money(new_bal)} DA.",
             )
             self._on_order_selected()
         except Exception as err:
-            QMessageBox.critical(self, "خطأ في تسجيل Versement", str(err))
+            QMessageBox.critical(self, "Erreur Versement", str(err))
 
     def _open_retour_dialog(self) -> None:
         dlg = BonRetourDialog(self.data_manager, self)
         if dlg.exec() == QDialog.Accepted and dlg.result_data:
-            cred = dlg.result_data.get("credited_virtual_amount", 0.0)
+            r = dlg.result_data
             QMessageBox.information(
                 self,
-                "تم إصدار Bon de Retour",
-                f"تم تسجيل المرتجع وإضافة رصيد افتراضي (Versement Virtuel) بقيمة {cred:,.2f} DA لمحفظة الزبون.\n"
-                "تأثير السيولة النقدية على الصندوق: 0.00 DA",
+                "Bon de Retour & Versement Virtuel",
+                f"Bon de Retour ({r.get('return_bond_number')}) validé.\n"
+                f"Avoir Virtuel crédité : {format_money(float(r.get('credited_virtual_amount', 0.0)))} DA\n"
+                "Impact sur la liquidité Caisse physique : 0.00 DA",
             )
             self._on_order_selected()

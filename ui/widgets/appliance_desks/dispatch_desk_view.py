@@ -1,7 +1,9 @@
-# ui/widgets/appliance_desks/dispatch_desk_view.py
+# -*- coding: utf-8 -*-
 """
-Dispatch Desk UI (مكتب الإخراج والمخزن - Quai de Sortie / Dispatch Desk).
-Responsible exclusivamente for:
+ui/widgets/appliance_desks/dispatch_desk_view.py
+================================================
+Dispatch Desk UI (Bureau de Sortie & Magasin - مكتب الإخراج والمخزن).
+Responsible exclusively for:
 - Scanning the literal product barcode and unique serial number (N° de Série) of the physical unit leaving the store.
 - Validating serial state (IN_STOCK) and product model match against paid/authorized vouchers.
 - Generating and printing the logistical Bon de Sortie (سند الخروج) with zero cash impact.
@@ -10,8 +12,8 @@ Responsible exclusivamente for:
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -28,6 +30,12 @@ from PySide6.QtWidgets import (
 )
 
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
+from ui.icons import get_duotone_icon
+from ui.widgets.appliance_desks.order_desk_view import (
+    OUTLINE_BTN_STYLE,
+    PRIMARY_BTN_STYLE,
+    TABLE_STYLE,
+)
 
 
 class DispatchDeskWidget(QWidget):
@@ -58,79 +66,133 @@ class DispatchDeskWidget(QWidget):
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
 
         # 1. Top Order Selection Header
         header = QFrame()
-        header.setStyleSheet("background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 8px; padding: 10px;")
+        header.setObjectName("DispatchHeaderCard")
+        header.setFixedHeight(52)
+        header.setStyleSheet("""
+            QFrame#DispatchHeaderCard {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
         h_layout = QHBoxLayout(header)
+        h_layout.setContentsMargins(14, 0, 14, 0)
+        h_layout.setSpacing(10)
 
-        lbl_title = QLabel("📦 مكتب الإخراج والمخزن (Dispatch Desk - Bon de Sortie):")
-        lbl_title.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        lbl_title.setStyleSheet("color: #0E7471; border: none;")
+        ic = QLabel()
+        ic.setPixmap(get_duotone_icon("barcode_scan", 20).pixmap(20, 20))
+        h_layout.addWidget(ic)
+
+        lbl_title = QLabel("Bureau de Sortie & Magasin (Scan N° de Série -> Bon de Sortie) :")
+        lbl_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         h_layout.addWidget(lbl_title)
 
         self.cbo_orders = QComboBox()
+        self.cbo_orders.setFixedHeight(34)
+        self.cbo_orders.setMinimumWidth(320)
         self.cbo_orders.currentIndexChanged.connect(self._on_order_changed)
         h_layout.addWidget(self.cbo_orders, stretch=1)
 
-        btn_refresh = QPushButton("🔄 تحديث السندات المؤكدة")
-        btn_refresh.setStyleSheet("background: #0E7471; color: white; font-weight: bold; padding: 6px 12px; border-radius: 6px;")
+        btn_refresh = QPushButton("Actualiser la File")
+        btn_refresh.setIcon(get_duotone_icon("refresh", 14))
+        btn_refresh.setIconSize(QSize(14, 14))
+        btn_refresh.setCursor(Qt.PointingHandCursor)
+        btn_refresh.setFixedHeight(34)
+        btn_refresh.setStyleSheet(OUTLINE_BTN_STYLE)
         btn_refresh.clicked.connect(self.refresh_dispatch_queue)
         h_layout.addWidget(btn_refresh)
 
-        self.lbl_status = QLabel("ÉTAT: 🟢 جاهز للمسح الفعلي")
-        self.lbl_status.setStyleSheet("color: #059669; font-weight: bold; border: none;")
+        self.lbl_status = QLabel("Prêt pour le scan physique")
+        self.lbl_status.setStyleSheet(
+            "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #E6F4F1; "
+            "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 10px;"
+        )
         h_layout.addWidget(self.lbl_status)
         layout.addWidget(header)
 
         # 2. Expected Items Table Requiring Physical Serial Scan
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([
-            "المنتج المطلوب (Mark & Name)",
-            "اللون (Coloure)",
-            "الباركود المتوقع",
-            "الرقم التسلسلي الممسوح (N° de Série)",
-            "حالة التحقق",
-            "وقت المسح",
+            "Produit Attendu (Marque & Modèle)",
+            "Couleur",
+            "Code-barres Modèle",
+            "N° de Série Scanné",
+            "Statut Vérification",
+            "Horodatage Scan",
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.table)
+        self.table.setStyleSheet(TABLE_STYLE)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(38)
+        self.table.horizontalHeader().setFixedHeight(38)
+        self.table.setShowGrid(True)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
 
-        # 3. Real-Time Scan Feedback Monitor
-        self.monitor_frame = QFrame()
-        self.monitor_frame.setFixedHeight(74)
-        self.monitor_frame.setStyleSheet("background: #1E293B; border-radius: 8px; border: 2px solid #475569;")
-        m_layout = QVBoxLayout(self.monitor_frame)
-        self.lbl_monitor_text = QLabel("بانتظار مسح الباركود والرقم التسلسلي الفريد (N° de Série) للقطعة الفعلية...")
-        self.lbl_monitor_text.setAlignment(Qt.AlignCenter)
-        self.lbl_monitor_text.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        self.lbl_monitor_text.setStyleSheet("color: #F8FAFC; border: none;")
-        m_layout.addWidget(self.lbl_monitor_text)
-        layout.addWidget(self.monitor_frame)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        layout.addWidget(self.table, 1)
 
-        # 4. Scanner Input Bar
-        sim_box = QHBoxLayout()
-        self.txt_scan_sim = QLineEdit()
-        self.txt_scan_sim.setPlaceholderText("امسح أو أدخل الرقم التسلسلي الفريد للقطعة (N° de Série، مثل SN-BOSCH-001)...")
-        self.txt_scan_sim.returnPressed.connect(self._handle_manual_scan)
-        sim_box.addWidget(self.txt_scan_sim)
+        # 3. Hardware Barcode & Serial Scanner Console
+        scan_box = QFrame()
+        scan_box.setObjectName("DispatchScanConsole")
+        scan_box.setStyleSheet("""
+            QFrame#DispatchScanConsole {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        s_layout = QVBoxLayout(scan_box)
+        s_layout.setContentsMargins(14, 12, 14, 12)
+        s_layout.setSpacing(10)
 
-        btn_sim = QPushButton("⚡ تحقق وربط الرقم التسلسلي")
-        btn_sim.setStyleSheet("background: #2563EB; color: white; padding: 9px 14px; font-weight: bold; border-radius: 6px;")
-        btn_sim.clicked.connect(self._handle_manual_scan)
-        sim_box.addWidget(btn_sim)
-        layout.addLayout(sim_box)
-
-        # 5. Finalize Bon de Sortie Button
-        self.btn_dispatch = QPushButton("🖨️ تأكيد الخروج الفعلي وطباعة Bon de Sortie (سند خروج لوجستي - بدون أثر نقدي)")
-        self.btn_dispatch.setEnabled(False)
-        self.btn_dispatch.setStyleSheet(
-            "background: #059669; color: white; font-size: 13px; font-weight: bold; padding: 12px; border-radius: 8px;"
+        lbl_inst = QLabel(
+            "Contrôle Physique Obligatoire : Scannez le code-barres ou le numéro de série unique (N° de Série) "
+            "collé sur le châssis de chaque appareil sortant du magasin."
         )
-        self.btn_dispatch.clicked.connect(self._finalize_dispatch)
-        layout.addWidget(self.btn_dispatch)
+        lbl_inst.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        s_layout.addWidget(lbl_inst)
+
+        input_row = QHBoxLayout()
+        input_row.setSpacing(10)
+        self.txt_scan = QLineEdit()
+        self.txt_scan.setFixedHeight(38)
+        self.txt_scan.setPlaceholderText(
+            "Scanner le N° de Série ici (ex: SN-BOSCH-2026-889120 ou <Product_ID>::<N° de Série>)..."
+        )
+        self.txt_scan.returnPressed.connect(self._on_manual_scan_submit)
+        input_row.addWidget(self.txt_scan, stretch=2)
+
+        self.btn_emit_sortie = QPushButton("Valider & Imprimer Bon de Sortie (0.00 DA Impact Caisse)")
+        self.btn_emit_sortie.setIcon(get_duotone_icon("print", 16))
+        self.btn_emit_sortie.setIconSize(QSize(16, 16))
+        self.btn_emit_sortie.setCursor(Qt.PointingHandCursor)
+        self.btn_emit_sortie.setFixedHeight(38)
+        self.btn_emit_sortie.setEnabled(False)
+        self.btn_emit_sortie.setStyleSheet(PRIMARY_BTN_STYLE)
+        self.btn_emit_sortie.clicked.connect(self._emit_bon_sortie)
+        input_row.addWidget(self.btn_emit_sortie, stretch=1)
+
+        s_layout.addLayout(input_row)
+        layout.addWidget(scan_box)
 
     def refresh_dispatch_queue(self) -> None:
         orders: List[Dict[str, Any]] = []
@@ -142,8 +204,8 @@ class DispatchDeskWidget(QWidget):
                 {
                     "Order_ID": 42,
                     "Order_Number": "BC-0042",
-                    "Invoice_ID": 101,
-                    "Invoice_No": "FAC-C-0042",
+                    "Invoice_ID": 1042,
+                    "Invoice_No": "FAC-C-1042",
                     "Client_Name": "Omar Belkacem",
                     "Bond_Type": "BON_C",
                     "Status": "PAID_PENDING_DISPATCH",
@@ -173,140 +235,183 @@ class DispatchDeskWidget(QWidget):
             ]
 
         self._dispatch_orders = orders
+        self.cbo_orders.blockSignals(True)
         self.cbo_orders.clear()
-        for ord_item in orders:
-            label = (
-                f"{ord_item.get('Order_Number')} | {ord_item.get('Client_Name')} "
-                f"[{ord_item.get('Bond_Type')}] ({ord_item.get('Status')})"
-            )
-            self.cbo_orders.addItem(label, ord_item.get("Order_ID"))
+        for o in orders:
+            label = f"{o.get('Order_Number')} — {o.get('Client_Name')} ({o.get('Bond_Type')})"
+            self.cbo_orders.addItem(label, o.get("Order_ID"))
+        self.cbo_orders.blockSignals(False)
 
-        if not orders:
+        if orders:
+            self._on_order_changed(0)
+        else:
             self._active_order = None
             self._expected_items = []
-            self._refresh_table()
+            self.table.setRowCount(0)
+            self.btn_emit_sortie.setEnabled(False)
 
     def _on_order_changed(self, idx: int) -> None:
         if idx < 0 or idx >= len(self._dispatch_orders):
-            self._active_order = None
-            self._expected_items = []
-            self._refresh_table()
             return
-
-        ord_item = self._dispatch_orders[idx]
-        self._active_order = ord_item
+        self._active_order = self._dispatch_orders[idx]
         self._expected_items = []
-        for line in ord_item.get("lines", []):
-            qty_rem = max(0, int(line.get("Quantity_Ordered") or 1) - int(line.get("Quantity_Dispatched") or 0))
-            for _ in range(qty_rem):
+
+        for line in self._active_order.get("lines", []):
+            rem_qty = max(0, int(line.get("Quantity_Ordered") or 1) - int(line.get("Quantity_Dispatched") or 0))
+            for _ in range(rem_qty):
                 self._expected_items.append({
-                    "order_line_id": int(line.get("Line_ID") or 1),
-                    "product_id": int(line.get("Product_ID") or 101),
+                    "line_id": int(line.get("Line_ID") or 1),
+                    "product_id": int(line.get("Product_ID") or 0),
                     "model": f"{line.get('Brand_Mark', '')} {line.get('Product_Name', '')}".strip(),
                     "color": str(line.get("Color_Finish") or "Standard"),
-                    "ean": str(line.get("Barcode") or "--"),
-                    "serial": None,
-                    "status": "PENDING",
-                    "scanned_at": "--",
+                    "barcode": str(line.get("Barcode") or ""),
+                    "serial": "",
+                    "status": "EN ATTENTE SCAN",
+                    "timestamp": "-",
                 })
-        self.btn_dispatch.setEnabled(False)
         self._refresh_table()
 
     def _refresh_table(self) -> None:
-        self.table.setRowCount(len(self._expected_items))
-        for row, item in enumerate(self._expected_items):
-            self.table.setItem(row, 0, QTableWidgetItem(item["model"]))
-            self.table.setItem(row, 1, QTableWidgetItem(item["color"]))
-            self.table.setItem(row, 2, QTableWidgetItem(item["ean"]))
-            self.table.setItem(row, 3, QTableWidgetItem(item["serial"] or "-- بانتظار المسح --"))
-            self.table.setItem(row, 4, QTableWidgetItem(item["status"]))
-            self.table.setItem(row, 5, QTableWidgetItem(item["scanned_at"]))
+        self.table.setRowCount(0)
+        all_verified = len(self._expected_items) > 0
 
-    def process_scanned_barcode(self, raw_barcode: str) -> None:
-        """Validates a scanned serial number and binds it to the next pending item slot."""
-        cleaned = (raw_barcode or "").strip().upper()
-        if not cleaned:
+        for item in self._expected_items:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            self.table.setItem(row, 0, QTableWidgetItem(item["model"]))
+
+            it_col = QTableWidgetItem(item["color"])
+            it_col.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 1, it_col)
+
+            it_bc = QTableWidgetItem(item["barcode"])
+            it_bc.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 2, it_bc)
+
+            it_sn = QTableWidgetItem(item["serial"] or "—")
+            it_sn.setFont(QFont("Consolas", 10, QFont.Bold))
+            self.table.setItem(row, 3, it_sn)
+
+            st_item = QTableWidgetItem(item["status"])
+            st_item.setTextAlignment(Qt.AlignCenter)
+            st_item.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            if item["status"] == "VÉRIFIÉ (IN_STOCK)":
+                st_item.setForeground(QColor("#16A34A"))
+            else:
+                st_item.setForeground(QColor("#D97706"))
+                all_verified = False
+            self.table.setItem(row, 4, st_item)
+
+            it_ts = QTableWidgetItem(item["timestamp"])
+            it_ts.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 5, it_ts)
+
+        self.btn_emit_sortie.setEnabled(all_verified)
+
+    def _on_manual_scan_submit(self) -> None:
+        raw = self.txt_scan.text().strip()
+        self.txt_scan.clear()
+        if raw:
+            self.process_scanned_barcode(raw)
+
+    def process_scanned_barcode(self, raw_scan: str) -> None:
+        """Validates scanned physical serial number against expected order lines."""
+        clean_scan = raw_scan.strip().upper()
+        if not clean_scan:
             return
 
-        # 1. Check duplicate scan in current session
-        for item in self._expected_items:
-            if item["serial"] == cleaned:
-                self._show_feedback(f"⚠️ تحذير: الرقم التسلسلي {cleaned} تم مسحه مسبقاً في هذا السند!", "#F59E0B")
-                return
+        scanned_product_id = None
+        serial_part = clean_scan
+        if "::" in clean_scan:
+            parts = clean_scan.split("::", 1)
+            if parts[0].isdigit():
+                scanned_product_id = int(parts[0])
+                serial_part = parts[1].strip()
 
-        # 2. If connected to DB, verify serial existence & status
+        if any(i["serial"] == serial_part for i in self._expected_items if i["serial"]):
+            self.lbl_status.setText(f"Rejeté : N° de Série ({serial_part}) déjà scanné sur ce bon")
+            self.lbl_status.setStyleSheet(
+                "font-size: 11px; font-weight: 700; color: #DC2626; background-color: #FEF2F2; "
+                "border: 1px solid #FECACA; border-radius: 4px; padding: 4px 10px;"
+            )
+            QMessageBox.warning(self, "Doublon Détecté", f"Le N° de Série {serial_part} est déjà affecté à ce bon.")
+            return
+
         db_serial = None
         if self.data_manager and hasattr(self.data_manager, "serials"):
-            db_serial = self.data_manager.serials.get_serial_details(cleaned)
+            db_serial = self.data_manager.serials.get_serial_details(serial_part)
             if db_serial:
                 if db_serial.get("Status") != "IN_STOCK":
-                    self._show_feedback(
-                        f"🚫 مرفوض: الرقم التسلسلي {cleaned} ليس في المخزون (الحالة: {db_serial.get('Status')})",
-                        "#EF4444",
+                    self.lbl_status.setText(
+                        f"Rejeté : {serial_part} n'est pas en stock ({db_serial.get('Status')})"
+                    )
+                    QMessageBox.critical(
+                        self,
+                        "N° de Série Non Disponible",
+                        f"Le N° de Série {serial_part} a le statut '{db_serial.get('Status')}' (Attendu: IN_STOCK).",
                     )
                     return
+                scanned_product_id = int(db_serial["Product_ID"])
 
-        # 3. Bind to matching pending line
         for item in self._expected_items:
-            if item["status"] == "PENDING":
-                if db_serial and int(db_serial.get("Product_ID") or 0) != int(item["product_id"]):
+            if item["status"] != "VÉRIFIÉ (IN_STOCK)":
+                if scanned_product_id is not None and item["product_id"] != scanned_product_id:
                     continue
-                item["serial"] = cleaned
-                item["status"] = "VALIDÉ 🟢"
-                item["scanned_at"] = datetime.now().strftime("%H:%M:%S")
-                self._show_feedback(f"✅ تطابق صحيح: تم ربط الرقم التسلسلي {cleaned} بـ {item['model']}", "#10B981")
+                item["serial"] = serial_part
+                item["status"] = "VÉRIFIÉ (IN_STOCK)"
+                item["timestamp"] = datetime.now().strftime("%H:%M:%S")
+                self.lbl_status.setText(f"N° de Série vérifié : {serial_part}")
+                self.lbl_status.setStyleSheet(
+                    "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #E6F4F1; "
+                    "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 10px;"
+                )
                 self._refresh_table()
-                self._check_completion()
                 return
 
-        self._show_feedback(f"❌ خطأ: الرقم التسلسلي {cleaned} لا يطابق أي منتج متبقٍ في السند!", "#EF4444")
-
-    def _handle_manual_scan(self) -> None:
-        text = self.txt_scan_sim.text()
-        if text:
-            self.process_scanned_barcode(text)
-            self.txt_scan_sim.clear()
-
-    def _show_feedback(self, message: str, color_hex: str) -> None:
-        self.monitor_frame.setStyleSheet(f"background: {color_hex}; border-radius: 8px;")
-        self.lbl_monitor_text.setText(message)
-
-    def _check_completion(self) -> None:
-        all_done = bool(self._expected_items) and all(
-            item["status"] == "VALIDÉ 🟢" for item in self._expected_items
+        QMessageBox.warning(
+            self,
+            "Produit Non Attendu",
+            f"Le numéro de série scanné ({serial_part}) ne correspond à aucune ligne restante sur ce bon.",
         )
-        if all_done:
-            self.btn_dispatch.setEnabled(True)
-            self._show_feedback("🎉 تم التحقق من جميع الأرقام التسلسلية - جاهز لإصدار Bon de Sortie", "#059669")
 
-    def _finalize_dispatch(self) -> None:
-        if not self._expected_items:
+    def _emit_bon_sortie(self) -> None:
+        if not self._active_order:
             return
+
+        order_id = int(self._active_order["Order_ID"])
+        order_num = str(self._active_order["Order_Number"])
+        invoice_id = int(self._active_order.get("Invoice_ID") or order_id)
+        scans_payload = [
+            {"order_line_id": item["line_id"], "serial_number": item["serial"]}
+            for item in self._expected_items
+            if item["serial"]
+        ]
+
         try:
-            payload = [
-                {"order_line_id": item["order_line_id"], "serial_number": item["serial"]}
-                for item in self._expected_items
-                if item.get("serial")
-            ]
-            bond_no = "BS-SIM-001"
-            if self.data_manager and hasattr(self.data_manager, "bonds") and self._active_order:
+            if self.data_manager and hasattr(self.data_manager, "bonds"):
                 uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
                 res = self.data_manager.bonds.validate_and_dispatch_serials(
-                    order_id=int(self._active_order.get("Order_ID") or 1),
-                    invoice_id=int(self._active_order.get("Invoice_ID") or 1),
+                    order_id=order_id,
+                    invoice_id=invoice_id,
                     storekeeper_user_id=uid,
-                    scanned_serial_numbers=payload,
+                    scanned_serial_numbers=scans_payload,
                 )
-                bond_no = res.get("exit_bond_number", bond_no)
+                exit_num = res["exit_bond_number"]
+                gate_pass = res["gate_pass"]
+            else:
+                exit_num = f"BS-2026-{order_id:04d}"
+                gate_pass = f"GATE-{order_id:04d}"
 
-            serials_list = [item["serial"] for item in self._expected_items]
-            self.stockDispatched.emit(bond_no, serials_list)
+            serials_list = [s["serial_number"] for s in scans_payload]
+            self.stockDispatched.emit(order_num, serials_list)
             QMessageBox.information(
                 self,
-                "تم إصدار Bon de Sortie",
-                f"تم إصدار سند الخروج ({bond_no}) وتحديث المخزون الفعلي وحالة الأرقام التسلسلية إلى DISPATCHED.\n"
-                "(سند لوجستي بدون أي تعامل نقدي).",
+                "Bon de Sortie Émis",
+                f"Bon de Sortie ({exit_num}) généré avec succès.\n"
+                f"Code laissez-passer : {gate_pass}\n"
+                f"N° de Série sortis : {', '.join(serials_list)}\n"
+                "Impact financier Caisse : 0.00 DA (Mouvement logistique pur).",
             )
             self.refresh_dispatch_queue()
         except Exception as err:
-            QMessageBox.critical(self, "خطأ في إصدار Bon de Sortie", str(err))
+            QMessageBox.critical(self, "Erreur Bon de Sortie", str(err))
