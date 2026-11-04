@@ -5,6 +5,7 @@ Ce dossier regroupe l'ensemble des modules d'interface graphique PySide6 de l'ap
 ## Sous-Dossiers Spécialisés
 
 - `wholesale_sales/` : Interface de Vente en Gros B2B (`WholesaleSalesTab`), tarification dynamique (Prix 1 à 4), documents commerciaux (BL, BC, Devis, Facture) et export ReportLab PDF.
+- `appliance_desks/` : Interface multi-bureaux pour magasins d'électroménager (`ApplianceWorkflowTab`, `OrderDeskWidget`, `CashierDeskWidget`, `DispatchDeskWidget`, `SAVKanbanWidget`, `SerialBatchRegistryWidget`) gérant la séparation vente théorique / sortie physique par N° de Série, les 6 types de Bons (`Bon C`, `Bon Crédit`, `Bon de Livraison`, `Versement`, `Bon de Sortie`, `Bon de Retour`), le SAV en 4 étapes et le multi-scanner HID.
 - `sales_history/` : Historique complet des ventes (`SalesHistoryTab`), suivi des créances et vieillissement de dette (AR Aging), encaissement rapide et gestion détaillée des lignes de facture (`SaleDetailsDialog`).
 - `sales/` : Interface de caisse tactile au détail POS (`PointOfSaleTab`), paiements directs et retours sans facture (`ReturnProductSelectionDialog`).
 - `billing/` : Gestion de la facturation générale, devis et éditeurs de factures.

@@ -119,6 +119,19 @@ NAVIGATION_PERMISSION_FALLBACKS = {
         "tab_system_logs",
         "tab_set_pdf",
     ),
+    "nav_appliance_workflow": (
+        "tab_desk_order",
+        "tab_desk_caisse",
+        "tab_desk_dispatch",
+        "tab_desk_sav",
+        "tab_serial_registry",
+        "SALES_ORDER_CREATE",
+        "PAYMENT_VALIDATE_CASH",
+        "SERIAL_SCAN_DISPATCH",
+        "SAV_TICKET_CREATE",
+        "nav_pos",
+        "nav_sales",
+    ),
 }
 
 

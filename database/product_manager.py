@@ -133,7 +133,18 @@ class ProductManager:
                     'Open_Vial_Stability_Days': 'Open_Vial_Stability_Days',
                     'Is_Billable': 'Is_Billable',
                     'Show_In_Alerts': 'Show_In_Alerts',
-                    'POS_Priority_Group': 'POS_Priority_Group'
+                    'POS_Priority_Group': 'POS_Priority_Group',
+                    'Brand_Mark': 'Brand_Mark',
+                    'Category_Name': 'Category_Name',
+                    'Color_Finish': 'Color_Finish',
+                    'Requires_Serial_Tracking': 'Requires_Serial_Tracking',
+                    'Warranty_Months': 'Warranty_Months',
+                    'Energy_Efficiency_Class': 'Energy_Efficiency_Class',
+                    'Electrical_Power_Watts': 'Electrical_Power_Watts',
+                    'Dimensions_HxWxD_CM': 'Dimensions_HxWxD_CM',
+                    'Extensible_Attributes': 'Extensible_Attributes',
+                    'Default_Selling_Price_HT': 'Default_Selling_Price_HT',
+                    'Selling_TVA_Percent': 'Selling_TVA_Percent'
                 }
 
                 for key, col in mapping.items():

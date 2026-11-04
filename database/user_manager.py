@@ -9,7 +9,94 @@ from .system_logger import log_methods
 
 @log_methods()
 class UserManager:
-    """إدارة عمليات جدول المستخدمين (Users) والصلاحيات."""
+    """إدارة عمليات جدول المستخدمين (Users) والصلاحيات والأدوار متعددة المكاتب."""
+
+    ROLE_PERMISSION_PRESETS = {
+        "Order_Desk": {
+            "nav_appliance_workflow": True,
+            "tab_desk_order": True,
+            "CATALOG_VIEW_PRICING": True,
+            "CATALOG_VIEW_COST_MARGIN": False,
+            "SALES_ORDER_CREATE": True,
+            "CREDIT_INITIATE": True,
+            "PAYMENT_VALIDATE_CASH": False,
+            "CREDIT_ADMIN_AUTHORIZE": False,
+            "SERIAL_SCAN_DISPATCH": False,
+            "SAV_TICKET_CREATE": False,
+        },
+        "Cashier_Desk": {
+            "nav_appliance_workflow": True,
+            "tab_desk_caisse": True,
+            "CATALOG_VIEW_PRICING": True,
+            "CATALOG_VIEW_COST_MARGIN": False,
+            "CASH_SESSION_OPEN_CLOSE": True,
+            "PAYMENT_VALIDATE_CASH": True,
+            "VERSEMENT_DEPOSIT_CREATE": True,
+            "CREDIT_INITIATE": True,
+            "CREDIT_ADMIN_AUTHORIZE": False,
+            "LIVRAISON_VALIDATE_ADVANCE": True,
+            "LIVRAISON_SETTLE_REMAINING": True,
+            "WALLET_ISSUE_CREDIT": True,
+            "SERIAL_SCAN_DISPATCH": False,
+        },
+        "Dispatch_Desk": {
+            "nav_appliance_workflow": True,
+            "tab_desk_dispatch": True,
+            "tab_serial_registry": True,
+            "CATALOG_VIEW_PRICING": True,
+            "CATALOG_VIEW_COST_MARGIN": False,
+            "DISPATCH_QUEUE_VIEW": True,
+            "SERIAL_SCAN_DISPATCH": True,
+            "RETURN_INTAKE_INSPECT": True,
+            "PAYMENT_VALIDATE_CASH": False,
+        },
+        "SAV_Desk": {
+            "nav_appliance_workflow": True,
+            "tab_desk_sav": True,
+            "CATALOG_VIEW_PRICING": True,
+            "CATALOG_VIEW_COST_MARGIN": False,
+            "RETURN_INTAKE_INSPECT": True,
+            "SAV_TICKET_CREATE": True,
+            "SAV_TECH_DISPATCH": True,
+            "SAV_DIAGNOSTIC_RETURN": True,
+            "SAV_RESTITUTION_CLOSE": True,
+            "SAV_COMPENSATION_AUTO": False,
+        },
+        "Admin": {
+            "nav_appliance_workflow": True,
+            "tab_desk_order": True,
+            "tab_desk_caisse": True,
+            "tab_desk_dispatch": True,
+            "tab_desk_sav": True,
+            "tab_serial_registry": True,
+            "CATALOG_VIEW_PRICING": True,
+            "CATALOG_VIEW_COST_MARGIN": True,
+            "SALES_ORDER_CREATE": True,
+            "SALES_PRICE_OVERRIDE": True,
+            "CASH_SESSION_OPEN_CLOSE": True,
+            "PAYMENT_VALIDATE_CASH": True,
+            "VERSEMENT_DEPOSIT_CREATE": True,
+            "CREDIT_INITIATE": True,
+            "CREDIT_ADMIN_AUTHORIZE": True,
+            "LIVRAISON_VALIDATE_ADVANCE": True,
+            "LIVRAISON_SETTLE_REMAINING": True,
+            "DISPATCH_QUEUE_VIEW": True,
+            "SERIAL_SCAN_DISPATCH": True,
+            "RETURN_INTAKE_INSPECT": True,
+            "WALLET_ISSUE_CREDIT": True,
+            "SAV_TICKET_CREATE": True,
+            "SAV_TECH_DISPATCH": True,
+            "SAV_DIAGNOSTIC_RETURN": True,
+            "SAV_RESTITUTION_CLOSE": True,
+            "SAV_COMPENSATION_AUTO": True,
+            "STOCK_SCRAP_DECOMMISSION": True,
+        },
+    }
+
+    @classmethod
+    def get_role_preset_permissions(cls, role_key: str) -> Dict[str, bool]:
+        """إرجاع الصلاحيات المسبقة لدور مكتب معين (Order_Desk, Cashier_Desk, Dispatch_Desk, SAV_Desk, Admin)."""
+        return dict(cls.ROLE_PERMISSION_PRESETS.get(role_key, {}))
 
     def __init__(self, db_instance):
         self.db = db_instance

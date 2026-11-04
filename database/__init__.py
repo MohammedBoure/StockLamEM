@@ -34,6 +34,17 @@ from .client_credit_note_manager import ClientCreditNoteManager
 from .pos_terminal_manager import POSTerminalManager
 from .cash_session_manager import CashSessionManager
 from .pos_feature_manager import POSFeatureManager
+from .serial_tracking_manager import SerialTrackingManager, SerialTrackingService
+from .bond_lifecycle_manager import (
+    BondLifecycleManager,
+    TheoreticalSalesService,
+    CashierSettlementService,
+    DispatchService,
+    StateCollisionException,
+    SplitPaymentMismatchException,
+    SecurityViolationException,
+)
+from .sav_workflow_manager import SAVWorkflowManager, SAVWorkflowService
 class LabDataManager:
 
     def __init__(self, db_instance: Database):
@@ -87,3 +98,6 @@ class LabDataManager:
         self.client_credit_notes = ClientCreditNoteManager(db_instance)
         self.pos_terminals = POSTerminalManager(db_instance)
         self.cash_sessions = CashSessionManager(db_instance)
+        self.serials = SerialTrackingManager(db_instance)
+        self.bonds = BondLifecycleManager(db_instance)
+        self.sav = SAVWorkflowManager(db_instance)

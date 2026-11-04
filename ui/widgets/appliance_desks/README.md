@@ -1,0 +1,13 @@
+# `ui/widgets/appliance_desks` Directory Overview
+
+This directory contains the PySide6 UI desk modules implementing the 5-part Electrical Appliance Store & Multi-Desk Operational Workflow (مكتب الطلبات، مكتب الصندوق Caisse، مكتب الإخراج والمخزن، مصلحة ما بعد البيع SAV، وإدارة الدفعات والأرقام التسلسلية).
+
+## Files in this Directory
+
+- **`__init__.py`**: Package initializer exporting all desk widgets and modal dialogs.
+- **`appliance_workflow_tab.py`**: Unified `ApplianceWorkflowTab` hub combining all five operational desks with real-time cross-desk Qt signal synchronization, RBAC tab visibility enforcement, and Multi-Scanner HID routing.
+- **`order_desk_view.py`**: `OrderDeskWidget` and `OrderSessionCartWidget` for theoretical order creation (`Bon C`, `Bon Crédit`, `Bon de Livraison`), Mark/Name/Categorie/Coloure catalog filtering, and Multi-Scanner / Multi-Session (`MultiScannerHIDManager`) concurrent cart routing without locking physical serial numbers.
+- **`cashier_desk_view.py`**: `CashierDeskWidget`, `AdminAuthModal`, and `BonRetourDialog` for Caisse settlement (`Valider` on `Bon C`), Admin-authorized `Bon Crédit`, `Bon de Livraison` advance/COD collection, customer account deposits (`Versement`), and `Bon de Retour` issuing virtual wallet credit (`Versement Virtuel`) with zero physical Caisse liquidity impact.
+- **`dispatch_desk_view.py`**: `DispatchDeskWidget` for the Warehouse/Dispatch Desk (مكتب إخراج السلع), verifying literal product barcodes and unique serial numbers (`N° de Série`) and generating `Bon de Sortie` logistical vouchers.
+- **`sav_kanban_view.py`**: `SAVKanbanWidget`, `SAVReceptionDialog`, and `IrreparableDefectModal` implementing the 4-stage SAV / Réparation state machine (`SAV_RECEIVED` -> `SAV_SENT_TO_TECH` -> `SAV_RETURNED_FROM_TECH` -> `SAV_CLOSED_DELIVERED`) and the irreparable compensation mechanism (`Versement Virtuel` into `Client_Wallets`).
+- **`serial_batch_view.py`**: `SerialBatchRegistryWidget` for registering appliance products (`Mark`, `Name`, `Categorie`, `Coloure`, extensible JSON attributes) and receiving inventory batches (`Inventory_Batches`) with unique serial numbers (`N° de Série` in `Product_Serials`).

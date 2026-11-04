@@ -33,6 +33,8 @@ from .widgets.sales.point_of_sale_tab import PointOfSaleTab
 from .widgets.wholesale_sales import WholesaleSalesTab
 from .widgets.sales_history import SalesHistoryTab
 from .widgets.sales.debts_management_tab import DebtsManagementTab
+from .widgets.appliance_desks import ApplianceWorkflowTab
+from .hardware.raw_input_filter import MultiScannerHIDManager, WindowsRawInputFilter
 from .navigation_permissions import has_permission as check_permission, has_navigation_permission as check_navigation_permission
 from database.auto_backup_worker import AutoBackupWorker
 from database import active_user_id
@@ -120,6 +122,7 @@ class MainWindow(QMainWindow):
                 11: "nav_wholesale",
                 12: "nav_sales_history",
                 13: "nav_debts",
+                14: "nav_appliance_workflow",
                 5: "tab_users",
                 4: "nav_settings"
             }
@@ -314,6 +317,7 @@ class MainWindow(QMainWindow):
             (11, "Vente en Gros B2B", "wholesale"),
             (12, "Historique Ventes", "sales_history"),
             (13, "Créances Clients", "debts"),
+            (14, "Bureaux && SAV", "pos"),
             (7, "Traçabilité", "history"),
             (5, "Utilisateurs", "users"),
             (4, "Paramètres", "settings"),
@@ -452,6 +456,7 @@ class MainWindow(QMainWindow):
             11: "nav_wholesale",
             12: "nav_sales_history",
             13: "nav_debts",
+            14: "nav_appliance_workflow",
             7: "nav_history",  # واجهة السجل المستقلة
             5: "tab_users",
             4: "nav_settings"
@@ -480,7 +485,7 @@ class MainWindow(QMainWindow):
             self.close()
 
     def _init_placeholders(self):
-        for i in range(14):
+        for i in range(15):
             self.content_area.addWidget(QWidget())
 
     def has_permission(self, perm_key):
@@ -637,6 +642,26 @@ class MainWindow(QMainWindow):
         elif page_id == 13:
             widget = DebtsManagementTab(self.data_manager)
 
+        # --- 14. Multi-Desk Appliance Store & SAV Workflow ---
+        elif page_id == 14:
+            u_id = (self.current_user.get('User_ID') or self.current_user.get('id') or 1) if self.current_user else 1
+            if not hasattr(self, "hid_scanner_manager"):
+                self.hid_scanner_manager = MultiScannerHIDManager(self)
+                self.raw_input_filter = WindowsRawInputFilter(self.hid_scanner_manager)
+                try:
+                    self.raw_input_filter.register_raw_input_devices(int(self.winId()))
+                    app = QApplication.instance()
+                    if app:
+                        app.installNativeEventFilter(self.raw_input_filter)
+                except Exception as exc:
+                    logging.debug(f"RawInput registration skipped: {exc}")
+            widget = ApplianceWorkflowTab(
+                db_manager=self.data_manager,
+                current_user_id=int(u_id),
+                hid_manager=self.hid_scanner_manager,
+                parent=self,
+            )
+
         if widget:
             old_widget = self.content_area.widget(page_id)
             self.content_area.removeWidget(old_widget)
@@ -694,6 +719,7 @@ class MainWindow(QMainWindow):
             11: "nav_wholesale",
             12: "nav_sales_history",
             13: "nav_debts",
+            14: "nav_appliance_workflow",
             7: "nav_history",
             5: "tab_users",
             4: "nav_settings"
