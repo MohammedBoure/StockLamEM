@@ -851,6 +851,11 @@ class ExternalTransferManager:
                             b.Internal_Barcode,
                             p.Barcode,
                             b.Quantity_Current,
+                            b.Unit_Price_Received,
+                            b.Discount_Percent,
+                            b.Tax_Rate_Percent,
+                            p.Is_Billable,
+                            MAX(d.Unit_Price) as Transfer_Unit_Price,
                             SUM(CASE WHEN t.Transfer_ID = %s THEN d.Qty_Transferred ELSE 0 END) as Total_Sent,
                             SUM(CASE WHEN t.Transfer_Type = 'Return' AND t.Ref_Transfer_ID = %s AND (%s IS NULL OR t.Transfer_ID <> %s) THEN d.Qty_Transferred ELSE 0 END) as Total_Returned
                         FROM External_Transfer_Details d
@@ -858,7 +863,7 @@ class ExternalTransferManager:
                         JOIN Inventory_Batches b ON d.Batch_ID = b.Batch_ID
                         JOIN Products_Master p ON d.Product_ID = p.Product_ID
                         WHERE t.Partner_ID = %s AND t.Status = 'Completed'
-                        GROUP BY d.Product_ID, d.Batch_ID, b.Lot_Number, p.Product_Name, b.Expiry_Date, b.Location_ID, b.Internal_Barcode, p.Barcode, b.Quantity_Current
+                        GROUP BY d.Product_ID, d.Batch_ID, b.Lot_Number, p.Product_Name, b.Expiry_Date, b.Location_ID, b.Internal_Barcode, p.Barcode, b.Quantity_Current, b.Unit_Price_Received, b.Discount_Percent, b.Tax_Rate_Percent, p.Is_Billable
                         HAVING (Total_Sent - Total_Returned) > 0
                     """
                     cursor.execute(query, (ref_transfer_id, ref_transfer_id, exclude_return_transfer_id, exclude_return_transfer_id, partner_id))
@@ -874,6 +879,11 @@ class ExternalTransferManager:
                             b.Internal_Barcode,
                             p.Barcode,
                             b.Quantity_Current,
+                            b.Unit_Price_Received,
+                            b.Discount_Percent,
+                            b.Tax_Rate_Percent,
+                            p.Is_Billable,
+                            MAX(d.Unit_Price) as Transfer_Unit_Price,
                             SUM(CASE WHEN IFNULL(t.Transfer_Type, 'Outbound') != 'Return' THEN d.Qty_Transferred ELSE 0 END) as Total_Sent,
                             SUM(CASE WHEN t.Transfer_Type = 'Return' AND (%s IS NULL OR t.Transfer_ID <> %s) THEN d.Qty_Transferred ELSE 0 END) as Total_Returned
                         FROM External_Transfer_Details d
@@ -881,7 +891,7 @@ class ExternalTransferManager:
                         JOIN Inventory_Batches b ON d.Batch_ID = b.Batch_ID
                         JOIN Products_Master p ON d.Product_ID = p.Product_ID
                         WHERE t.Partner_ID = %s AND t.Status = 'Completed'
-                        GROUP BY d.Product_ID, d.Batch_ID, b.Lot_Number, p.Product_Name, b.Expiry_Date, b.Location_ID, b.Internal_Barcode, p.Barcode, b.Quantity_Current
+                        GROUP BY d.Product_ID, d.Batch_ID, b.Lot_Number, p.Product_Name, b.Expiry_Date, b.Location_ID, b.Internal_Barcode, p.Barcode, b.Quantity_Current, b.Unit_Price_Received, b.Discount_Percent, b.Tax_Rate_Percent, p.Is_Billable
                         HAVING (Total_Sent - Total_Returned) > 0
                     """
                     cursor.execute(query, (exclude_return_transfer_id, exclude_return_transfer_id, partner_id))

@@ -22,7 +22,7 @@ Ce dossier regroupe tous les gestionnaires d'accès aux données (Managers), les
 - **`company_settings_manager.py`** : Configuration générale de l'entreprise, devise, seuils, cachets et paramètres globaux.
 - **`credit_note_manager.py`** : Gestion des avoirs fournisseurs suite aux retours de marchandises.
 - **`external_partners_manager.py`** : Gestion des partenaires externes (laboratoires confrères, cliniques partenaires).
-- **`external_transfer_manager.py`** : Gestion des bons de livraison (BL) et bons de retour (BR), unifié directement avec le répertoire central des Clients (`Clients`) avec repli transparent vers `External_Partners`.
+- **`external_transfer_manager.py`** : Gestion des bons de livraison (BL) et bons de retour (BR), unifié directement avec le répertoire central des Clients (`Clients`) avec repli transparent vers `External_Partners`, incluant la récupération des prix d'acquisition TTC, remises et TVA des lots retournables.
 - **`inventory_batch_manager.py`** : Gestion des lots en inventaire :
   - Traçabilité et lignage des lots (`Parent_Batch_ID`, `Batch_Type` : Standard Bulk vs Extracted Retail).
   - Extraction atomique de lots de détail (`extract_retail_batch`) avec déduction du lot parent et écriture de log `BULK_EXTRACTION`.

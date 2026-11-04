@@ -162,7 +162,7 @@ class InvoiceEditorWidget(QWidget):
 
         # الجدول
         self.table = QTableWidget(0, 7)
-        headers = ["Article", "Source (Stock)", "Quantité", "P.U", "Observation", "Total", ""]
+        headers = ["Article", "Source (Stock)", "Quantité", "P.U (TTC)", "Observation", "Total", ""]
         self.table.setHorizontalHeaderLabels(headers)
 
         h_header = self.table.horizontalHeader()
@@ -688,6 +688,67 @@ class InvoiceEditorWidget(QWidget):
         self.refresh_batches_cache(include_zero=bool(self.current_id))
         return True
 
+    def get_batch_unit_price_ttc(self, batch: dict) -> float:
+        """
+        حساب سعر الوحدة TTC (شامل الرسم على القيمة المضافة والخصم) ليمثل الكلفة الكاملة التي اقتني بها المنتج.
+        TTC = HT * (1 - Discount/100) * (1 + TVA/100)
+        """
+        if not batch:
+            return 0.0
+
+        # في حالة توفر سعر تحويل محدد مسبقاً (مثلاً في حالة الإرجاع)
+        if 'Transfer_Unit_Price' in batch and batch['Transfer_Unit_Price'] is not None:
+            try:
+                val = float(batch['Transfer_Unit_Price'])
+                if val > 0:
+                    return round(val, 2)
+            except (ValueError, TypeError):
+                pass
+
+        try:
+            p_ht = float(batch.get('Unit_Price_Received') or 0.0)
+        except (ValueError, TypeError):
+            p_ht = 0.0
+
+        try:
+            discount = float(batch.get('Discount_Percent') or 0.0)
+        except (ValueError, TypeError):
+            discount = 0.0
+
+        try:
+            tax_rate = float(batch.get('Tax_Rate_Percent') or 0.0)
+        except (ValueError, TypeError):
+            tax_rate = 0.0
+
+        # إذا كان السعر غير مسجل في هذه الدفعة (مثلاً 0)، نحاول البحث في دفعات أخرى لنفس المنتج في الذاكرة المؤقتة
+        if p_ht <= 0 and hasattr(self, 'batches_cache') and self.batches_cache:
+            p_id = batch.get('Product_ID')
+            for b in self.batches_cache:
+                if b.get('Product_ID') == p_id:
+                    try:
+                        other_ht = float(b.get('Unit_Price_Received') or 0.0)
+                        if other_ht > 0:
+                            p_ht = other_ht
+                            discount = float(b.get('Discount_Percent') or 0.0)
+                            tax_rate = float(b.get('Tax_Rate_Percent') or 0.0)
+                            break
+                    except (ValueError, TypeError):
+                        pass
+
+        # محاولة أخيرة من مدير المشتريات/الطلبيات إن كان متاحاً
+        if p_ht <= 0 and hasattr(self, 'manager') and hasattr(self.manager, 'po') and hasattr(self.manager.po, 'get_products_latest_stock_prices'):
+            try:
+                p_id = batch.get('Product_ID')
+                if p_id:
+                    prices_map = self.manager.po.get_products_latest_stock_prices([p_id])
+                    if p_id in prices_map and prices_map[p_id].get('Unit_Price_TTC', 0) > 0:
+                        return round(float(prices_map[p_id]['Unit_Price_TTC']), 2)
+            except Exception:
+                pass
+
+        p_ttc = p_ht * (1.0 - (discount / 100.0)) * (1.0 + (tax_rate / 100.0))
+        return round(p_ttc, 2)
+
     def add_batch_to_invoice(self, batch, initial_qty=1):
         if self.is_return_mode() and not self.is_return_batch_allowed(batch):
             QMessageBox.warning(self, "Attention", "Ce lot n'appartient pas au sous-traitant selectionne ou n'est plus disponible au retour.")
@@ -742,9 +803,11 @@ class InvoiceEditorWidget(QWidget):
         sb_qty = QSpinBox()
         sb_qty.setRange(1, max_allowed); sb_qty.setValue(initial_qty); sb_qty.setAlignment(Qt.AlignCenter)
 
-        unit_price = float(batch.get('Unit_Price_Received', 0)) if is_billable else 0.0
+        # حساب سعر الوحدة TTC (شامل التكاليف والضرائب)
+        unit_price = self.get_batch_unit_price_ttc(batch) if is_billable else 0.0
         sb_price = QDoubleSpinBox()
         sb_price.setRange(0, 1000000); sb_price.setValue(unit_price); sb_price.setGroupSeparatorShown(True)
+        sb_price.setToolTip("Prix unitaire TTC (coût d'acquisition)")
         if not is_billable:
             sb_price.setSpecialValueText("/")
             sb_price.setEnabled(False)
@@ -782,7 +845,7 @@ class InvoiceEditorWidget(QWidget):
                 current_index = i
         cb_source.setCurrentIndex(current_index)
         
-        def update_max_qty():
+        def on_batch_selection_changed():
             selected_b = cb_source.currentData()
             if not selected_b: return
             if getattr(self, 'transfer_type_mode', 'Outbound') == 'Return':
@@ -793,9 +856,16 @@ class InvoiceEditorWidget(QWidget):
                 prev_qty = quantity_to_int(self.current_transfer_qty_by_batch.get(selected_b['Batch_ID'], 0))
                 max_allow = curr_stock + prev_qty
             sb_qty.setRange(1, max(1, max_allow))
+
+            # تحديث السعر التلقائي للدفعة الجديدة إذا تغيرت من قبل المستخدم ولم نكن في وضع التحميل
+            if is_billable and not self.is_loading_transfer:
+                new_ttc = self.get_batch_unit_price_ttc(selected_b)
+                if new_ttc > 0:
+                    sb_price.setValue(new_ttc)
+
             self.persist_current_transfer()
             
-        cb_source.currentIndexChanged.connect(update_max_qty)
+        cb_source.currentIndexChanged.connect(on_batch_selection_changed)
 
         # وضع الـ Widgets في الجدول
         self.table.setCellWidget(row, 1, cb_source)
