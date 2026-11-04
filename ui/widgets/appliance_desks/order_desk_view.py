@@ -26,7 +26,9 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSpinBox,
+    QTabBar,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -226,18 +228,84 @@ class OrderDeskWidget(QWidget):
 
     def _init_ui(self) -> None:
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(10, 10, 10, 10)
-        root_layout.setSpacing(10)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
-        # 1. Top Multi-Scanner / Multi-Session Bar
+        # 0. Automatic Horizontal & Vertical Scroll Area ensuring all elements are fully visible
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setObjectName("OrderDeskScrollArea")
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setStyleSheet("""
+            QScrollArea#OrderDeskScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QWidget#OrderDeskContentWidget {
+                background-color: #F4F6F8;
+            }
+        """)
+
+        content_widget = QWidget()
+        content_widget.setObjectName("OrderDeskContentWidget")
+        content_widget.setMinimumWidth(1080)
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(10, 10, 10, 10)
+        content_layout.setSpacing(10)
+
+        # 1. Top Session Tabs Bar (Replacing the legacy static combo bar)
+        session_bar = self._create_session_tabs_bar()
+        content_layout.addWidget(session_bar)
+
+        # 2. Top Filter Bar (Relocated from the side panel to the top)
+        filter_bar = self._create_top_filter_bar()
+        content_layout.addWidget(filter_bar)
+
+        # 3. Main 2-Column Body: Catalog (Left) + Cart (Right)
+        body_layout = QHBoxLayout()
+        body_layout.setSpacing(10)
+        body_layout.addWidget(self._create_catalog_panel(), stretch=1)
+        body_layout.addWidget(self._create_cart_panel(), stretch=0)
+        content_layout.addLayout(body_layout, 1)
+
+        self.scroll_area.setWidget(content_widget)
+        root_layout.addWidget(self.scroll_area)
+
+    def _create_session_tabs_bar(self) -> QWidget:
         session_bar = QFrame()
-        session_bar.setObjectName("SessionBarFrame")
+        session_bar.setObjectName("SessionTabsBar")
         session_bar.setFixedHeight(48)
         session_bar.setStyleSheet("""
-            QFrame#SessionBarFrame {
+            QFrame#SessionTabsBar {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
+            }
+            QTabBar#SessionTabBar {
+                border-bottom: none;
+            }
+            QTabBar#SessionTabBar::tab {
+                background-color: #F1F5F9;
+                color: #475569;
+                font-weight: 700;
+                font-size: 12px;
+                padding: 6px 14px;
+                margin-right: 4px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                border: 1px solid #CBD5E1;
+                min-height: 24px;
+            }
+            QTabBar#SessionTabBar::tab:selected {
+                background-color: #0E7471;
+                color: #FFFFFF;
+                border-color: #0E7471;
+            }
+            QTabBar#SessionTabBar::tab:hover:!selected {
+                background-color: #E2E8F0;
+                color: #0F172A;
             }
             QLabel {
                 border: none;
@@ -245,32 +313,37 @@ class OrderDeskWidget(QWidget):
             }
         """)
         sb_layout = QHBoxLayout(session_bar)
-        sb_layout.setContentsMargins(14, 0, 14, 0)
+        sb_layout.setContentsMargins(10, 4, 12, 4)
         sb_layout.setSpacing(10)
 
         lbl_scan_icon = QLabel()
         lbl_scan_icon.setPixmap(get_duotone_icon("barcode_scan", 18).pixmap(18, 18))
         sb_layout.addWidget(lbl_scan_icon)
 
-        lbl_sess = QLabel("Sessions & Scanners :")
-        lbl_sess.setStyleSheet("font-size: 12px; font-weight: 700; color: #1E293B;")
-        sb_layout.addWidget(lbl_sess)
+        # Specialized Session Tabs
+        self.session_tab_bar = QTabBar()
+        self.session_tab_bar.setObjectName("SessionTabBar")
+        self.session_tab_bar.setDrawBase(False)
+        self.session_tab_bar.setUsesScrollButtons(True)
+        self.session_tab_bar.setTabsClosable(True)
+        self.session_tab_bar.setCursor(Qt.PointingHandCursor)
+        self.session_tab_bar.tabCloseRequested.connect(self._on_session_tab_close_requested)
+        self.session_tab_bar.currentChanged.connect(self._on_session_tab_switched)
 
-        self.cbo_session = QComboBox()
-        self.cbo_session.setFixedHeight(32)
-        self.cbo_session.setMinimumWidth(220)
-        for sid, sdata in self._sessions.items():
-            self.cbo_session.addItem(f"{sdata['label']} [{sdata['scanner_id']}]", sid)
-        self.cbo_session.currentIndexChanged.connect(self._on_session_switched)
-        sb_layout.addWidget(self.cbo_session)
+        self._sync_session_tabs()
+        sb_layout.addWidget(self.session_tab_bar)
 
-        btn_new_sess = QPushButton("Nouvelle Session")
+        # "+ Nouvelle Session" Button
+        btn_new_sess = QPushButton("+ Nouvelle Session")
+        btn_new_sess.setIcon(get_duotone_icon("barcode_scan", 14))
+        btn_new_sess.setIconSize(QSize(14, 14))
         btn_new_sess.setCursor(Qt.PointingHandCursor)
         btn_new_sess.setFixedHeight(32)
         btn_new_sess.setStyleSheet(PRIMARY_BTN_STYLE)
         btn_new_sess.clicked.connect(self._create_new_session)
         sb_layout.addWidget(btn_new_sess)
 
+        # "Associer Scanner USB" Button
         btn_bind_scanner = QPushButton("Associer Scanner USB")
         btn_bind_scanner.setIcon(get_duotone_icon("barcode_scan", 14))
         btn_bind_scanner.setIconSize(QSize(14, 14))
@@ -281,6 +354,8 @@ class OrderDeskWidget(QWidget):
         sb_layout.addWidget(btn_bind_scanner)
 
         sb_layout.addStretch()
+
+        # Scanner isolation badge
         self.lbl_scanner_status = QLabel("Isolation HID Active")
         self.lbl_scanner_status.setToolTip("Chaque scanner USB / HID est routé vers sa propre session")
         self.lbl_scanner_status.setStyleSheet(
@@ -288,24 +363,15 @@ class OrderDeskWidget(QWidget):
             "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 8px;"
         )
         sb_layout.addWidget(self.lbl_scanner_status)
-        root_layout.addWidget(session_bar)
 
-        # 2. Main 3-Column Body
-        body_layout = QHBoxLayout()
-        body_layout.setSpacing(10)
+        return session_bar
 
-        body_layout.addWidget(self._create_filter_panel(), stretch=0)
-        body_layout.addWidget(self._create_catalog_panel(), stretch=1)
-        body_layout.addWidget(self._create_cart_panel(), stretch=0)
-
-        root_layout.addLayout(body_layout, 1)
-
-    def _create_filter_panel(self) -> QWidget:
+    def _create_top_filter_bar(self) -> QWidget:
         panel = QFrame()
-        panel.setObjectName("OrderFilterPanel")
-        panel.setFixedWidth(170)
+        panel.setObjectName("OrderTopFilterBar")
+        panel.setFixedHeight(50)
         panel.setStyleSheet("""
-            QFrame#OrderFilterPanel {
+            QFrame#OrderTopFilterBar {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
@@ -314,37 +380,58 @@ class OrderDeskWidget(QWidget):
                 border: none;
                 background: transparent;
             }
+            QComboBox {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 5px;
+                padding: 3px 8px;
+                font-size: 12px;
+                color: #1E293B;
+            }
+            QComboBox:hover {
+                border-color: #0E7471;
+            }
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 5px;
+                padding: 3px 10px;
+                font-size: 12px;
+                color: #1E293B;
+            }
+            QLineEdit:focus {
+                border: 1.5px solid #0E7471;
+            }
         """)
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout = QHBoxLayout(panel)
+        layout.setContentsMargins(12, 0, 12, 0)
         layout.setSpacing(10)
 
-        header_row = QHBoxLayout()
-        header_row.setSpacing(6)
         f_icon = QLabel()
         f_icon.setPixmap(get_duotone_icon("filter", 16).pixmap(16, 16))
-        header_row.addWidget(f_icon)
-        title = QLabel("FILTRES CATALOGUE")
-        title.setStyleSheet("font-size: 11px; font-weight: 800; color: #0E7471; letter-spacing: 0.5px;")
-        header_row.addWidget(title)
-        header_row.addStretch()
-        layout.addLayout(header_row)
+        layout.addWidget(f_icon)
 
-        def make_field_label(text: str) -> QLabel:
-            lbl = QLabel(text)
+        title = QLabel("FILTRES :")
+        title.setStyleSheet("font-size: 11px; font-weight: 800; color: #0E7471; letter-spacing: 0.5px;")
+        layout.addWidget(title)
+
+        def make_lbl(txt: str) -> QLabel:
+            lbl = QLabel(txt)
             lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
             return lbl
 
-        layout.addWidget(make_field_label("Marque (Mark) :"))
+        layout.addWidget(make_lbl("Marque :"))
         self.cbo_mark = QComboBox()
         self.cbo_mark.setFixedHeight(34)
+        self.cbo_mark.setFixedWidth(115)
         self.cbo_mark.addItems(["Tous", "Bosch", "Samsung", "LG", "Brandt", "Condor", "Cristor", "Midea", "Moulinex"])
         self.cbo_mark.currentTextChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_mark)
 
-        layout.addWidget(make_field_label("Catégorie (Categorie) :"))
+        layout.addWidget(make_lbl("Catégorie :"))
         self.cbo_category = QComboBox()
         self.cbo_category.setFixedHeight(34)
+        self.cbo_category.setFixedWidth(155)
         self.cbo_category.addItems([
             "Tous",
             "Gros Électroménager",
@@ -358,52 +445,52 @@ class OrderDeskWidget(QWidget):
         self.cbo_category.currentTextChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_category)
 
-        layout.addWidget(make_field_label("Couleur (Coloure) :"))
+        layout.addWidget(make_lbl("Couleur :"))
         self.cbo_color = QComboBox()
         self.cbo_color.setFixedHeight(34)
+        self.cbo_color.setFixedWidth(95)
         self.cbo_color.addItems(["Tous", "Inox", "Blanc", "Noir", "Silver", "Gris"])
         self.cbo_color.currentTextChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_color)
 
-        btn_reset = QPushButton("Réinitialiser les filtres")
-        btn_reset.setIcon(get_duotone_icon("refresh", 14))
-        btn_reset.setIconSize(QSize(14, 14))
+        self.txt_search = QLineEdit()
+        self.txt_search.setFixedHeight(34)
+        self.txt_search.setMinimumWidth(170)
+        self.txt_search.setPlaceholderText("Rechercher désignation, marque, catégorie, code-barres...")
+        self.txt_search.textChanged.connect(self.refresh_catalog)
+        layout.addWidget(self.txt_search, 1)
+
+        btn_reset = QPushButton("Réinitialiser")
+        btn_reset.setIcon(get_duotone_icon("refresh", 13))
+        btn_reset.setIconSize(QSize(13, 13))
         btn_reset.setCursor(Qt.PointingHandCursor)
         btn_reset.setFixedHeight(34)
+        btn_reset.setFixedWidth(105)
         btn_reset.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         btn_reset.clicked.connect(self._reset_filters)
         layout.addWidget(btn_reset)
 
-        info_card = QFrame()
-        info_card.setObjectName("TheoreticalInfoCard")
-        info_card.setStyleSheet("""
-            QFrame#TheoreticalInfoCard {
-                background-color: #F8FAFC;
-                border: 1px solid #E2E8F0;
-                border-left: 3px solid #0E7471;
-                border-radius: 4px;
-            }
-            QLabel {
-                border: none;
-                background: transparent;
-            }
-        """)
-        info_layout = QVBoxLayout(info_card)
-        info_layout.setContentsMargins(10, 8, 10, 8)
-        info_layout.setSpacing(4)
-        lbl_info_title = QLabel("Vente Théorique (Order Desk)")
-        lbl_info_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #0E7471;")
-        info_layout.addWidget(lbl_info_title)
-        note_lbl = QLabel(
+        btn_refresh = QPushButton("Actualiser")
+        btn_refresh.setIcon(get_duotone_icon("refresh", 13))
+        btn_refresh.setIconSize(QSize(13, 13))
+        btn_refresh.setCursor(Qt.PointingHandCursor)
+        btn_refresh.setFixedHeight(34)
+        btn_refresh.setFixedWidth(95)
+        btn_refresh.setStyleSheet(OUTLINE_BTN_STYLE)
+        btn_refresh.clicked.connect(self.refresh_catalog)
+        layout.addWidget(btn_refresh)
+
+        lbl_info = QLabel("Vente Théorique")
+        lbl_info.setToolTip(
             "Ce bureau réserve uniquement le modèle et la quantité théorique sans bloquer de N° de Série physique.\n"
             "Le scan du N° de Série s'effectue exclusivement au Bureau de Sortie."
         )
-        note_lbl.setWordWrap(True)
-        note_lbl.setStyleSheet("font-size: 11px; color: #64748B;")
-        info_layout.addWidget(note_lbl)
-        layout.addWidget(info_card)
+        lbl_info.setStyleSheet(
+            "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #F8FAFC; "
+            "border: 1px solid #CBD5E1; border-left: 3px solid #0E7471; border-radius: 4px; padding: 4px 8px;"
+        )
+        layout.addWidget(lbl_info)
 
-        layout.addStretch()
         return panel
 
     def _create_catalog_panel(self) -> QWidget:
@@ -421,26 +508,19 @@ class OrderDeskWidget(QWidget):
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
-        top_bar = QHBoxLayout()
-        top_bar.setSpacing(8)
-        self.txt_search = QLineEdit()
-        self.txt_search.setFixedHeight(36)
-        self.txt_search.setPlaceholderText("Rechercher désignation, marque, catégorie, code-barres...")
-        self.txt_search.textChanged.connect(self.refresh_catalog)
-        top_bar.addWidget(self.txt_search, 1)
-
-        btn_refresh = QPushButton("Actualiser")
-        btn_refresh.setIcon(get_duotone_icon("refresh", 14))
-        btn_refresh.setIconSize(QSize(14, 14))
-        btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(36)
-        btn_refresh.setStyleSheet(OUTLINE_BTN_STYLE)
-        btn_refresh.clicked.connect(self.refresh_catalog)
-        top_bar.addWidget(btn_refresh)
-        layout.addLayout(top_bar)
+        cat_header = QHBoxLayout()
+        cat_header.setSpacing(8)
+        cat_icon = QLabel()
+        cat_icon.setPixmap(get_duotone_icon("pos", 16).pixmap(16, 16))
+        cat_header.addWidget(cat_icon)
+        lbl_cat_title = QLabel("Catalogue des Produits Disponibles")
+        lbl_cat_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        cat_header.addWidget(lbl_cat_title)
+        cat_header.addStretch()
+        layout.addLayout(cat_header)
 
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels([
@@ -456,7 +536,7 @@ class OrderDeskWidget(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(38)
         self.table.horizontalHeader().setFixedHeight(38)
-        self.table.horizontalHeader().setMinimumSectionSize(56)
+        self.table.horizontalHeader().setMinimumSectionSize(52)
         self.table.setShowGrid(True)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -470,21 +550,24 @@ class OrderDeskWidget(QWidget):
         self.table.horizontalHeaderItem(5).setTextAlignment(Qt.AlignCenter)
         self.table.horizontalHeaderItem(6).setTextAlignment(Qt.AlignCenter)
 
-        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # Automatic horizontal scrollbar as needed to prevent any clipping
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
         h = self.table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 70)
+        self.table.setColumnWidth(0, 85)
         h.setSectionResizeMode(1, QHeaderView.Stretch)
         h.setSectionResizeMode(2, QHeaderView.Interactive)
-        self.table.setColumnWidth(2, 88)
+        self.table.setColumnWidth(2, 110)
         h.setSectionResizeMode(3, QHeaderView.Interactive)
-        self.table.setColumnWidth(3, 62)
+        self.table.setColumnWidth(3, 75)
         h.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 36)
+        self.table.setColumnWidth(4, 52)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 42)
+        self.table.setColumnWidth(5, 52)
         h.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 88)
+        self.table.setColumnWidth(6, 115)
 
         layout.addWidget(self.table, 1)
         return panel
@@ -492,7 +575,8 @@ class OrderDeskWidget(QWidget):
     def _create_cart_panel(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("OrderCartPanel")
-        panel.setFixedWidth(330)
+        panel.setMinimumWidth(320)
+        panel.setMaximumWidth(380)
         panel.setStyleSheet("""
             QFrame#OrderCartPanel {
                 background-color: #FFFFFF;
@@ -553,6 +637,7 @@ class OrderDeskWidget(QWidget):
         self.cbo_client = QComboBox()
         self.cbo_client.setFixedHeight(34)
         self._load_clients_into_combo()
+        self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
         client_row.addWidget(self.cbo_client, stretch=1)
         layout.addLayout(client_row)
 
@@ -567,15 +652,16 @@ class OrderDeskWidget(QWidget):
         self.cart_table.setAlternatingRowColors(True)
         self.cart_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.cart_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.cart_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.cart_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.cart_table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         ch = self.cart_table.horizontalHeader()
         ch.setSectionResizeMode(0, QHeaderView.Stretch)
         ch.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.cart_table.setColumnWidth(1, 52)
+        self.cart_table.setColumnWidth(1, 55)
         ch.setSectionResizeMode(2, QHeaderView.Fixed)
         self.cart_table.setColumnWidth(2, 75)
         ch.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(3, 85)
+        self.cart_table.setColumnWidth(3, 95)
         self.cart_table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.cart_table.horizontalHeaderItem(1).setTextAlignment(Qt.AlignCenter)
         self.cart_table.horizontalHeaderItem(2).setTextAlignment(Qt.AlignCenter)
@@ -648,6 +734,12 @@ class OrderDeskWidget(QWidget):
 
         layout.addLayout(sec_row)
         return panel
+
+    def _on_client_changed(self, idx: int) -> None:
+        if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
+            cid = self.cbo_client.currentData()
+            if cid is not None:
+                self._sessions[self._active_session_id]["client_id"] = int(cid)
 
     def _load_clients_into_combo(self) -> None:
         self.cbo_client.clear()
@@ -789,15 +881,86 @@ class OrderDeskWidget(QWidget):
             self.table.setCellWidget(row, 6, cell_widget)
 
     # =========================================================================
-    # MULTI-SESSION & MULTI-SCANNER ROUTING
+    # MULTI-SESSION & MULTI-SCANNER ROUTING (Tabs & HID Isolation)
     # =========================================================================
 
-    def _on_session_switched(self, idx: int) -> None:
-        sid = self.cbo_session.itemData(idx)
+    def _sync_session_tabs(self) -> None:
+        """Synchronizes the session tab bar with the active sessions dictionary."""
+        if not hasattr(self, "session_tab_bar"):
+            return
+        self.session_tab_bar.blockSignals(True)
+        while self.session_tab_bar.count() > 0:
+            self.session_tab_bar.removeTab(0)
+        target_idx = 0
+        for idx, (sid, sdata) in enumerate(self._sessions.items()):
+            label_text = f"{sdata['label']} [{sdata['scanner_id']}]"
+            tab_pos = self.session_tab_bar.addTab(get_duotone_icon("barcode_scan", 14), label_text)
+            self.session_tab_bar.setTabData(tab_pos, sid)
+            if sid == self._active_session_id:
+                target_idx = tab_pos
+        self.session_tab_bar.setCurrentIndex(target_idx)
+        self.session_tab_bar.blockSignals(False)
+
+    def _on_session_tab_switched(self, idx: int) -> None:
+        if idx < 0 or not hasattr(self, "session_tab_bar") or idx >= self.session_tab_bar.count():
+            return
+        sid = self.session_tab_bar.tabData(idx)
         if sid and sid in self._sessions:
             self._active_session_id = sid
             sdata = self._sessions[sid]
             self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
+            if hasattr(self, "cbo_client"):
+                cid = sdata.get("client_id", 1)
+                c_idx = self.cbo_client.findData(cid)
+                if c_idx >= 0:
+                    self.cbo_client.blockSignals(True)
+                    self.cbo_client.setCurrentIndex(c_idx)
+                    self.cbo_client.blockSignals(False)
+            self._refresh_cart_ui()
+
+    def _on_session_switched(self, idx: int) -> None:
+        """Legacy compatibility wrapper forwarding to tab switch."""
+        self._on_session_tab_switched(idx)
+
+    def _on_session_tab_close_requested(self, index: int) -> None:
+        if self.session_tab_bar.count() <= 1:
+            QMessageBox.information(
+                self,
+                "Fermeture Impossible",
+                "Vous devez conserver au moins une session active pour les commandes.",
+            )
+            return
+
+        sid = self.session_tab_bar.tabData(index)
+        sdata = self._sessions.get(sid)
+        if not sdata:
+            return
+
+        if sdata.get("cart"):
+            reply = QMessageBox.question(
+                self,
+                "Confirmer la fermeture",
+                f"Le panier de '{sdata['label']}' contient des articles en cours.\n"
+                "Voulez-vous vraiment fermer cette session et perdre son contenu ?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+
+        self.hid_manager.unbind_scanner(sdata["scanner_id"])
+        del self._sessions[sid]
+
+        self.session_tab_bar.blockSignals(True)
+        self.session_tab_bar.removeTab(index)
+        self.session_tab_bar.blockSignals(False)
+
+        new_idx = min(index, self.session_tab_bar.count() - 1)
+        self.session_tab_bar.setCurrentIndex(new_idx)
+        new_sid = self.session_tab_bar.tabData(new_idx)
+        if new_sid and new_sid in self._sessions:
+            self._active_session_id = new_sid
+            self.lbl_cart_header.setText(f"Panier — {self._sessions[new_sid]['label']}")
             self._refresh_cart_ui()
 
     def _create_new_session(self) -> None:
@@ -815,8 +978,12 @@ class OrderDeskWidget(QWidget):
         self.hid_manager.register_session_callback(
             sid, lambda dev_id, code, target_sid=sid: self._on_scanner_input_for_session(target_sid, dev_id, code)
         )
-        self.cbo_session.addItem(f"{label} [{scanner_id}]", sid)
-        self.cbo_session.setCurrentIndex(self.cbo_session.count() - 1)
+        tab_idx = self.session_tab_bar.addTab(
+            get_duotone_icon("barcode_scan", 14),
+            f"{label} [{scanner_id}]"
+        )
+        self.session_tab_bar.setTabData(tab_idx, sid)
+        self.session_tab_bar.setCurrentIndex(tab_idx)
 
     def _prompt_scanner_binding(self) -> None:
         sdata = self._sessions[self._active_session_id]
@@ -831,9 +998,40 @@ class OrderDeskWidget(QWidget):
             self.hid_manager.unbind_scanner(sdata["scanner_id"])
             sdata["scanner_id"] = new_dev
             self.hid_manager.bind_scanner_to_session(new_dev, self._active_session_id)
-            curr_idx = self.cbo_session.currentIndex()
-            self.cbo_session.setItemText(curr_idx, f"{sdata['label']} [{new_dev}]")
+            curr_idx = self.session_tab_bar.currentIndex()
+            if curr_idx >= 0:
+                self.session_tab_bar.setTabText(curr_idx, f"{sdata['label']} [{new_dev}]")
             self.lbl_scanner_status.setText(f"Scanner [{new_dev}] associé à {sdata['label']}")
+
+    @property
+    def cbo_session(self):
+        """Compatibility adapter property providing legacy combobox interface to session tabs."""
+        outer = self
+
+        class _CboSessionAdapter:
+            def currentIndex(self):
+                return outer.session_tab_bar.currentIndex() if hasattr(outer, "session_tab_bar") else 0
+
+            def itemData(self, idx):
+                return outer.session_tab_bar.tabData(idx) if hasattr(outer, "session_tab_bar") else None
+
+            def count(self):
+                return outer.session_tab_bar.count() if hasattr(outer, "session_tab_bar") else 0
+
+            def setCurrentIndex(self, idx):
+                if hasattr(outer, "session_tab_bar"):
+                    outer.session_tab_bar.setCurrentIndex(idx)
+
+            def addItem(self, text, sid):
+                if hasattr(outer, "session_tab_bar"):
+                    t_idx = outer.session_tab_bar.addTab(get_duotone_icon("barcode_scan", 14), text)
+                    outer.session_tab_bar.setTabData(t_idx, sid)
+
+            def setItemText(self, idx, text):
+                if hasattr(outer, "session_tab_bar") and 0 <= idx < outer.session_tab_bar.count():
+                    outer.session_tab_bar.setTabText(idx, text)
+
+        return _CboSessionAdapter()
 
     def _on_scanner_input_for_session(self, session_id: str, device_id: str, barcode: str) -> None:
         """Routes a barcode scan directly into its bound session's cart without disturbing other sessions."""
