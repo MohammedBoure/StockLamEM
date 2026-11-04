@@ -4,7 +4,7 @@ import os
 import logging
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QStackedWidget, QLabel, QPushButton, QFrame, QButtonGroup,
-                               QTabWidget, QMessageBox, QApplication)
+                               QTabWidget, QMessageBox, QApplication, QScrollArea)
 from PySide6.QtCore import Qt, QSize, QFile, QTextStream, QPropertyAnimation, QEasingCurve, QParallelAnimationGroup
 from PySide6.QtGui import QPixmap, QIcon
 import qtawesome as qta
@@ -323,19 +323,36 @@ class MainWindow(QMainWindow):
             (4, "Paramètres", "settings"),
         ]
 
+        nav_scroll = QScrollArea()
+        nav_scroll.setObjectName("sidebar_scroll")
+        nav_scroll.setFrameShape(QFrame.NoFrame)
+        nav_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        nav_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        nav_scroll.setWidgetResizable(True)
+        nav_scroll.setStyleSheet("QScrollArea#sidebar_scroll { background: transparent; border: none; }")
+
+        nav_widget = QWidget()
+        nav_widget.setObjectName("sidebar_nav_widget")
+        nav_widget.setStyleSheet("background: transparent; border: none;")
+        nav_layout = QVBoxLayout(nav_widget)
+        nav_layout.setContentsMargins(0, 0, 0, 0)
+        nav_layout.setSpacing(2)
+
         for btn_id, text, icon_key in buttons_info:
             icon = get_duotone_icon(icon_key, size=64)
             btn = QPushButton(text)
             btn.setIcon(icon)
-            btn.setIconSize(QSize(24, 24))
+            btn.setIconSize(QSize(22, 22))
             btn.setCheckable(True)
             btn.setProperty("class", "nav_button")
             btn.setCursor(Qt.PointingHandCursor)
             self.button_texts[btn] = text
             self.nav_group.addButton(btn, btn_id)
-            sidebar_layout.addWidget(btn)
+            nav_layout.addWidget(btn)
 
-        sidebar_layout.addStretch()
+        nav_layout.addStretch()
+        nav_scroll.setWidget(nav_widget)
+        sidebar_layout.addWidget(nav_scroll, 1)
 
         self.btn_logout = QPushButton("Déconnexion")
         self.btn_logout.setIcon(get_duotone_icon("logout", size=48))

@@ -699,14 +699,15 @@ QPushButton[class="nav_button"]:checked {
    الوضع الكبير (Expanded)
    ========================================================== */
 QFrame[state="expanded"] QPushButton[class="nav_button"] {
-    padding: 12px 20px;
-    margin: 4px 15px;
+    padding: 7px 14px;
+    margin: 1px 10px;
     text-align: left;
 }
 
 /* في الوضع الكبير: فقط النص يتغير */
 QFrame[state="expanded"] QPushButton[class="nav_button"]:checked {
-    padding: 12px 20px; /* الحفاظ على نفس المسافة */
+    padding: 7px 14px;
+    margin: 1px 10px;
 }
 
 /* ==========================================================
@@ -714,10 +715,10 @@ QFrame[state="expanded"] QPushButton[class="nav_button"]:checked {
    ========================================================== */
 QFrame[state="compact"] QPushButton[class="nav_button"] {
     padding: 0px;
-    margin: 8px 10px;
+    margin: 3px 8px;
     text-align: center;
-    height: 40px;
-    border-radius: 8px;
+    height: 36px;
+    border-radius: 6px;
 }
 
 QFrame[state="compact"] QPushButton[class="nav_button"]:hover {
@@ -742,15 +743,15 @@ QPushButton[class="logout_button"] {
 
 QFrame[state="expanded"] QPushButton[class="logout_button"] {
     text-align: left;
-    padding: 12px 20px;
-    margin-top: 20px;
+    padding: 8px 14px;
+    margin: 2px 10px 4px 10px;
 }
 
 QFrame[state="compact"] QPushButton[class="logout_button"] {
     text-align: center;
     padding: 0px;
-    margin: 10px;
-    height: 40px;
+    margin: 3px 8px 4px 8px;
+    height: 36px;
 }
 
 QPushButton[class="logout_button"]:hover {

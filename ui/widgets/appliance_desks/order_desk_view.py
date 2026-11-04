@@ -52,7 +52,7 @@ TABLE_STYLE = """
         color: #0F172A;
         font-weight: 700;
         font-size: 12px;
-        padding: 6px 10px;
+        padding: 6px 4px;
         border: none;
         border-bottom: 2px solid #0E7471;
         border-right: 1px solid #E2E8F0;
@@ -103,6 +103,92 @@ SLATE_OUTLINE_BTN_STYLE = """
     }
     QPushButton:hover { background-color: #F8FAFC; border-color: #94A3B8; color: #0F172A; }
 """
+
+
+class CartQtyStepper(QWidget):
+    """Compact and tactile +/- quantity stepper for cart items, eliminating raw Qt SpinBox borders."""
+    qtyChanged = Signal(int)
+
+    def __init__(self, qty: int, max_qty: int = 999, parent=None):
+        super().__init__(parent)
+        self._qty = qty
+        self._max = max(1, max_qty)
+        self._init_ui()
+
+    def _init_ui(self) -> None:
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        layout.setAlignment(Qt.AlignCenter)
+
+        self.btn_minus = QPushButton("−")
+        self.btn_minus.setFixedSize(22, 22)
+        self.btn_minus.setCursor(Qt.PointingHandCursor)
+        self.btn_minus.setStyleSheet("""
+            QPushButton {
+                background-color: #F1F5F9;
+                color: #334155;
+                font-weight: 800;
+                font-size: 13px;
+                border: 1px solid #CBD5E1;
+                border-radius: 4px;
+                padding: 0;
+            }
+            QPushButton:hover {
+                background-color: #E2E8F0;
+                color: #0F172A;
+                border-color: #94A3B8;
+            }
+            QPushButton:pressed {
+                background-color: #CBD5E1;
+            }
+        """)
+        self.btn_minus.clicked.connect(self._decrement)
+        layout.addWidget(self.btn_minus)
+
+        self.lbl_qty = QLabel(str(self._qty))
+        self.lbl_qty.setFixedWidth(24)
+        self.lbl_qty.setAlignment(Qt.AlignCenter)
+        self.lbl_qty.setStyleSheet(
+            "font-size: 12px; font-weight: 700; color: #0F172A; background: transparent; border: none;"
+        )
+        layout.addWidget(self.lbl_qty)
+
+        self.btn_plus = QPushButton("+")
+        self.btn_plus.setFixedSize(22, 22)
+        self.btn_plus.setCursor(Qt.PointingHandCursor)
+        self.btn_plus.setStyleSheet("""
+            QPushButton {
+                background-color: #E6F4F1;
+                color: #0E7471;
+                font-weight: 800;
+                font-size: 13px;
+                border: 1px solid #BCE3DC;
+                border-radius: 4px;
+                padding: 0;
+            }
+            QPushButton:hover {
+                background-color: #CCEBE5;
+                border-color: #0E7471;
+            }
+            QPushButton:pressed {
+                background-color: #B2DFDB;
+            }
+        """)
+        self.btn_plus.clicked.connect(self._increment)
+        layout.addWidget(self.btn_plus)
+
+    def _decrement(self) -> None:
+        if self._qty > 1:
+            self._qty -= 1
+            self.lbl_qty.setText(str(self._qty))
+            self.qtyChanged.emit(self._qty)
+
+    def _increment(self) -> None:
+        if self._qty < self._max:
+            self._qty += 1
+            self.lbl_qty.setText(str(self._qty))
+            self.qtyChanged.emit(self._qty)
 
 
 class OrderDeskWidget(QWidget):
@@ -166,7 +252,7 @@ class OrderDeskWidget(QWidget):
         lbl_scan_icon.setPixmap(get_duotone_icon("barcode_scan", 18).pixmap(18, 18))
         sb_layout.addWidget(lbl_scan_icon)
 
-        lbl_sess = QLabel("Sessions & Scanners Multiples (Multi-Session) :")
+        lbl_sess = QLabel("Sessions & Scanners :")
         lbl_sess.setStyleSheet("font-size: 12px; font-weight: 700; color: #1E293B;")
         sb_layout.addWidget(lbl_sess)
 
@@ -195,10 +281,11 @@ class OrderDeskWidget(QWidget):
         sb_layout.addWidget(btn_bind_scanner)
 
         sb_layout.addStretch()
-        self.lbl_scanner_status = QLabel("Isolation HID active : chaque scanner est routé vers sa session")
+        self.lbl_scanner_status = QLabel("Isolation HID Active")
+        self.lbl_scanner_status.setToolTip("Chaque scanner USB / HID est routé vers sa propre session")
         self.lbl_scanner_status.setStyleSheet(
             "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #E6F4F1; "
-            "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 10px;"
+            "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 8px;"
         )
         sb_layout.addWidget(self.lbl_scanner_status)
         root_layout.addWidget(session_bar)
@@ -207,17 +294,16 @@ class OrderDeskWidget(QWidget):
         body_layout = QHBoxLayout()
         body_layout.setSpacing(10)
 
-        body_layout.addWidget(self._create_filter_panel(), stretch=2)
-        body_layout.addWidget(self._create_catalog_panel(), stretch=6)
-        body_layout.addWidget(self._create_cart_panel(), stretch=4)
+        body_layout.addWidget(self._create_filter_panel(), stretch=0)
+        body_layout.addWidget(self._create_catalog_panel(), stretch=1)
+        body_layout.addWidget(self._create_cart_panel(), stretch=0)
 
         root_layout.addLayout(body_layout, 1)
 
     def _create_filter_panel(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("OrderFilterPanel")
-        panel.setMinimumWidth(210)
-        panel.setMaximumWidth(250)
+        panel.setFixedWidth(170)
         panel.setStyleSheet("""
             QFrame#OrderFilterPanel {
                 background-color: #FFFFFF;
@@ -342,7 +428,7 @@ class OrderDeskWidget(QWidget):
         top_bar.setSpacing(8)
         self.txt_search = QLineEdit()
         self.txt_search.setFixedHeight(36)
-        self.txt_search.setPlaceholderText("Rechercher par Désignation (Name), Marque (Mark), Catégorie, Couleur ou Code-barres...")
+        self.txt_search.setPlaceholderText("Rechercher désignation, marque, catégorie, code-barres...")
         self.txt_search.textChanged.connect(self.refresh_catalog)
         top_bar.addWidget(self.txt_search, 1)
 
@@ -384,14 +470,21 @@ class OrderDeskWidget(QWidget):
         self.table.horizontalHeaderItem(5).setTextAlignment(Qt.AlignCenter)
         self.table.horizontalHeaderItem(6).setTextAlignment(Qt.AlignCenter)
 
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 135)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        h = self.table.horizontalHeader()
+        h.setSectionResizeMode(0, QHeaderView.Interactive)
+        self.table.setColumnWidth(0, 70)
+        h.setSectionResizeMode(1, QHeaderView.Stretch)
+        h.setSectionResizeMode(2, QHeaderView.Interactive)
+        self.table.setColumnWidth(2, 88)
+        h.setSectionResizeMode(3, QHeaderView.Interactive)
+        self.table.setColumnWidth(3, 62)
+        h.setSectionResizeMode(4, QHeaderView.Fixed)
+        self.table.setColumnWidth(4, 36)
+        h.setSectionResizeMode(5, QHeaderView.Fixed)
+        self.table.setColumnWidth(5, 42)
+        h.setSectionResizeMode(6, QHeaderView.Fixed)
+        self.table.setColumnWidth(6, 88)
 
         layout.addWidget(self.table, 1)
         return panel
@@ -399,7 +492,7 @@ class OrderDeskWidget(QWidget):
     def _create_cart_panel(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("OrderCartPanel")
-        panel.setMinimumWidth(330)
+        panel.setFixedWidth(330)
         panel.setStyleSheet("""
             QFrame#OrderCartPanel {
                 background-color: #FFFFFF;
@@ -422,7 +515,7 @@ class OrderDeskWidget(QWidget):
         c_icon.setPixmap(get_duotone_icon("pos", 18).pixmap(18, 18))
         header_row.addWidget(c_icon)
 
-        self.lbl_cart_header = QLabel("Panier Théorique — Session Vente #1")
+        self.lbl_cart_header = QLabel("Panier — Session #1")
         self.lbl_cart_header.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         header_row.addWidget(self.lbl_cart_header)
         header_row.addStretch()
@@ -473,11 +566,20 @@ class OrderDeskWidget(QWidget):
         self.cart_table.setShowGrid(True)
         self.cart_table.setAlternatingRowColors(True)
         self.cart_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.cart_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(2, 65)
-        self.cart_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.cart_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.cart_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        ch = self.cart_table.horizontalHeader()
+        ch.setSectionResizeMode(0, QHeaderView.Stretch)
+        ch.setSectionResizeMode(1, QHeaderView.Interactive)
+        self.cart_table.setColumnWidth(1, 52)
+        ch.setSectionResizeMode(2, QHeaderView.Fixed)
+        self.cart_table.setColumnWidth(2, 75)
+        ch.setSectionResizeMode(3, QHeaderView.Fixed)
+        self.cart_table.setColumnWidth(3, 85)
+        self.cart_table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.cart_table.horizontalHeaderItem(1).setTextAlignment(Qt.AlignCenter)
+        self.cart_table.horizontalHeaderItem(2).setTextAlignment(Qt.AlignCenter)
+        self.cart_table.horizontalHeaderItem(3).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self.cart_table, 1)
 
         # Delivery info for Bon de Livraison
@@ -526,7 +628,7 @@ class OrderDeskWidget(QWidget):
         sec_row = QHBoxLayout()
         sec_row.setSpacing(8)
 
-        btn_credit = QPushButton("Bon Crédit (Accord Admin)")
+        btn_credit = QPushButton("Bon Crédit (Admin)")
         btn_credit.setIcon(get_duotone_icon("shield_admin", 15))
         btn_credit.setIconSize(QSize(15, 15))
         btn_credit.setCursor(Qt.PointingHandCursor)
@@ -649,10 +751,11 @@ class OrderDeskWidget(QWidget):
             it_phys.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(row, 4, it_phys)
 
-            it_avail = QTableWidgetItem(f"{avail} dispo")
+            it_avail = QTableWidgetItem(str(avail))
             it_avail.setTextAlignment(Qt.AlignCenter)
             it_avail.setForeground(QColor("#16A34A" if avail > 0 else "#94A3B8"))
             it_avail.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            it_avail.setToolTip(f"Quantité disponible : {avail}")
             self.table.setItem(row, 5, it_avail)
 
             btn = QPushButton(f"+ {format_money(price)}")
@@ -694,7 +797,7 @@ class OrderDeskWidget(QWidget):
         if sid and sid in self._sessions:
             self._active_session_id = sid
             sdata = self._sessions[sid]
-            self.lbl_cart_header.setText(f"Panier Théorique — {sdata['label']}")
+            self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
             self._refresh_cart_ui()
 
     def _create_new_session(self) -> None:
@@ -804,12 +907,12 @@ class OrderDeskWidget(QWidget):
             it_col.setTextAlignment(Qt.AlignCenter)
             self.cart_table.setItem(row, 1, it_col)
 
-            spn = QSpinBox()
-            spn.setMinimum(1)
-            spn.setMaximum(max(1, int(item.get("max_avail") or 99)))
-            spn.setValue(int(item["quantity"]))
-            spn.valueChanged.connect(lambda val, i=idx: self._update_line_qty(i, val))
-            self.cart_table.setCellWidget(row, 2, spn)
+            stepper = CartQtyStepper(
+                qty=int(item["quantity"]),
+                max_qty=int(item.get("max_avail") or 99),
+            )
+            stepper.qtyChanged.connect(lambda val, i=idx: self._update_line_qty(i, val))
+            self.cart_table.setCellWidget(row, 2, stepper)
 
             it_tot = QTableWidgetItem(f"{format_money(line_tot)} DA")
             it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -822,7 +925,12 @@ class OrderDeskWidget(QWidget):
         cart = self._sessions[self._active_session_id]["cart"]
         if 0 <= index < len(cart):
             cart[index]["quantity"] = int(new_qty)
-            self._refresh_cart_ui()
+            line_tot = cart[index]["unit_price_ttc"] * cart[index]["quantity"]
+            it_tot = self.cart_table.item(index, 3)
+            if it_tot:
+                it_tot.setText(f"{format_money(line_tot)} DA")
+            total_ttc = sum(it["unit_price_ttc"] * it["quantity"] for it in cart)
+            self.lbl_total.setText(f"{format_money(total_ttc)} DA")
 
     def _clear_current_cart(self) -> None:
         self._sessions[self._active_session_id]["cart"] = []

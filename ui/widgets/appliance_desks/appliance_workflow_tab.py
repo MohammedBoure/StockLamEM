@@ -140,8 +140,8 @@ class ApplianceWorkflowTab(QWidget):
                 color: #475569;
                 border: 1px solid #DDE3EA;
                 border-bottom: none;
-                padding: 9px 18px;
-                margin-right: 4px;
+                padding: 7px 12px;
+                margin-right: 3px;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
                 font-size: 12px;
@@ -185,17 +185,17 @@ class ApplianceWorkflowTab(QWidget):
         self.desk_tabs.addTab(
             self.order_desk,
             get_duotone_icon("pos", 18),
-            "1. Bureau des Commandes (Order Desk)",
+            "1. Commandes (Order Desk)",
         )
         self.desk_tabs.addTab(
             self.cashier_desk,
             get_duotone_icon("payment", 18),
-            "2. Bureau Caisse / Règlements",
+            "2. Caisse && Règlements",
         )
         self.desk_tabs.addTab(
             self.dispatch_desk,
             get_duotone_icon("barcode_scan", 18),
-            "3. Bureau de Sortie (Bon de Sortie)",
+            "3. Sortie Magasin (Dispatch)",
         )
         self.desk_tabs.addTab(
             self.sav_desk,
@@ -205,7 +205,7 @@ class ApplianceWorkflowTab(QWidget):
         self.desk_tabs.addTab(
             self.batch_registry_desk,
             get_duotone_icon("edit_lots", 18),
-            "5. Lots / N° de Série (Batches)",
+            "5. Traçabilité && Lots",
         )
 
         layout.addWidget(self.desk_tabs, 1)

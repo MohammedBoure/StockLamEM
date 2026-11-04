@@ -231,8 +231,9 @@ DUOTONE_SVGS: Dict[str, str] = {
     </svg>''',
 
     "payment_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="1" y="4" width="22" height="16" rx="2"/>
-        <line x1="1" y1="10" x2="23" y2="10"/>
+        <rect x="2" y="5" width="20" height="14" rx="2"/>
+        <line x1="2" y1="10" x2="22" y2="10"/>
+        <rect x="5" y="14" width="4" height="2" fill="#FFFFFF"/>
     </svg>''',
 
     "statement": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
