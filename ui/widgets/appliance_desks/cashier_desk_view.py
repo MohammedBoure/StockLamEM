@@ -614,8 +614,15 @@ class CashierDeskWidget(QWidget):
 
             self.queue_table.setItem(row, 1, QTableWidgetItem(str(ord_item.get("Client_Name") or "")))
 
-            it_type = QTableWidgetItem(str(ord_item.get("Bond_Type") or "BON_C"))
+            raw_type = str(ord_item.get("Bond_Type") or "BON_C")
+            type_labels = {
+                "BON_C": "Bon C (Direct)",
+                "BON_CREDIT": "Bon Crédit",
+                "BON_LIVRAISON": "Bon de Livraison",
+            }
+            it_type = QTableWidgetItem(type_labels.get(raw_type, raw_type))
             it_type.setTextAlignment(Qt.AlignCenter)
+            it_type.setFont(QFont("Segoe UI", 9, QFont.Bold))
             self.queue_table.setItem(row, 2, it_type)
 
             it_ttc = QTableWidgetItem(f"{format_money(float(ord_item.get('Total_Amount_TTC') or 0.0))} DA")
@@ -623,8 +630,16 @@ class CashierDeskWidget(QWidget):
             it_ttc.setFont(QFont("Segoe UI", 10, QFont.Bold))
             self.queue_table.setItem(row, 3, it_ttc)
 
-            it_st = QTableWidgetItem(str(ord_item.get("Status") or ""))
+            raw_status = str(ord_item.get("Status") or "")
+            status_labels = {
+                "CONFIRMED_PENDING_PAYMENT": "En attente règlement",
+                "PAID_PENDING_DISPATCH": "Payé / Prêt Sortie",
+                "PARTIALLY_PAID": "Acompte versé",
+            }
+            it_st = QTableWidgetItem(status_labels.get(raw_status, raw_status))
             it_st.setTextAlignment(Qt.AlignCenter)
+            it_st.setForeground(QColor("#D97706" if "PENDING_PAYMENT" in raw_status else "#0E7471"))
+            it_st.setFont(QFont("Segoe UI", 9, QFont.Bold))
             self.queue_table.setItem(row, 4, it_st)
 
         if orders and self.queue_table.rowCount() > 0:

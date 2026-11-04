@@ -317,7 +317,7 @@ class MainWindow(QMainWindow):
             (11, "Vente en Gros B2B", "wholesale"),
             (12, "Historique Ventes", "sales_history"),
             (13, "Créances Clients", "debts"),
-            (14, "Bureaux && SAV", "pos"),
+            (14, "Bureaux && SAV", "barcode_scan"),
             (7, "Traçabilité", "history"),
             (5, "Utilisateurs", "users"),
             (4, "Paramètres", "settings"),

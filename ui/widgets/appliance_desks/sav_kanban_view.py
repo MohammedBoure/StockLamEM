@@ -64,7 +64,7 @@ class IrreparableDefectModal(QDialog):
         parent=None,
     ):
         super().__init__(parent)
-        self.setWindowTitle("آلية عدم إمكانية الإصلاح - تعويض Versement Virtuel")
+        self.setWindowTitle("Appareil Irréparable — Compensation Versement Virtuel")
         self.setFixedSize(520, 420)
         self.setStyleSheet(
             "QDialog { background-color: #FFFFFF; color: #0F172A; }"
@@ -81,7 +81,7 @@ class IrreparableDefectModal(QDialog):
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(12)
 
-        lbl_header = QLabel("تعذر إصلاح العطل - تعويض برصيد افتراضي (Versement Virtuel)")
+        lbl_header = QLabel("Constat d'Irréparabilité — Avoir Portefeuille (Versement Virtuel)")
         lbl_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
         lbl_header.setStyleSheet("color: #DC2626;")
         layout.addWidget(lbl_header)
@@ -94,19 +94,19 @@ class IrreparableDefectModal(QDialog):
         d_layout = QVBoxLayout(details_frame)
         d_layout.setContentsMargins(12, 10, 12, 10)
         details = QLabel(
-            f"تذكرة الصيانة: <b>{ticket_id}</b> | الزبون: <b>{client_name}</b><br>"
-            f"المنتج: <b>{model}</b><br>"
-            f"سعر الشراء الأصلي: <b>{price:,.2f} DA</b>"
+            f"Ticket SAV : <b>{ticket_id}</b>  |  Client : <b>{client_name}</b><br>"
+            f"Appareil : <b>{model}</b><br>"
+            f"Prix d'achat initial : <b>{price:,.2f} DA</b>"
         )
         d_layout.addWidget(details)
         layout.addWidget(details_frame)
 
-        layout.addWidget(QLabel("سياسة احتساب التعويض:"))
+        layout.addWidget(QLabel("Barème de compensation applicable :"))
         self.cbo_policy = QComboBox()
         self.cbo_policy.addItems([
-            "تعويض كامل 100% (تحت الضمان)",
-            "تعويض 80% (خصم استهلاك 20%)",
-            "تعويض تجاري 50%",
+            "Compensation intégrale 100% (Sous Garantie)",
+            "Compensation 80% (Décote vétusté 20%)",
+            "Geste commercial 50%",
         ])
         self.cbo_policy.currentIndexChanged.connect(self._update_policy_amount)
         layout.addWidget(self.cbo_policy)
@@ -118,36 +118,37 @@ class IrreparableDefectModal(QDialog):
         )
         n_layout = QVBoxLayout(notice_box)
         n_layout.setContentsMargins(12, 10, 12, 10)
-        n_title = QLabel("<b>حماية سيولة الصندوق (Caisse Liquidity Guardrail):</b>")
+        n_title = QLabel("<b>Protection de Trésorerie Caisse (Liquidity Guardrail) :</b>")
         n_title.setStyleSheet("color: #166534;")
         n_layout.addWidget(n_title)
         n_desc = QLabel(
-            "يتم إصدار <b>Versement Virtuel</b> يُضاف لمحفظة الزبون لشراء بديل دون سحب أي نقد من الـ Caisse (0.00 DA)."
+            "Émission d'un <b>Versement Virtuel</b> crédité sur le portefeuille client pour l'achat d'un produit de remplacement, "
+            "sans aucun décaissement espèces en Caisse (0.00 DA)."
         )
         n_desc.setWordWrap(True)
         n_desc.setStyleSheet("color: #15803D;")
         n_layout.addWidget(n_desc)
         layout.addWidget(notice_box)
 
-        self.lbl_credit_amt = QLabel(f"المبلغ المضاف لمحفظة الزبون: {price:,.2f} DA")
+        self.lbl_credit_amt = QLabel(f"Montant crédité au portefeuille client : {price:,.2f} DA")
         self.lbl_credit_amt.setFont(QFont("Segoe UI", 12, QFont.Bold))
         self.lbl_credit_amt.setStyleSheet("color: #0E7471; margin: 4px 0;")
         layout.addWidget(self.lbl_credit_amt)
 
         btn_box = QHBoxLayout()
-        btn_cancel = QPushButton("إلغاء")
+        btn_cancel = QPushButton("Annuler")
         btn_cancel.setCursor(Qt.PointingHandCursor)
         btn_cancel.setStyleSheet(
-            "QPushButton { background: #F1F5F9; color: #334155; font-weight: bold; padding: 8px 16px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton { background: #F1F5F9; color: #334155; font-weight: bold; min-height: 0px; padding: 8px 16px; border: 1px solid #CBD5E1; border-radius: 6px; }"
         )
         btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(btn_cancel)
 
-        btn_confirm = QPushButton("إصدار Versement Virtuel وإغلاق التذكرة (SCRAPPED)")
-        btn_confirm.setIcon(get_duotone_icon("credit_card", "#FFFFFF", "#CCFBF1", size=16))
+        btn_confirm = QPushButton("Émettre Versement Virtuel && Réformer (SCRAPPED)")
+        btn_confirm.setIcon(get_duotone_icon("payment_white", 16))
         btn_confirm.setCursor(Qt.PointingHandCursor)
         btn_confirm.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 8px 16px; border: none; border-radius: 6px; }"
+            "QPushButton { background: #0E7471; color: white; font-weight: bold; min-height: 0px; padding: 8px 16px; border: none; border-radius: 6px; }"
             "QPushButton:hover { background: #0A5E5C; }"
         )
         btn_confirm.clicked.connect(self._confirm_credit)
@@ -159,7 +160,7 @@ class IrreparableDefectModal(QDialog):
         factors = [1.0, 0.8, 0.5]
         factor = factors[idx] if 0 <= idx < len(factors) else 1.0
         self.compensation_amount = round(self._base_price * factor, 2)
-        self.lbl_credit_amt.setText(f"المبلغ المضاف لمحفظة الزبون: {self.compensation_amount:,.2f} DA")
+        self.lbl_credit_amt.setText(f"Montant crédité au portefeuille client : {self.compensation_amount:,.2f} DA")
 
     def _confirm_credit(self) -> None:
         self.compensation_confirmed = True
@@ -171,8 +172,8 @@ class SAVReceptionDialog(QDialog):
 
     def __init__(self, data_manager=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("المرحلة 1: استقبال منتج للصيانة وإصدار Bon de Réparation")
-        self.setFixedSize(480, 340)
+        self.setWindowTitle("Étape 1 : Réception SAV & Émission Bon de Réparation")
+        self.setFixedSize(500, 340)
         self.setStyleSheet(
             "QDialog { background-color: #FFFFFF; color: #0F172A; }"
             "QLabel { border: none; background: transparent; color: #334155; font-weight: 600; }"
@@ -191,40 +192,40 @@ class SAVReceptionDialog(QDialog):
         form.setVerticalSpacing(10)
         form.setHorizontalSpacing(10)
 
-        form.addWidget(QLabel("الرقم التسلسلي للقطعة (N° de Série):"), 0, 0)
+        form.addWidget(QLabel("N° de Série de l'appareil :"), 0, 0)
         self.txt_serial = QLineEdit()
-        self.txt_serial.setPlaceholderText("امسح الرقم التسلسلي...")
+        self.txt_serial.setPlaceholderText("Scanner ou saisir le N° de Série...")
         form.addWidget(self.txt_serial, 0, 1)
 
-        form.addWidget(QLabel("وصف العطل المصرح به:"), 1, 0)
-        self.txt_symptom = QLineEdit("توقف التبريد / عطل في اللوحة الإلكترونية")
+        form.addWidget(QLabel("Panne / Symptôme déclaré :"), 1, 0)
+        self.txt_symptom = QLineEdit("Arrêt refroidissement / Défaut carte électronique")
         form.addWidget(self.txt_symptom, 1, 1)
 
-        form.addWidget(QLabel("الحالة الظاهرية للسلعة:"), 2, 0)
-        self.txt_cosmetic = QLineEdit("حالة جيدة بدون خدوش خارجية")
+        form.addWidget(QLabel("État cosmétique à réception :"), 2, 0)
+        self.txt_cosmetic = QLineEdit("Bon état général, aucune rayure externe")
         form.addWidget(self.txt_cosmetic, 2, 1)
 
-        form.addWidget(QLabel("الملحقات المرفقة:"), 3, 0)
-        self.txt_acc = QLineEdit("كابل الطاقة + دليل الضمان")
+        form.addWidget(QLabel("Accessoires déposés :"), 3, 0)
+        self.txt_acc = QLineEdit("Câble d'alimentation + Certificat de garantie")
         form.addWidget(self.txt_acc, 3, 1)
 
         layout.addLayout(form)
         layout.addStretch()
 
         btn_row = QHBoxLayout()
-        btn_cancel = QPushButton("إلغاء")
+        btn_cancel = QPushButton("Annuler")
         btn_cancel.setCursor(Qt.PointingHandCursor)
         btn_cancel.setStyleSheet(
-            "QPushButton { background: #F1F5F9; color: #334155; font-weight: bold; padding: 8px 16px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton { background: #F1F5F9; color: #334155; font-weight: bold; min-height: 0px; padding: 8px 16px; border: 1px solid #CBD5E1; border-radius: 6px; }"
         )
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
-        btn_ok = QPushButton("إصدار Bon de Réparation واستلام القطعة")
-        btn_ok.setIcon(get_duotone_icon("wrench_sav", "#FFFFFF", "#CCFBF1", size=16))
+        btn_ok = QPushButton("Émettre Bon de Réparation && Réceptionner")
+        btn_ok.setIcon(get_duotone_icon("wrench_sav", 16))
         btn_ok.setCursor(Qt.PointingHandCursor)
         btn_ok.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 8px 16px; border: none; border-radius: 6px; }"
+            "QPushButton { background: #0E7471; color: white; font-weight: bold; min-height: 0px; padding: 8px 16px; border: none; border-radius: 6px; }"
             "QPushButton:hover { background: #0A5E5C; }"
         )
         btn_ok.clicked.connect(self._submit)
@@ -234,7 +235,7 @@ class SAVReceptionDialog(QDialog):
     def _submit(self) -> None:
         sn = self.txt_serial.text().strip()
         if not sn:
-            QMessageBox.warning(self, "تنبيه", "يرجى إدخال الرقم التسلسلي للقطعة.")
+            QMessageBox.warning(self, "Champ requis", "Veuillez saisir le N° de Série de l'appareil.")
             return
         try:
             if self.data_manager and hasattr(self.data_manager, "sav"):
@@ -256,7 +257,7 @@ class SAVReceptionDialog(QDialog):
                 }
             self.accept()
         except Exception as err:
-            QMessageBox.critical(self, "خطأ في تسجيل Bon de Réparation", str(err))
+            QMessageBox.critical(self, "Erreur Bon de Réparation", str(err))
 
 
 class SAVKanbanWidget(QWidget):
@@ -270,12 +271,7 @@ class SAVKanbanWidget(QWidget):
             """
             QFrame#SAVTopBar, QFrame#KanbanCol {
                 background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 8px;
-            }
-            QFrame#SAVTicketCard {
-                background-color: #F8FAFC;
-                border: 1px solid #CBD5E1;
+                border: 1px solid #DDE3EA;
                 border-radius: 6px;
             }
             QLabel {
@@ -296,35 +292,38 @@ class SAVKanbanWidget(QWidget):
         # Top Action Bar
         top_bar = QFrame()
         top_bar.setObjectName("SAVTopBar")
+        top_bar.setFixedHeight(52)
         tb_layout = QHBoxLayout(top_bar)
-        tb_layout.setContentsMargins(14, 10, 14, 10)
+        tb_layout.setContentsMargins(14, 0, 14, 0)
         tb_layout.setSpacing(10)
 
         icon_lbl = QLabel()
-        icon_lbl.setPixmap(get_duotone_icon("wrench_sav", "#0E7471", "#99F6E4", size=20).pixmap(QSize(20, 20)))
+        icon_lbl.setPixmap(get_duotone_icon("wrench_sav", 20).pixmap(QSize(20, 20)))
         tb_layout.addWidget(icon_lbl)
 
-        lbl_title = QLabel("نظام مصلحة ما بعد البيع والإصلاح (SAV / Réparation - 4 مراحل تتبع)")
-        lbl_title.setFont(QFont("Segoe UI", 10, QFont.Bold))
-        lbl_title.setStyleSheet("color: #0F172A;")
+        lbl_title = QLabel("Service Après-Vente & Réparation (SAV — Suivi 4 Étapes & Garantie)")
+        lbl_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #0F172A;")
         tb_layout.addWidget(lbl_title)
         tb_layout.addStretch()
 
-        btn_new_sav = QPushButton("+ استقبال منتج وإصدار Bon de Réparation")
+        btn_new_sav = QPushButton("+ Réceptionner Appareil (Bon de Réparation)")
         btn_new_sav.setCursor(Qt.PointingHandCursor)
+        btn_new_sav.setFixedHeight(34)
         btn_new_sav.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 7px 14px; border: none; border-radius: 6px; }"
+            "QPushButton { background: #0E7471; color: white; font-weight: 700; font-size: 12px; min-height: 0px; padding: 4px 14px; border: none; border-radius: 6px; }"
             "QPushButton:hover { background: #0A5E5C; }"
         )
         btn_new_sav.clicked.connect(self._open_reception_dialog)
         tb_layout.addWidget(btn_new_sav)
 
-        btn_refresh = QPushButton("تحديث اللوحة")
-        btn_refresh.setIcon(get_duotone_icon("refresh", "#0E7471", "#99F6E4", size=14))
+        btn_refresh = QPushButton("Actualiser")
+        btn_refresh.setIcon(get_duotone_icon("refresh", 14))
+        btn_refresh.setIconSize(QSize(14, 14))
         btn_refresh.setCursor(Qt.PointingHandCursor)
+        btn_refresh.setFixedHeight(34)
         btn_refresh.setStyleSheet(
-            "QPushButton { background: #F8FAFC; color: #334155; font-weight: 600; padding: 7px 12px; border: 1px solid #CBD5E1; border-radius: 6px; }"
-            "QPushButton:hover { background: #F1F5F9; border-color: #0E7471; color: #0E7471; }"
+            "QPushButton { background: #FFFFFF; color: #0E7471; font-weight: 700; font-size: 12px; min-height: 0px; padding: 4px 12px; border: 1.5px solid #0E7471; border-radius: 6px; }"
+            "QPushButton:hover { background: #E6F4F1; }"
         )
         btn_refresh.clicked.connect(self.refresh_tickets)
         tb_layout.addWidget(btn_refresh)
@@ -334,10 +333,10 @@ class SAVKanbanWidget(QWidget):
         board_layout = QHBoxLayout()
         board_layout.setSpacing(10)
 
-        col1 = self._create_kanban_column("1. استقبال المنتج (Bon de Réparation)", "#0E7471")
-        col2 = self._create_kanban_column("2. إرسال للمصلح (Envoi Technicien)", "#475569")
-        col3 = self._create_kanban_column("3. العودة من المصلح (Retour & Diagnostic)", "#0E7471")
-        col4 = self._create_kanban_column("4. تسليم للزبون / تعويض (Clôture)", "#15803D")
+        col1 = self._create_kanban_column("1. Réception Client (Bon de Réparation)", "#0E7471")
+        col2 = self._create_kanban_column("2. Envoi Technicien / Atelier", "#D97706")
+        col3 = self._create_kanban_column("3. Retour & Diagnostic", "#0284C7")
+        col4 = self._create_kanban_column("4. Remise Client / Clôture", "#16A34A")
 
         self._columns = {
             "SAV_RECEIVED": col1,
@@ -355,25 +354,29 @@ class SAVKanbanWidget(QWidget):
     def _create_kanban_column(self, title: str, accent_color: str) -> QWidget:
         col = QFrame()
         col.setObjectName("KanbanCol")
+        col.setProperty("accentColor", accent_color)
         c_layout = QVBoxLayout(col)
-        c_layout.setContentsMargins(10, 10, 10, 10)
-        c_layout.setSpacing(8)
+        c_layout.setContentsMargins(12, 12, 12, 12)
+        c_layout.setSpacing(10)
 
         header = QLabel(title)
-        header.setFont(QFont("Segoe UI", 9, QFont.Bold))
         header.setStyleSheet(
-            f"color: {accent_color}; padding-bottom: 6px; border-bottom: 2px solid {accent_color};"
+            f"font-size: 12px; font-weight: 800; color: {accent_color}; "
+            f"padding-bottom: 8px; border-bottom: 2px solid {accent_color};"
         )
         c_layout.addWidget(header)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         scroll_content = QWidget()
         scroll_content.setStyleSheet("background: transparent;")
         cards_layout = QVBoxLayout(scroll_content)
-        cards_layout.setContentsMargins(0, 4, 0, 4)
-        cards_layout.setSpacing(8)
+        cards_layout.setContentsMargins(0, 2, 0, 2)
+        cards_layout.setSpacing(10)
         cards_layout.addStretch()
         scroll.setWidget(scroll_content)
         c_layout.addWidget(scroll)
@@ -405,7 +408,7 @@ class SAVKanbanWidget(QWidget):
                     "Client_Name": "Omar Belkacem",
                     "Product_Name": "LG F4J6TY0W (Lave-linge)",
                     "Serial_Number": "SN-LG-884102",
-                    "Customer_Stated_Symptom": "Cuve fissurée",
+                    "Customer_Stated_Symptom": "Cuve fissurée / Fuite tambour",
                     "Current_Stage": "SAV_RECEIVED",
                     "Resolution_Status": "PENDING_EVALUATION",
                 },
@@ -413,9 +416,9 @@ class SAVKanbanWidget(QWidget):
                     "SAV_Ticket_ID": 811,
                     "Ticket_Number": "SAV-0811",
                     "Client_Name": "Khaled D.",
-                    "Product_Name": "Samsung RT46 (Frigo)",
+                    "Product_Name": "Samsung RT46 (Réfrigérateur)",
                     "Serial_Number": "SN-SAM-11902",
-                    "Customer_Stated_Symptom": "Fuite Gaz R600a",
+                    "Customer_Stated_Symptom": "Compresseur / Gaz R600a",
                     "Current_Stage": "SAV_SENT_TO_TECH",
                     "Resolution_Status": "PENDING_EVALUATION",
                 },
@@ -425,7 +428,7 @@ class SAVKanbanWidget(QWidget):
                     "Client_Name": "Yacine B.",
                     "Product_Name": "Brandt BXP6555X (Four)",
                     "Serial_Number": "SN-BRD-4410",
-                    "Customer_Stated_Symptom": "Carte PCB Remplacée",
+                    "Customer_Stated_Symptom": "Carte PCB remplacée et testée",
                     "Current_Stage": "SAV_RETURNED_FROM_TECH",
                     "Resolution_Status": "REPAIRED",
                 },
@@ -433,9 +436,9 @@ class SAVKanbanWidget(QWidget):
                     "SAV_Ticket_ID": 802,
                     "Ticket_Number": "SAV-0802",
                     "Client_Name": "Salim T.",
-                    "Product_Name": "Midea 12k Split",
+                    "Product_Name": "Midea 12000 BTU Split",
                     "Serial_Number": "SN-MID-7721",
-                    "Customer_Stated_Symptom": "Test Banc Conforme",
+                    "Customer_Stated_Symptom": "Test banc conforme — Remis au client",
                     "Current_Stage": "SAV_CLOSED_DELIVERED",
                     "Resolution_Status": "REPAIRED",
                 },
@@ -450,11 +453,26 @@ class SAVKanbanWidget(QWidget):
         scroll = column.findChild(QScrollArea)
         container = scroll.widget()
         layout = container.layout()
+        accent = column.property("accentColor") or "#0E7471"
 
         card = QFrame()
         card.setObjectName("SAVTicketCard")
+        card.setStyleSheet(
+            f"""
+            QFrame#SAVTicketCard {{
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-left: 3px solid {accent};
+                border-radius: 6px;
+            }}
+            QLabel {{
+                border: none;
+                background: transparent;
+            }}
+            """
+        )
         c_layout = QVBoxLayout(card)
-        c_layout.setContentsMargins(10, 10, 10, 10)
+        c_layout.setContentsMargins(12, 10, 12, 10)
         c_layout.setSpacing(6)
 
         ticket_no = str(t.get("Ticket_Number") or "")
@@ -465,52 +483,66 @@ class SAVKanbanWidget(QWidget):
         stage = str(t.get("Current_Stage") or "SAV_RECEIVED")
         tid = int(t.get("SAV_Ticket_ID") or 0)
 
+        top_row = QHBoxLayout()
         t_lbl = QLabel(f"<b>{ticket_no}</b> — {client}")
-        t_lbl.setStyleSheet("color: #0E7471; font-size: 9.5pt;")
-        c_layout.addWidget(t_lbl)
+        t_lbl.setStyleSheet("color: #0F172A; font-size: 12px;")
+        top_row.addWidget(t_lbl)
+        top_row.addStretch()
 
-        prod_lbl = QLabel(f"المنتج: <b>{model}</b> ({serial_no})")
+        sn_badge = QLabel(serial_no)
+        sn_badge.setStyleSheet(
+            "font-family: Consolas, monospace; font-size: 10px; font-weight: 700; "
+            "color: #0E7471; background-color: #E6F4F1; border-radius: 3px; padding: 2px 6px;"
+        )
+        top_row.addWidget(sn_badge)
+        c_layout.addLayout(top_row)
+
+        prod_lbl = QLabel(f"Appareil : <b>{model}</b>")
         prod_lbl.setWordWrap(True)
-        prod_lbl.setStyleSheet("color: #334155; font-size: 9pt;")
+        prod_lbl.setStyleSheet("color: #334155; font-size: 11.5px;")
         c_layout.addWidget(prod_lbl)
 
-        sym_lbl = QLabel(f"العطل: {symptom}")
+        sym_lbl = QLabel(f"Diagnostic / Panne : {symptom}")
         sym_lbl.setWordWrap(True)
-        sym_lbl.setStyleSheet("color: #64748B; font-size: 8.5pt;")
+        sym_lbl.setStyleSheet("color: #64748B; font-size: 11px;")
         c_layout.addWidget(sym_lbl)
 
         if stage == "SAV_RECEIVED":
-            btn_send = QPushButton("2. إرسال للمصلح")
+            btn_send = QPushButton("Transférer vers Technicien (Étape 2)")
             btn_send.setCursor(Qt.PointingHandCursor)
+            btn_send.setFixedHeight(30)
             btn_send.setStyleSheet(
-                "QPushButton { background: #FFFFFF; color: #334155; font-weight: 600; padding: 6px; border: 1px solid #CBD5E1; border-radius: 5px; }"
+                "QPushButton { background: #FFFFFF; color: #334155; font-weight: 700; font-size: 11px; min-height: 0px; padding: 4px 8px; border: 1px solid #CBD5E1; border-radius: 5px; }"
                 "QPushButton:hover { background: #F1F5F9; border-color: #0E7471; color: #0E7471; }"
             )
             btn_send.clicked.connect(lambda checked=False, x=tid: self._advance_to_tech(x))
             c_layout.addWidget(btn_send)
         elif stage == "SAV_SENT_TO_TECH":
-            btn_ret = QPushButton("3. تسجيل العودة من المصلح")
+            btn_ret = QPushButton("Enregistrer Retour Technicien (Étape 3)")
             btn_ret.setCursor(Qt.PointingHandCursor)
+            btn_ret.setFixedHeight(30)
             btn_ret.setStyleSheet(
-                "QPushButton { background: #FFFFFF; color: #0E7471; font-weight: 600; padding: 6px; border: 1px solid #0E7471; border-radius: 5px; }"
+                "QPushButton { background: #FFFFFF; color: #0E7471; font-weight: 700; font-size: 11px; min-height: 0px; padding: 4px 8px; border: 1px solid #0E7471; border-radius: 5px; }"
                 "QPushButton:hover { background: #F0FDFA; }"
             )
             btn_ret.clicked.connect(lambda checked=False, x=tid: self._advance_from_tech(x))
             c_layout.addWidget(btn_ret)
         elif stage == "SAV_RETURNED_FROM_TECH":
-            btn_deliver = QPushButton("4. تسليم المنتج للزبون وإغلاق التذكرة")
+            btn_deliver = QPushButton("Remettre au Client && Clôturer (Étape 4)")
             btn_deliver.setCursor(Qt.PointingHandCursor)
+            btn_deliver.setFixedHeight(30)
             btn_deliver.setStyleSheet(
-                "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 6px; border: none; border-radius: 5px; }"
+                "QPushButton { background: #0E7471; color: white; font-weight: 700; font-size: 11px; min-height: 0px; padding: 4px 8px; border: none; border-radius: 5px; }"
                 "QPushButton:hover { background: #0A5E5C; }"
             )
             btn_deliver.clicked.connect(lambda checked=False, x=tid: self._deliver_to_client(x))
             c_layout.addWidget(btn_deliver)
 
-            btn_irrep = QPushButton("تعذر الإصلاح -> Versement Virtuel")
+            btn_irrep = QPushButton("Irréparable -> Émettre Versement Virtuel")
             btn_irrep.setCursor(Qt.PointingHandCursor)
+            btn_irrep.setFixedHeight(28)
             btn_irrep.setStyleSheet(
-                "QPushButton { background: #FEF2F2; color: #DC2626; font-weight: 600; padding: 6px; border: 1px solid #FECACA; border-radius: 5px; }"
+                "QPushButton { background: #FEF2F2; color: #DC2626; font-weight: 700; font-size: 11px; min-height: 0px; padding: 4px 8px; border: 1px solid #FECACA; border-radius: 5px; }"
                 "QPushButton:hover { background: #FEE2E2; }"
             )
             btn_irrep.clicked.connect(

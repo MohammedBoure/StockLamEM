@@ -181,7 +181,7 @@ class DispatchDeskWidget(QWidget):
         self.txt_scan.returnPressed.connect(self._on_manual_scan_submit)
         input_row.addWidget(self.txt_scan, stretch=2)
 
-        self.btn_emit_sortie = QPushButton("Valider & Imprimer Bon de Sortie (0.00 DA Impact Caisse)")
+        self.btn_emit_sortie = QPushButton("Valider && Imprimer Bon de Sortie (0.00 DA Impact Caisse)")
         self.btn_emit_sortie.setIcon(get_duotone_icon("print", 16))
         self.btn_emit_sortie.setIconSize(QSize(16, 16))
         self.btn_emit_sortie.setCursor(Qt.PointingHandCursor)

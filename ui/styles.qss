@@ -70,7 +70,8 @@ QTableCornerButton::section {
 /* --- الرؤوس الأفقية (الأعمدة) --- */
 QHeaderView::section:horizontal {
     background-color: #ffffff;
-    padding: 10px 8px;
+    padding: 8px 8px;
+    min-height: 28px;
     border: none;
     border-bottom: 2px solid #007572; /* الخط الأخضر المميز */
     border-right: 1px solid #f0f0f0;  /* فاصل عمودي خفيف */
@@ -595,13 +596,6 @@ QDateEdit::up-arrow {
     border-bottom: 4px solid #007572; /* مثلث صغير للأعلى */
 }
 
-QDateEdit::down-arrow {
-    image: none;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 4px solid #007572; /* مثلث صغير للأسفل */
-}
-
 /* في حال تفعيل خاصية التقويم المنبثق (Calendar Popup) */
 QDateEdit::drop-down {
     subcontrol-origin: padding;
@@ -612,6 +606,7 @@ QDateEdit::drop-down {
 }
 
 QDateEdit::down-arrow {
+    border: none;
     image: url(ui/assets/icons/chevron_down.svg);
     width: 12px;
     height: 12px;
@@ -625,7 +620,7 @@ QDateEdit:hover {
 }
 
 /* توحيد المسافات الداخلية لضمان استواء النص داخل الحقول */
-QLineEdit, QSpinBox, QDoubleSpinBox {
+QLineEdit, QSpinBox, QDoubleSpinBox, QPlainTextEdit {
     padding: 8px 12px;
     margin: 0px;
     border: 1px solid #cfd8dc;
