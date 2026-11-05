@@ -42,7 +42,7 @@ Ce dossier regroupe tous les gestionnaires d'accès aux données (Managers), les
 - **`product_family_manager.py`** : Gestion des familles et sous-familles de produits de laboratoire.
 - **`product_manager.py`** : Gestion du catalogue maître des produits (`Products_Master`), seuils d'alerte et unités.
 - **`purchase_order_manager.py`** : Gestion des bons de commande d'achat (`Purchase_Orders`) et cycle de validation.
-- **`reception_log_manager.py`** : Journalisation et validation des réceptions de commandes avec calcul des coûts TTC et remises.
+- **`reception_log_manager.py`** : Journalisation et validation des réceptions de commandes (`Reception_Log`, `Inventory_Batches`) avec calcul des coûts TTC et remises, persistance et synchronisation de la couleur/finition du produit (`Color_Finish`) sur `Products_Master` et référencement automatique dans `Product_Colors` lors de l'ajout, modification ou réception complète de lignes de réception.
 - **`sales_manager.py`** : Gestion des ventes, facturation et cycle commercial :
   - Support de la Vente en Gros B2B (`create_wholesale_document`) avec statuts Draft (Devis, BC) et déduction atomique (BL, Facture).
   - Génération de numérotation séquentielle par type de document (`DEV`, `BC`, `BL`, `FAC`).

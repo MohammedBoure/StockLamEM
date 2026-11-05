@@ -11,7 +11,7 @@ Bureaux & SAV في 2. Caisse & Règlements الأزرار الموجودة في 
 في stock & magasin ثم stock actuel ثم في ajout Rapide 
 هنا أريد أن تكون خصائص اللون المضافة حديثا يمكن أن يتم تعيينها 
 
-# 5 : medium
+# 5 [COMPLETED]: medium
 في achats & entrées ثم bon de receptions في dialog reception أريد ان يتم دعم إدخال لون المنتوج أيضا 
 
 # 6 : medium

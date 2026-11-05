@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,QTableWidget
 )
 from PySide6.QtCore import Qt, QDate, QLocale
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPixmap, QPainter, QBrush, QPen, QColor, QIcon
 
 from .auto_select_widgets import AutoSelectLineEdit, AutoSelectSpinBox, AutoSelectDoubleSpinBox
 from ..location_tree_combo import LocationTreeComboBox
@@ -75,14 +75,52 @@ class ReceptionDialogUIMixin:
         self.cb_product.completer().setCompletionMode(QCompleter.PopupCompletion)
 
         all_products = []
-        tab_parent = self.parent()
-        if tab_parent and hasattr(tab_parent, 'manager'):
-            all_products = tab_parent.manager.products.get_all_products()
+        if hasattr(self, 'manager') and hasattr(self.manager, 'products'):
+            try:
+                all_products = self.manager.products.get_all_products()
+            except Exception:
+                pass
+        elif hasattr(self, 'manager') and hasattr(self.manager, 'db'):
+            try:
+                from database.product_manager import ProductManager
+                all_products = ProductManager(self.manager.db).get_all_products()
+            except Exception:
+                pass
+        if not all_products:
+            tab_parent = self.parent()
+            if tab_parent and hasattr(tab_parent, 'manager'):
+                if hasattr(tab_parent.manager, 'products'):
+                    all_products = tab_parent.manager.products.get_all_products()
+                elif hasattr(tab_parent.manager, 'db'):
+                    try:
+                        from database.product_manager import ProductManager
+                        all_products = ProductManager(tab_parent.manager.db).get_all_products()
+                    except Exception:
+                        pass
 
         self.cb_product.addItem("", None)
         for p in all_products:
             brand = p.get('Manuf_Name') or "---"
             self.cb_product.addItem(f"{p['Product_Name']} ({brand})", p)
+
+        # Product Color / Finish
+        self.cb_color = QComboBox()
+        self.cb_color.setEditable(True)
+        self.cb_color.setInsertPolicy(QComboBox.NoInsert)
+        if self.cb_color.completer():
+            self.cb_color.completer().setFilterMode(Qt.MatchContains)
+        self.cb_color.setLineEdit(AutoSelectLineEdit())
+        if self.cb_color.lineEdit():
+            self.cb_color.lineEdit().setPlaceholderText("Couleur / Finition")
+
+        self.lbl_color_swatch = QLabel()
+        self.lbl_color_swatch.setFixedSize(26, 24)
+        self.lbl_color_swatch.setStyleSheet(
+            "background-color: #CBD5E1; border: 1px solid #94A3B8; border-radius: 4px;"
+        )
+        self.lbl_color_swatch.setToolTip("Aperçu visuel de la couleur")
+        if hasattr(self, '_load_colors'):
+            self._load_colors()
 
         self.cb_unit_type = QComboBox()
         self.inp_qty = AutoSelectSpinBox()
@@ -133,10 +171,10 @@ class ReceptionDialogUIMixin:
 
         # إعداد الجدول
         self.table_items = QTableWidget() 
-        self.table_items.setColumnCount(14)
+        self.table_items.setColumnCount(15)
         
         headers = [
-            "Produit", "Code", "Unité", "Qté", "Lot", "Date Exp",
+            "Produit", "Couleur", "Code", "Unité", "Qté", "Lot", "Date Exp",
             "Stock", "Prix U", "Remise", "Prix HT", "TVA (DA)",
             "P.U TTC", "Total TTC", "Meta"
         ]
@@ -152,7 +190,7 @@ class ReceptionDialogUIMixin:
         h_header.setSectionResizeMode(QHeaderView.ResizeToContents)
         h_header.setSectionResizeMode(0, QHeaderView.Stretch) # تمديد عمود اسم المنتج
         
-        self.table_items.setColumnHidden(13, True) # إخفاء عمود Meta
+        self.table_items.setColumnHidden(14, True) # إخفاء عمود Meta
 
         self.lbl_total_ht     = QLabel("0,00 DA")
         self.lbl_total_remise = QLabel("0,00 DA")
@@ -198,9 +236,17 @@ class ReceptionDialogUIMixin:
         entry_layout = QVBoxLayout()
         entry_layout.setSpacing(5)
 
+        lay_col = QHBoxLayout()
+        lay_col.setSpacing(6)
+        lay_col.setContentsMargins(0, 0, 0, 0)
+        lay_col.addWidget(self.cb_color, 1)
+        lay_col.addWidget(self.lbl_color_swatch, 0)
+
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("<b>Produit:</b>"))
-        row1.addWidget(self.cb_product, 4)
+        row1.addWidget(self.cb_product, 3)
+        row1.addWidget(QLabel("<b>Couleur:</b>"))
+        row1.addLayout(lay_col, 2)
         row1.addWidget(QLabel("<b>Unité:</b>"))
         row1.addWidget(self.cb_unit_type, 1)
         row1.addWidget(QLabel("<b>Qté:</b>"))
@@ -253,4 +299,4 @@ class ReceptionDialogUIMixin:
 
         main_layout.addWidget(self.table_items, 1)
         
-        self.table_items.horizontalHeader().setSortIndicator(1, Qt.DescendingOrder)
+        self.table_items.horizontalHeader().setSortIndicator(2, Qt.DescendingOrder)

@@ -364,6 +364,20 @@ class ReceptionLogManager:
             if batch_id is None:
                 raise RuntimeError("Impossible de générer un code-barres unique pour cette ligne.")
 
+            color_finish = str(line_data.get('Color_Finish') or '').strip()
+            if color_finish:
+                cursor.execute(
+                    "UPDATE Products_Master SET Color_Finish = %s WHERE Product_ID = %s",
+                    (color_finish, line_data['Product_ID'])
+                )
+                try:
+                    cursor.execute(
+                        "INSERT IGNORE INTO Product_Colors (Color_Name, Color_Code, Description, Is_Active) VALUES (%s, '#CBD5E1', 'Ajouté via Réception', TRUE)",
+                        (color_finish,)
+                    )
+                except Exception:
+                    pass
+
             # 2. تسجيل الحركة
             self.stock_movement_log.create_movement_log(
                 product_id=line_data['Product_ID'],
@@ -447,6 +461,20 @@ class ReceptionLogManager:
             )
             cursor.execute(query, params)
             line_data['Internal_Barcode'] = barcode_to_save
+
+            color_finish = str(line_data.get('Color_Finish') or '').strip()
+            if color_finish:
+                cursor.execute(
+                    "UPDATE Products_Master SET Color_Finish = %s WHERE Product_ID = %s",
+                    (color_finish, line_data['Product_ID'])
+                )
+                try:
+                    cursor.execute(
+                        "INSERT IGNORE INTO Product_Colors (Color_Name, Color_Code, Description, Is_Active) VALUES (%s, '#CBD5E1', 'Ajouté via Réception', TRUE)",
+                        (color_finish,)
+                    )
+                except Exception:
+                    pass
 
             # 3. تسجيل حركة التعديل (إذا تغيرت الكمية)
             if abs(diff) > 0.0001:
@@ -764,7 +792,7 @@ class ReceptionLogManager:
                            b.Quantity_Initial, b.Internal_Barcode, b.External_Barcode, b.Unit_Price_Received, b.Tax_Rate_Percent, 
                            b.Discount_Percent, b.Reception_Note, 
                            b.Selling_Price_HT, b.Selling_Price_HT_2, b.Selling_Price_HT_3, b.Selling_Price_HT_4, b.Selling_TVA_Percent,
-                           p.Product_Name, p.Stock_Unit, l.Location_Name
+                           p.Product_Name, p.Stock_Unit, p.Color_Finish, l.Location_Name
                     FROM Inventory_Batches b
                     JOIN Products_Master p ON b.Product_ID = p.Product_ID
                     LEFT JOIN Locations l ON b.Location_ID = l.Location_ID
@@ -896,6 +924,20 @@ class ReceptionLogManager:
                 ))
                 
                 batch_id = cursor.lastrowid
+
+                color_finish = str(item.get('Color_Finish') or '').strip()
+                if color_finish:
+                    cursor.execute(
+                        "UPDATE Products_Master SET Color_Finish = %s WHERE Product_ID = %s",
+                        (color_finish, item['Product_ID'])
+                    )
+                    try:
+                        cursor.execute(
+                            "INSERT IGNORE INTO Product_Colors (Color_Name, Color_Code, Description, Is_Active) VALUES (%s, '#CBD5E1', 'Ajouté via Réception', TRUE)",
+                            (color_finish,)
+                        )
+                    except Exception:
+                        pass
 
                 # 3. تسجيل الحركة في Stock_Movement_Log (الأهم للـ Historique)
                 self.stock_movement_log.create_movement_log(

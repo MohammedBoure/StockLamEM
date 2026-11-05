@@ -28,6 +28,9 @@ class ReceptionDialogLogicMixin:
     # ------------------------------------------------------------------ #
     def setup_connections(self):
         self.cb_product.currentIndexChanged.connect(self.on_product_selected)
+        if hasattr(self, 'cb_color'):
+            self.cb_color.currentIndexChanged.connect(self._update_color_swatch)
+            self.cb_color.editTextChanged.connect(self._update_color_swatch)
 
         for w in [self.inp_qty, self.inp_remise]:
             w.valueChanged.connect(self.calculate_live_item_ttc)
@@ -51,11 +54,133 @@ class ReceptionDialogLogicMixin:
     # ------------------------------------------------------------------ #
     #  اختيار المنتج & الحساب الفوري                                     #
     # ------------------------------------------------------------------ #
+
+    def _load_colors(self):
+        self._colors_map = {}
+        if not hasattr(self, 'cb_color'):
+            return
+        self.cb_color.blockSignals(True)
+        self.cb_color.clear()
+        self.cb_color.addItem("--- Standard / Non définie ---", {"Color_Name": "", "Color_Code": "#CBD5E1"})
+
+        colors_list = []
+        color_mgr = None
+        if hasattr(self.manager, 'colors') and self.manager.colors:
+            color_mgr = self.manager.colors
+        elif hasattr(self.manager, 'db') and self.manager.db:
+            try:
+                from database.product_color_manager import ProductColorManager
+                color_mgr = ProductColorManager(self.manager.db)
+            except Exception:
+                pass
+
+        if not color_mgr and self.parent():
+            p_mgr = getattr(self.parent(), 'manager', None)
+            if p_mgr:
+                if hasattr(p_mgr, 'colors') and p_mgr.colors:
+                    color_mgr = p_mgr.colors
+                elif hasattr(p_mgr, 'db') and p_mgr.db:
+                    try:
+                        from database.product_color_manager import ProductColorManager
+                        color_mgr = ProductColorManager(p_mgr.db)
+                    except Exception:
+                        pass
+
+        if color_mgr and hasattr(color_mgr, 'get_all_colors'):
+            try:
+                colors_list = color_mgr.get_all_colors(active_only=True)
+            except Exception as e:
+                logging.debug(f"Could not load colors in ReceptionDialog: {e}")
+
+        if not colors_list:
+            from database.product_color_manager import DEFAULT_PRODUCT_COLORS
+            colors_list = [
+                {"Color_Name": name, "Color_Code": code, "Description": desc}
+                for name, code, desc in DEFAULT_PRODUCT_COLORS
+            ]
+
+        from PySide6.QtGui import QPixmap, QPainter, QBrush, QPen, QColor, QIcon
+
+        for c in colors_list:
+            name = str(c.get('Color_Name', '')).strip()
+            code = str(c.get('Color_Code', '#CBD5E1')).strip()
+            if not name:
+                continue
+            self._colors_map[name.lower()] = code
+
+            pixmap = QPixmap(14, 14)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QBrush(QColor(code)))
+            border_qcol = QColor("#94A3B8" if code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "#475569")
+            painter.setPen(QPen(border_qcol, 1))
+            painter.drawRoundedRect(0, 0, 13, 13, 3, 3)
+            painter.end()
+
+            self.cb_color.addItem(QIcon(pixmap), name, {"Color_Name": name, "Color_Code": code})
+
+        self.cb_color.blockSignals(False)
+        self._update_color_swatch()
+
+    def _update_color_swatch(self):
+        if not hasattr(self, 'cb_color') or not hasattr(self, 'lbl_color_swatch'):
+            return
+        color_text = self.cb_color.currentText().strip()
+        data = self.cb_color.currentData()
+        hex_code = "#CBD5E1"
+
+        if isinstance(data, dict) and data.get("Color_Code"):
+            hex_code = data.get("Color_Code")
+        elif hasattr(self, '_colors_map') and color_text.lower() in self._colors_map:
+            hex_code = self._colors_map[color_text.lower()]
+        elif color_text.startswith("#") and len(color_text) in (4, 7):
+            hex_code = color_text
+        elif color_text:
+            try:
+                from ui.widgets.appliance_desks.order_desk_view import COLOR_PALETTE
+                hex_code = COLOR_PALETTE.get(color_text.lower(), "#CBD5E1")
+            except Exception:
+                hex_code = "#CBD5E1"
+
+        border_col = "#94A3B8" if hex_code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "rgba(0,0,0,0.25)"
+        self.lbl_color_swatch.setStyleSheet(
+            f"background-color: {hex_code}; border: 1px solid {border_col}; border-radius: 4px;"
+        )
+        display_name = color_text if not color_text.startswith("---") else "Standard / Non définie"
+        self.lbl_color_swatch.setToolTip(f"Couleur / Finition : {display_name}\nCode Hex : {hex_code}")
+
+    def set_selected_color(self, color_name: str):
+        if not hasattr(self, 'cb_color'):
+            return
+        if not color_name:
+            self.cb_color.setCurrentIndex(0)
+            self._update_color_swatch()
+            return
+
+        c_clean = str(color_name).strip()
+        found = False
+        for i in range(self.cb_color.count()):
+            item_text = self.cb_color.itemText(i)
+            item_data = self.cb_color.itemData(i)
+            cand_name = item_data.get("Color_Name") if isinstance(item_data, dict) else item_text
+            if str(cand_name).strip().lower() == c_clean.lower() or str(item_text).strip().lower() == c_clean.lower():
+                self.cb_color.setCurrentIndex(i)
+                found = True
+                break
+
+        if not found:
+            self.cb_color.setCurrentText(c_clean)
+        self._update_color_swatch()
+
     def on_product_selected(self):
         p = self.cb_product.currentData()
         self.cb_unit_type.clear()
         if not p:
+            self.set_selected_color("")
             return
+        col = p.get('Color_Finish') or ''
+        self.set_selected_color(col)
         self.cb_unit_type.addItem(p.get('Stock_Unit', 'U'), 1.0)
         if p.get('Ordering_Unit') and p['Ordering_Unit'] != p.get('Stock_Unit'):
             self.cb_unit_type.addItem(p['Ordering_Unit'], float(p.get('Stock_Qty_Per_Order_Unit', 1.0)))
@@ -200,8 +325,10 @@ class ReceptionDialogLogicMixin:
     #  إدارة حالة الحقول                                                  #
     # ------------------------------------------------------------------ #
     def toggle_inputs_state(self, enabled: bool):
-        for w in [
-            self.cb_product, self.cb_unit_type, self.inp_qty,
+        widgets_to_toggle = [self.cb_product, self.cb_unit_type, self.inp_qty]
+        if hasattr(self, 'cb_color'):
+            widgets_to_toggle.append(self.cb_color)
+        for w in widgets_to_toggle + [
             self.inp_lot, self.inp_expiry, self.cb_location,
             self.inp_price, self.inp_price_ttc, self.inp_remise, self.cb_remise_type,
             self.chk_tva, self.inp_observation,
@@ -311,6 +438,7 @@ class ReceptionDialogLogicMixin:
                 'Location_Name':        batch.get('Location_Name', '---'),
                 'Lot_Number':           batch.get('Lot_Number', 'N/A'),
                 'Expiry_Date':          str(batch.get('Expiry_Date', '')),
+                'Color_Finish':         batch.get('Color_Finish', ''),
                 'Qty_Received':         qty,
                 'Unit_Price_Received':  price,
                 'Discount_Val':         disc_amt,
@@ -324,6 +452,7 @@ class ReceptionDialogLogicMixin:
 
             display_values = [
                 batch.get('Product_Name', '---'),
+                meta.get('Color_Finish') or '---',
                 batch.get('Internal_Barcode', '---'),
                 batch.get('Stock_Unit', 'U'),
                 format_quantity(qty),
@@ -424,11 +553,16 @@ class ReceptionDialogLogicMixin:
 
             current_po_id = self.po_data.get('PO_ID')
 
+            chosen_color = self.cb_color.currentText().strip() if hasattr(self, 'cb_color') else ""
+            if chosen_color.startswith("---"):
+                chosen_color = ""
+
             line_data = {
                 "BR_ID":               self.br_id,
                 "PO_ID":               current_po_id,
                 "Product_ID":          p_data['Product_ID'],
                 "Location_ID":         loc_id,
+                "Color_Finish":        chosen_color,
                 "Quantity_Initial":    effective_qty,
                 "Quantity_Current":    effective_qty,
                 "Unit_Price_Received": buy_price,
@@ -485,6 +619,12 @@ class ReceptionDialogLogicMixin:
             idx_unit = self.cb_unit_type.findText(meta.get('Unit_Label', ''))
             if idx_unit >= 0:
                 self.cb_unit_type.setCurrentIndex(idx_unit)
+
+            col = meta.get('Color_Finish')
+            p_curr = self.cb_product.currentData()
+            if not col and p_curr:
+                col = p_curr.get('Color_Finish')
+            self.set_selected_color(col or "")
 
             self.chk_tva.setChecked(float(meta.get('Tax_Rate_Percent', 0)) > 0)
             self.inp_price.setValue(float(meta.get('Unit_Price_Received', 0.0)))
@@ -553,10 +693,10 @@ class ReceptionDialogLogicMixin:
             return
         for row in rows:
             meta         = self.table_items.item(row, 0).data(Qt.UserRole)
-            product_name = self.table_items.item(row, 0).text()
-            barcode_val  = self.table_items.item(row, 1).text()
-            lot          = self.table_items.item(row, 4).text()
-            expiry       = self.table_items.item(row, 5).text()
+            product_name = (meta.get('Product_Name') if meta else None) or self.table_items.item(row, 0).text()
+            barcode_val  = (meta.get('Internal_Barcode') if meta else None) or self.table_items.item(row, 2).text()
+            lot          = (meta.get('Lot_Number') if meta else None) or self.table_items.item(row, 5).text()
+            expiry       = (meta.get('Expiry_Date') if meta else None) or self.table_items.item(row, 6).text()
             qty          = int(meta.get('Qty_Received', 1))
             copies, ok   = QInputDialog.getInt(self, "Impression", f"Copies pour {product_name}", qty, 1, 1000)
             if ok:
@@ -630,7 +770,7 @@ class ReceptionDialogLogicMixin:
 
     def is_barcode_exists_in_table(self, barcode):
         for row in range(self.table_items.rowCount()):
-            item = self.table_items.item(row, 1)
+            item = self.table_items.item(row, 2)
             if item and item.text() == barcode:
                 return True
             meta_item = self.table_items.item(row, 0)
