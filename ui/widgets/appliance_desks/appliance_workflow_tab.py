@@ -50,8 +50,10 @@ class ApplianceWorkflowTab(QWidget):
         user_permissions: Optional[Set[str]] = None,
         hid_manager: Optional[MultiScannerHIDManager] = None,
         parent: Optional[QWidget] = None,
+        include_sav: bool = False,
     ):
         super().__init__(parent)
+        self.include_sav = include_sav
         self.data_manager = data_manager or db_manager
         self.db_manager = self.data_manager
         self.user_manager = user_manager or getattr(self.data_manager, "users", None)
@@ -93,9 +95,10 @@ class ApplianceWorkflowTab(QWidget):
         icon_lbl.setPixmap(get_duotone_icon("pos", 20).pixmap(20, 20))
         banner_layout.addWidget(icon_lbl)
 
-        title_lbl = QLabel(
-            "Flux Opérationnel Multi-Bureaux  |  Commandes  •  Caisse  •  Sortie Magasin  •  SAV & Réparation"
-        )
+        title_text = "Flux Opérationnel Multi-Bureaux  |  Commandes  •  Caisse  •  Sortie Magasin"
+        if getattr(self, "include_sav", False):
+            title_text += "  •  SAV & Réparation"
+        title_lbl = QLabel(title_text)
         title_lbl.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         banner_layout.addWidget(title_lbl)
         banner_layout.addStretch()
@@ -171,10 +174,6 @@ class ApplianceWorkflowTab(QWidget):
             hid_manager=self.hid_manager,
             parent=self,
         )
-        self.sav_desk = SAVKanbanWidget(
-            data_manager=self.data_manager,
-            parent=self,
-        )
         self.batch_registry_desk = None
 
         self.desk_tabs.addTab(
@@ -192,11 +191,18 @@ class ApplianceWorkflowTab(QWidget):
             get_duotone_icon("barcode_scan", 18),
             "3. Sortie Magasin (Dispatch)",
         )
-        self.desk_tabs.addTab(
-            self.sav_desk,
-            get_duotone_icon("wrench_sav", 18),
-            "4. Service Après-Vente (SAV)",
-        )
+        if getattr(self, "include_sav", False):
+            self.sav_desk = SAVKanbanWidget(
+                data_manager=self.data_manager,
+                parent=self,
+            )
+            self.desk_tabs.addTab(
+                self.sav_desk,
+                get_duotone_icon("wrench_sav", 18),
+                "4. Service Après-Vente (SAV)",
+            )
+        else:
+            self.sav_desk = None
 
         layout.addWidget(self.desk_tabs, 1)
 
@@ -233,7 +239,8 @@ class ApplianceWorkflowTab(QWidget):
         self.order_desk.refresh_catalog()
         self.cashier_desk.refresh_queue()
         self.dispatch_desk.refresh_dispatch_queue()
-        self.sav_desk.refresh_tickets()
+        if getattr(self, "sav_desk", None) is not None:
+            self.sav_desk.refresh_tickets()
         if self.batch_registry_desk:
             self.batch_registry_desk.refresh_products()
             if hasattr(self.batch_registry_desk, "refresh_traceability"):
@@ -257,8 +264,11 @@ class ApplianceWorkflowTab(QWidget):
             (0, {"ORDER_DESK_CREATE", "desk.order.create_bon_c", "desk.order.create_bon_livraison", "desk.order.request_bon_credit", "nav_sales"}),
             (1, {"CAISSE_SETTLE_CASH", "CREDIT_ADMIN_AUTHORIZE", "RETURN_BOND_PROCESS", "desk.cashier.settle_bon_c", "desk.cashier.record_versement", "desk.cashier.issue_bon_retour", "nav_treasury"}),
             (2, {"DISPATCH_SCAN_SERIAL", "desk.dispatch.scan_serial_out", "desk.dispatch.print_bon_sortie", "nav_inventory"}),
-            (3, {"SAV_MANAGE_STAGES", "SAV_IRREPARABLE_CREDIT", "desk.sav.receive_item", "desk.sav.send_to_repairer", "desk.sav.return_from_repairer", "desk.sav.deliver_to_client"}),
         ]
+        if getattr(self, "include_sav", False) and getattr(self, "sav_desk", None) is not None:
+            desk_perm_rules.append(
+                (3, {"SAV_TICKET_CREATE", "SAV_MANAGE_STAGES", "SAV_IRREPARABLE_CREDIT", "desk.sav.receive_item", "desk.sav.send_to_repairer", "desk.sav.return_from_repairer", "desk.sav.deliver_to_client", "nav_sav"})
+            )
 
         any_specific_perm = any(
             bool(self.user_permissions & rule_perms) for _, rule_perms in desk_perm_rules

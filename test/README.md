@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_sav_workspace_tabs_and_navigation.py`**:
+  - *Scope*: Verifies Task #9 deliverables: decoupling of After-Sales Service (SAV) into its own dedicated Left Navigation Bar button (Page 15, `nav_sav` permission fallback, `wrench_sav` dual-tone icon); verification of `SAVWorkspaceTab` hosting 6 dedicated status tabs (Toutes les Demandes, Réception Dépôt, En Atelier, Prêt Restitution, Clôturés, Irréparables); verification of multi-field search filtering across Ticket #, Bon barcode, Serial #, Client, and Product; and verification of stage transition triggers (technician dispatch, repair return, client delivery, irreparable defect compensation).
 - **`test_order_desk_filters_like_stock_actuel.py`**:
   - *Scope*: Verifies Task #8 deliverables: dynamic loading of Brands (`cbo_mark`) from database manufacturers and catalog cache, dynamic loading of Categories (`cbo_category`) from database families and catalog cache, automatic combo view expansion (`_adjust_combo_view_width`), accurate filter application across all criteria, and rendering of the Stock Actuel filter metrics in the dedicated bottom bar (`lbl_total_value`, `lbl_total_quantity`, `lbl_count_info`) and KPI badges.
 - **`test_order_desk_price_dropdown_menu.py`**:

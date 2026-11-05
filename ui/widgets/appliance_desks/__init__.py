@@ -11,6 +11,7 @@ from .dispatch_desk_view import DispatchDeskWidget
 from .order_desk_view import OrderDeskWidget
 from .quick_client_dialog import QuickClientDialog
 from .sav_kanban_view import IrreparableDefectModal, SAVKanbanWidget, SAVReceptionDialog
+from .sav_workspace_view import SAVWorkspaceTab
 from .serial_batch_view import SerialBatchRegistryWidget
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "BonRetourDialog",
     "DispatchDeskWidget",
     "SAVKanbanWidget",
+    "SAVWorkspaceTab",
     "SAVReceptionDialog",
     "IrreparableDefectModal",
     "SerialBatchRegistryWidget",

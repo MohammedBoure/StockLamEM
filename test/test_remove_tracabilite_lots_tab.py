@@ -56,11 +56,12 @@ def mock_data_manager():
 
 
 def test_tracabilite_lots_tab_completely_removed(qapp, mock_data_manager):
-    """Verifies that 'Traçabilité & Lots' is completely removed from Bureaux & SAV."""
+    """Verifies that 'Traçabilité & Lots' is completely removed from Bureaux Opérationnels."""
+    # Default is include_sav=False (3 operational desks)
     workflow = ApplianceWorkflowTab(data_manager=mock_data_manager)
 
-    # 1. Must have exactly 4 operational tabs
-    assert workflow.desk_tabs.count() == 4, f"Expected 4 tabs in Bureaux & SAV, found {workflow.desk_tabs.count()}"
+    # 1. Must have exactly 3 operational tabs
+    assert workflow.desk_tabs.count() == 3, f"Expected 3 tabs in Bureaux Opérationnels, found {workflow.desk_tabs.count()}"
 
     # 2. Check tab text
     titles = [workflow.desk_tabs.tabText(i) for i in range(workflow.desk_tabs.count())]
@@ -71,7 +72,11 @@ def test_tracabilite_lots_tab_completely_removed(qapp, mock_data_manager):
     assert "Commandes" in titles[0]
     assert "Caisse" in titles[1]
     assert "Sortie Magasin" in titles[2]
-    assert "SAV" in titles[3]
+
+    # When include_sav=True, 4 desks exist
+    workflow_sav = ApplianceWorkflowTab(data_manager=mock_data_manager, include_sav=True)
+    assert workflow_sav.desk_tabs.count() == 4
+    assert "SAV" in workflow_sav.desk_tabs.tabText(3)
 
 
 def test_cross_desk_signals_safe_without_tracabilite_tab(qapp, mock_data_manager):
@@ -86,18 +91,26 @@ def test_cross_desk_signals_safe_without_tracabilite_tab(qapp, mock_data_manager
     workflow.refresh_all_desks()
 
 
-def test_rbac_permissions_span_exactly_four_tabs(qapp, mock_data_manager):
-    """Verifies RBAC permission rules align with the 4 tabs without index errors."""
-    workflow = ApplianceWorkflowTab(data_manager=mock_data_manager)
+def test_rbac_permissions_span_tabs_cleanly(qapp, mock_data_manager):
+    """Verifies RBAC permission rules align with the tabs without index errors."""
+    # When include_sav=False (3 desks)
+    workflow = ApplianceWorkflowTab(data_manager=mock_data_manager, include_sav=False)
 
     # User with only Caisse permission
     workflow.apply_rbac_permissions({"CAISSE_SETTLE_CASH"})
     assert not workflow.desk_tabs.isTabEnabled(0)
     assert workflow.desk_tabs.isTabEnabled(1)
     assert not workflow.desk_tabs.isTabEnabled(2)
-    assert not workflow.desk_tabs.isTabEnabled(3)
 
     # Admin user
     workflow.apply_rbac_permissions({"admin"})
-    for i in range(4):
+    for i in range(3):
         assert workflow.desk_tabs.isTabEnabled(i)
+
+    # When include_sav=True (4 desks)
+    workflow_4 = ApplianceWorkflowTab(data_manager=mock_data_manager, include_sav=True)
+    workflow_4.apply_rbac_permissions({"SAV_TICKET_CREATE"})
+    assert not workflow_4.desk_tabs.isTabEnabled(0)
+    assert not workflow_4.desk_tabs.isTabEnabled(1)
+    assert not workflow_4.desk_tabs.isTabEnabled(2)
+    assert workflow_4.desk_tabs.isTabEnabled(3)

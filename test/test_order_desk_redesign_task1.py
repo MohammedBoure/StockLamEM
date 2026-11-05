@@ -185,13 +185,18 @@ def test_order_desk_action_column_and_exhausted_state(qapp, mock_data_manager_la
 
 
 def test_appliance_workflow_desk_tab_removal(qapp, mock_data_manager_large):
-    """Verifies that 'Traçabilité & Lots' tab has been completely removed and exactly 4 desks remain."""
+    """Verifies that 'Traçabilité & Lots' tab has been completely removed and desks remain cleanly separated."""
+    # Decoupled Bureaux Opérationnels has 3 desks (SAV decoupled to its own page)
     tab_widget = ApplianceWorkflowTab(data_manager=mock_data_manager_large)
-    assert tab_widget.desk_tabs.count() == 4
+    assert tab_widget.desk_tabs.count() == 3
     tab_titles = [tab_widget.desk_tabs.tabText(i) for i in range(tab_widget.desk_tabs.count())]
     for title in tab_titles:
         assert "Traçabilité" not in title and "Lots" not in title
     assert "Commandes" in tab_titles[0]
     assert "Caisse" in tab_titles[1]
     assert "Sortie Magasin" in tab_titles[2]
-    assert "SAV" in tab_titles[3]
+
+    # When include_sav=True, 4 desks exist
+    tab_widget_sav = ApplianceWorkflowTab(data_manager=mock_data_manager_large, include_sav=True)
+    assert tab_widget_sav.desk_tabs.count() == 4
+    assert "SAV" in tab_widget_sav.desk_tabs.tabText(3)

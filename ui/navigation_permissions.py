@@ -133,6 +133,17 @@ NAVIGATION_PERMISSION_FALLBACKS = {
         "nav_pos",
         "nav_sales",
     ),
+    "nav_sav": (
+        "tab_desk_sav",
+        "SAV_TICKET_CREATE",
+        "SAV_MANAGE_STAGES",
+        "SAV_IRREPARABLE_CREDIT",
+        "desk.sav.receive_item",
+        "desk.sav.send_to_repairer",
+        "desk.sav.return_from_repairer",
+        "desk.sav.deliver_to_client",
+        "nav_appliance_workflow",
+    ),
 }
 
 

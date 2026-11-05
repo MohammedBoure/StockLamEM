@@ -4,8 +4,19 @@ This directory contains the PySide6 UI desk modules implementing the 4-desk Elec
 
 ## Files in this Directory
 
-- **`__init__.py`**: Package initializer exporting all desk widgets and modal dialogs.
-- **`appliance_workflow_tab.py`**: Unified `ApplianceWorkflowTab` hub combining the four operational desks (Commandes, Caisse, Dispatch, and SAV) with real-time cross-desk Qt signal synchronization, RBAC tab visibility enforcement, vector duotone SVG tab icons, and Multi-Scanner HID routing (the redundant 'Traçabilité & Lots' tab was completely removed per Task #2, as physical traceability is centralized in the left navbar `Traçabilité`).
+- **`__init__.py`**: Package initializer exporting all desk widgets, modal dialogs, and the standalone `SAVWorkspaceTab`.
+- **`appliance_workflow_tab.py`**: Unified `ApplianceWorkflowTab` hub combining the operational desks (Commandes, Caisse, Dispatch; SAV is decoupled into its own navbar page by default with `include_sav=False`) with real-time cross-desk Qt signal synchronization, RBAC tab visibility enforcement, vector duotone SVG tab icons, and Multi-Scanner HID routing (the redundant 'Traçabilité & Lots' tab was completely removed per Task #2, as physical traceability is centralized in the left navbar `Traçabilité`).
+- **`sav_workspace_view.py`**: Dedicated Multi-Tab Service Après-Vente (SAV) & Réparations Workspace (`SAVWorkspaceTab`, Task #9) completely decoupled from the sales operational desks into its own independent Left Navigation Bar button (`Page 15`, `nav_sav` / `wrench_sav` icon):
+  - **Dedicated Status Tabs**: Separates every repair ticket lifecycle state into its own full-screen, dedicated tab:
+    * `Tab 0`: `📋 Toutes les Demandes` (Global overview of all tickets with live counter badge)
+    * `Tab 1`: `📥 1. Réception Client (Dépôt)` (`SAV_RECEIVED`)
+    * `Tab 2`: `🔧 2. En Atelier / Réparateur` (`SAV_SENT_TO_TECH`)
+    * `Tab 3`: `✅ 3. Prêt pour Restitution` (`SAV_RETURNED_FROM_TECH`)
+    * `Tab 4`: `📦 4. Clôturés & Livrés` (`SAV_CLOSED_DELIVERED`)
+    * `Tab 5`: `⚠️ 5. Appareils Irréparables` (`IRREPARABLE_COMPENSATED` / virtual wallet credit)
+  - **Full-Width Responsive Tables**: Clean 10-column table layout with anti-truncation column sizing, smooth `ScrollPerPixel` horizontal/vertical scrolling, visual warranty status badges, technician assignment, customer symptoms, and stage-specific action buttons (`Envoi Atelier`, `Retour Réparation`, `Remise Client & Clôture`, `Déclarer Irréparable`, `Imprimer Bon`).
+  - **Global KPI Summary Bar**: Top live status badges indicating total tickets, intake depot count, repairer workshop count, ready for return count, closed count, and irreparable count.
+  - **Instant Multi-Field Search**: Real-time filtering across Ticket number, Bon barcode, Serial number, Product, Client, and Reported defect.
 - **`order_desk_view.py`**: `OrderDeskWidget` featuring:
   - **Default Available-Only Filter (Task #6)**: Introduced a prominent, ergonomic availability toggle filter (`chk_available_only`, aliased as `btn_available_only`) in `OrderTopFilterBar`:
     * **Active by Default**: Initialized to checked (`isChecked() == True`), strictly displaying items with available theoretical stock (`Available_Theoretical_Qty > 0`) and completely hiding exhausted/out-of-stock products from the catalog table, counter badges, and lazy-loading queues.
