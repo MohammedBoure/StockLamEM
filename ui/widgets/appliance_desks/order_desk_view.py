@@ -199,6 +199,7 @@ class OrderDeskWidget(QWidget):
     bonCGenerated = Signal(dict)
     bonCreditRequested = Signal(dict)
     bonLivraisonGenerated = Signal(dict)
+    scanDispatched = Signal(str, str)
 
     def __init__(
         self,
@@ -210,18 +211,22 @@ class OrderDeskWidget(QWidget):
         self.data_manager = data_manager
         self.hid_manager = hid_manager or MultiScannerHIDManager()
 
+        self._session_counter = 1
         self._sessions: Dict[str, Dict[str, Any]] = {
-            "SESSION_1": {"label": "Session Vente #1", "scanner_id": "SCANNER_A", "client_id": 1, "cart": []},
-            "SESSION_2": {"label": "Session Vente #2", "scanner_id": "SCANNER_B", "client_id": 1, "cart": []},
+            "SESSION_1": {
+                "label": "Session Vente #1",
+                "scanner_id": None,
+                "client_id": 1,
+                "cart": [],
+                "delivery_address": "",
+            },
         }
         self._active_session_id = "SESSION_1"
         self._catalog_cache: List[Dict[str, Any]] = []
 
-        for sid, sdata in self._sessions.items():
-            self.hid_manager.bind_scanner_to_session(sdata["scanner_id"], sid)
-            self.hid_manager.register_session_callback(
-                sid, lambda dev_id, code, target_sid=sid: self._on_scanner_input_for_session(target_sid, dev_id, code)
-            )
+        # Connect global listener to automatically route all hardware scanner inputs
+        self.scanDispatched.connect(self._process_scanned_barcode)
+        self.hid_manager.register_global_callback(self._on_any_scanner_input)
 
         self._init_ui()
         self.refresh_catalog()
@@ -672,6 +677,7 @@ class OrderDeskWidget(QWidget):
         self.txt_delivery_addr = QLineEdit()
         self.txt_delivery_addr.setFixedHeight(34)
         self.txt_delivery_addr.setPlaceholderText("Adresse de livraison & téléphone (pour Bon de Livraison)...")
+        self.txt_delivery_addr.textChanged.connect(self._on_delivery_addr_changed)
         layout.addWidget(self.txt_delivery_addr)
 
         # Summary Total Box
@@ -884,6 +890,26 @@ class OrderDeskWidget(QWidget):
     # MULTI-SESSION & MULTI-SCANNER ROUTING (Tabs & HID Isolation)
     # =========================================================================
 
+    def _on_delivery_addr_changed(self, text: str) -> None:
+        if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
+            self._sessions[self._active_session_id]["delivery_address"] = text.strip()
+
+    def _update_tab_label(self, sid: str) -> None:
+        if not hasattr(self, "session_tab_bar"):
+            return
+        sdata = self._sessions.get(sid)
+        if not sdata:
+            return
+        scanner_tag = f" [{sdata['scanner_id']}]" if sdata.get("scanner_id") else ""
+        cart_count = len(sdata.get("cart", []))
+        count_tag = f" ({cart_count})" if cart_count > 0 else ""
+        tab_text = f"{sdata['label']}{scanner_tag}{count_tag}"
+
+        for idx in range(self.session_tab_bar.count()):
+            if self.session_tab_bar.tabData(idx) == sid:
+                self.session_tab_bar.setTabText(idx, tab_text)
+                break
+
     def _sync_session_tabs(self) -> None:
         """Synchronizes the session tab bar with the active sessions dictionary."""
         if not hasattr(self, "session_tab_bar"):
@@ -893,8 +919,13 @@ class OrderDeskWidget(QWidget):
             self.session_tab_bar.removeTab(0)
         target_idx = 0
         for idx, (sid, sdata) in enumerate(self._sessions.items()):
-            label_text = f"{sdata['label']} [{sdata['scanner_id']}]"
-            tab_pos = self.session_tab_bar.addTab(get_duotone_icon("barcode_scan", 14), label_text)
+            scanner_tag = f" [{sdata['scanner_id']}]" if sdata.get("scanner_id") else ""
+            cart_count = len(sdata.get("cart", []))
+            count_tag = f" ({cart_count})" if cart_count > 0 else ""
+            tab_pos = self.session_tab_bar.addTab(
+                get_duotone_icon("barcode_scan", 14),
+                f"{sdata['label']}{scanner_tag}{count_tag}",
+            )
             self.session_tab_bar.setTabData(tab_pos, sid)
             if sid == self._active_session_id:
                 target_idx = tab_pos
@@ -905,18 +936,34 @@ class OrderDeskWidget(QWidget):
         if idx < 0 or not hasattr(self, "session_tab_bar") or idx >= self.session_tab_bar.count():
             return
         sid = self.session_tab_bar.tabData(idx)
-        if sid and sid in self._sessions:
-            self._active_session_id = sid
-            sdata = self._sessions[sid]
-            self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
-            if hasattr(self, "cbo_client"):
-                cid = sdata.get("client_id", 1)
-                c_idx = self.cbo_client.findData(cid)
-                if c_idx >= 0:
-                    self.cbo_client.blockSignals(True)
-                    self.cbo_client.setCurrentIndex(c_idx)
-                    self.cbo_client.blockSignals(False)
-            self._refresh_cart_ui()
+        if not sid or sid not in self._sessions:
+            return
+
+        # Save previous session's delivery address
+        if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
+            if hasattr(self, "txt_delivery_addr"):
+                self._sessions[self._active_session_id]["delivery_address"] = self.txt_delivery_addr.text().strip()
+
+        self._active_session_id = sid
+        sdata = self._sessions[sid]
+        self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
+
+        # Restore client selection
+        if hasattr(self, "cbo_client"):
+            cid = sdata.get("client_id", 1)
+            c_idx = self.cbo_client.findData(cid)
+            if c_idx >= 0:
+                self.cbo_client.blockSignals(True)
+                self.cbo_client.setCurrentIndex(c_idx)
+                self.cbo_client.blockSignals(False)
+
+        # Restore delivery address
+        if hasattr(self, "txt_delivery_addr"):
+            self.txt_delivery_addr.blockSignals(True)
+            self.txt_delivery_addr.setText(sdata.get("delivery_address", ""))
+            self.txt_delivery_addr.blockSignals(False)
+
+        self._refresh_cart_ui()
 
     def _on_session_switched(self, idx: int) -> None:
         """Legacy compatibility wrapper forwarding to tab switch."""
@@ -948,7 +995,8 @@ class OrderDeskWidget(QWidget):
             if reply != QMessageBox.Yes:
                 return
 
-        self.hid_manager.unbind_scanner(sdata["scanner_id"])
+        if sdata.get("scanner_id"):
+            self.hid_manager.unbind_scanner(sdata["scanner_id"])
         del self._sessions[sid]
 
         self.session_tab_bar.blockSignals(True)
@@ -957,50 +1005,54 @@ class OrderDeskWidget(QWidget):
 
         new_idx = min(index, self.session_tab_bar.count() - 1)
         self.session_tab_bar.setCurrentIndex(new_idx)
-        new_sid = self.session_tab_bar.tabData(new_idx)
-        if new_sid and new_sid in self._sessions:
-            self._active_session_id = new_sid
-            self.lbl_cart_header.setText(f"Panier — {self._sessions[new_sid]['label']}")
-            self._refresh_cart_ui()
+        self._on_session_tab_switched(new_idx)
 
-    def _create_new_session(self) -> None:
-        next_num = len(self._sessions) + 1
-        sid = f"SESSION_{next_num}"
-        scanner_id = f"SCANNER_{chr(64 + min(next_num, 26))}"
-        label = f"Session Vente #{next_num}"
+    def _create_new_session(self, scanner_id: Optional[str] = None) -> str:
+        self._session_counter += 1
+        sid = f"SESSION_{self._session_counter}"
+        while sid in self._sessions:
+            self._session_counter += 1
+            sid = f"SESSION_{self._session_counter}"
+
+        label = f"Session Vente #{self._session_counter}"
         self._sessions[sid] = {
             "label": label,
             "scanner_id": scanner_id,
             "client_id": 1,
             "cart": [],
+            "delivery_address": "",
         }
-        self.hid_manager.bind_scanner_to_session(scanner_id, sid)
-        self.hid_manager.register_session_callback(
-            sid, lambda dev_id, code, target_sid=sid: self._on_scanner_input_for_session(target_sid, dev_id, code)
-        )
-        tab_idx = self.session_tab_bar.addTab(
-            get_duotone_icon("barcode_scan", 14),
-            f"{label} [{scanner_id}]"
-        )
-        self.session_tab_bar.setTabData(tab_idx, sid)
-        self.session_tab_bar.setCurrentIndex(tab_idx)
+        if scanner_id:
+            self.hid_manager.bind_scanner_to_session(scanner_id, sid)
+
+        scanner_tag = f" [{scanner_id}]" if scanner_id else ""
+        if hasattr(self, "session_tab_bar"):
+            tab_idx = self.session_tab_bar.addTab(
+                get_duotone_icon("barcode_scan", 14),
+                f"{label}{scanner_tag}",
+            )
+            self.session_tab_bar.setTabData(tab_idx, sid)
+            if scanner_id is None:
+                self.session_tab_bar.setCurrentIndex(tab_idx)
+
+        return sid
 
     def _prompt_scanner_binding(self) -> None:
         sdata = self._sessions[self._active_session_id]
+        curr_dev = sdata.get("scanner_id") or ""
         text, ok = QInputDialog.getText(
             self,
             "Association Scanner USB / HID",
             f"Identifiant matériel (hDevice / Handle) du lecteur pour {sdata['label']} :",
-            text=sdata["scanner_id"],
+            text=curr_dev,
         )
         if ok and text.strip():
             new_dev = text.strip()
-            self.hid_manager.unbind_scanner(sdata["scanner_id"])
+            if curr_dev:
+                self.hid_manager.unbind_scanner(curr_dev)
             sdata["scanner_id"] = new_dev
             self.hid_manager.bind_scanner_to_session(new_dev, self._active_session_id)
-            curr_idx = self.session_tab_bar.currentIndex()
-            if curr_idx >= 0:
-                self.session_tab_bar.setTabText(curr_idx, f"{sdata['label']} [{new_dev}]")
+            self._update_tab_label(self._active_session_id)
             self.lbl_scanner_status.setText(f"Scanner [{new_dev}] associé à {sdata['label']}")
 
     @property
@@ -1033,6 +1085,48 @@ class OrderDeskWidget(QWidget):
 
         return _CboSessionAdapter()
 
+    def _resolve_session_for_device(self, device_id: str) -> str:
+        clean_dev = str(device_id).strip()
+
+        # 1. Device already mapped in hid_manager to an existing session
+        bound_sid = self.hid_manager.get_session_for_device(clean_dev)
+        if bound_sid and bound_sid in self._sessions:
+            return bound_sid
+
+        # 2. Device recorded in _sessions
+        for sid, sdata in self._sessions.items():
+            if sdata.get("scanner_id") == clean_dev:
+                self.hid_manager.bind_scanner_to_session(clean_dev, sid)
+                return sid
+
+        # 3. Check if there is an unassigned session (e.g. initial SESSION_1 waiting for its first device)
+        for sid, sdata in self._sessions.items():
+            if not sdata.get("scanner_id"):
+                sdata["scanner_id"] = clean_dev
+                self.hid_manager.bind_scanner_to_session(clean_dev, sid)
+                self._update_tab_label(sid)
+                self.lbl_scanner_status.setText(f"Scanner [{clean_dev}] associé à {sdata['label']}")
+                return sid
+
+        # 4. Brand new device (different from first device): automatically create new session (unlimited)
+        new_sid = self._create_new_session(scanner_id=clean_dev)
+        sdata = self._sessions[new_sid]
+        self.lbl_scanner_status.setText(f"Nouvelle session créée pour le scanner [{clean_dev}]")
+        return new_sid
+
+    def _on_any_scanner_input(self, device_id: str, barcode: str, session_id: Optional[str] = None) -> None:
+        """Entry point called by MultiScannerHIDManager when a complete barcode arrives."""
+        from PySide6.QtCore import QThread
+        if QThread.currentThread() == self.thread():
+            self._process_scanned_barcode(str(device_id), str(barcode))
+        else:
+            self.scanDispatched.emit(str(device_id), str(barcode))
+
+    def _process_scanned_barcode(self, device_id: str, barcode: str) -> None:
+        """Main GUI thread barcode handler resolving device to session and adding product to cart."""
+        target_sid = self._resolve_session_for_device(device_id)
+        self._on_scanner_input_for_session(target_sid, device_id, barcode)
+
     def _on_scanner_input_for_session(self, session_id: str, device_id: str, barcode: str) -> None:
         """Routes a barcode scan directly into its bound session's cart without disturbing other sessions."""
         clean_bc = barcode.strip()
@@ -1044,8 +1138,9 @@ class OrderDeskWidget(QWidget):
 
         if matched_prod:
             self._add_product_to_session(session_id, matched_prod)
+            s_label = self._sessions.get(session_id, {}).get("label", session_id)
             self.lbl_scanner_status.setText(
-                f"Scan [{device_id}] -> {self._sessions[session_id]['label']} : {matched_prod.get('Product_Name')}"
+                f"Scan [{device_id}] -> {s_label} : {matched_prod.get('Product_Name')}"
             )
         else:
             self.lbl_scanner_status.setText(
@@ -1071,6 +1166,7 @@ class OrderDeskWidget(QWidget):
                 item["quantity"] += 1
                 if session_id == self._active_session_id:
                     self._refresh_cart_ui()
+                self._update_tab_label(session_id)
                 return
 
         if avail <= 0:
@@ -1088,6 +1184,7 @@ class OrderDeskWidget(QWidget):
         })
         if session_id == self._active_session_id:
             self._refresh_cart_ui()
+        self._update_tab_label(session_id)
 
     def _refresh_cart_ui(self) -> None:
         cart = self._sessions[self._active_session_id]["cart"]
@@ -1129,9 +1226,15 @@ class OrderDeskWidget(QWidget):
                 it_tot.setText(f"{format_money(line_tot)} DA")
             total_ttc = sum(it["unit_price_ttc"] * it["quantity"] for it in cart)
             self.lbl_total.setText(f"{format_money(total_ttc)} DA")
+            self._update_tab_label(self._active_session_id)
 
     def _clear_current_cart(self) -> None:
-        self._sessions[self._active_session_id]["cart"] = []
+        if self._active_session_id in self._sessions:
+            self._sessions[self._active_session_id]["cart"] = []
+            self._sessions[self._active_session_id]["delivery_address"] = ""
+        if hasattr(self, "txt_delivery_addr"):
+            self.txt_delivery_addr.clear()
+        self._update_tab_label(self._active_session_id)
         self._refresh_cart_ui()
 
     # =========================================================================
@@ -1159,7 +1262,7 @@ class OrderDeskWidget(QWidget):
             "BON_CREDIT": "CREDIT_APPROVAL_REQUIRED",
             "BON_LIVRAISON": "LIVRAISON_COD",
         }
-        deliv_addr = self.txt_delivery_addr.text().strip() or None
+        deliv_addr = sdata.get("delivery_address") or self.txt_delivery_addr.text().strip() or None
 
         try:
             if self.data_manager and hasattr(self.data_manager, "bonds"):

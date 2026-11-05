@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from PySide6.QtWidgets import QApplication
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
 from ui.widgets.appliance_desks import ApplianceWorkflowTab
+from ui.widgets.appliance_desks.order_desk_view import OrderDeskWidget
 from database.user_manager import UserManager
 
 ROLE_PERMISSION_PRESETS = UserManager.ROLE_PERMISSION_PRESETS
@@ -127,3 +128,92 @@ def test_order_desk_multi_session_cart_isolation_and_rbac_tabs(qapp):
     workflow_tab.apply_rbac_permissions({"admin"})
     for idx in range(workflow_tab.desk_tabs.count()):
         assert workflow_tab.desk_tabs.isTabEnabled(idx) is True
+
+
+def test_order_desk_dynamic_session_creation_and_unlimited_isolation(qapp):
+    """
+    Task #2 Automated Verification:
+    1. First scanner scan (DEV_ALPHA) binds to SESSION_1 as the primary session.
+    2. Any new scanner device (DEV_BETA) automatically opens a new session tab (SESSION_2).
+    3. Unlimited dynamic sessions: consecutive scans from 10 distinct devices spawn 10 isolated sessions.
+    4. Complete state isolation:
+       - Cart contents per session
+       - Delivery address per session
+       - Tab closure unbinds device and cleans up state safely.
+    """
+    hid_mgr = MultiScannerHIDManager()
+    desk = OrderDeskWidget(data_manager=None, hid_manager=hid_mgr)
+
+    # Initial state: SESSION_1 exists without hardware device
+    assert len(desk._sessions) == 1
+    assert "SESSION_1" in desk._sessions
+    assert desk._sessions["SESSION_1"]["scanner_id"] is None
+
+    # 1. First device scan: binds directly to SESSION_1
+    hid_mgr.simulate_scan("DEV_ALPHA", "4242005198030")
+    assert desk._sessions["SESSION_1"]["scanner_id"] == "DEV_ALPHA"
+    assert len(desk._sessions["SESSION_1"]["cart"]) == 1
+    assert desk._sessions["SESSION_1"]["cart"][0]["product_id"] == 101
+
+    # Another scan from the SAME device continues to route to SESSION_1
+    hid_mgr.simulate_scan("DEV_ALPHA", "4242005198030")
+    assert desk._sessions["SESSION_1"]["cart"][0]["quantity"] == 2
+    assert len(desk._sessions) == 1
+
+    # 2. Second device scan (NEW device): automatically creates SESSION_2
+    hid_mgr.simulate_scan("DEV_BETA", "8806098321092")
+    assert len(desk._sessions) == 2
+    assert "SESSION_2" in desk._sessions
+    assert desk._sessions["SESSION_2"]["scanner_id"] == "DEV_BETA"
+    assert len(desk._sessions["SESSION_2"]["cart"]) == 1
+    assert desk._sessions["SESSION_2"]["cart"][0]["product_id"] == 102
+    assert desk._sessions["SESSION_1"]["cart"][0]["quantity"] == 2  # Untouched
+
+    # 3. Third device scan (NEW device): automatically creates SESSION_3
+    hid_mgr.simulate_scan("DEV_GAMMA", "6939962711029")
+    assert len(desk._sessions) == 3
+    assert "SESSION_3" in desk._sessions
+    assert desk._sessions["SESSION_3"]["scanner_id"] == "DEV_GAMMA"
+    assert len(desk._sessions["SESSION_3"]["cart"]) == 1
+    assert desk._sessions["SESSION_3"]["cart"][0]["product_id"] == 103
+
+    # 4. Unlimited sessions: Spawn 8 more devices -> total 11 sessions
+    for i in range(4, 12):
+        dev = f"DEV_MULTI_{i}"
+        hid_mgr.simulate_scan(dev, "4242005198030")
+        sid = f"SESSION_{i}"
+        assert sid in desk._sessions
+        assert desk._sessions[sid]["scanner_id"] == dev
+        assert len(desk._sessions[sid]["cart"]) == 1
+
+    assert len(desk._sessions) == 11
+    assert desk.session_tab_bar.count() == 11
+
+    # 5. Delivery address & client state isolation
+    # Set delivery address on active session (SESSION_1)
+    desk.txt_delivery_addr.setText("123 Rue de la Liberté, Alger")
+    assert desk._sessions["SESSION_1"]["delivery_address"] == "123 Rue de la Liberté, Alger"
+
+    # Switch to SESSION_2
+    desk.session_tab_bar.setCurrentIndex(1)
+    assert desk._active_session_id == "SESSION_2"
+    assert desk.txt_delivery_addr.text() == ""  # Blank for SESSION_2
+
+    # Set delivery address on SESSION_2
+    desk.txt_delivery_addr.setText("45 Avenue de l'Indépendance, Oran")
+    assert desk._sessions["SESSION_2"]["delivery_address"] == "45 Avenue de l'Indépendance, Oran"
+    assert desk._sessions["SESSION_1"]["delivery_address"] == "123 Rue de la Liberté, Alger"  # Isolated!
+
+    # Switch back to SESSION_1: delivery address restored!
+    desk.session_tab_bar.setCurrentIndex(0)
+    assert desk._active_session_id == "SESSION_1"
+    assert desk.txt_delivery_addr.text() == "123 Rue de la Liberté, Alger"
+
+    # 6. Tab close & unbind
+    # Close SESSION_3 (tab index 2)
+    desk.session_tab_bar.setCurrentIndex(2)
+    desk._clear_current_cart()  # empty cart so confirmation popup doesn't block
+    desk._on_session_tab_close_requested(2)
+    assert "SESSION_3" not in desk._sessions
+    assert hid_mgr.get_session_for_device("DEV_GAMMA") is None  # Unbound!
+
