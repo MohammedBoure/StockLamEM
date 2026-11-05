@@ -376,7 +376,7 @@ class CashierDeskWidget(QWidget):
         q_icon.setPixmap(get_duotone_icon("payment", 18).pixmap(18, 18))
         top_q.addWidget(q_icon)
 
-        lbl_q = QLabel("File d'Attente des Bons en Caisse (Bon C, Bon Crédit, Bon de Livraison)")
+        lbl_q = QLabel("File d'Attente des Bons en Caisse (Bon Comptant, Bon Crédit, Bon de Livraison)")
         lbl_q.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         top_q.addWidget(lbl_q)
         top_q.addStretch()
@@ -541,7 +541,7 @@ class CashierDeskWidget(QWidget):
         r_layout.addLayout(form)
 
         # Action Buttons for the 3 Order Bond Types
-        self.btn_val_bon_c = QPushButton("Valider Bon C (Encaissement Direct -> Sortie)")
+        self.btn_val_bon_c = QPushButton("Valider Bon Comptant (Encaissement Direct -> Sortie)")
         self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 16))
         self.btn_val_bon_c.setIconSize(QSize(16, 16))
         self.btn_val_bon_c.setCursor(Qt.PointingHandCursor)
@@ -616,7 +616,7 @@ class CashierDeskWidget(QWidget):
 
             raw_type = str(ord_item.get("Bond_Type") or "BON_C")
             type_labels = {
-                "BON_C": "Bon C (Direct)",
+                "BON_C": "Bon Comptant (Direct)",
                 "BON_CREDIT": "Bon Crédit",
                 "BON_LIVRAISON": "Bon de Livraison",
             }
@@ -717,7 +717,7 @@ class CashierDeskWidget(QWidget):
             QMessageBox.warning(
                 self,
                 "Montant Insuffisant",
-                f"Le total encaissé ({format_money(cash_val + card_val + w_ded)} DA) est inférieur au montant du Bon C ({format_money(tot)} DA).",
+                f"Le total encaissé ({format_money(cash_val + card_val + w_ded)} DA) est inférieur au montant du Bon Comptant ({format_money(tot)} DA).",
             )
             return
 
@@ -735,12 +735,12 @@ class CashierDeskWidget(QWidget):
             self.orderSettled.emit(order_num, "BON_C_PAID")
             QMessageBox.information(
                 self,
-                "Bon C Validé",
-                f"Le Bon C ({order_num}) a été encaissé et validé.\nTransmis au Bureau de Sortie pour scan du N° de Série.",
+                "Bon Comptant Validé",
+                f"Le Bon Comptant ({order_num}) a été encaissé et validé.\nTransmis au Bureau de Sortie pour scan du N° de Série.",
             )
             self.refresh_queue()
         except Exception as err:
-            QMessageBox.critical(self, "Erreur Validation Bon C", str(err))
+            QMessageBox.critical(self, "Erreur Validation Bon Comptant", str(err))
 
     # =========================================================================
     # 2. BON CRÉDIT AUTHORIZATION (بيع بالأجل بموافقة المشرف)

@@ -13,6 +13,7 @@ from .packaging_units_tab import PackagingUnitsTab
 from .external_partners_tab import ExternalPartnersTab 
 from .clients_tab import ClientsTab
 from .caisses_tab import CaissesTab
+from .product_colors_tab import ProductColorsTab
 
 class MasterDataTabs(QWidget):
     def __init__(self, data_manager):
@@ -28,14 +29,16 @@ class MasterDataTabs(QWidget):
         self.tab_products = ProductsTab(self.data_manager)
         self.tab_families = ProductFamiliesTab(self.data_manager)
         self.tab_units = PackagingUnitsTab(self.data_manager)
-        self.tab_suppliers = SuppliersTab(self.data_manager.suppliers)
-        self.tab_manufacturers = ManufacturersTab(self.data_manager.manufacturers)
-        self.tab_locations = LocationsTab(self.data_manager.locations)
-        self.tab_automates = AutomatesTab(self.data_manager.automates, self.data_manager.locations)
-        self.tab_waste = WasteReasonsTab(self.data_manager.waste_reasons)
-        self.tab_partners = ExternalPartnersTab(self.data_manager.partners) 
+        dm = self.data_manager
+        self.tab_suppliers = SuppliersTab(getattr(dm, "suppliers", None))
+        self.tab_manufacturers = ManufacturersTab(getattr(dm, "manufacturers", None))
+        self.tab_locations = LocationsTab(getattr(dm, "locations", None))
+        self.tab_automates = AutomatesTab(getattr(dm, "automates", None), getattr(dm, "locations", None))
+        self.tab_waste = WasteReasonsTab(getattr(dm, "waste_reasons", None))
+        self.tab_partners = ExternalPartnersTab(getattr(dm, "partners", None))
         self.tab_clients = ClientsTab(self.data_manager)
         self.tab_caisses = CaissesTab(self.data_manager)
+        self.tab_colors = ProductColorsTab(self.data_manager)
 
 
         layout.addWidget(self.tabs)

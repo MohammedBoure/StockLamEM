@@ -561,6 +561,8 @@ class MainWindow(QMainWindow):
                 widget.tabs.addTab(widget.tab_clients, "Clients")
             if hasattr(self.data_manager, 'pos_terminals') and self.has_permission("tab_data_caisses"):
                 widget.tabs.addTab(widget.tab_caisses, "Caisses")
+            if hasattr(widget, 'tab_colors') and self.has_permission("tab_data_colors"):
+                widget.tabs.addTab(widget.tab_colors, "Couleurs")
 
         # --- 2. Procurement (Achats) ---
         elif page_id == 2:

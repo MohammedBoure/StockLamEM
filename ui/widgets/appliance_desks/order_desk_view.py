@@ -749,7 +749,7 @@ class OrderDeskWidget(QWidget):
         layout.addWidget(total_box)
 
         # Primary CTA: Bon C
-        btn_bon_c = QPushButton("Émettre Bon C (Vente Directe -> Caisse)")
+        btn_bon_c = QPushButton("Émettre Bon Comptant (Vente Directe -> Caisse)")
         btn_bon_c.setIcon(get_duotone_icon("payment_white", 16))
         btn_bon_c.setIconSize(QSize(16, 16))
         btn_bon_c.setCursor(Qt.PointingHandCursor)
@@ -1452,8 +1452,8 @@ class OrderDeskWidget(QWidget):
                 self.bonCGenerated.emit(res)
                 QMessageBox.information(
                     self,
-                    "Bon C Créé",
-                    f"Bon C ({order_num}) enregistré avec succès.\n"
+                    "Bon Comptant Créé",
+                    f"Bon Comptant ({order_num}) enregistré avec succès.\n"
                     f"Montant TTC : {format_money(total_ttc)} DA\n"
                     "Le client peut se présenter au Bureau Caisse pour validation.",
                 )

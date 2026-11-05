@@ -41,7 +41,8 @@ SYSTEM_PERMISSIONS = {
             "tab_data_locations": "Emplacements",
             "tab_data_waste_reasons": "Motifs Rebut",
             "tab_clients": "Clients",
-            "tab_data_caisses": "Caisses & Terminaux POS"
+            "tab_data_caisses": "Caisses & Terminaux POS",
+            "tab_data_colors": "Couleurs des Produits"
         }
     },
     "3. ACHATS": {

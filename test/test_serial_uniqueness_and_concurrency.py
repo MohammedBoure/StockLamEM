@@ -46,6 +46,7 @@ class StatefulMockDB:
         self.exit_bonds = {}
         self.exit_serials = []
         self.stock_movement_logs = []
+        self.colors = {}
         self._next_id = 1
 
     def alloc_id(self) -> int:
@@ -350,6 +351,56 @@ class StatefulMockCursor:
                 "Serials_In_Stock": serials_cnt,
             }
             self._rows = [row]
+            return
+
+        # 18. Product Colors Handling
+        if "CREATE TABLE IF NOT EXISTS PRODUCT_COLORS" in q_upper:
+            return
+
+        if "SELECT COUNT(*) AS CNT FROM PRODUCT_COLORS" in q_upper:
+            self._rows = [{"cnt": len(self.db.colors)}]
+            return
+
+        if q_upper.startswith("INSERT INTO PRODUCT_COLORS") or q_upper.startswith("INSERT IGNORE INTO PRODUCT_COLORS"):
+            cid = self.db.alloc_id()
+            self.db.colors[cid] = {
+                "Color_ID": cid,
+                "Color_Name": p[0],
+                "Color_Code": p[1],
+                "Description": p[2],
+                "Is_Active": True,
+            }
+            self.lastrowid = cid
+            self.rowcount = 1
+            return
+
+        if "FROM PRODUCT_COLORS" in q_upper:
+            res = list(self.db.colors.values())
+            if "WHERE" in q_upper and len(p) >= 1:
+                term = str(p[0]).replace("%", "").lower()
+                res = [
+                    c for c in res
+                    if term in str(c.get("Color_Name", "")).lower()
+                    or term in str(c.get("Description", "")).lower()
+                    or term in str(c.get("Color_Code", "")).lower()
+                ]
+            self._rows = res
+            return
+
+        if q_upper.startswith("UPDATE PRODUCT_COLORS"):
+            cid = int(p[4])
+            if cid in self.db.colors:
+                self.db.colors[cid]["Color_Name"] = p[0]
+                self.db.colors[cid]["Color_Code"] = p[1]
+                self.db.colors[cid]["Description"] = p[2]
+                self.db.colors[cid]["Is_Active"] = p[3]
+                self.rowcount = 1
+            return
+
+        if q_upper.startswith("DELETE FROM PRODUCT_COLORS"):
+            cid = int(p[0])
+            self.db.colors.pop(cid, None)
+            self.rowcount = 1
             return
 
         # 16d. Insert Stock_Movement_Log

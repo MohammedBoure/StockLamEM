@@ -45,6 +45,7 @@ from .bond_lifecycle_manager import (
     SecurityViolationException,
 )
 from .sav_workflow_manager import SAVWorkflowManager, SAVWorkflowService
+from .product_color_manager import ProductColorManager
 class LabDataManager:
 
     def __init__(self, db_instance: Database):
@@ -58,6 +59,7 @@ class LabDataManager:
         self.waste_reasons = WasteReasonManager(db_instance)
         self.families = ProductFamilyManager(db_instance)
         self.packaging_units = PackagingUnitManager(db_instance)
+        self.colors = ProductColorManager(db_instance)
 
         # 2. Product/Document Managers
         self.products = ProductManager(db_instance)

@@ -30,6 +30,7 @@ NAVIGATION_PERMISSION_FALLBACKS = {
         "tab_data_waste_reasons",
         "tab_clients",
         "tab_data_caisses",
+        "tab_data_colors",
     ),
     "nav_procurement": (
         "tab_proc_po",

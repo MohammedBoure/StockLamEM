@@ -29,6 +29,10 @@ Ce dossier regroupe les interfaces de gestion des référentiels de données du 
   - Ségrégation comptable stricte : les devis et commandes brouillons (`DEV-`, `BC-`) apparaissent marqués `[Hors bilan]` en gris avec débit nul sans altérer le solde progressif ni le solde antérieur.
   - Export PDF A4 ReportLab et impression directe unifiée avec en-tête d'entreprise, coordonnées fiscales du client (NIF, RC), récapitulatif KPI et tableau chronologique.
 - `caisses_tab.py` : Gestion et contrôle des caisses (Terminaux POS), statut actif/inactif et suivi du nombre de sessions.
+- `product_colors_tab.py` : Gestion et référencement des couleurs/finitions des appareils électroménagers (`ProductColorsTab`) :
+  - Visualisation des échantillons de couleur avec pastilles chromatiques (`ColorPreviewWidget`), nom, code Hexadécimal et statut.
+  - Filtrage en temps réel par désignation ou code hexadécimal.
+  - Dialogue modal d'ajout et modification (`ColorDialog`) avec sélecteur graphique interactif `QColorDialog`, validation du format Hex `#RRGGBB` et gestion de l'activation.
 - `dialogs.py` : Boîtes de dialogue de saisie et de modification des entités de base :
   - `LocationDialog` : Contrôles de visibilité (Public / Privé) et case à cocher "Autoriser la vente POS" avec règle stricte d'intégrité (vente POS impossible sur emplacement privé).
   - `ClientDialog` : Sélection de la catégorie tarifaire (`Prix_1` à `Prix_4`) et saisie du plafond de crédit (`Credit_Limit`).
