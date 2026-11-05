@@ -13,7 +13,7 @@ Provides:
 
 import logging
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QEvent, QObject, QSettings, QSize, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap
@@ -116,10 +116,10 @@ class ColorBadgeWidget(QWidget):
 
         # Swatch dot
         self.swatch = QFrame()
-        self.swatch.setFixedSize(13, 13)
-        border_col = "#94A3B8" if self.hex_code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "rgba(0,0,0,0.25)"
+        self.swatch.setFixedSize(14, 14)
+        border_col = "#94A3B8" if self.hex_code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC", "#F1F5F9") else "rgba(0,0,0,0.3)"
         self.swatch.setStyleSheet(
-            f"background-color: {self.hex_code}; border: 1px solid {border_col}; border-radius: 6px;"
+            f"background-color: {self.hex_code}; border: 1.5px solid {border_col}; border-radius: 7px;"
         )
         layout.addWidget(self.swatch)
 
@@ -369,6 +369,55 @@ class AddActionCellWidget(QWidget):
     def _trigger_add(self):
         if self.is_available and callable(self.on_add_callback):
             self.on_add_callback()
+
+
+class CartRemoveCellWidget(QWidget):
+    """
+    Action slot widget rendering an elegant, compact delete button with vector trash icon:
+    - Zero vertical clipping inside the cart row.
+    - Soft red hover effect (#FEE2E2 / #F87171) for clear tactile feedback.
+    - Tooltip: 'Supprimer cet article de la commande'.
+    - Pointing hand cursor.
+    """
+
+    def __init__(self, on_remove: Optional[Callable[[], None]] = None, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.on_remove = on_remove
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignCenter)
+
+        self.btn_delete = QPushButton()
+        self.btn_delete.setObjectName("BtnCartRemove")
+        self.btn_delete.setFixedSize(26, 26)
+        self.btn_delete.setCursor(Qt.PointingHandCursor)
+        self.btn_delete.setIcon(get_trash_icon(14))
+        self.btn_delete.setIconSize(QSize(14, 14))
+        self.btn_delete.setToolTip("Supprimer cet article de la commande")
+        self.btn_delete.setStyleSheet("""
+            QPushButton#BtnCartRemove {
+                background-color: #F8FAFC;
+                color: #DC2626;
+                border: 1px solid #E2E8F0;
+                border-radius: 5px;
+                padding: 0;
+            }
+            QPushButton#BtnCartRemove:hover {
+                background-color: #FEE2E2;
+                border-color: #FCA5A5;
+            }
+            QPushButton#BtnCartRemove:pressed {
+                background-color: #FECACA;
+            }
+        """)
+        self.btn_delete.clicked.connect(self._trigger_remove)
+        layout.addWidget(self.btn_delete)
+
+    def _trigger_remove(self) -> None:
+        if callable(self.on_remove):
+            self.on_remove()
 
 
 TABLE_STYLE = """
@@ -693,6 +742,7 @@ class OrderDeskWidget(QWidget):
         self._restore_splitter_state()
         self.splitter.splitterMoved.connect(self._save_splitter_state)
         self.splitter.splitterMoved.connect(lambda: self._adjust_catalog_column_widths())
+        self.splitter.splitterMoved.connect(lambda: self._adjust_cart_column_widths())
         content_layout.addWidget(self.splitter, 1)
 
         self.scroll_area.setWidget(content_widget)
@@ -1299,18 +1349,63 @@ class OrderDeskWidget(QWidget):
         else:
             self._adjust_catalog_column_widths()
 
+    def _adjust_cart_column_widths(self) -> None:
+        """
+        Dynamically adjusts 'Désignation' column (index 0) width in the cart table:
+        - When the cart panel viewport has surplus space, column 0 stretches smoothly to fill it.
+        - When the cart panel is narrowed, column 0 is clamped to a minimum of 180px,
+          activating the horizontal scrollbar so all items (Couleur badge, Qté stepper, Total TTC,
+          and Suppr. button) remain 100% complete, unclipped, and fully readable.
+        """
+        if getattr(self, "_is_adjusting_cart_columns", False):
+            return
+        if not hasattr(self, "cart_table") or self.cart_table is None:
+            return
+
+        self._is_adjusting_cart_columns = True
+        try:
+            viewport_w = self.cart_table.viewport().width()
+            if viewport_w <= 0:
+                if self.cart_table.columnWidth(0) < 180:
+                    self.cart_table.setColumnWidth(0, 180)
+                return
+
+            other_widths = sum(self.cart_table.columnWidth(c) for c in range(self.cart_table.columnCount()) if c != 0)
+            min_desig_width = 180
+            avail = viewport_w - other_widths
+            target = max(min_desig_width, avail)
+
+            if self.cart_table.columnWidth(0) != target:
+                self.cart_table.setColumnWidth(0, target)
+        finally:
+            self._is_adjusting_cart_columns = False
+
+    def _on_cart_header_section_resized(self, logical_index: int, old_size: int, new_size: int) -> None:
+        """Ensures cart designation column does not shrink below readable threshold."""
+        if getattr(self, "_is_adjusting_cart_columns", False):
+            return
+        if logical_index == 0:
+            if new_size < 160:
+                self.cart_table.setColumnWidth(0, 160)
+        else:
+            self._adjust_cart_column_widths()
+
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         if watched is getattr(self, "table", None) and event.type() == QEvent.Resize:
             self._adjust_catalog_column_widths()
+        elif watched is getattr(self, "cart_table", None) and event.type() == QEvent.Resize:
+            self._adjust_cart_column_widths()
         return super().eventFilter(watched, event)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._adjust_catalog_column_widths()
+        self._adjust_cart_column_widths()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._adjust_catalog_column_widths()
+        self._adjust_cart_column_widths()
 
     def _create_cart_panel(self) -> QWidget:
         panel = QFrame()
@@ -1440,12 +1535,12 @@ class OrderDeskWidget(QWidget):
         self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
         layout.addWidget(self.cbo_client)
 
-        # Cart Items Table
-        self.cart_table = QTableWidget(0, 4)
-        self.cart_table.setHorizontalHeaderLabels(["Désignation", "Couleur", "Qté", "Total TTC"])
+        # Cart Items Table (5 columns: Désignation, Couleur, Qté, Total TTC, Suppr.)
+        self.cart_table = QTableWidget(0, 5)
+        self.cart_table.setHorizontalHeaderLabels(["Désignation", "Couleur", "Qté", "Total TTC", "Suppr."])
         self.cart_table.setStyleSheet(TABLE_STYLE)
         self.cart_table.verticalHeader().setVisible(False)
-        self.cart_table.verticalHeader().setDefaultSectionSize(36)
+        self.cart_table.verticalHeader().setDefaultSectionSize(40)
         self.cart_table.horizontalHeader().setFixedHeight(34)
         self.cart_table.setShowGrid(True)
         self.cart_table.setAlternatingRowColors(True)
@@ -1455,18 +1550,27 @@ class OrderDeskWidget(QWidget):
         self.cart_table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.cart_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.cart_table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.cart_table.installEventFilter(self)
+
         ch = self.cart_table.horizontalHeader()
-        ch.setSectionResizeMode(0, QHeaderView.Stretch)
+        ch.setSectionResizeMode(0, QHeaderView.Interactive)
+        self.cart_table.setColumnWidth(0, 180)
         ch.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.cart_table.setColumnWidth(1, 55)
+        self.cart_table.setColumnWidth(1, 105)
         ch.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(2, 75)
+        self.cart_table.setColumnWidth(2, 80)
         ch.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(3, 95)
+        self.cart_table.setColumnWidth(3, 105)
+        ch.setSectionResizeMode(4, QHeaderView.Fixed)
+        self.cart_table.setColumnWidth(4, 42)
+
         self.cart_table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.cart_table.horizontalHeaderItem(1).setTextAlignment(Qt.AlignCenter)
         self.cart_table.horizontalHeaderItem(2).setTextAlignment(Qt.AlignCenter)
         self.cart_table.horizontalHeaderItem(3).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.cart_table.horizontalHeaderItem(4).setTextAlignment(Qt.AlignCenter)
+        self.cart_table.horizontalHeaderItem(4).setToolTip("Supprimer l'article de la commande")
+        ch.sectionResized.connect(self._on_cart_header_section_resized)
         layout.addWidget(self.cart_table, 1)
 
         # Delivery info for Bon de Livraison
@@ -2413,11 +2517,21 @@ class OrderDeskWidget(QWidget):
             line_tot = item["unit_price_ttc"] * item["quantity"]
             total_ttc += line_tot
 
-            self.cart_table.setItem(row, 0, QTableWidgetItem(f"{item['mark']} {item['name']}".strip()))
-            it_col = QTableWidgetItem(item["coloure"])
-            it_col.setTextAlignment(Qt.AlignCenter)
-            self.cart_table.setItem(row, 1, it_col)
+            # Col 0: Désignation Produit (Full title + tooltip)
+            prod_title = f"{item.get('mark', '')} {item.get('name', '')}".strip()
+            it_name = QTableWidgetItem(prod_title)
+            it_name.setToolTip(prod_title)
+            self.cart_table.setItem(row, 0, it_name)
 
+            # Col 1: Couleur (Visual circular swatch with border + color name + rich tooltip)
+            color_val = str(item.get("coloure") or item.get("color") or "Standard")
+            it_col = QTableWidgetItem("")
+            it_col.setTextAlignment(Qt.AlignCenter)
+            it_col.setToolTip(f"Couleur / Finition : {color_val}\nCode Hex : {get_color_hex(color_val)}")
+            self.cart_table.setItem(row, 1, it_col)
+            self.cart_table.setCellWidget(row, 1, ColorBadgeWidget(color_val))
+
+            # Col 2: Quantité (Stepper with - / qty / +)
             stepper = CartQtyStepper(
                 qty=int(item["quantity"]),
                 max_qty=int(item.get("max_avail") or 99),
@@ -2425,12 +2539,28 @@ class OrderDeskWidget(QWidget):
             stepper.qtyChanged.connect(lambda val, i=idx: self._update_line_qty(i, val))
             self.cart_table.setCellWidget(row, 2, stepper)
 
+            # Col 3: Total TTC (Bold font, right aligned)
             it_tot = QTableWidgetItem(f"{format_money(line_tot)} DA")
             it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             it_tot.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            it_tot.setToolTip(f"Prix unitaire TTC : {format_money(item['unit_price_ttc'])} DA\nTotal ligne : {format_money(line_tot)} DA")
             self.cart_table.setItem(row, 3, it_tot)
 
+            # Col 4: Action Supprimer (Dedicated remove button with vector trash icon)
+            del_widget = CartRemoveCellWidget(on_remove=lambda i=idx: self._remove_cart_line(i))
+            self.cart_table.setCellWidget(row, 4, del_widget)
+
         self.lbl_total.setText(f"{format_money(total_ttc)} DA")
+        self._adjust_cart_column_widths()
+
+    def _remove_cart_line(self, index: int) -> None:
+        """Removes a specific line item from the active session cart."""
+        if self._active_session_id in self._sessions:
+            cart = self._sessions[self._active_session_id]["cart"]
+            if 0 <= index < len(cart):
+                del cart[index]
+                self._refresh_cart_ui()
+                self._update_tab_label(self._active_session_id)
 
     def _update_line_qty(self, index: int, new_qty: int) -> None:
         cart = self._sessions[self._active_session_id]["cart"]
