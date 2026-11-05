@@ -45,6 +45,7 @@ class StatefulMockDB:
         self.invoices = {100: {"Invoice_ID": 100, "Amount_Remaining_Credit": Decimal("0.00")}}
         self.exit_bonds = {}
         self.exit_serials = []
+        self.stock_movement_logs = []
         self._next_id = 1
 
     def alloc_id(self) -> int:
@@ -297,11 +298,76 @@ class StatefulMockCursor:
             self.rowcount = 1
             return
 
-        # 16. Dispatch: Select Bond_Type from Sales_Orders_Theoretical
-        if "SELECT BOND_TYPE FROM SALES_ORDERS_THEORETICAL WHERE ORDER_ID = %S" in q_upper:
+        # 16. Dispatch: Select from Sales_Orders_Theoretical
+        if "FROM SALES_ORDERS_THEORETICAL WHERE ORDER_ID = %S" in q_upper:
             oid = int(p[0])
             ord_row = self.db.orders.get(oid)
             self._rows = [ord_row.copy()] if ord_row else []
+            return
+
+        # 16b. Total Stock Query for Stock_Movement_Log
+        if "SELECT SUM(QUANTITY_CURRENT) AS TOTAL_STOCK FROM INVENTORY_BATCHES WHERE PRODUCT_ID = %S" in q_upper:
+            pid = int(p[0])
+            tot = sum(
+                int(b["Quantity_Current"])
+                for b in self.db.batches.values()
+                if b["Product_ID"] == pid and b["Status"] in ("Available", "ACTIVE")
+            )
+            self._rows = [{"Total_Stock": tot}]
+            return
+
+        # 16c. Product Summary Query
+        if "FROM PRODUCTS_MASTER P" in q_upper and "WHERE P.PRODUCT_ID = %S" in q_upper:
+            pid = int(p[0])
+            p_rec = self.db.products.get(pid)
+            if not p_rec:
+                self._rows = []
+                return
+            phys = sum(
+                int(b["Quantity_Current"])
+                for b in self.db.batches.values()
+                if b["Product_ID"] == pid and b["Status"] in ("Available", "ACTIVE")
+            )
+            res = sum(
+                int(b.get("Theoretical_Reserved_Qty") or 0)
+                for b in self.db.batches.values()
+                if b["Product_ID"] == pid and b["Status"] in ("Available", "ACTIVE")
+            )
+            serials_cnt = sum(
+                1
+                for s in self.db.serials_by_id.values()
+                if s["Product_ID"] == pid and s["Status"] == "IN_STOCK"
+            )
+            row = {
+                "Product_ID": pid,
+                "Product_Name": p_rec.get("Product_Name", ""),
+                "Brand_Mark": p_rec.get("Brand_Mark", ""),
+                "Category_Name": p_rec.get("Category_Name", ""),
+                "Color_Finish": p_rec.get("Color_Finish", ""),
+                "Requires_Serial_Tracking": p_rec.get("Requires_Serial_Tracking", True),
+                "Physical_Qty": phys,
+                "Theoretical_Reserved_Qty": res,
+                "Serials_In_Stock": serials_cnt,
+            }
+            self._rows = [row]
+            return
+
+        # 16d. Insert Stock_Movement_Log
+        if q_upper.startswith("INSERT INTO STOCK_MOVEMENT_LOG"):
+            mid = self.db.alloc_id()
+            self.db.stock_movement_logs.append({
+                "Movement_ID": mid,
+                "Product_ID": int(p[0]),
+                "Batch_ID": int(p[1]) if p[1] else None,
+                "Movement_Type": str(p[2]),
+                "Qty_Change": p[3],
+                "Unit_Used": str(p[4]),
+                "Notes": str(p[5]),
+                "User_ID": int(p[6]) if p[6] else 1,
+                "Stock_After": p[7],
+            })
+            self.lastrowid = mid
+            self.rowcount = 1
             return
 
         # 17. Dispatch: Update Sales_Orders_Theoretical Status

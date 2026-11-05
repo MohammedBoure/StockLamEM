@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QSplitter,
+    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -129,13 +130,53 @@ class SerialBatchRegistryWidget(QWidget):
             """
             + INPUT_STYLE
         )
+        self._trace_cache = []
         self._build_ui()
         self.refresh_products()
+        self.refresh_traceability()
 
     def _build_ui(self) -> None:
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(10, 10, 10, 10)
         root_layout.setSpacing(10)
+
+        self.inner_tabs = QTabWidget()
+        self.inner_tabs.setIconSize(QSize(16, 16))
+        self.inner_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #DDE3EA;
+                background: #F8FAFC;
+                border-radius: 6px;
+                top: -1px;
+            }
+            QTabBar::tab {
+                background: #ECEFF1;
+                color: #475569;
+                border: 1px solid #DDE3EA;
+                border-bottom: none;
+                padding: 7px 14px;
+                margin-right: 4px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                font-size: 11.5px;
+                font-weight: 700;
+            }
+            QTabBar::tab:selected {
+                background: #FFFFFF;
+                color: #007572;
+                border-top: 3px solid #007572;
+            }
+            QTabBar::tab:hover:!selected {
+                background: #E2E8F0;
+                color: #1E293B;
+            }
+        """)
+
+        # Tab 1: Lots & Products
+        tab_lots = QWidget()
+        tab_lots_layout = QVBoxLayout(tab_lots)
+        tab_lots_layout.setContentsMargins(8, 8, 8, 8)
+        tab_lots_layout.setSpacing(10)
 
         top_row = QHBoxLayout()
         top_row.setSpacing(10)
@@ -377,7 +418,105 @@ class SerialBatchRegistryWidget(QWidget):
         c_hdr.setSectionResizeMode(7, QHeaderView.ResizeToContents)
 
         cat_layout.addWidget(self.catalog_table)
-        root_layout.addWidget(cat_card, stretch=3)
+        tab_lots_layout.addWidget(cat_card, stretch=3)
+        self.inner_tabs.addTab(tab_lots, get_duotone_icon("edit_lots", 16), "1. Référentiel Lots & Produits (Stock Physique)")
+
+        # Tab 2: Journal de Traçabilité & Audit des Sorties
+        tab_trace = QWidget()
+        tab_trace_layout = QVBoxLayout(tab_trace)
+        tab_trace_layout.setContentsMargins(8, 8, 8, 8)
+        tab_trace_layout.setSpacing(10)
+
+        trace_header = QFrame()
+        trace_header.setObjectName("TraceHeaderCard")
+        trace_header.setFixedHeight(52)
+        trace_header.setStyleSheet("""
+            QFrame#TraceHeaderCard {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        th_layout = QHBoxLayout(trace_header)
+        th_layout.setContentsMargins(14, 0, 14, 0)
+        th_layout.setSpacing(10)
+
+        th_ic = QLabel()
+        th_ic.setPixmap(get_duotone_icon("history", 20).pixmap(20, 20))
+        th_layout.addWidget(th_ic)
+
+        th_title = QLabel("Journal de Traçabilité & Audit des Sorties Magasin :")
+        th_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        th_layout.addWidget(th_title)
+
+        self.cbo_trace_type = QComboBox()
+        self.cbo_trace_type.setFixedHeight(34)
+        self.cbo_trace_type.addItems([
+            "Tous les Mouvements",
+            "Sorties Magasin (Bon de Sortie)",
+            "Réceptions de Lots (Achats)",
+            "Retours Marchandises",
+        ])
+        self.cbo_trace_type.currentIndexChanged.connect(self.refresh_traceability)
+        th_layout.addWidget(self.cbo_trace_type)
+
+        self.txt_trace_search = QLineEdit()
+        self.txt_trace_search.setFixedHeight(34)
+        self.txt_trace_search.setPlaceholderText("Filtrer par désignation, N° de Série, Lot ou N° de Bon...")
+        self.txt_trace_search.textChanged.connect(self.refresh_traceability)
+        th_layout.addWidget(self.txt_trace_search, stretch=1)
+
+        btn_refresh_trace = QPushButton("Actualiser la Traçabilité")
+        btn_refresh_trace.setIcon(get_duotone_icon("refresh", 14))
+        btn_refresh_trace.setIconSize(QSize(14, 14))
+        btn_refresh_trace.setCursor(Qt.PointingHandCursor)
+        btn_refresh_trace.setFixedHeight(34)
+        btn_refresh_trace.setStyleSheet(
+            "QPushButton { background: #FFFFFF; color: #007572; font-weight: 700; font-size: 12px; min-height: 0px; padding: 4px 12px; border: 1.5px solid #007572; border-radius: 6px; }"
+            "QPushButton:hover { background: #E6F4F1; }"
+        )
+        btn_refresh_trace.clicked.connect(self.refresh_traceability)
+        th_layout.addWidget(btn_refresh_trace)
+
+        tab_trace_layout.addWidget(trace_header)
+
+        self.trace_table = QTableWidget(0, 8)
+        self.trace_table.setStyleSheet(TABLE_STYLE)
+        self.trace_table.setHorizontalHeaderLabels([
+            "Horodatage",
+            "Type Mouvement",
+            "Produit",
+            "Lot / N° de Série",
+            "Variation",
+            "Stock Après",
+            "Opérateur",
+            "Référence & Notes",
+        ])
+        self.trace_table.verticalHeader().setVisible(False)
+        self.trace_table.verticalHeader().setDefaultSectionSize(36)
+        self.trace_table.setAlternatingRowColors(True)
+        self.trace_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.trace_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        t_hdr = self.trace_table.horizontalHeader()
+        t_hdr.setFixedHeight(38)
+        t_hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        t_hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        t_hdr.setSectionResizeMode(2, QHeaderView.Stretch)
+        t_hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        t_hdr.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        t_hdr.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        t_hdr.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        t_hdr.setSectionResizeMode(7, QHeaderView.Stretch)
+
+        tab_trace_layout.addWidget(self.trace_table, 1)
+
+        self.inner_tabs.addTab(tab_trace, get_duotone_icon("history", 16), "2. Journal de Traçabilité & Mouvements (Sorties/Entrées)")
+        root_layout.addWidget(self.inner_tabs, 1)
 
     def refresh_products(self) -> None:
         catalog = []
@@ -549,3 +688,117 @@ class SerialBatchRegistryWidget(QWidget):
                 "رفض إدخال الدفعة",
                 f"فشل إدخال الدفعة:\n{err}",
             )
+
+    def refresh_traceability(self) -> None:
+        """Loads audit logs from Stock_Movement_Log to give live visibility into product physical movements."""
+        if not hasattr(self, "trace_table"):
+            return
+
+        type_filter = self.cbo_trace_type.currentText() if hasattr(self, "cbo_trace_type") else "Tous les Mouvements"
+        search_txt = self.txt_trace_search.text().strip().lower() if hasattr(self, "txt_trace_search") else ""
+
+        db_type = None
+        if "Sorties Magasin" in type_filter:
+            db_type = "Sale"
+        elif "Réceptions" in type_filter:
+            db_type = "Purchase_Receive"
+        elif "Retours" in type_filter:
+            db_type = "Sale_Return"
+
+        logs = []
+        if self.data_manager and hasattr(self.data_manager, "stock_movement_log"):
+            try:
+                logs = self.data_manager.stock_movement_log.get_movements_log(
+                    limit=200,
+                    movement_type=db_type,
+                    search_text=search_txt or None,
+                )
+            except Exception as exc:
+                logger.error("Failed to load Stock_Movement_Log: %s", exc)
+                logs = []
+
+        if not logs and not (self.data_manager and hasattr(self.data_manager, "stock_movement_log")):
+            # Fallback showcase log entries for demonstration/testing
+            if not self._trace_cache:
+                self._trace_cache = [
+                    {
+                        "Transaction_Date": "2026-11-05 10:15:22",
+                        "Movement_Type": "Sale",
+                        "Product_Name": "KGN39VLEB Combi NoFrost 368L",
+                        "Lot_Number": "SN-BOSCH-889120",
+                        "Qty_Change": -1,
+                        "Stock_After": 8,
+                        "Operator_Name": "Storekeeper (Magasinier)",
+                        "Notes": "Bon de Sortie BS-20261105-0042 - N° Série: SN-BOSCH-889120",
+                    },
+                    {
+                        "Transaction_Date": "2026-11-05 09:30:10",
+                        "Movement_Type": "Purchase_Receive",
+                        "Product_Name": "F4J6TY0W DirectDrive 9kg",
+                        "Lot_Number": "LOT-20261105-P102",
+                        "Qty_Change": 12,
+                        "Stock_After": 12,
+                        "Operator_Name": "Admin",
+                        "Notes": "Réception Lot LOT-20261105-P102 (12 pièces avec N° de Série)",
+                    },
+                    {
+                        "Transaction_Date": "2026-11-04 16:45:00",
+                        "Movement_Type": "Sale_Return",
+                        "Product_Name": "Inverter 12000 BTU Split R32",
+                        "Lot_Number": "SN-MIDEA-4401",
+                        "Qty_Change": 1,
+                        "Stock_After": 5,
+                        "Operator_Name": "SAV Responsable",
+                        "Notes": "Bon de Retour BR-20261104-0012 - N° Série: SN-MIDEA-4401",
+                    },
+                ]
+            logs = list(self._trace_cache)
+            if db_type:
+                logs = [l for l in logs if l.get("Movement_Type") == db_type]
+            if search_txt:
+                logs = [
+                    l for l in logs
+                    if search_txt in str(l.get("Product_Name", "")).lower()
+                    or search_txt in str(l.get("Lot_Number", "")).lower()
+                    or search_txt in str(l.get("Notes", "")).lower()
+                ]
+
+        self.trace_table.setRowCount(0)
+        type_labels = {
+            "Sale": "Sortie Magasin (Bon de Sortie)",
+            "Purchase_Receive": "Réception Lot (Achat)",
+            "Sale_Return": "Retour Marchandise",
+            "Adjustment": "Ajustement Inventaire",
+            "Waste": "Mise au Rebut",
+        }
+
+        for row_idx, entry in enumerate(logs):
+            self.trace_table.insertRow(row_idx)
+            ts = str(entry.get("Transaction_Date") or "-")[:19]
+            raw_type = str(entry.get("Movement_Type") or "-")
+            type_lbl = type_labels.get(raw_type, raw_type)
+            p_name = str(entry.get("Product_Name") or "-")
+            lot_sn = str(entry.get("Lot_Number") or entry.get("Batch_ID") or "-")
+            qty = float(entry.get("Qty_Change") or 0)
+            stk_aft = str(entry.get("Stock_After") if entry.get("Stock_After") is not None else "-")
+            user = str(entry.get("Operator_Name") or entry.get("User_ID") or "Magasinier")
+            notes = str(entry.get("Notes") or "")
+
+            vals = [ts, type_lbl, p_name, lot_sn, f"{qty:+g}", stk_aft, user, notes]
+            for col_idx, text in enumerate(vals):
+                cell = QTableWidgetItem(text)
+                cell.setFlags(cell.flags() & ~Qt.ItemIsEditable)
+                if col_idx in (0, 1, 3, 4, 5, 6):
+                    cell.setTextAlignment(Qt.AlignCenter)
+                if col_idx == 1:
+                    cell.setFont(QFont("Segoe UI", 9, QFont.Bold))
+                    if raw_type == "Sale":
+                        cell.setForeground(QColor("#007572"))
+                    elif raw_type == "Purchase_Receive":
+                        cell.setForeground(QColor("#16A34A"))
+                    elif raw_type == "Sale_Return":
+                        cell.setForeground(QColor("#D97706"))
+                if col_idx == 4:
+                    cell.setFont(QFont("Segoe UI", 9, QFont.Bold))
+                    cell.setForeground(QColor("#16A34A" if qty > 0 else "#DC2626"))
+                self.trace_table.setItem(row_idx, col_idx, cell)

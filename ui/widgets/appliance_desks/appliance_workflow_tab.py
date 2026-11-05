@@ -230,9 +230,13 @@ class ApplianceWorkflowTab(QWidget):
     def _on_dispatch_completed(self, order_num: str, serials_list: list) -> None:
         self.order_desk.refresh_catalog()
         self.batch_registry_desk.refresh_products()
+        if hasattr(self.batch_registry_desk, "refresh_traceability"):
+            self.batch_registry_desk.refresh_traceability()
 
     def _on_catalog_updated(self) -> None:
         self.order_desk.refresh_catalog()
+        if hasattr(self.batch_registry_desk, "refresh_traceability"):
+            self.batch_registry_desk.refresh_traceability()
 
     def refresh_all_desks(self) -> None:
         self.order_desk.refresh_catalog()
@@ -240,6 +244,8 @@ class ApplianceWorkflowTab(QWidget):
         self.dispatch_desk.refresh_dispatch_queue()
         self.sav_desk.refresh_tickets()
         self.batch_registry_desk.refresh_products()
+        if hasattr(self.batch_registry_desk, "refresh_traceability"):
+            self.batch_registry_desk.refresh_traceability()
 
     def apply_rbac_permissions(self, permissions: Optional[Set[str]] = None) -> None:
         """

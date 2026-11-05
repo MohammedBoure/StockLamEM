@@ -252,7 +252,7 @@ class SalesManager:
             for batch_id in sorted(batch_totals):
                 cursor.execute(
                     """
-                    SELECT b.Batch_ID, b.Product_ID, b.Quantity_Current, b.Status, p.Stock_Unit
+                    SELECT b.Batch_ID, b.Product_ID, b.Quantity_Current, b.Status, p.Stock_Unit, p.Product_Name, p.Requires_Serial_Tracking
                     FROM Inventory_Batches b
                     JOIN Products_Master p ON b.Product_ID = p.Product_ID
                     WHERE b.Batch_ID = %s
@@ -265,6 +265,15 @@ class SalesManager:
                 if not batch:
                     conn.rollback()
                     return False, {"message": f"Lot introuvable: {batch_id}"}
+                if batch.get("Requires_Serial_Tracking"):
+                    conn.rollback()
+                    pname = batch.get("Product_Name") or f"ID {batch.get('Product_ID')}"
+                    return False, {
+                        "message": (
+                            f"Sortie directe interdite: Le produit '{pname}' exige une traçabilité par N° de Série "
+                            "et un Bon de Sortie émis par le Bureau de Sortie."
+                        )
+                    }
                 available = Decimal(str(batch.get('Quantity_Current') or 0))
                 if available < needed:
                     conn.rollback()
@@ -480,7 +489,7 @@ class SalesManager:
                 for batch_id in sorted(batch_totals):
                     cursor.execute(
                         """
-                        SELECT b.Batch_ID, b.Product_ID, b.Quantity_Current, b.Status, p.Stock_Unit, p.Product_Name
+                        SELECT b.Batch_ID, b.Product_ID, b.Quantity_Current, b.Status, p.Stock_Unit, p.Product_Name, p.Requires_Serial_Tracking
                         FROM Inventory_Batches b
                         JOIN Products_Master p ON b.Product_ID = p.Product_ID
                         WHERE b.Batch_ID = %s
@@ -493,6 +502,15 @@ class SalesManager:
                     if not batch:
                         conn.rollback()
                         return False, {"message": f"Lot introuvable (ID: {batch_id})."}
+                    if is_stock_deducting and batch.get("Requires_Serial_Tracking"):
+                        conn.rollback()
+                        pname = batch.get("Product_Name") or f"ID {batch.get('Product_ID')}"
+                        return False, {
+                            "message": (
+                                f"Sortie directe interdite: Le produit '{pname}' exige une traçabilité par N° de Série "
+                                "et un Bon de Sortie émis par le Bureau de Sortie."
+                            )
+                        }
                     available = Decimal(str(batch.get('Quantity_Current') or 0))
                     if available < needed:
                         conn.rollback()

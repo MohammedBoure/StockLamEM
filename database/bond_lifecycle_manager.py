@@ -1090,6 +1090,23 @@ class BondLifecycleManager:
                 if hasattr(conn, "start_transaction"):
                     conn.start_transaction()
 
+                cursor.execute(
+                    """
+                    SELECT Order_ID, Status, Bond_Type, Client_ID
+                    FROM Sales_Orders_Theoretical
+                    WHERE Order_ID = %s
+                    FOR UPDATE
+                    """,
+                    (int(order_id),),
+                )
+                order_row = cursor.fetchone()
+                if order_row:
+                    st = order_row.get("Status")
+                    if st in ("CANCELLED", "REJECTED"):
+                        raise SecurityViolationException(
+                            f"Sortie physique non autorisée : La commande #{order_id} est annulée/rejetée ({st})."
+                        )
+
                 exit_num = f"BS-{datetime.now().strftime('%Y%m%d')}-{order_id}-{int(datetime.now().timestamp() * 1000) % 10000:04d}"
                 gate_pass = f"GATE-{hashlib.sha1(exit_num.encode('utf-8')).hexdigest()[:12].upper()}"
 
@@ -1208,6 +1225,35 @@ class BondLifecycleManager:
                         """,
                         (line_id,),
                     )
+
+                    # F. Record Physical Exit in Stock_Movement_Log (Traçabilité)
+                    try:
+                        cursor.execute(
+                            "SELECT SUM(Quantity_Current) AS Total_Stock FROM Inventory_Batches WHERE Product_ID = %s",
+                            (int(line["Product_ID"]),),
+                        )
+                        stk_row = cursor.fetchone()
+                        stk_after = (stk_row.get("Total_Stock") if isinstance(stk_row, dict) else stk_row[0]) if stk_row else 0
+                        cursor.execute(
+                            """
+                            INSERT INTO Stock_Movement_Log (
+                                Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used,
+                                Notes, User_ID, Transaction_Date, Stock_After
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                            """,
+                            (
+                                int(line["Product_ID"]),
+                                batch_id,
+                                'Sale',
+                                -1,
+                                'Pièce',
+                                f"Bon de Sortie {exit_num} - N° Série: {sn_clean} (Réf Commande #{order_id})",
+                                int(storekeeper_user_id),
+                                stk_after,
+                            ),
+                        )
+                    except Exception as log_err:
+                        logger.warning(f"Could not record Stock_Movement_Log for serial exit {sn_clean}: {log_err}")
 
                 # Update order status (if Bon de Livraison still has COD remaining, mark DISPATCHED_PENDING_COD)
                 cursor.execute(
@@ -1349,6 +1395,34 @@ class BondLifecycleManager:
                         """,
                         (s_row["Batch_ID"],),
                     )
+                    # Record Return in Stock_Movement_Log (Traçabilité)
+                    try:
+                        cursor.execute(
+                            "SELECT SUM(Quantity_Current) AS Total_Stock FROM Inventory_Batches WHERE Product_ID = %s",
+                            (prod_id,),
+                        )
+                        stk_row = cursor.fetchone()
+                        stk_after = (stk_row.get("Total_Stock") if isinstance(stk_row, dict) else stk_row[0]) if stk_row else 0
+                        cursor.execute(
+                            """
+                            INSERT INTO Stock_Movement_Log (
+                                Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used,
+                                Notes, User_ID, Transaction_Date, Stock_After
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                            """,
+                            (
+                                prod_id,
+                                s_row["Batch_ID"],
+                                'Sale_Return',
+                                1,
+                                'Pièce',
+                                f"Bon de Retour {br_number} - N° Série: {sn_clean}",
+                                int(storekeeper_user_id),
+                                stk_after,
+                            ),
+                        )
+                    except Exception as log_err:
+                        logger.warning(f"Could not record Stock_Movement_Log for return {sn_clean}: {log_err}")
                 elif condition == "DEFECTIVE_NEEDS_SAV":
                     new_serial_status = "IN_SAV"
                 else:

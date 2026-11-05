@@ -233,6 +233,35 @@ class SerialTrackingManager:
                     (serial_id, batch_id, int(location_id), int(user_id)),
                 )
 
+            # Record Batch Receipt in Stock_Movement_Log (Traçabilité)
+            try:
+                cursor.execute(
+                    "SELECT SUM(Quantity_Current) AS Total_Stock FROM Inventory_Batches WHERE Product_ID = %s",
+                    (int(product_id),),
+                )
+                stk_row = cursor.fetchone()
+                stk_after = (stk_row.get("Total_Stock") if isinstance(stk_row, dict) else stk_row[0]) if stk_row else qty_initial
+                cursor.execute(
+                    """
+                    INSERT INTO Stock_Movement_Log (
+                        Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used,
+                        Notes, User_ID, Transaction_Date, Stock_After
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                    """,
+                    (
+                        int(product_id),
+                        batch_id,
+                        'Purchase_Receive',
+                        qty_initial,
+                        'Pièce',
+                        f"Réception Lot {lot_num} ({qty_initial} pièces avec N° de Série)",
+                        int(user_id),
+                        stk_after,
+                    ),
+                )
+            except Exception as log_err:
+                logger.warning(f"Could not record Stock_Movement_Log for batch {batch_id}: {log_err}")
+
             conn.commit()
             return {
                 "success": True,
@@ -284,8 +313,8 @@ class SerialTrackingManager:
                         p.Requires_Serial_Tracking,
                         COALESCE(p.Default_Selling_Price_HT, 0.00) AS Default_Selling_Price_HT,
                         COALESCE(p.Selling_TVA_Percent, 19.00) AS Selling_TVA_Percent,
-                        COALESCE(SUM(CASE WHEN b.Status = 'Available' THEN b.Quantity_Current ELSE 0 END), 0) AS Physical_Qty,
-                        COALESCE(SUM(CASE WHEN b.Status = 'Available' THEN COALESCE(b.Theoretical_Reserved_Qty, 0) ELSE 0 END), 0) AS Reserved_Qty,
+                        COALESCE(SUM(CASE WHEN b.Status IN ('Available', 'ACTIVE') THEN b.Quantity_Current ELSE 0 END), 0) AS Physical_Qty,
+                        COALESCE(SUM(CASE WHEN b.Status IN ('Available', 'ACTIVE') THEN COALESCE(b.Theoretical_Reserved_Qty, 0) ELSE 0 END), 0) AS Reserved_Qty,
                         COALESCE(MAX(b.Selling_Price_HT), p.Default_Selling_Price_HT, 0.00) AS Batch_Selling_Price_HT
                     FROM Products_Master p
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
@@ -409,6 +438,90 @@ class SerialTrackingManager:
         except Exception as err:
             logger.error(f"Error listing product serials: {err}")
             return []
+
+
+    def get_product_stock_summary(self, product_id: int) -> Dict[str, Any]:
+        """
+        Returns accurate physical and theoretical stock breakdown directly linked for a product:
+        - Physical_Qty: total physical units in warehouse (from active batches)
+        - Theoretical_Reserved_Qty: units currently reserved by confirmed un-dispatched orders
+        - Available_Theoretical_Qty: max(0, Physical_Qty - Theoretical_Reserved_Qty)
+        - Serials_In_Stock: count of unique physical serials in IN_STOCK status
+        - Requires_Serial_Tracking: boolean flag
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    p.Product_ID,
+                    p.Product_Name,
+                    COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                    COALESCE(p.Category_Name, '') AS Category_Name,
+                    COALESCE(p.Color_Finish, '') AS Color_Finish,
+                    p.Requires_Serial_Tracking,
+                    COALESCE(SUM(CASE WHEN b.Status IN ('Available', 'ACTIVE') THEN b.Quantity_Current ELSE 0 END), 0) AS Physical_Qty,
+                    COALESCE(SUM(CASE WHEN b.Status IN ('Available', 'ACTIVE') THEN COALESCE(b.Theoretical_Reserved_Qty, 0) ELSE 0 END), 0) AS Theoretical_Reserved_Qty,
+                    (
+                        SELECT COUNT(*)
+                        FROM Product_Serials ps
+                        WHERE ps.Product_ID = p.Product_ID AND ps.Status = 'IN_STOCK'
+                    ) AS Serials_In_Stock
+                FROM Products_Master p
+                LEFT JOIN Inventory_Batches b ON p.Product_ID = b.Product_ID
+                WHERE p.Product_ID = %s
+                GROUP BY p.Product_ID
+                """,
+                (int(product_id),),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return {
+                    "Product_ID": int(product_id),
+                    "Physical_Qty": 0,
+                    "Theoretical_Reserved_Qty": 0,
+                    "Available_Theoretical_Qty": 0,
+                    "Serials_In_Stock": 0,
+                    "Requires_Serial_Tracking": False,
+                }
+            phys = int(row.get("Physical_Qty") or 0)
+            res = int(row.get("Theoretical_Reserved_Qty") or 0)
+            serials_cnt = int(row.get("Serials_In_Stock") or 0)
+            row["Physical_Qty"] = phys
+            row["Theoretical_Reserved_Qty"] = res
+            row["Available_Theoretical_Qty"] = max(0, phys - res)
+            row["Serials_In_Stock"] = serials_cnt
+            return row
+        except Exception as err:
+            logger.error(f"Error getting stock summary for product {product_id}: {err}")
+            return {
+                "Product_ID": int(product_id),
+                "Physical_Qty": 0,
+                "Theoretical_Reserved_Qty": 0,
+                "Available_Theoretical_Qty": 0,
+                "Serials_In_Stock": 0,
+                "Requires_Serial_Tracking": False,
+            }
+        finally:
+            cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
+    def assert_product_exit_authorized(self, product_id: int, serial_number: Optional[str] = None) -> bool:
+        """
+        Guards physical exit: validates that an appliance product cannot leave stock
+        unless processed through the Dispatch Desk (Bureau de Sortie) with an authorized exit voucher.
+        Throws PermissionError if an unauthorized direct decrement is attempted.
+        """
+        summary = self.get_product_stock_summary(product_id)
+        if summary.get("Requires_Serial_Tracking"):
+            raise PermissionError(
+                f"Sortie physique non autorisée : Le produit ID {product_id} "
+                f"('{summary.get('Product_Name')}') exige un Bon de Sortie émis par le Bureau de Sortie "
+                f"avec scan obligatoire du N° de Série."
+            )
+        return True
 
 
 # Alias matching docs specification
