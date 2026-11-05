@@ -34,7 +34,8 @@ dist-ssr
 brand_assets\modernstock\logo.png
 brand_assets\modernstock\logo2.png
 brand_assets\stocklam\logo.png
-
+docs\assets
+docs\tasks.md
 # Sensitive and Config Files
 .env
 config.json
