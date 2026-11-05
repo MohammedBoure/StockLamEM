@@ -176,19 +176,20 @@ def test_order_desk_visual_color_badge(qapp, mock_data_manager):
 
 
 def test_order_desk_session_close_button_behavior(qapp, mock_data_manager):
-    """Verifies tab close button is hidden when only 1 session exists, and shown when > 1 session."""
+    """Verifies tab close button is always properly present and functions on all sessions."""
     desk = OrderDeskWidget(data_manager=mock_data_manager)
 
-    # Initially 1 session
+    # Initially 1 session: close button is properly present
     assert desk.session_tab_bar.count() == 1
-    # When 1 session, no close button on tab 0
-    assert desk.session_tab_bar.tabButton(0, QTabBar.RightSide) is None
+    btn_tab0 = desk.session_tab_bar.tabButton(0, QTabBar.RightSide)
+    assert btn_tab0 is not None and isinstance(btn_tab0, QPushButton)
+    assert btn_tab0.text() == "×"
 
     # Create a 2nd session
     sid2 = desk._create_new_session()
     assert desk.session_tab_bar.count() == 2
 
-    # Now both tabs should have custom close button
+    # Now both tabs have custom close button
     btn_tab0 = desk.session_tab_bar.tabButton(0, QTabBar.RightSide)
     btn_tab1 = desk.session_tab_bar.tabButton(1, QTabBar.RightSide)
     assert btn_tab0 is not None and isinstance(btn_tab0, QPushButton)
@@ -199,7 +200,7 @@ def test_order_desk_session_close_button_behavior(qapp, mock_data_manager):
     # Close session 2
     desk._on_session_tab_close_requested(1)
     assert desk.session_tab_bar.count() == 1
-    assert desk.session_tab_bar.tabButton(0, QTabBar.RightSide) is None
+    assert desk.session_tab_bar.tabButton(0, QTabBar.RightSide) is not None
 
 
 def test_order_desk_no_associer_scanner_button(qapp, mock_data_manager):

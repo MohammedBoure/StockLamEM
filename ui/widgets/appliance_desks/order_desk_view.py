@@ -375,10 +375,10 @@ class OrderDeskWidget(QWidget):
         content_widget.setObjectName("OrderDeskContentWidget")
         content_widget.setMinimumWidth(1080)
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(10, 10, 10, 10)
-        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(10, 8, 10, 10)
+        content_layout.setSpacing(6)
 
-        # 1. Top Session Tabs Bar (Replacing the legacy static combo bar)
+        # 1. Top Session Tabs Bar (Ultra-compact low profile)
         session_bar = self._create_session_tabs_bar()
         content_layout.addWidget(session_bar)
 
@@ -417,27 +417,29 @@ class OrderDeskWidget(QWidget):
     def _create_session_tabs_bar(self) -> QWidget:
         session_bar = QWidget()
         session_bar.setObjectName("SessionTabsBar")
-        session_bar.setFixedHeight(44)
+        session_bar.setFixedHeight(26)
         session_bar.setStyleSheet("""
             QWidget#SessionTabsBar {
                 background: transparent;
                 border: none;
             }
             QTabBar#SessionTabBar {
-                border-bottom: 2px solid #CBD5E1;
+                border-bottom: 1.5px solid #CBD5E1;
             }
             QTabBar#SessionTabBar::tab {
                 background-color: #E2E8F0;
                 color: #475569;
                 font-weight: 700;
-                font-size: 12px;
-                padding: 7px 18px;
-                margin-right: 4px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
+                font-size: 11px;
+                padding: 2px 8px;
+                margin-right: 3px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
                 border: 1px solid #CBD5E1;
                 border-bottom: none;
-                min-height: 24px;
+                height: 22px;
+                min-height: 22px;
+                max-height: 22px;
             }
             QTabBar#SessionTabBar::tab:selected {
                 background-color: #007572;
@@ -452,9 +454,9 @@ class OrderDeskWidget(QWidget):
         """)
         sb_layout = QHBoxLayout(session_bar)
         sb_layout.setContentsMargins(0, 0, 0, 0)
-        sb_layout.setSpacing(10)
+        sb_layout.setSpacing(6)
 
-        # Specialized Connected Session Tabs
+        # Specialized Connected Session Tabs (Ultra-compact low profile)
         self.session_tab_bar = QTabBar()
         self.session_tab_bar.setObjectName("SessionTabBar")
         self.session_tab_bar.setDrawBase(False)
@@ -468,22 +470,25 @@ class OrderDeskWidget(QWidget):
         self._sync_session_tabs()
         sb_layout.addWidget(self.session_tab_bar)
 
-        # "+ Nouvelle Session" Button
+        # "+ Nouvelle Session" Button (Ultra-compact)
         btn_new_sess = QPushButton("+ Nouvelle Session")
         if qta:
             btn_new_sess.setIcon(qta.icon("fa5s.plus", color="#007572"))
-            btn_new_sess.setIconSize(QSize(11, 11))
+            btn_new_sess.setIconSize(QSize(10, 10))
         btn_new_sess.setCursor(Qt.PointingHandCursor)
-        btn_new_sess.setFixedHeight(30)
+        btn_new_sess.setFixedHeight(22)
         btn_new_sess.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
                 color: #007572;
                 font-weight: 700;
-                font-size: 11px;
-                border: 1.5px dashed #007572;
-                border-radius: 5px;
-                padding: 0 12px;
+                font-size: 10px;
+                border: 1px dashed #007572;
+                border-radius: 4px;
+                padding: 0 8px;
+                height: 22px;
+                min-height: 22px;
+                max-height: 22px;
             }
             QPushButton:hover {
                 background-color: #E6F4F1;
@@ -1318,35 +1323,37 @@ class OrderDeskWidget(QWidget):
             self.splitter.setSizes([850, 380])
 
     def _update_tab_close_buttons(self) -> None:
-        """Attaches sleek, human-crafted close buttons to tabs when more than 1 session exists."""
+        """Attaches sleek, human-crafted close buttons to all tabs with proper color contrast."""
         if not hasattr(self, "session_tab_bar"):
             return
         total_tabs = self.session_tab_bar.count()
         for idx in range(total_tabs):
             sid = self.session_tab_bar.tabData(idx)
-            if total_tabs <= 1:
-                self.session_tab_bar.setTabButton(idx, QTabBar.RightSide, None)
-                continue
+            is_active = (sid == getattr(self, "_active_session_id", None))
 
             btn = QPushButton("×")
-            btn.setFixedSize(18, 18)
+            btn.setObjectName(f"TabCloseBtn_{sid}")
+            btn.setFixedSize(16, 16)
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setToolTip("Fermer cette session")
-            btn.setStyleSheet("""
-                QPushButton {
+            btn.setToolTip("Fermer cette session" if total_tabs > 1 else "Réinitialiser cette session")
+
+            close_color = "#FFFFFF" if is_active else "#64748B"
+            btn.setStyleSheet(f"""
+                QPushButton {{
                     border: none;
                     background-color: transparent;
-                    color: #94A3B8;
-                    font-size: 15px;
-                    font-weight: bold;
-                    line-height: 14px;
-                    border-radius: 4px;
+                    color: {close_color};
+                    font-size: 13px;
+                    font-weight: 800;
+                    line-height: 12px;
+                    border-radius: 3px;
+                    margin-left: 4px;
                     padding-bottom: 2px;
-                }
-                QPushButton:hover {
-                    background-color: #FEE2E2;
-                    color: #DC2626;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: #DC2626;
+                    color: #FFFFFF;
+                }}
             """)
             btn.clicked.connect(lambda checked=False, target_sid=sid: self._close_session_by_id(target_sid))
             self.session_tab_bar.setTabButton(idx, QTabBar.RightSide, btn)
@@ -1448,23 +1455,36 @@ class OrderDeskWidget(QWidget):
             self.txt_delivery_addr.blockSignals(False)
 
         self._refresh_cart_ui()
+        self._update_tab_close_buttons()
 
     def _on_session_switched(self, idx: int) -> None:
         """Legacy compatibility wrapper forwarding to tab switch."""
         self._on_session_tab_switched(idx)
 
     def _on_session_tab_close_requested(self, index: int) -> None:
-        if self.session_tab_bar.count() <= 1:
-            QMessageBox.information(
-                self,
-                "Fermeture Impossible",
-                "Vous devez conserver au moins une session active pour les commandes.",
-            )
-            return
-
         sid = self.session_tab_bar.tabData(index)
         sdata = self._sessions.get(sid)
         if not sdata:
+            return
+
+        # If it is the last remaining session, clear/reset it rather than destroying the desk
+        if self.session_tab_bar.count() <= 1:
+            if sdata.get("cart"):
+                reply = QMessageBox.question(
+                    self,
+                    "Réinitialiser la session",
+                    f"Le panier de '{sdata['label']}' contient des articles en cours.\n"
+                    "Voulez-vous vider le panier et réinitialiser cette session ?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No,
+                )
+                if reply != QMessageBox.Yes:
+                    return
+            self._clear_session_cart(sid)
+            self._load_clients_into_combo(selected_id=1)
+            if hasattr(self, "txt_delivery_addr"):
+                self.txt_delivery_addr.clear()
+            self._update_tab_close_buttons()
             return
 
         if sdata.get("cart"):
@@ -1512,8 +1532,12 @@ class OrderDeskWidget(QWidget):
 
         scanner_tag = f" [{scanner_id}]" if scanner_id else ""
         if hasattr(self, "session_tab_bar"):
+            if qta:
+                tab_icon = qta.icon("fa5s.cash-register", color="#007572")
+            else:
+                tab_icon = get_duotone_icon("pos", 12)
             tab_idx = self.session_tab_bar.addTab(
-                get_duotone_icon("barcode_scan", 14),
+                tab_icon,
                 f"{label}{scanner_tag}",
             )
             self.session_tab_bar.setTabData(tab_idx, sid)

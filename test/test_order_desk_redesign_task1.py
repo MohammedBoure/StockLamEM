@@ -31,7 +31,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QTabBar
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QTabBar, QWidget
 from ui.widgets.appliance_desks.order_desk_view import (
     ColorBadgeWidget,
     OrderDeskWidget,
@@ -133,23 +133,31 @@ def test_order_desk_removal_of_unwanted_badge_texts(qapp, mock_data_manager_larg
 
 
 def test_order_desk_session_tabs_and_close_buttons(qapp, mock_data_manager_large):
-    """Verifies that session tabs use true connected styling and refined close buttons."""
+    """Verifies that session tabs use true connected styling, minimal height, and refined close buttons."""
     desk = OrderDeskWidget(data_manager=mock_data_manager_large)
 
     assert desk.session_tab_bar.count() == 1
-    assert desk.session_tab_bar.tabButton(0, QTabBar.RightSide) is None
+    # Verify minimal height (<= 28px)
+    session_bars = [w for w in desk.findChildren(QWidget) if w.objectName() == "SessionTabsBar"]
+    assert len(session_bars) == 1
+    assert session_bars[0].height() <= 28 or session_bars[0].maximumHeight() <= 28
+
+    # Tab 0 close button is properly present
+    btn0_init = desk.session_tab_bar.tabButton(0, QTabBar.RightSide)
+    assert btn0_init is not None and isinstance(btn0_init, QPushButton)
+    assert btn0_init.text() == "×"
 
     # Add second session
     desk._create_new_session()
     assert desk.session_tab_bar.count() == 2
 
-    # Both tabs now have close buttons
+    # Both tabs have close buttons
     btn0 = desk.session_tab_bar.tabButton(0, QTabBar.RightSide)
     btn1 = desk.session_tab_bar.tabButton(1, QTabBar.RightSide)
     assert btn0 is not None and isinstance(btn0, QPushButton)
     assert btn1 is not None and isinstance(btn1, QPushButton)
     assert btn0.text() == "×"
-    assert btn0.width() == 18 and btn0.height() == 18
+    assert btn0.width() <= 18 and btn0.height() <= 18
 
 
 def test_order_desk_action_column_and_exhausted_state(qapp, mock_data_manager_large):

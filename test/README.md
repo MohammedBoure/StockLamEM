@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_session_bar_compact.py`**:
+  - *Scope*: Verifies Task #1 compact session bar deliverables: ultra-compact session bar height (<= 28px, tabs 22px height), compact '+ Nouvelle Session' button (22px), presence of close button ('×', 16x16) on all tabs with high-contrast color styling (white on active teal tab, slate on inactive tab, red hover), and clean session close/reset behavior for both single and multiple sessions.
 - **`test_remove_tracabilite_lots_tab.py`**:
   - *Scope*: Verifies Task #2 deliverables: complete removal of the 'Traçabilité & Lots' tab from `ApplianceWorkflowTab` (Bureaux & SAV), leaving exactly 4 operational desks (Commandes, Caisse, Sortie Magasin, and SAV), ensuring cross-desk signal listeners execute safely without exceptions, and verifying RBAC permission handling across the remaining 4 tabs without index errors.
 - **`test_order_desk_redesign_task1.py`**:
