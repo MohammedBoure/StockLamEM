@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_price_dropdown_menu.py`**:
+  - *Scope*: Verifies Task #7 deliverables: dedicated Price column (Column 6, `Prix TTC`) displays only the primary price (`Prix 1 - Détail / Comptoir`) on an interactive styled button (`QPushButton#BtnPriceDropdown`) with dropdown chevron (`▾`); complete elimination of overlapping text fragments (QTableWidgetItem text empty, secondary labels hidden); dropdown menu (`PriceTierMenu`) triggered on click listing all 3 tiers with active checkmarks; and dynamic price tier selection updating displayed button text and adding products to cart at the selected price tier (`selected_price_ttc`).
 - **`test_order_desk_available_only_filter.py`**:
   - *Scope*: Verifies Task #6 deliverables: default active state of the 'Disponibles uniquement' filter (`chk_available_only.isChecked() == True`), automatic filtering and hiding of exhausted/out-of-stock items (`Available_Theoretical_Qty <= 0`), dynamic toggle behavior revealing exhausted items with disabled `—` action slots when unchecked, filter restoration to `True` upon clicking 'Réinitialiser' (`_reset_filters`), and backend support in `SerialTrackingManager.get_catalog_with_theoretical_stock(only_available=True)`.
 - **`test_order_desk_cart_table_and_remove_item.py`**:

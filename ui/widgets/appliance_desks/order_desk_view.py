@@ -15,7 +15,7 @@ import logging
 from decimal import Decimal
 from typing import Any, Callable, Dict, List, Optional
 
-from PySide6.QtCore import QEvent, QObject, QSettings, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QSettings, QSize, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -226,49 +226,149 @@ class ColorFilterBadge(QFrame):
 
 class ProductPriceWidget(QWidget):
     """
-    Renders the 3 pricing tiers of a product in the dedicated Price column:
-    - Primary Prix 1 (Détail / Comptoir) in prominent bold teal
-    - Secondary sub-tiers Prix 2 (Demi-Gros) and Prix 3 (Gros) in crisp slate
-    - Comprehensive interactive tooltip detailing all 3 tiers
+    Renders only the primary price in the catalog table with an interactive dropdown menu:
+    - Displays only the first price (Prix 1 - Détail / Comptoir) in the cell, eliminating visual overlap.
+    - Features a clean dropdown chevron indicator (▾).
+    - Clicking opens a styled dropdown menu (QMenu) presenting all 3 pricing tiers.
+    - Selecting an alternative tier dynamically updates the displayed price and passes it to cart addition.
     """
+    priceTierSelected = Signal(str, float)
 
-    def __init__(self, p1: float, p2: float, p3: float, parent: Optional[QWidget] = None):
+    def __init__(
+        self,
+        p1: float,
+        p2: float,
+        p3: float,
+        prod_ref: Optional[Dict[str, Any]] = None,
+        parent: Optional[QWidget] = None,
+    ):
         super().__init__(parent)
         self.p1 = float(p1 or 0.0)
         self.p2 = float(p2 or (self.p1 * 0.95))
         self.p3 = float(p3 or (self.p1 * 0.90))
+        self.prod_ref = prod_ref
+        self.selected_tier = "Prix_1"
+        self.current_price = self.p1
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 4, 6, 4)
-        layout.setSpacing(2)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(0)
         layout.setAlignment(Qt.AlignCenter)
 
-        # Primary Line: Prix 1 (Détail / Public)
+        # Single interactive button displaying only the primary price + dropdown arrow
+        self.btn_price = QPushButton()
+        self.btn_price.setObjectName("BtnPriceDropdown")
+        self.btn_price.setCursor(Qt.PointingHandCursor)
+        self.btn_price.setFixedHeight(30)
+        self.btn_price.setStyleSheet("""
+            QPushButton#BtnPriceDropdown {
+                background-color: #F8FAFC;
+                color: #007572;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-size: 11px;
+                font-weight: 800;
+                text-align: center;
+            }
+            QPushButton#BtnPriceDropdown:hover {
+                background-color: #E6F4F1;
+                border-color: #007572;
+                color: #00504E;
+            }
+            QPushButton#BtnPriceDropdown:pressed {
+                background-color: #CCEBE5;
+            }
+        """)
+
+        # Label references for backwards compatibility
         self.lbl_p1 = QLabel(f"{format_money(self.p1)} DA")
-        self.lbl_p1.setStyleSheet(
-            "font-size: 12px; font-weight: 800; color: #007572; background: transparent; border: none;"
-        )
-        self.lbl_p1.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.lbl_p1)
-
-        # Secondary Line: Prix 2 (Demi-Gros) and Prix 3 (Gros)
         self.lbl_sub = QLabel(f"DG: {format_money(self.p2)} • G: {format_money(self.p3)}")
-        self.lbl_sub.setStyleSheet(
-            "font-size: 10px; font-weight: 600; color: #64748B; background: transparent; border: none;"
-        )
-        self.lbl_sub.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.lbl_sub)
+        self.lbl_sub.setVisible(False)
 
+        self._update_button_label()
+        self.btn_price.clicked.connect(self._show_price_menu)
+        layout.addWidget(self.btn_price)
+
+        self._setup_tooltip()
+
+    def _update_button_label(self) -> None:
+        tier_tag = ""
+        if self.selected_tier == "Prix_2":
+            tier_tag = " [DG]"
+        elif self.selected_tier == "Prix_3":
+            tier_tag = " [G]"
+        self.btn_price.setText(f"{format_money(self.current_price)} DA{tier_tag}  ▾")
+        self.lbl_p1.setText(f"{format_money(self.current_price)} DA")
+
+    def _setup_tooltip(self) -> None:
         tt = (
             f"Grille Tarifaire du Produit (TTC) :\n"
             f"• Prix 1 (Détail / Comptoir) : {format_money(self.p1)} DA\n"
             f"• Prix 2 (Demi-Gros / Revendeur) : {format_money(self.p2)} DA\n"
             f"• Prix 3 (Grossiste B2B) : {format_money(self.p3)} DA\n"
-            f"(Tarif facturé ajusté automatiquement selon la catégorie tarifaire du client)"
+            f"(Cliquez pour afficher la liste déroulante des prix)"
         )
         self.setToolTip(tt)
-        self.lbl_p1.setToolTip(tt)
-        self.lbl_sub.setToolTip(tt)
+        self.btn_price.setToolTip(tt)
+
+    def _show_price_menu(self) -> None:
+        """Displays the dropdown menu listing all available price tiers upon click."""
+        menu = QMenu(self)
+        menu.setObjectName("PriceTierMenu")
+        menu.setStyleSheet("""
+            QMenu#PriceTierMenu {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                padding: 4px;
+                font-size: 11px;
+            }
+            QMenu#PriceTierMenu::item {
+                padding: 6px 14px;
+                border-radius: 4px;
+                color: #1E293B;
+                font-weight: 600;
+            }
+            QMenu#PriceTierMenu::item:selected {
+                background-color: #E6F4F1;
+                color: #007572;
+                font-weight: 800;
+            }
+            QMenu#PriceTierMenu::separator {
+                height: 1px;
+                background-color: #E2E8F0;
+                margin: 4px 6px;
+            }
+        """)
+
+        header_act = menu.addAction("Tarifs Disponibles (TTC) :")
+        header_act.setEnabled(False)
+        menu.addSeparator()
+
+        prefix1 = "✔ " if self.selected_tier == "Prix_1" else "   "
+        act1 = menu.addAction(f"{prefix1}Prix 1 (Détail / Comptoir) : {format_money(self.p1)} DA")
+        act1.triggered.connect(lambda: self._select_tier("Prix_1", self.p1))
+
+        prefix2 = "✔ " if self.selected_tier == "Prix_2" else "   "
+        act2 = menu.addAction(f"{prefix2}Prix 2 (Demi-Gros) : {format_money(self.p2)} DA")
+        act2.triggered.connect(lambda: self._select_tier("Prix_2", self.p2))
+
+        prefix3 = "✔ " if self.selected_tier == "Prix_3" else "   "
+        act3 = menu.addAction(f"{prefix3}Prix 3 (Grossiste B2B) : {format_money(self.p3)} DA")
+        act3.triggered.connect(lambda: self._select_tier("Prix_3", self.p3))
+
+        pos = self.btn_price.mapToGlobal(QPoint(0, self.btn_price.height()))
+        menu.exec_(pos)
+
+    def _select_tier(self, tier: str, price: float) -> None:
+        self.selected_tier = tier
+        self.current_price = price
+        self._update_button_label()
+        if self.prod_ref is not None:
+            self.prod_ref["selected_price_tier"] = tier
+            self.prod_ref["selected_price_ttc"] = price
+        self.priceTierSelected.emit(tier, price)
 
 
 class AddActionCellWidget(QWidget):
@@ -2054,21 +2154,23 @@ class OrderDeskWidget(QWidget):
         it_avail.setToolTip(f"Quantité disponible : {avail}")
         self.table.setItem(row, 5, it_avail)
 
-        # Column 6: Dedicated Price Column displaying 3 prices (Détail, Demi-Gros, Gros)
+        # Column 6: Dedicated Price Column with interactive dropdown menu
         p1 = float(prod.get("Price_1_TTC") or prod.get("Unit_Price_TTC") or prod.get("Default_Selling_Price_HT") or 0.0)
         p2 = float(prod.get("Price_2_TTC") or (p1 * 0.95))
         p3 = float(prod.get("Price_3_TTC") or (p1 * 0.90))
 
-        it_price = QTableWidgetItem(f"{format_money(p1)} DA")
+        # Fix: empty text on QTableWidgetItem to prevent double overlapping ghost text
+        it_price = QTableWidgetItem("")
         it_price.setTextAlignment(Qt.AlignCenter)
         it_price.setToolTip(
             f"Grille Tarifaire (TTC) :\n"
             f"• Prix 1 (Détail / Comptoir) : {format_money(p1)} DA\n"
             f"• Prix 2 (Demi-Gros / Revendeur) : {format_money(p2)} DA\n"
-            f"• Prix 3 (Grossiste B2B) : {format_money(p3)} DA"
+            f"• Prix 3 (Grossiste B2B) : {format_money(p3)} DA\n"
+            f"(Cliquez pour afficher la liste déroulante des prix)"
         )
         self.table.setItem(row, 6, it_price)
-        self.table.setCellWidget(row, 6, ProductPriceWidget(p1, p2, p3))
+        self.table.setCellWidget(row, 6, ProductPriceWidget(p1, p2, p3, prod_ref=prod))
 
         # Column 7: Action Cell Slot with borderless '+' button (no button border, framed cell slot)
         it_action = QTableWidgetItem("+" if avail > 0 else "—")
@@ -2520,7 +2622,10 @@ class OrderDeskWidget(QWidget):
             )
 
     def _get_client_tiered_price(self, session_id: str, prod: Dict[str, Any]) -> float:
-        """Determines the appropriate unit price TTC based on the active client's Price_Tier."""
+        """Determines the appropriate unit price TTC based on explicit user dropdown selection or the active client's Price_Tier."""
+        if prod.get("selected_price_ttc") is not None:
+            return float(prod["selected_price_ttc"])
+
         base_price = float(prod.get("Unit_Price_TTC") or prod.get("Default_Selling_Price_HT") or 0.0)
         p1 = float(prod.get("Price_1_TTC") or base_price)
         p2 = float(prod.get("Price_2_TTC") or (p1 * 0.95))
