@@ -127,15 +127,15 @@ class QuickAddDialog(QDialog):
 
         self.cb_product.setLineEdit(AutoSelectLineEdit())
 
-        lay_prod.addWidget(QLabel("Produit:"), 0, 0)
+        lay_prod.addWidget(QLabel("Produit * :"), 0, 0)
         lay_prod.addWidget(self.cb_product, 0, 1, 1, 3)
-        lay_prod.addWidget(QLabel("Unité:"), 0, 4)
+        lay_prod.addWidget(QLabel("Unité :"), 0, 4)
         lay_prod.addWidget(self.cb_unit_type, 0, 5)
 
-        lay_prod.addWidget(QLabel("Emplacement:"), 1, 0)
+        lay_prod.addWidget(QLabel("Emplacement * :"), 1, 0)
         lay_prod.addWidget(self.cb_location, 1, 1, 1, 2)
 
-        lay_prod.addWidget(QLabel("Fournisseur:"), 1, 3)
+        lay_prod.addWidget(QLabel("Fournisseur * :"), 1, 3)
         lay_prod.addWidget(self.cb_supplier, 1, 4, 1, 2)
 
         main_layout.addWidget(grp_prod)
@@ -143,17 +143,17 @@ class QuickAddDialog(QDialog):
         # ---------------------------------------------------------
         # Quantities & Dates Group
         # ---------------------------------------------------------
-        grp_qty = QGroupBox("Quantité, Lot et Validité")
+        grp_qty = QGroupBox("Quantité, Lot et Validité (Champs Obligatoires)")
         grp_qty.setStyleSheet(grp_prod.styleSheet())
         lay_qty = QHBoxLayout(grp_qty)
         lay_qty.setSpacing(15)
 
         self.inp_qty = AutoSelectSpinBox()
-        self.inp_qty.setRange(1, 999999)
+        self.inp_qty.setRange(0, 999999)
         self.inp_qty.setValue(1)
 
         self.inp_lot = AutoSelectLineEdit()
-        self.inp_lot.setPlaceholderText("N/A")
+        self.inp_lot.setPlaceholderText("N° de lot obligatoire *")
 
         self.inp_expiry = QDateEdit(QDate.currentDate().addYears(2))
         self.inp_expiry.setCalendarPopup(True)
@@ -161,13 +161,13 @@ class QuickAddDialog(QDialog):
         self.inp_barcode = AutoSelectLineEdit()
         self.inp_barcode.setPlaceholderText("Scanner ou saisir (Optionnel)")
 
-        lay_qty.addWidget(QLabel("Quantité:"))
+        lay_qty.addWidget(QLabel("Quantité * :"))
         lay_qty.addWidget(self.inp_qty)
-        lay_qty.addWidget(QLabel("Lot:"))
+        lay_qty.addWidget(QLabel("Lot * :"))
         lay_qty.addWidget(self.inp_lot)
-        lay_qty.addWidget(QLabel("Exp:"))
+        lay_qty.addWidget(QLabel("Exp * :"))
         lay_qty.addWidget(self.inp_expiry)
-        lay_qty.addWidget(QLabel("Code Barre Ext:"))
+        lay_qty.addWidget(QLabel("Code Barre Ext :"))
         lay_qty.addWidget(self.inp_barcode)
 
         main_layout.addWidget(grp_qty)
@@ -404,21 +404,45 @@ class QuickAddDialog(QDialog):
     def validate_and_accept(self):
         p_data = self.cb_product.currentData()
         loc_id = self.cb_location.get_current_location_id()
+        supplier_id = self.cb_supplier.currentData()
+        lot_number = self.inp_lot.text().strip()
+        qty = self.inp_qty.value()
+        buy_price = self.inp_price.value()
+        sell_price = self.inp_sell_price.value()
 
         if not p_data:
-            QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un produit.")
+            QMessageBox.warning(self, "Données Incomplètes", "Veuillez sélectionner un produit valide.")
             self.cb_product.setFocus()
             return
 
         if loc_id is None:
-            QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un emplacement.")
+            QMessageBox.warning(self, "Données Incomplètes", "Veuillez sélectionner un emplacement de stockage.")
             self.cb_location.setFocus()
             return
 
-        qty = self.inp_qty.value()
+        if not supplier_id:
+            QMessageBox.warning(self, "Données Incomplètes", "Veuillez sélectionner le fournisseur du produit (obligatoire).")
+            self.cb_supplier.setFocus()
+            return
+
+        if not lot_number or lot_number.upper() in ["N/A", "NONE", "NULL", ""]:
+            QMessageBox.warning(self, "Données Incomplètes", "Le numéro de lot (Batch Number) est obligatoire pour assurer la traçabilité.")
+            self.inp_lot.setFocus()
+            return
+
         if qty <= 0:
-            QMessageBox.warning(self, "Erreur", "La quantité doit être supérieure à zéro.")
+            QMessageBox.warning(self, "Données Incomplètes", "La quantité doit être strictement supérieure à zéro.")
             self.inp_qty.setFocus()
+            return
+
+        if buy_price <= 0:
+            QMessageBox.warning(self, "Données Incomplètes", "Le prix d'achat HT unitaire doit être renseigné et supérieur à 0.")
+            self.inp_price.setFocus()
+            return
+
+        if sell_price <= 0:
+            QMessageBox.warning(self, "Données Incomplètes", "Le prix de vente HT (Vente 1) doit être renseigné et supérieur à 0.")
+            self.inp_sell_price.setFocus()
             return
 
         self.accept()
@@ -441,7 +465,7 @@ class QuickAddDialog(QDialog):
             'Product_Name': p_data['Product_Name'],
             'Location_ID': self.cb_location.get_current_location_id(),
             'Quantity': effective_qty,
-            'Lot_Number': self.inp_lot.text().strip() or "N/A",
+            'Lot_Number': self.inp_lot.text().strip(),
             'Expiry_Date': self.inp_expiry.date().toPyDate(),
             'Unit_Price_HT': self.inp_price.value(),
             'Discount_Percent': discount_pct,

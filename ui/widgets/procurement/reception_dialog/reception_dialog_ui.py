@@ -86,8 +86,9 @@ class ReceptionDialogUIMixin:
 
         self.cb_unit_type = QComboBox()
         self.inp_qty = AutoSelectSpinBox()
-        self.inp_qty.setRange(1, 999999)
+        self.inp_qty.setRange(0, 999999)
         self.inp_lot = AutoSelectLineEdit()
+        self.inp_lot.setPlaceholderText("N° de Lot obligatoire *")
         self.inp_expiry = QDateEdit(QDate.currentDate().addYears(2))
         self.cb_location = LocationTreeComboBox(self.location_manager)
 

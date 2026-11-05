@@ -23,10 +23,11 @@ This test suite enforces strict software quality gatekeeping across:
 - **`test_financial_isolation_and_bon_credit.py`**:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
-- **	est_product_colors_and_bon_comptant.py**:
-  - *Scope*: Verifies Task #5 deliverables: renaming of Bon C to Bon Comptant across Order Desk and Cashier Desk UI, full CRUD and active filtering in ProductColorManager, and UI integration of ProductColorsTab within Master Data (Données de base).
-  - *Scope*: Simulates 100 simultaneous concurrent scans from dual physical scanners on a single PC to verify low-level RawInput/HID device character separation and zero payload interleaving.
 
+- **`test_product_colors_and_bon_comptant.py`**:
+  - *Scope*: Verifies Task #5 deliverables: renaming of Bon C to Bon Comptant across Order Desk and Cashier Desk UI, full CRUD and active filtering in ProductColorManager, and UI integration of ProductColorsTab within Master Data (Données de base).
+- **`test_batch_reception_path_restriction.py`**:
+  - *Scope*: Verifies Task #6 deliverables: strict restriction of batch reception and registration to only two authorized paths (Achats & Entrées, and Stock & Magasin), blocking of additions from other desks (Bureaux & SAV), and mandatory complete product/batch data validation.
 ### 2.2. Core Financial, Billing & Debt Management
 - **[`test_debts_management.py`](file:///home/pluto/projects/StockLamPlus/test/test_debts_management.py)**:
   - *Scope*: Verifies client balance calculation audits, FIFO settlement distribution of global payments, free downpayments (*acomptes libres*), `nav_debts` navigation permissions, autocomplete client dropdowns (`SearchableClientComboBox`), and debt UI dialog ergonomics (`ClientStatementDialog`, non-modal `TransactionDetailsDialog`).

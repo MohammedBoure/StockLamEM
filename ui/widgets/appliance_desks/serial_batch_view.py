@@ -178,187 +178,144 @@ class SerialBatchRegistryWidget(QWidget):
         tab_lots_layout.setContentsMargins(8, 8, 8, 8)
         tab_lots_layout.setSpacing(10)
 
-        top_row = QHBoxLayout()
-        top_row.setSpacing(10)
-
-        # Left Panel: Create / Update Appliance Product (Compact 2-Column Grid)
-        product_group = QFrame()
-        product_group.setObjectName("ProductCard")
-        pg_layout = QVBoxLayout(product_group)
-        pg_layout.setContentsMargins(14, 12, 14, 12)
-        pg_layout.setSpacing(8)
-
-        pg_title = QLabel("1. Référentiel Produit Électroménager (Mark, Name, Categorie, Coloure)")
-        pg_title.setStyleSheet(
-            "font-size: 12.5px; font-weight: 800; color: #0F172A; "
-            "padding-bottom: 6px; border-bottom: 2px solid #0E7471;"
-        )
-        pg_layout.addWidget(pg_title)
-
-        p_grid = QGridLayout()
-        p_grid.setVerticalSpacing(8)
-        p_grid.setHorizontalSpacing(10)
-
-        p_grid.addWidget(QLabel("Marque (Mark) :"), 0, 0)
+        # Instantiate legacy inputs for backward compatibility (disabled & locked)
         self.mark_input = QLineEdit()
-        self.mark_input.setFixedHeight(32)
-        self.mark_input.setPlaceholderText("Ex: Samsung, LG, Bosch, Brandt...")
-        p_grid.addWidget(self.mark_input, 0, 1)
-
-        p_grid.addWidget(QLabel("Désignation (Name) :"), 0, 2)
         self.name_input = QLineEdit()
-        self.name_input.setFixedHeight(32)
-        self.name_input.setPlaceholderText("Ex: Lave-linge 9kg EcoBubble")
-        p_grid.addWidget(self.name_input, 0, 3)
-
-        p_grid.addWidget(QLabel("Catégorie (Categorie) :"), 1, 0)
         self.category_input = QLineEdit()
-        self.category_input.setFixedHeight(32)
-        self.category_input.setPlaceholderText("Ex: Lave-linge, Réfrigérateurs...")
-        p_grid.addWidget(self.category_input, 1, 1)
-
-        p_grid.addWidget(QLabel("Couleur (Coloure) :"), 1, 2)
         self.color_input = QLineEdit()
-        self.color_input.setFixedHeight(32)
-        self.color_input.setPlaceholderText("Ex: Inox, Blanc, Noir, Silver...")
-        p_grid.addWidget(self.color_input, 1, 3)
-
-        p_grid.addWidget(QLabel("Code-barres Modèle :"), 2, 0)
         self.barcode_input = QLineEdit()
-        self.barcode_input.setFixedHeight(32)
-        self.barcode_input.setPlaceholderText("EAN / UPC Modèle")
-        p_grid.addWidget(self.barcode_input, 2, 1)
-
-        p_grid.addWidget(QLabel("Garantie (Mois) :"), 2, 2)
         self.warranty_spin = QSpinBox()
-        self.warranty_spin.setFixedHeight(32)
-        self.warranty_spin.setRange(0, 120)
-        self.warranty_spin.setValue(24)
-        self.warranty_spin.setSuffix(" mois")
-        p_grid.addWidget(self.warranty_spin, 2, 3)
-
-        p_grid.addWidget(QLabel("Prix Achat Réf. :"), 3, 0)
         self.buy_price_spin = QDoubleSpinBox()
-        self.buy_price_spin.setFixedHeight(32)
-        self.buy_price_spin.setRange(0.0, 100_000_000.0)
-        self.buy_price_spin.setDecimals(2)
-        self.buy_price_spin.setSuffix(" DA")
-        p_grid.addWidget(self.buy_price_spin, 3, 1)
-
-        p_grid.addWidget(QLabel("Prix Vente TTC :"), 3, 2)
         self.sell_price_spin = QDoubleSpinBox()
-        self.sell_price_spin.setFixedHeight(32)
-        self.sell_price_spin.setRange(0.0, 100_000_000.0)
-        self.sell_price_spin.setDecimals(2)
-        self.sell_price_spin.setSuffix(" DA")
-        p_grid.addWidget(self.sell_price_spin, 3, 3)
-
-        p_grid.addWidget(QLabel("Attributs JSON :"), 4, 0)
         self.ext_attrs_input = QLineEdit()
-        self.ext_attrs_input.setFixedHeight(32)
-        self.ext_attrs_input.setPlaceholderText('{"energy": "A+++", "power_w": 2000}')
-        p_grid.addWidget(self.ext_attrs_input, 4, 1, 1, 3)
-
-        pg_layout.addLayout(p_grid)
-
-        chk_row = QHBoxLayout()
-        self.requires_serial_chk = QCheckBox("Exiger un N° de Série unique au Bureau de Sortie")
-        self.requires_serial_chk.setChecked(True)
-        chk_row.addWidget(self.requires_serial_chk)
-        chk_row.addStretch()
-
+        self.requires_serial_chk = QCheckBox()
         self.save_product_btn = QPushButton("+ Enregistrer le Produit")
-        self.save_product_btn.setCursor(Qt.PointingHandCursor)
-        self.save_product_btn.setFixedHeight(34)
-        self.save_product_btn.setStyleSheet(
-            "QPushButton { background-color: #0E7471; color: white; font-weight: 700; font-size: 12px; min-height: 0px; padding: 4px 16px; border: none; border-radius: 6px; }"
-            "QPushButton:hover { background-color: #0A5E5C; }"
-        )
+        self.save_product_btn.setEnabled(False)
         self.save_product_btn.clicked.connect(self._on_create_product)
-        chk_row.addWidget(self.save_product_btn)
-        pg_layout.addLayout(chk_row)
 
-        top_row.addWidget(product_group, stretch=1)
-
-        # Right Panel: Receive Batch with Serials
-        batch_group = QFrame()
-        batch_group.setObjectName("BatchCard")
-        batch_layout = QVBoxLayout(batch_group)
-        batch_layout.setContentsMargins(14, 12, 14, 12)
-        batch_layout.setSpacing(8)
-
-        bg_title = QLabel("2. Réception de Lot (Batch) & Numéros de Série (N° de Série)")
-        bg_title.setStyleSheet(
-            "font-size: 12.5px; font-weight: 800; color: #0F172A; "
-            "padding-bottom: 6px; border-bottom: 2px solid #0E7471;"
-        )
-        batch_layout.addWidget(bg_title)
-
-        b_grid = QGridLayout()
-        b_grid.setVerticalSpacing(8)
-        b_grid.setHorizontalSpacing(10)
-
-        b_grid.addWidget(QLabel("Produit :"), 0, 0)
         self.product_combo = QComboBox()
-        self.product_combo.setFixedHeight(32)
-        b_grid.addWidget(self.product_combo, 0, 1, 1, 3)
-
-        b_grid.addWidget(QLabel("N° Lot (Batch) :"), 1, 0)
         self.batch_number_input = QLineEdit()
-        self.batch_number_input.setFixedHeight(32)
-        self.batch_number_input.setPlaceholderText("Ex: BATCH-2026-11-A")
-        b_grid.addWidget(self.batch_number_input, 1, 1)
-
-        b_grid.addWidget(QLabel("Date Réception :"), 1, 2)
         self.received_date_edit = QDateEdit(QDate.currentDate())
-        self.received_date_edit.setFixedHeight(32)
-        self.received_date_edit.setCalendarPopup(True)
-        self.received_date_edit.setDisplayFormat("yyyy-MM-dd")
-        b_grid.addWidget(self.received_date_edit, 1, 3)
-
-        b_grid.addWidget(QLabel("Coût Unitaire HT :"), 2, 0)
         self.batch_cost_spin = QDoubleSpinBox()
-        self.batch_cost_spin.setFixedHeight(32)
-        self.batch_cost_spin.setRange(0.0, 100_000_000.0)
-        self.batch_cost_spin.setDecimals(2)
-        self.batch_cost_spin.setSuffix(" DA")
-        b_grid.addWidget(self.batch_cost_spin, 2, 1)
-
-        b_grid.addWidget(QLabel("Prix Vente Lot :"), 2, 2)
         self.batch_sell_spin = QDoubleSpinBox()
-        self.batch_sell_spin.setFixedHeight(32)
-        self.batch_sell_spin.setRange(0.0, 100_000_000.0)
-        self.batch_sell_spin.setDecimals(2)
-        self.batch_sell_spin.setSuffix(" DA")
-        b_grid.addWidget(self.batch_sell_spin, 2, 3)
-
-        b_grid.addWidget(QLabel("N° de Série (1/ligne) :"), 3, 0, Qt.AlignTop)
         self.serials_text = QPlainTextEdit()
-        self.serials_text.setFixedHeight(50)
-        self.serials_text.setPlaceholderText(
-            "Scanner ou saisir les N° de Série ici (un par ligne)... Ex: SN-BOSCH-9001, SN-BOSCH-9002"
-        )
-        b_grid.addWidget(self.serials_text, 3, 1, 1, 3)
-
-        batch_layout.addLayout(b_grid)
-
-        btn_batch_row = QHBoxLayout()
-        btn_batch_row.addStretch()
         self.receive_batch_btn = QPushButton("Réceptionner le Lot && Enregistrer les N° de Série")
-        self.receive_batch_btn.setIcon(get_duotone_icon("barcode_scan", 16))
-        self.receive_batch_btn.setIconSize(QSize(16, 16))
-        self.receive_batch_btn.setCursor(Qt.PointingHandCursor)
-        self.receive_batch_btn.setFixedHeight(34)
-        self.receive_batch_btn.setStyleSheet(
-            "QPushButton { background-color: #0E7471; color: white; font-weight: 700; font-size: 12px; min-height: 0px; padding: 4px 16px; border: none; border-radius: 6px; }"
-            "QPushButton:hover { background-color: #0A5E5C; }"
-        )
+        self.receive_batch_btn.setEnabled(False)
         self.receive_batch_btn.clicked.connect(self._on_receive_batch)
-        btn_batch_row.addWidget(self.receive_batch_btn)
-        batch_layout.addLayout(btn_batch_row)
 
-        top_row.addWidget(batch_group, stretch=1)
-        root_layout.addLayout(top_row, stretch=2)
+        # -------------------------------------------------------------
+        # Centralized Inbound Policy & Serial Audit Banner (Task #6)
+        # -------------------------------------------------------------
+        top_row = QHBoxLayout()
+        top_row.setSpacing(12)
+
+        # Left Panel: Inbound Policy & Routing Card
+        policy_card = QFrame()
+        policy_card.setObjectName("PolicyCard")
+        policy_card.setStyleSheet(
+            "QFrame#PolicyCard { "
+            "  background-color: #F8FAFC; border: 1.5px solid #007572; border-radius: 8px; "
+            "}"
+        )
+        pol_layout = QVBoxLayout(policy_card)
+        pol_layout.setContentsMargins(14, 12, 14, 12)
+        pol_layout.setSpacing(6)
+
+        pol_header = QHBoxLayout()
+        lbl_pol_icon = QLabel()
+        lbl_pol_icon.setPixmap(get_duotone_icon("security", 20).pixmap(20, 20))
+        pol_header.addWidget(lbl_pol_icon)
+
+        lbl_pol_title = QLabel("Politique de Réception Centralisée & Traçabilité (Parcours Restreint)")
+        lbl_pol_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #007572;")
+        pol_header.addWidget(lbl_pol_title)
+        pol_header.addStretch()
+        pol_layout.addLayout(pol_header)
+
+        lbl_pol_desc = QLabel(
+            "La création de produits et la réception de nouveaux lots sont strictement restreintes à 2 parcours autorisés :<br>"
+            "&nbsp;&nbsp;<b>1. Achats & Entrées</b> (Commandes et Bons de Réception officiels)<br>"
+            "&nbsp;&nbsp;<b>2. Stock & Magasin</b> (Ajout direct au stock avec saisie obligatoire de toutes les données)<br>"
+            "<i>Tout enregistrement direct depuis cette interface opérationnelle est verrouillé.</i>"
+        )
+        lbl_pol_desc.setStyleSheet("color: #334155; font-size: 11.5px; line-height: 1.4;")
+        lbl_pol_desc.setWordWrap(True)
+        pol_layout.addWidget(lbl_pol_desc)
+
+        btn_row = QHBoxLayout()
+        self.btn_nav_procurement = QPushButton("🛒 Aller à Achats & Entrées")
+        self.btn_nav_procurement.setCursor(Qt.PointingHandCursor)
+        self.btn_nav_procurement.setFixedHeight(30)
+        self.btn_nav_procurement.setStyleSheet(
+            "QPushButton { background: #007572; color: white; font-weight: 700; font-size: 11.5px; padding: 2px 14px; border: none; border-radius: 5px; }"
+            "QPushButton:hover { background: #0A5E5C; }"
+        )
+        self.btn_nav_procurement.clicked.connect(self._on_goto_procurement)
+
+        self.btn_nav_stock = QPushButton("📦 Aller à Stock & Magasin")
+        self.btn_nav_stock.setCursor(Qt.PointingHandCursor)
+        self.btn_nav_stock.setFixedHeight(30)
+        self.btn_nav_stock.setStyleSheet(
+            "QPushButton { background: #FFFFFF; color: #007572; font-weight: 700; font-size: 11.5px; padding: 2px 14px; border: 1.5px solid #007572; border-radius: 5px; }"
+            "QPushButton:hover { background: #E6F4F1; }"
+        )
+        self.btn_nav_stock.clicked.connect(self._on_goto_stock)
+
+        btn_row.addWidget(self.btn_nav_procurement)
+        btn_row.addWidget(self.btn_nav_stock)
+        btn_row.addStretch()
+        pol_layout.addLayout(btn_row)
+
+        top_row.addWidget(policy_card, stretch=3)
+
+        # Right Panel: Serial Number Quick Audit / Inspection
+        serial_card = QFrame()
+        serial_card.setObjectName("SerialAuditCard")
+        serial_card.setStyleSheet(
+            "QFrame#SerialAuditCard { "
+            "  background-color: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 8px; "
+            "}"
+        )
+        sn_layout = QVBoxLayout(serial_card)
+        sn_layout.setContentsMargins(14, 12, 14, 12)
+        sn_layout.setSpacing(6)
+
+        sn_header = QHBoxLayout()
+        lbl_sn_icon = QLabel()
+        lbl_sn_icon.setPixmap(get_duotone_icon("barcode_scan", 20).pixmap(20, 20))
+        sn_header.addWidget(lbl_sn_icon)
+
+        lbl_sn_title = QLabel("Contrôle & Audit Instantané d'un N° de Série")
+        lbl_sn_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #0F172A;")
+        sn_header.addWidget(lbl_sn_title)
+        sn_header.addStretch()
+        sn_layout.addLayout(sn_header)
+
+        sn_input_row = QHBoxLayout()
+        self.serial_search_input = QLineEdit()
+        self.serial_search_input.setFixedHeight(32)
+        self.serial_search_input.setPlaceholderText("Scanner ou saisir un N° de Série (ex: SN-BOSCH-9001)...")
+        self.serial_search_input.returnPressed.connect(self._on_verify_serial)
+        sn_input_row.addWidget(self.serial_search_input, 1)
+
+        self.btn_search_serial = QPushButton("🔍 Vérifier")
+        self.btn_search_serial.setCursor(Qt.PointingHandCursor)
+        self.btn_search_serial.setFixedHeight(32)
+        self.btn_search_serial.setStyleSheet(
+            "QPushButton { background: #0E7471; color: white; font-weight: 700; font-size: 11.5px; padding: 2px 14px; border: none; border-radius: 5px; }"
+            "QPushButton:hover { background: #0A5E5C; }"
+        )
+        self.btn_search_serial.clicked.connect(self._on_verify_serial)
+        sn_input_row.addWidget(self.btn_search_serial)
+        sn_layout.addLayout(sn_input_row)
+
+        self.lbl_serial_result = QLabel("Prêt pour l'audit. Scannez un code-barres pour vérifier le lot et l'état.")
+        self.lbl_serial_result.setStyleSheet("color: #64748B; font-size: 11px; padding-top: 2px;")
+        self.lbl_serial_result.setWordWrap(True)
+        sn_layout.addWidget(self.lbl_serial_result)
+
+        top_row.addWidget(serial_card, stretch=2)
+        tab_lots_layout.addLayout(top_row)
 
         # Bottom Table: Overview of Catalog & Theoretical vs Physical Stock
         cat_card = QFrame()
@@ -600,94 +557,67 @@ class SerialBatchRegistryWidget(QWidget):
                 self.catalog_table.setItem(row_idx, col_idx, cell)
 
     def _on_create_product(self) -> None:
-        name = self.name_input.text().strip()
-        mark = self.mark_input.text().strip()
-        category = self.category_input.text().strip()
-        color = self.color_input.text().strip()
-
-        if not name:
-            QMessageBox.warning(self, "بيانات ناقصة", "يرجى إدخال اسم المنتج (Name).")
-            return
-
-        ext_attrs = {}
-        raw_ext = self.ext_attrs_input.text().strip()
-        if raw_ext:
-            try:
-                ext_attrs = json.loads(raw_ext)
-            except ValueError:
-                QMessageBox.warning(self, "خطأ JSON", "صيغة الخصائص الإضافية JSON غير صالحة.")
-                return
-
-        try:
-            res = self.data_manager.serials.register_product_with_attributes(
-                name=name,
-                mark=mark,
-                categorie=category,
-                coloure=color,
-                barcode=self.barcode_input.text().strip() or None,
-                selling_price_ht=Decimal(str(self.sell_price_spin.value())),
-                warranty_months=self.warranty_spin.value(),
-                requires_serial=self.requires_serial_chk.isChecked(),
-                extra_attributes=ext_attrs,
-            )
-            if res.get("success"):
-                QMessageBox.information(
-                    self,
-                    "تم الحفظ",
-                    f"تم حفظ المنتج بنجاح (رقم المعرف: {res.get('product_id')}).",
-                )
-                self.name_input.clear()
-                self.barcode_input.clear()
-                self.refresh_products()
-                self.catalog_updated.emit()
-        except Exception as err:
-            QMessageBox.critical(self, "خطأ", f"تعذر حفظ المنتج: {err}")
+        """Blocked direct creation - redirected to authorized paths."""
+        QMessageBox.warning(
+            self,
+            "Action Non Autorisée (Parcours Restreint)",
+            "L'enregistrement des produits et la réception de nouveaux lots sont strictement "
+            "restreints aux deux parcours exclusifs :\n\n"
+            "1. Achats & Entrées (Bons de Réception Fournisseurs)\n"
+            "2. Stock & Magasin (Ajout Direct au Stock avec saisie intégrale)\n\n"
+            "L'enregistrement direct depuis cette interface opérationnelle est verrouillé afin de garantir l'intégrité comptable et la traçabilité des stocks."
+        )
 
     def _on_receive_batch(self) -> None:
-        product_id = self.product_combo.currentData()
-        if not product_id:
-            QMessageBox.warning(self, "تنبيه", "يرجى اختيار المنتج أولاً.")
-            return
+        """Blocked direct reception - redirected to authorized paths."""
+        QMessageBox.warning(
+            self,
+            "Action Non Autorisée (Parcours Restreint)",
+            "La réception et l'enregistrement de nouveaux lots sont strictement "
+            "restreints aux deux parcours exclusifs :\n\n"
+            "1. Achats & Entrées (Bons de Réception Fournisseurs)\n"
+            "2. Stock & Magasin (Ajout Direct au Stock avec saisie intégrale)\n\n"
+            "L'enregistrement direct depuis cette interface opérationnelle est verrouillé afin de garantir l'intégrité comptable et la traçabilité des stocks."
+        )
 
-        raw_lines = self.serials_text.toPlainText().splitlines()
-        serials = [line.strip() for line in raw_lines if line.strip()]
-        if not serials:
-            QMessageBox.warning(
-                self,
-                "بيانات ناقصة",
-                "يرجى إدخال رقم تسلسلي واحد على الأقل (N° de Série) للدفعة المستلمة.",
-            )
-            return
+    def _on_goto_procurement(self) -> None:
+        parent = self.window()
+        if parent and hasattr(parent, "switch_page"):
+            parent.switch_page(2)
+        else:
+            QMessageBox.information(self, "Navigation", "Veuillez vous rendre dans le menu latéral : 'Achats & Entrées'.")
 
+    def _on_goto_stock(self) -> None:
+        parent = self.window()
+        if parent and hasattr(parent, "switch_page"):
+            parent.switch_page(3)
+        else:
+            QMessageBox.information(self, "Navigation", "Veuillez vous rendre dans le menu latéral : 'Stock & Magasin'.")
+
+    def _on_verify_serial(self) -> None:
+        sn = self.serial_search_input.text().strip()
+        if not sn:
+            self.lbl_serial_result.setText("<span style='color: #64748B;'>Veuillez scanner ou saisir un N° de Série.</span>")
+            return
+        if not self.data_manager or not hasattr(self.data_manager, "serials"):
+            self.lbl_serial_result.setText(f"<b>N° Série :</b> {sn} (Mode démo)")
+            return
         try:
-            res = self.data_manager.serials.register_batch_arrival(
-                product_id=int(product_id),
-                supplier_id=1,
-                po_id=None,
-                reception_date=self.received_date_edit.date().toString("yyyy-MM-dd"),
-                unit_cost_ht=Decimal(str(self.batch_cost_spin.value())),
-                freight_customs=Decimal("0.00"),
-                serial_numbers=serials,
-                user_id=self.current_user_id,
-                selling_price_ht=Decimal(str(self.batch_sell_spin.value())) if self.batch_sell_spin.value() > 0 else None,
-                batch_number=self.batch_number_input.text().strip() or None,
-            )
-            if res.get("success"):
-                QMessageBox.information(
-                    self,
-                    "تم إدخال الدفعة",
-                    f"تم تسجيل الدفعة ({res.get('batch_number')}) بنجاح بعدد {res.get('serials_count')} قطعة مرقمة.",
+            res = self.data_manager.serials.get_serial_details(sn)
+            if res:
+                st = res.get("Status", "UNKNOWN")
+                st_color = "#007572" if st == "IN_STOCK" else ("#DC2626" if st == "SOLD" else "#D97706")
+                st_fr = "En Stock Magasin" if st == "IN_STOCK" else ("Vendu / Sorti" if st == "SOLD" else st)
+                cost = float(res.get("Unit_Cost_Landed", 0))
+                self.lbl_serial_result.setText(
+                    f"<b>Produit :</b> {res.get('Product_Name', '---')} ({res.get('Brand_Mark', '')} - {res.get('Color_Finish', '')})<br>"
+                    f"<b>Lot :</b> #{res.get('Batch_ID', '---')} | <b>Statut :</b> <span style='color: {st_color}; font-weight: bold;'>{st_fr}</span> | "
+                    f"<b>Coût Achat :</b> {cost:,.2f} DA"
                 )
-                self.serials_text.clear()
-                self.batch_number_input.clear()
-                self.refresh_products()
-                self.catalog_updated.emit()
-        except Exception as err:
-            QMessageBox.critical(
-                self,
-                "رفض إدخال الدفعة",
-                f"فشل إدخال الدفعة:\n{err}",
-            )
+            else:
+                self.lbl_serial_result.setText(f"<span style='color: #DC2626; font-weight: bold;'>⚠️ N° de Série '{sn}' introuvable dans le référentiel.</span>")
+        except Exception as exc:
+            self.lbl_serial_result.setText(f"<span style='color: #DC2626;'>Erreur d'audit : {exc}</span>")
 
     def refresh_traceability(self) -> None:
         """Loads audit logs from Stock_Movement_Log to give live visibility into product physical movements."""

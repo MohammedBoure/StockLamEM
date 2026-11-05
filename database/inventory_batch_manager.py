@@ -926,8 +926,19 @@ class InventoryBatchManager:
     def add_direct_batch(self, data: dict, user_id: int = None) -> bool:
         """
         Adds a batch directly to inventory without a Reception (BR) or Purchase Order (PO).
-        Generates robust EAN-13 barcode after insert.
+        Generates robust EAN-13 barcode after insert. Enforces complete product & batch data.
         """
+        if not data.get('Product_ID'):
+            raise ValueError("Product_ID est obligatoire pour enregistrer un lot.")
+        if not data.get('Location_ID'):
+            raise ValueError("Location_ID est obligatoire pour enregistrer un lot.")
+        if not data.get('Lot_Number') or str(data.get('Lot_Number')).strip().upper() in ['N/A', 'NONE', 'NULL', '']:
+            raise ValueError("Lot_Number valide est obligatoire pour assurer la traçabilité.")
+        if float(data.get('Quantity', 0)) <= 0:
+            raise ValueError("La quantité doit être strictement positive.")
+        if float(data.get('Unit_Price_HT', 0)) <= 0:
+            raise ValueError("Le prix d'achat HT unitaire doit être supérieur à zéro.")
+
         conn = None
         try:
             conn = self.db.get_raw_connection()

@@ -25,6 +25,7 @@ Ce dossier regroupe tous les gestionnaires d'accès aux données (Managers), les
 - **`external_transfer_manager.py`** : Gestion des bons de livraison (BL) et bons de retour (BR), unifié directement avec le répertoire central des Clients (`Clients`) avec repli transparent vers `External_Partners`, incluant la récupération des prix d'acquisition TTC, remises et TVA des lots retournables.
 - **`inventory_batch_manager.py`** : Gestion des lots en inventaire :
   - Traçabilité et lignage des lots (`Parent_Batch_ID`, `Batch_Type` : Standard Bulk vs Extracted Retail).
+  - Validation et enregistrement direct des lots (`add_direct_batch`) avec vérification stricte de l'intégralité des données (Produit, Emplacement, N° de Lot valide, Quantité > 0, Prix d'achat HT > 0).
   - Extraction atomique de lots de détail (`extract_retail_batch`) avec déduction du lot parent et écriture de log `BULK_EXTRACTION`.
   - Déconditionnement (`unpack_and_transfer_batch`), génération EAN-13 unique et vérification de collision code-barres.
 - **`inventory_count_manager.py`** : Gestion des sessions de comptage d'inventaire physique, réconciliation d'écarts, détection des conflits de snapshot (`get_session_conflicts`), résolutions d'arbitrage paramétrables (`force_counted`, `apply_delta`, `skip` via `conflict_resolutions`), suppression de sessions et recherche multi-code-barres (`FIND_IN_SET`).

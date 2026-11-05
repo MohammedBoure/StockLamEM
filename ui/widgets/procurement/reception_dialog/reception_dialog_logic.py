@@ -376,14 +376,43 @@ class ReceptionDialogLogicMixin:
             p_data = self.cb_product.currentData()
             loc_id = self.cb_location.get_current_location_id()
 
-            if not p_data or loc_id is None:
-                QMessageBox.warning(self, "Attention", "Veuillez sélectionner un produit et un emplacement.")
+            if not p_data:
+                QMessageBox.warning(self, "Données Incomplètes", "Veuillez sélectionner un produit valide.")
+                self.cb_product.setFocus()
+                return
+
+            if loc_id is None:
+                QMessageBox.warning(self, "Données Incomplètes", "Veuillez sélectionner un emplacement de stockage.")
+                self.cb_location.setFocus()
+                return
+
+            qty = float(self.inp_qty.value())
+            if qty <= 0:
+                QMessageBox.warning(self, "Données Incomplètes", "La quantité reçue doit être strictement supérieure à zéro.")
+                self.inp_qty.setFocus()
+                return
+
+            lot_num = self.inp_lot.text().strip()
+            if not lot_num or lot_num.upper() in ["N/A", "NONE", "NULL", ""]:
+                QMessageBox.warning(
+                    self, "Données Incomplètes",
+                    "Le numéro de lot (Batch / N° de Lot) est obligatoire pour assurer la traçabilité complète."
+                )
+                self.inp_lot.setFocus()
+                return
+
+            buy_price = float(self.inp_price.value())
+            if buy_price <= 0:
+                QMessageBox.warning(
+                    self, "Données Incomplètes",
+                    "Le prix unitaire d'achat HT doit être renseigné et strictement supérieur à zéro."
+                )
+                self.inp_price.setFocus()
                 return
 
             u_id   = self.get_current_user_id()
             mgr    = self.manager.reception if hasattr(self.manager, 'reception') else self.manager
 
-            qty          = float(self.inp_qty.value())
             factor       = float(self.cb_unit_type.currentData() or 1.0)
             effective_qty= qty * factor
 
@@ -402,10 +431,10 @@ class ReceptionDialogLogicMixin:
                 "Location_ID":         loc_id,
                 "Quantity_Initial":    effective_qty,
                 "Quantity_Current":    effective_qty,
-                "Unit_Price_Received": self.inp_price.value(),
+                "Unit_Price_Received": buy_price,
                 "Tax_Rate_Percent":    19.0 if self.chk_tva.isChecked() else 0.0,
                 "Discount_Percent":    self.inp_remise.value() if self.cb_remise_type.currentText() == "%" else 0,
-                "Lot_Number":          self.inp_lot.text() or "N/A",
+                "Lot_Number":          lot_num,
                 "Expiry_Date":         self.inp_expiry.date().toPyDate(),
                 "Batch_Note":          self.inp_observation.text().strip(),
                 "Internal_Barcode":    barcode_to_save,
