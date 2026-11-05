@@ -7,7 +7,7 @@ Bureaux & SAV في 1. Commandes (Order Desk)  في الجددول عمود actio
 # 3 [COMPLETED]: medium
 Bureaux & SAV في 2. Caisse & Règlements الأزرار الموجودة في جانب اvalider أريدها أن تكون بإرتفاع أكبر و أيضا الأزرار في الأسفل للحفظ و bon de retour 
 
-# 4 : medium
+# 4 [COMPLETED]: medium
 في stock & magasin ثم stock actuel ثم في ajout Rapide 
 هنا أريد أن تكون خصائص اللون المضافة حديثا يمكن أن يتم تعيينها 
 

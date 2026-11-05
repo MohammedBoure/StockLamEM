@@ -35,6 +35,8 @@ This test suite enforces strict software quality gatekeeping across:
 - **`test_batch_reception_path_restriction.py`**:
   - *Scope*: Verifies Task #6 deliverables: strict restriction of batch reception and registration to only two authorized paths (Achats & Entrées, and Stock & Magasin), blocking of additions from other desks (Bureaux & SAV), and mandatory complete product/batch data validation.
 ### 2.2. Core Financial, Billing & Debt Management
+- **`test_quick_add_color_assignment.py`**:
+  - *Scope*: Verifies Task #4 deliverables: in Stock & Magasin -> Stock Actuel -> Ajout Rapide (`QuickAddDialog`), dynamic color swatch badge preview (`lbl_color_swatch`), color combobox populated with active finishes (`ProductColorManager` / `Product_Colors`), automatic pre-selection from product Master Data (`Color_Finish`) or existing batch data, custom color input support, and persistence of `Color_Finish` on `Products_Master` and `Product_Colors` via `InventoryBatchManager` (`add_direct_batch` and `update_direct_batch`).
 - **[`test_debts_management.py`](file:///home/pluto/projects/StockLamPlus/test/test_debts_management.py)**:
   - *Scope*: Verifies client balance calculation audits, FIFO settlement distribution of global payments, free downpayments (*acomptes libres*), `nav_debts` navigation permissions, autocomplete client dropdowns (`SearchableClientComboBox`), and debt UI dialog ergonomics (`ClientStatementDialog`, non-modal `TransactionDetailsDialog`).
 - **[`test_billing_unit_price_ttc.py`](file:///home/pluto/projects/StockLamPlus/test/test_billing_unit_price_ttc.py)**:

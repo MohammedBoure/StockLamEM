@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QGridLayout, QGroupBox
 )
 from PySide6.QtCore import Qt, QDate, QLocale
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPixmap, QPainter, QBrush, QPen, QColor, QIcon
 
 from ui.widgets.procurement.reception_dialog.auto_select_widgets import (
     AutoSelectSpinBox, AutoSelectDoubleSpinBox, AutoSelectLineEdit
@@ -87,6 +87,15 @@ class QuickAddDialog(QDialog):
         self.inp_sell_price_4.setValue(float(d.get('Selling_Price_HT_4') or 0))
         self.chk_sell_tva.setChecked(float(d.get('Selling_TVA_Percent') or 0) > 0)
 
+        # Pre-select Color
+        col = d.get('Color_Finish')
+        if not col:
+            p = self.cb_product.currentData()
+            if p:
+                col = p.get('Color_Finish')
+        if col:
+            self.set_selected_color(col)
+
         self.inp_observation.setText(d.get('Reception_Note') or d.get('Batch_Note') or '')
         self.inp_barcode.setText(d.get('External_Barcode') or '')
 
@@ -137,6 +146,36 @@ class QuickAddDialog(QDialog):
 
         lay_prod.addWidget(QLabel("Fournisseur * :"), 1, 3)
         lay_prod.addWidget(self.cb_supplier, 1, 4, 1, 2)
+
+        # Row 2: Color / Finish
+        self.cb_color = QComboBox()
+        self.cb_color.setEditable(True)
+        self.cb_color.setInsertPolicy(QComboBox.NoInsert)
+        if self.cb_color.completer():
+            self.cb_color.completer().setFilterMode(Qt.MatchContains)
+        self.cb_color.setLineEdit(AutoSelectLineEdit())
+        if self.cb_color.lineEdit():
+            self.cb_color.lineEdit().setPlaceholderText("Sélectionner ou saisir une couleur/finition")
+
+        self.lbl_color_swatch = QLabel()
+        self.lbl_color_swatch.setFixedSize(28, 26)
+        self.lbl_color_swatch.setStyleSheet(
+            "background-color: #CBD5E1; border: 1px solid #94A3B8; border-radius: 4px;"
+        )
+        self.lbl_color_swatch.setToolTip("Aperçu de la couleur sélectionnée")
+
+        lay_color = QHBoxLayout()
+        lay_color.setSpacing(8)
+        lay_color.setContentsMargins(0, 0, 0, 0)
+        lay_color.addWidget(self.cb_color, 1)
+        lay_color.addWidget(self.lbl_color_swatch, 0)
+
+        lay_prod.addWidget(QLabel("Couleur / Finition :"), 2, 0)
+        lay_prod.addLayout(lay_color, 2, 1, 1, 2)
+
+        lbl_color_hint = QLabel("Finition électroménager (Inox, Blanc, Noir, Silver...)")
+        lbl_color_hint.setStyleSheet("color: #7f8c8d; font-size: 11px; font-style: italic;")
+        lay_prod.addWidget(lbl_color_hint, 2, 3, 1, 3)
 
         main_layout.addWidget(grp_prod)
 
@@ -298,6 +337,8 @@ class QuickAddDialog(QDialog):
 
     def _setup_connections(self):
         self.cb_product.currentIndexChanged.connect(self.on_product_selected)
+        self.cb_color.currentIndexChanged.connect(self._update_color_swatch)
+        self.cb_color.editTextChanged.connect(self._update_color_swatch)
 
         # Calculate TTC for purchase
         self.inp_price.valueChanged.connect(lambda: self.on_price_changed('ht'))
@@ -333,6 +374,106 @@ class QuickAddDialog(QDialog):
         except:
             pass
 
+        # Load Colors / Finishes
+        self._load_colors()
+
+
+    def _load_colors(self):
+        self._colors_map = {}
+        self.cb_color.blockSignals(True)
+        self.cb_color.clear()
+        self.cb_color.addItem("--- Non définie / Standard ---", {"Color_Name": "", "Color_Code": "#CBD5E1"})
+
+        colors_list = []
+        color_mgr = getattr(self.manager, 'colors', None)
+        if not color_mgr and hasattr(self.manager, 'db') and self.manager.db:
+            try:
+                from database.product_color_manager import ProductColorManager
+                color_mgr = ProductColorManager(self.manager.db)
+            except Exception:
+                color_mgr = None
+
+        if color_mgr and hasattr(color_mgr, 'get_all_colors'):
+            try:
+                colors_list = color_mgr.get_all_colors(active_only=True)
+            except Exception as e:
+                logging.debug(f"Could not load colors via manager: {e}")
+
+        if not colors_list:
+            from database.product_color_manager import DEFAULT_PRODUCT_COLORS
+            colors_list = [
+                {"Color_Name": name, "Color_Code": code, "Description": desc}
+                for name, code, desc in DEFAULT_PRODUCT_COLORS
+            ]
+
+        for c in colors_list:
+            name = str(c.get('Color_Name', '')).strip()
+            code = str(c.get('Color_Code', '#CBD5E1')).strip()
+            if not name:
+                continue
+            self._colors_map[name.lower()] = code
+
+            pixmap = QPixmap(14, 14)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QBrush(QColor(code)))
+            border_qcol = QColor("#94A3B8" if code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "#475569")
+            painter.setPen(QPen(border_qcol, 1))
+            painter.drawRoundedRect(0, 0, 13, 13, 3, 3)
+            painter.end()
+
+            self.cb_color.addItem(QIcon(pixmap), name, {"Color_Name": name, "Color_Code": code})
+
+        self.cb_color.blockSignals(False)
+        self._update_color_swatch()
+
+    def _update_color_swatch(self):
+        color_text = self.cb_color.currentText().strip()
+        data = self.cb_color.currentData()
+        hex_code = "#CBD5E1"
+
+        if isinstance(data, dict) and data.get("Color_Code"):
+            hex_code = data.get("Color_Code")
+        elif hasattr(self, '_colors_map') and color_text.lower() in self._colors_map:
+            hex_code = self._colors_map[color_text.lower()]
+        elif color_text.startswith("#") and len(color_text) in (4, 7):
+            hex_code = color_text
+        elif color_text:
+            try:
+                from ui.widgets.appliance_desks.order_desk_view import COLOR_PALETTE
+                hex_code = COLOR_PALETTE.get(color_text.lower(), "#CBD5E1")
+            except Exception:
+                hex_code = "#CBD5E1"
+
+        border_col = "#94A3B8" if hex_code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "rgba(0,0,0,0.25)"
+        self.lbl_color_swatch.setStyleSheet(
+            f"background-color: {hex_code}; border: 1px solid {border_col}; border-radius: 4px;"
+        )
+        display_name = color_text if not color_text.startswith("---") else "Standard / Non définie"
+        self.lbl_color_swatch.setToolTip(f"Couleur / Finition : {display_name}\nCode Hex : {hex_code}")
+
+    def set_selected_color(self, color_name: str):
+        if not color_name:
+            self.cb_color.setCurrentIndex(0)
+            self._update_color_swatch()
+            return
+
+        c_clean = str(color_name).strip()
+        found = False
+        for i in range(self.cb_color.count()):
+            item_text = self.cb_color.itemText(i)
+            item_data = self.cb_color.itemData(i)
+            cand_name = item_data.get("Color_Name") if isinstance(item_data, dict) else item_text
+            if str(cand_name).strip().lower() == c_clean.lower() or str(item_text).strip().lower() == c_clean.lower():
+                self.cb_color.setCurrentIndex(i)
+                found = True
+                break
+
+        if not found:
+            self.cb_color.setCurrentText(c_clean)
+        self._update_color_swatch()
+
     def on_product_selected(self):
         p = self.cb_product.currentData()
         self.cb_unit_type.clear()
@@ -340,7 +481,12 @@ class QuickAddDialog(QDialog):
         if not p:
             self.inp_price.setValue(0)
             self.inp_sell_price.setValue(0)
+            self.set_selected_color("")
             return
+
+        # Pre-select product color finish if present
+        color = p.get('Color_Finish') or ''
+        self.set_selected_color(color)
 
         # Units
         self.cb_unit_type.addItem(p.get('Base_Unit_Name', 'Unité'), 1)
@@ -460,10 +606,15 @@ class QuickAddDialog(QDialog):
         else:
             discount_pct = remise
 
+        chosen_color = self.cb_color.currentText().strip()
+        if chosen_color.startswith("---"):
+            chosen_color = ""
+
         return {
             'Product_ID': p_data['Product_ID'],
             'Product_Name': p_data['Product_Name'],
             'Location_ID': self.cb_location.get_current_location_id(),
+            'Color_Finish': chosen_color,
             'Quantity': effective_qty,
             'Lot_Number': self.inp_lot.text().strip(),
             'Expiry_Date': self.inp_expiry.date().toPyDate(),

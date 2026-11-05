@@ -989,6 +989,20 @@ class InventoryBatchManager:
                     cursor.execute("UPDATE Products_Master SET Barcode = %s WHERE Product_ID = %s",
                                    (new_barcodes_str, data['Product_ID']))
 
+            color_finish = str(data.get('Color_Finish') or '').strip()
+            if color_finish:
+                cursor.execute(
+                    "UPDATE Products_Master SET Color_Finish = %s WHERE Product_ID = %s",
+                    (color_finish, data['Product_ID'])
+                )
+                try:
+                    cursor.execute(
+                        "INSERT IGNORE INTO Product_Colors (Color_Name, Color_Code, Description, Is_Active) VALUES (%s, '#CBD5E1', 'Ajouté via Ajout Rapide', TRUE)",
+                        (color_finish,)
+                    )
+                except Exception:
+                    pass
+
             conn.commit()
             data['Generated_Barcode'] = final_barcode
             return True
@@ -1060,6 +1074,20 @@ class InventoryBatchManager:
                     cursor.execute("UPDATE Products_Master SET Barcode = %s WHERE Product_ID = %s",
                                    (new_barcodes_str, data['Product_ID']))
 
+            color_finish = str(data.get('Color_Finish') or '').strip()
+            if color_finish:
+                cursor.execute(
+                    "UPDATE Products_Master SET Color_Finish = %s WHERE Product_ID = %s",
+                    (color_finish, data['Product_ID'])
+                )
+                try:
+                    cursor.execute(
+                        "INSERT IGNORE INTO Product_Colors (Color_Name, Color_Code, Description, Is_Active) VALUES (%s, '#CBD5E1', 'Ajouté via Ajout Rapide', TRUE)",
+                        (color_finish,)
+                    )
+                except Exception:
+                    pass
+
             conn.commit()
             return True
 
@@ -1130,6 +1158,7 @@ class InventoryBatchManager:
                         P.Manuf_Cat_No,
                         F.Family_Name,
                         P.Family_ID,
+                        P.Color_Finish,
                         IFNULL(A.Automate_Name, 'Général') AS Automate_Name,
                         M.Manuf_Name,
 
