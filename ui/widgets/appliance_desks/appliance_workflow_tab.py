@@ -30,7 +30,6 @@ from ui.widgets.appliance_desks.cashier_desk_view import CashierDeskWidget
 from ui.widgets.appliance_desks.dispatch_desk_view import DispatchDeskWidget
 from ui.widgets.appliance_desks.order_desk_view import OrderDeskWidget
 from ui.widgets.appliance_desks.sav_kanban_view import SAVKanbanWidget
-from ui.widgets.appliance_desks.serial_batch_view import SerialBatchRegistryWidget
 
 logger = logging.getLogger(__name__)
 
@@ -176,11 +175,7 @@ class ApplianceWorkflowTab(QWidget):
             data_manager=self.data_manager,
             parent=self,
         )
-        self.batch_registry_desk = SerialBatchRegistryWidget(
-            data_manager=self.data_manager,
-            current_user_id=self.current_user_id,
-            parent=self,
-        )
+        self.batch_registry_desk = None
 
         self.desk_tabs.addTab(
             self.order_desk,
@@ -202,11 +197,6 @@ class ApplianceWorkflowTab(QWidget):
             get_duotone_icon("wrench_sav", 18),
             "4. Service Après-Vente (SAV)",
         )
-        self.desk_tabs.addTab(
-            self.batch_registry_desk,
-            get_duotone_icon("edit_lots", 18),
-            "5. Référentiel Lots && Séries",
-        )
 
         layout.addWidget(self.desk_tabs, 1)
 
@@ -217,11 +207,11 @@ class ApplianceWorkflowTab(QWidget):
         self.order_desk.bonLivraisonGenerated.connect(self._on_order_created)
         self.cashier_desk.orderSettled.connect(self._on_caisse_settled)
         self.dispatch_desk.stockDispatched.connect(self._on_dispatch_completed)
-        self.batch_registry_desk.catalog_updated.connect(self._on_catalog_updated)
 
     def _on_order_created(self, payload: dict) -> None:
         self.cashier_desk.refresh_queue()
-        self.batch_registry_desk.refresh_products()
+        if self.batch_registry_desk:
+            self.batch_registry_desk.refresh_products()
 
     def _on_caisse_settled(self, order_num: str, bond_type: str) -> None:
         self.dispatch_desk.refresh_dispatch_queue()
@@ -229,13 +219,14 @@ class ApplianceWorkflowTab(QWidget):
 
     def _on_dispatch_completed(self, order_num: str, serials_list: list) -> None:
         self.order_desk.refresh_catalog()
-        self.batch_registry_desk.refresh_products()
-        if hasattr(self.batch_registry_desk, "refresh_traceability"):
-            self.batch_registry_desk.refresh_traceability()
+        if self.batch_registry_desk:
+            self.batch_registry_desk.refresh_products()
+            if hasattr(self.batch_registry_desk, "refresh_traceability"):
+                self.batch_registry_desk.refresh_traceability()
 
     def _on_catalog_updated(self) -> None:
         self.order_desk.refresh_catalog()
-        if hasattr(self.batch_registry_desk, "refresh_traceability"):
+        if self.batch_registry_desk and hasattr(self.batch_registry_desk, "refresh_traceability"):
             self.batch_registry_desk.refresh_traceability()
 
     def refresh_all_desks(self) -> None:
@@ -243,9 +234,10 @@ class ApplianceWorkflowTab(QWidget):
         self.cashier_desk.refresh_queue()
         self.dispatch_desk.refresh_dispatch_queue()
         self.sav_desk.refresh_tickets()
-        self.batch_registry_desk.refresh_products()
-        if hasattr(self.batch_registry_desk, "refresh_traceability"):
-            self.batch_registry_desk.refresh_traceability()
+        if self.batch_registry_desk:
+            self.batch_registry_desk.refresh_products()
+            if hasattr(self.batch_registry_desk, "refresh_traceability"):
+                self.batch_registry_desk.refresh_traceability()
 
     def apply_rbac_permissions(self, permissions: Optional[Set[str]] = None) -> None:
         """
@@ -266,7 +258,6 @@ class ApplianceWorkflowTab(QWidget):
             (1, {"CAISSE_SETTLE_CASH", "CREDIT_ADMIN_AUTHORIZE", "RETURN_BOND_PROCESS", "desk.cashier.settle_bon_c", "desk.cashier.record_versement", "desk.cashier.issue_bon_retour", "nav_treasury"}),
             (2, {"DISPATCH_SCAN_SERIAL", "desk.dispatch.scan_serial_out", "desk.dispatch.print_bon_sortie", "nav_inventory"}),
             (3, {"SAV_MANAGE_STAGES", "SAV_IRREPARABLE_CREDIT", "desk.sav.receive_item", "desk.sav.send_to_repairer", "desk.sav.return_from_repairer", "desk.sav.deliver_to_client"}),
-            (4, {"inventory.batch.manage", "inventory.serial.register", "nav_inventory", "nav_products"}),
         ]
 
         any_specific_perm = any(

@@ -174,8 +174,14 @@ def test_order_desk_action_column_and_exhausted_state(qapp, mock_data_manager_la
     assert "Épuisé" in btn84.text()
 
 
-def test_appliance_workflow_desk_tab_renaming(qapp, mock_data_manager_large):
-    """Verifies that Desk 5 in ApplianceWorkflowTab is named '5. Référentiel Lots && Séries'."""
+def test_appliance_workflow_desk_tab_removal(qapp, mock_data_manager_large):
+    """Verifies that 'Traçabilité & Lots' tab has been completely removed and exactly 4 desks remain."""
     tab_widget = ApplianceWorkflowTab(data_manager=mock_data_manager_large)
-    tab_5_text = tab_widget.desk_tabs.tabText(4)
-    assert "Référentiel Lots" in tab_5_text, f"Desk 5 tab was '{tab_5_text}', expected 'Référentiel Lots'"
+    assert tab_widget.desk_tabs.count() == 4
+    tab_titles = [tab_widget.desk_tabs.tabText(i) for i in range(tab_widget.desk_tabs.count())]
+    for title in tab_titles:
+        assert "Traçabilité" not in title and "Lots" not in title
+    assert "Commandes" in tab_titles[0]
+    assert "Caisse" in tab_titles[1]
+    assert "Sortie Magasin" in tab_titles[2]
+    assert "SAV" in tab_titles[3]
