@@ -238,14 +238,17 @@ def test_order_desk_quick_client_search_and_redesigned_action_buttons(qapp):
     hid_mgr = MultiScannerHIDManager()
     desk = OrderDeskWidget(data_manager=None, hid_manager=hid_mgr)
 
-    # 1. Verify Catalog Table Add Buttons
-    cell_w0 = desk.table.cellWidget(0, 6)
+    # 1. Verify Catalog Table Price Column & Add Action Button
+    price_w0 = desk.table.cellWidget(0, 6)
+    assert price_w0 is not None
+    assert "115 000" in price_w0.lbl_p1.text()
+
+    cell_w0 = desk.table.cellWidget(0, 7)
     assert cell_w0 is not None
     btn0 = cell_w0.findChild(QPushButton)
     assert btn0 is not None
     assert btn0.isEnabled() is True
-    assert "+ Ajouter" in btn0.text()
-    assert "115 000" in btn0.text()
+    assert "+" in btn0.text()
 
     # Trigger click on button -> adds product to session cart
     btn0.click()
@@ -266,11 +269,11 @@ def test_order_desk_quick_client_search_and_redesigned_action_buttons(qapp):
     desk._catalog_cache.append(out_of_stock_prod)
     desk.txt_search.setText("Four Encastrable Épuisé")
     assert desk.table.rowCount() == 1
-    cell_out = desk.table.cellWidget(0, 6)
+    cell_out = desk.table.cellWidget(0, 7)
     btn_out = cell_out.findChild(QPushButton)
     assert btn_out is not None
     assert btn_out.isEnabled() is False
-    assert "Épuisé" in btn_out.text()
+    assert "—" in btn_out.text() or "Épuisé" in cell_out.toolTip()
 
     # Reset search
     desk.txt_search.clear()

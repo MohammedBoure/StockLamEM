@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_price_column_and_add_button.py`**:
+  - *Scope*: Verifies Task #4 deliverables: 8-column layout in the Order Desk catalog table, dedicated Price column (Column 6, `Prix TTC`, 150px) displaying all 3 pricing tiers (Prix 1 Détail/Comptoir, Prix 2 Demi-Gros, Prix 3 Grossiste B2B), dedicated Action slot column (Column 7, `Ajout`, 55px) with borderless `+` button inside a framed slot widget (`AddActionCellWidget`), zero vertical clipping (32px slot inside 48px row height), automated client pricing tier resolution (`Prix_1`, `Prix_2`, `Prix_3`) upon cart addition, and disabled state (`—`) for out-of-stock items.
 - **`test_order_desk_filter_vibrancy_and_colors.py`**:
   - *Scope*: Verifies Task #3 deliverables: presence of circular visual color swatches in the filter combobox (`cbo_color`), live `ColorFilterBadge` preview displaying swatch dot, color name, and hex codes, interactive badge click-to-reset behavior, vibrant styling of `OrderTopFilterBar` (gradient, left accent border, vector badges for Marque/Catégorie/Couleur), instant clear button on search field (`setClearButtonEnabled(True)`), and live catalog product counter badge (`lbl_catalog_count_badge`).
 - **`test_order_desk_horizontal_scroll.py`**:

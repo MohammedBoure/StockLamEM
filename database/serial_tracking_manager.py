@@ -322,7 +322,9 @@ class SerialTrackingManager:
                         COALESCE(p.Selling_TVA_Percent, 19.00) AS Selling_TVA_Percent,
                         COALESCE(SUM(CASE WHEN b.Status IN ('Available', 'ACTIVE') THEN b.Quantity_Current ELSE 0 END), 0) AS Physical_Qty,
                         COALESCE(SUM(CASE WHEN b.Status IN ('Available', 'ACTIVE') THEN COALESCE(b.Theoretical_Reserved_Qty, 0) ELSE 0 END), 0) AS Reserved_Qty,
-                        COALESCE(MAX(b.Selling_Price_HT), p.Default_Selling_Price_HT, 0.00) AS Batch_Selling_Price_HT
+                        COALESCE(MAX(b.Selling_Price_HT), p.Default_Selling_Price_HT, 0.00) AS Batch_Selling_Price_HT,
+                        COALESCE(MAX(b.Selling_Price_HT_2), 0.00) AS Batch_Selling_Price_HT_2,
+                        COALESCE(MAX(b.Selling_Price_HT_3), 0.00) AS Batch_Selling_Price_HT_3
                     FROM Products_Master p
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
@@ -363,14 +365,22 @@ class SerialTrackingManager:
                     res = int(r.get("Reserved_Qty") or 0)
                     avail = max(0, phys - res)
                     price_ht = Decimal(str(r.get("Batch_Selling_Price_HT") or r.get("Default_Selling_Price_HT") or "0.00"))
+                    price_ht_2 = Decimal(str(r.get("Batch_Selling_Price_HT_2") or "0.00"))
+                    price_ht_3 = Decimal(str(r.get("Batch_Selling_Price_HT_3") or "0.00"))
                     tva = Decimal(str(r.get("Selling_TVA_Percent") or "19.00"))
-                    price_ttc = (price_ht * (Decimal("1.00") + (tva / Decimal("100.00")))).quantize(Decimal("0.01"))
+                    tva_mult = Decimal("1.00") + (tva / Decimal("100.00"))
+                    price_ttc = (price_ht * tva_mult).quantize(Decimal("0.01"))
+                    price_ttc_2 = (price_ht_2 * tva_mult).quantize(Decimal("0.01")) if price_ht_2 > 0 else (price_ttc * Decimal("0.95")).quantize(Decimal("0.01"))
+                    price_ttc_3 = (price_ht_3 * tva_mult).quantize(Decimal("0.01")) if price_ht_3 > 0 else (price_ttc * Decimal("0.90")).quantize(Decimal("0.01"))
 
                     r["Physical_Qty"] = phys
                     r["Reserved_Qty"] = res
                     r["Available_Theoretical_Qty"] = avail
                     r["Unit_Price_HT"] = float(price_ht)
                     r["Unit_Price_TTC"] = float(price_ttc)
+                    r["Price_1_TTC"] = float(price_ttc)
+                    r["Price_2_TTC"] = float(price_ttc_2)
+                    r["Price_3_TTC"] = float(price_ttc_3)
                     results.append(r)
 
                 return results

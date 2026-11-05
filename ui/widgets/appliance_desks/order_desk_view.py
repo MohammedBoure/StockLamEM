@@ -223,6 +223,154 @@ class ColorFilterBadge(QFrame):
             self.setToolTip(f"Filtre actif : {clean_name} ({actual_hex})\nCliquez pour réinitialiser sur 'Toutes'")
 
 
+class ProductPriceWidget(QWidget):
+    """
+    Renders the 3 pricing tiers of a product in the dedicated Price column:
+    - Primary Prix 1 (Détail / Comptoir) in prominent bold teal
+    - Secondary sub-tiers Prix 2 (Demi-Gros) and Prix 3 (Gros) in crisp slate
+    - Comprehensive interactive tooltip detailing all 3 tiers
+    """
+
+    def __init__(self, p1: float, p2: float, p3: float, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.p1 = float(p1 or 0.0)
+        self.p2 = float(p2 or (self.p1 * 0.95))
+        self.p3 = float(p3 or (self.p1 * 0.90))
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setSpacing(2)
+        layout.setAlignment(Qt.AlignCenter)
+
+        # Primary Line: Prix 1 (Détail / Public)
+        self.lbl_p1 = QLabel(f"{format_money(self.p1)} DA")
+        self.lbl_p1.setStyleSheet(
+            "font-size: 12px; font-weight: 800; color: #007572; background: transparent; border: none;"
+        )
+        self.lbl_p1.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.lbl_p1)
+
+        # Secondary Line: Prix 2 (Demi-Gros) and Prix 3 (Gros)
+        self.lbl_sub = QLabel(f"DG: {format_money(self.p2)} • G: {format_money(self.p3)}")
+        self.lbl_sub.setStyleSheet(
+            "font-size: 10px; font-weight: 600; color: #64748B; background: transparent; border: none;"
+        )
+        self.lbl_sub.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.lbl_sub)
+
+        tt = (
+            f"Grille Tarifaire du Produit (TTC) :\n"
+            f"• Prix 1 (Détail / Comptoir) : {format_money(self.p1)} DA\n"
+            f"• Prix 2 (Demi-Gros / Revendeur) : {format_money(self.p2)} DA\n"
+            f"• Prix 3 (Grossiste B2B) : {format_money(self.p3)} DA\n"
+            f"(Tarif facturé ajusté automatiquement selon la catégorie tarifaire du client)"
+        )
+        self.setToolTip(tt)
+        self.lbl_p1.setToolTip(tt)
+        self.lbl_sub.setToolTip(tt)
+
+
+class AddActionCellWidget(QWidget):
+    """
+    Renders the add action in its own framed slot:
+    - Dedicated slot frame border (QFrame#AddActionSlot)
+    - Borderless '+' button centered inside (no border around the button itself)
+    - Hover highlights the slot in brand teal
+    - Clicking the '+' button or slot frame adds product to active cart session
+    """
+
+    def __init__(self, on_add_callback, is_available: bool = True, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.on_add_callback = on_add_callback
+        self.is_available = is_available
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setAlignment(Qt.AlignCenter)
+
+        # The framed slot container
+        self.slot_frame = QFrame()
+        self.slot_frame.setObjectName("AddActionSlot")
+        self.slot_frame.setFixedSize(40, 32)
+        slot_layout = QHBoxLayout(self.slot_frame)
+        slot_layout.setContentsMargins(0, 0, 0, 0)
+        slot_layout.setAlignment(Qt.AlignCenter)
+
+        self.btn_add = QPushButton("+")
+        self.btn_add.setObjectName("BtnPlusOnly")
+        self.btn_add.setFixedSize(38, 30)
+
+        if is_available:
+            self.slot_frame.setCursor(Qt.PointingHandCursor)
+            self.btn_add.setCursor(Qt.PointingHandCursor)
+            self.slot_frame.setStyleSheet("""
+                QFrame#AddActionSlot {
+                    background-color: #F8FAFC;
+                    border: 1.5px solid #CBD5E1;
+                    border-radius: 6px;
+                }
+                QFrame#AddActionSlot:hover {
+                    background-color: #E6F4F1;
+                    border-color: #007572;
+                }
+            """)
+            self.btn_add.setStyleSheet("""
+                QPushButton#BtnPlusOnly {
+                    background: transparent;
+                    border: none;
+                    color: #007572;
+                    font-size: 19px;
+                    font-weight: 800;
+                    padding: 0;
+                    margin: 0;
+                }
+                QPushButton#BtnPlusOnly:hover {
+                    color: #0A5C59;
+                }
+                QPushButton#BtnPlusOnly:pressed {
+                    color: #003D3A;
+                }
+            """)
+            self.btn_add.clicked.connect(self._trigger_add)
+            self.setToolTip("Ajouter au panier (+)")
+            self.btn_add.setToolTip("Ajouter au panier (+)")
+        else:
+            self.btn_add.setText("—")
+            self.btn_add.setEnabled(False)
+            self.slot_frame.setStyleSheet("""
+                QFrame#AddActionSlot {
+                    background-color: #F8FAFC;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 6px;
+                }
+            """)
+            self.btn_add.setStyleSheet("""
+                QPushButton#BtnPlusOnly {
+                    background: transparent;
+                    border: none;
+                    color: #94A3B8;
+                    font-size: 14px;
+                    font-weight: 700;
+                    padding: 0;
+                    margin: 0;
+                }
+            """)
+            self.setToolTip("Épuisé — Rupture de stock")
+            self.btn_add.setToolTip("Épuisé — Rupture de stock")
+
+        slot_layout.addWidget(self.btn_add)
+        layout.addWidget(self.slot_frame)
+
+    def mousePressEvent(self, event):
+        if self.is_available and event.button() == Qt.LeftButton:
+            self._trigger_add()
+        super().mousePressEvent(event)
+
+    def _trigger_add(self):
+        if self.is_available and callable(self.on_add_callback):
+            self.on_add_callback()
+
+
 TABLE_STYLE = """
     QTableWidget {
         background-color: #FFFFFF;
@@ -1047,7 +1195,7 @@ class OrderDeskWidget(QWidget):
         cat_header.addStretch()
         layout.addLayout(cat_header)
 
-        self.table = QTableWidget(0, 7)
+        self.table = QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels([
             "Marque",
             "Désignation Produit",
@@ -1055,7 +1203,8 @@ class OrderDeskWidget(QWidget):
             "Couleur",
             "Phys.",
             "Dispo.",
-            "Action",
+            "Prix TTC",
+            "Ajout",
         ])
         self.table.setStyleSheet(TABLE_STYLE)
         self.table.verticalHeader().setVisible(False)
@@ -1074,6 +1223,7 @@ class OrderDeskWidget(QWidget):
         self.table.horizontalHeaderItem(4).setTextAlignment(Qt.AlignCenter)
         self.table.horizontalHeaderItem(5).setTextAlignment(Qt.AlignCenter)
         self.table.horizontalHeaderItem(6).setTextAlignment(Qt.AlignCenter)
+        self.table.horizontalHeaderItem(7).setTextAlignment(Qt.AlignCenter)
 
         # Automatic horizontal scrollbar as needed to prevent any clipping
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -1094,8 +1244,10 @@ class OrderDeskWidget(QWidget):
         self.table.setColumnWidth(4, 48)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
         self.table.setColumnWidth(5, 50)
-        h.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 195)
+        h.setSectionResizeMode(6, QHeaderView.Interactive)
+        self.table.setColumnWidth(6, 150)
+        h.setSectionResizeMode(7, QHeaderView.Fixed)
+        self.table.setColumnWidth(7, 55)
 
         h.sectionResized.connect(self._on_catalog_header_section_resized)
         self.table.installEventFilter(self)
@@ -1127,7 +1279,7 @@ class OrderDeskWidget(QWidget):
                     self.table.setColumnWidth(1, 280)
                 return
 
-            other_widths = sum(self.table.columnWidth(c) for c in (0, 2, 3, 4, 5, 6))
+            other_widths = sum(self.table.columnWidth(c) for c in range(self.table.columnCount()) if c != 1)
             min_desig_width = 280
             avail = viewport_w - other_widths
             target = max(min_desig_width, avail)
@@ -1442,7 +1594,7 @@ class OrderDeskWidget(QWidget):
 
         if not hasattr(self, "_clients_cache") or not self._clients_cache:
             self._clients_cache = [
-                {"Client_ID": 1, "Client_Name": "Client Comptoir (Standard)", "Phone": "", "Address": ""}
+                {"Client_ID": 1, "Client_Name": "Client Comptoir (Standard)", "Phone": "", "Address": "", "Price_Tier": "Prix_1"}
             ]
             if self.data_manager and hasattr(self.data_manager, "clients"):
                 try:
@@ -1452,13 +1604,17 @@ class OrderDeskWidget(QWidget):
                         cname = str(c.get("Client_Name") or f"Client #{cid}").strip()
                         cphone = str(c.get("Phone") or "").strip()
                         caddr = str(c.get("Address") or "").strip()
+                        c_tier = str(c.get("Price_Tier") or "Prix_1").strip()
                         if cid and int(cid) != 1:
                             self._clients_cache.append({
                                 "Client_ID": int(cid),
                                 "Client_Name": cname,
                                 "Phone": cphone,
                                 "Address": caddr,
+                                "Price_Tier": c_tier,
                             })
+                        elif cid and int(cid) == 1:
+                            self._clients_cache[0]["Price_Tier"] = c_tier
                 except Exception as err:
                     logger.debug(f"Error loading clients: {err}")
 
@@ -1717,68 +1873,31 @@ class OrderDeskWidget(QWidget):
         it_avail.setToolTip(f"Quantité disponible : {avail}")
         self.table.setItem(row, 5, it_avail)
 
-        btn = QPushButton()
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setFixedHeight(30)
-        btn.setMinimumHeight(30)
-        btn.setMaximumHeight(30)
+        # Column 6: Dedicated Price Column displaying 3 prices (Détail, Demi-Gros, Gros)
+        p1 = float(prod.get("Price_1_TTC") or prod.get("Unit_Price_TTC") or prod.get("Default_Selling_Price_HT") or 0.0)
+        p2 = float(prod.get("Price_2_TTC") or (p1 * 0.95))
+        p3 = float(prod.get("Price_3_TTC") or (p1 * 0.90))
 
-        if avail > 0:
-            btn.setText(f"+ Ajouter • {format_money(price)} DA")
-            if qta:
-                btn.setIcon(qta.icon("fa5s.cart-plus", color="#FFFFFF"))
-            else:
-                btn.setIcon(get_duotone_icon("payment_white", 13))
-            btn.setIconSize(QSize(13, 13))
-            btn.setEnabled(True)
-            btn.setToolTip(f"Ajouter '{name}' au panier ({self._sessions[self._active_session_id]['label']})")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #007572;
-                    color: #FFFFFF;
-                    font-weight: 700;
-                    font-size: 11px;
-                    padding: 0 10px;
-                    border-radius: 5px;
-                    border: 1px solid #005A57;
-                }
-                QPushButton:hover {
-                    background-color: #005A57;
-                    border-color: #003D3A;
-                }
-                QPushButton:pressed {
-                    background-color: #003D3A;
-                }
-            """)
-            btn.clicked.connect(lambda checked=False, p=prod: self._add_product_to_session(self._active_session_id, p))
-        else:
-            btn.setText("Épuisé")
-            if qta:
-                btn.setIcon(qta.icon("fa5s.ban", color="#94A3B8"))
-            else:
-                btn.setIcon(get_duotone_icon("alert_warning", 13))
-            btn.setIconSize(QSize(13, 13))
-            btn.setEnabled(False)
-            btn.setToolTip("Rupture de stock théorique")
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #F8FAFC;
-                    color: #94A3B8;
-                    font-weight: 600;
-                    font-size: 11px;
-                    padding: 0 10px;
-                    border-radius: 5px;
-                    border: 1px solid #E2E8F0;
-                }
-            """)
+        it_price = QTableWidgetItem(f"{format_money(p1)} DA")
+        it_price.setTextAlignment(Qt.AlignCenter)
+        it_price.setToolTip(
+            f"Grille Tarifaire (TTC) :\n"
+            f"• Prix 1 (Détail / Comptoir) : {format_money(p1)} DA\n"
+            f"• Prix 2 (Demi-Gros / Revendeur) : {format_money(p2)} DA\n"
+            f"• Prix 3 (Grossiste B2B) : {format_money(p3)} DA"
+        )
+        self.table.setItem(row, 6, it_price)
+        self.table.setCellWidget(row, 6, ProductPriceWidget(p1, p2, p3))
 
-        cell_widget = QWidget()
-        cell_widget.setStyleSheet("background: transparent;")
-        cell_layout = QHBoxLayout(cell_widget)
-        cell_layout.setContentsMargins(4, 4, 4, 4)
-        cell_layout.setAlignment(Qt.AlignCenter)
-        cell_layout.addWidget(btn)
-        self.table.setCellWidget(row, 6, cell_widget)
+        # Column 7: Action Cell Slot with borderless '+' button (no button border, framed cell slot)
+        it_action = QTableWidgetItem("+" if avail > 0 else "—")
+        it_action.setTextAlignment(Qt.AlignCenter)
+        self.table.setItem(row, 7, it_action)
+        action_widget = AddActionCellWidget(
+            on_add_callback=lambda p=prod: self._add_product_to_session(self._active_session_id, p),
+            is_available=(avail > 0),
+        )
+        self.table.setCellWidget(row, 7, action_widget)
 
     # =========================================================================
     # MULTI-SESSION & MULTI-SCANNER ROUTING (Tabs & HID Isolation)
@@ -2219,6 +2338,30 @@ class OrderDeskWidget(QWidget):
                 f"Scan [{device_id}] ({clean_bc}) : Référence introuvable dans le stock"
             )
 
+    def _get_client_tiered_price(self, session_id: str, prod: Dict[str, Any]) -> float:
+        """Determines the appropriate unit price TTC based on the active client's Price_Tier."""
+        base_price = float(prod.get("Unit_Price_TTC") or prod.get("Default_Selling_Price_HT") or 0.0)
+        p1 = float(prod.get("Price_1_TTC") or base_price)
+        p2 = float(prod.get("Price_2_TTC") or (p1 * 0.95))
+        p3 = float(prod.get("Price_3_TTC") or (p1 * 0.90))
+
+        client_id = None
+        if hasattr(self, "_sessions") and session_id in self._sessions:
+            client_id = self._sessions[session_id].get("client_id")
+
+        tier = "Prix_1"
+        if client_id and hasattr(self, "_clients_cache"):
+            for c in self._clients_cache:
+                if c.get("Client_ID") == client_id:
+                    tier = str(c.get("Price_Tier") or "Prix_1")
+                    break
+
+        if "prix_3" in tier.lower() or "gros" in tier.lower():
+            return p3
+        elif "prix_2" in tier.lower() or "demi" in tier.lower():
+            return p2
+        return p1
+
     def _add_product_to_session(self, session_id: str, prod: Dict[str, Any]) -> None:
         if session_id not in self._sessions:
             return
@@ -2245,12 +2388,13 @@ class OrderDeskWidget(QWidget):
             QMessageBox.warning(self, "Rupture de Stock", "Ce produit n'a plus de stock théorique disponible.")
             return
 
+        unit_price = self._get_client_tiered_price(session_id, prod)
         cart.append({
             "product_id": pid,
             "mark": str(prod.get("Brand_Mark") or ""),
             "name": str(prod.get("Product_Name") or ""),
             "coloure": str(prod.get("Color_Finish") or "Standard"),
-            "unit_price_ttc": float(prod.get("Unit_Price_TTC") or 0.0),
+            "unit_price_ttc": unit_price,
             "quantity": 1,
             "max_avail": avail,
         })

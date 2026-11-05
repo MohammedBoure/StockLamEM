@@ -169,17 +169,17 @@ def test_order_desk_action_column_and_exhausted_state(qapp, mock_data_manager_la
     while desk._catalog_loaded_count < len(desk._catalog_filtered_items):
         desk._load_next_catalog_chunk()
 
-    # Row 0 is available
-    cell0 = desk.table.cellWidget(0, 6)
+    # Row 0 is available (column 7 is the dedicated Ajout action slot)
+    cell0 = desk.table.cellWidget(0, 7)
     btn0 = cell0.findChild(QPushButton)
     assert btn0.isEnabled() is True
-    assert "+ Ajouter" in btn0.text()
+    assert "+" in btn0.text()
 
     # Row 84 is out of stock (available = 0)
-    cell84 = desk.table.cellWidget(84, 6)
+    cell84 = desk.table.cellWidget(84, 7)
     btn84 = cell84.findChild(QPushButton)
     assert btn84.isEnabled() is False
-    assert "Épuisé" in btn84.text()
+    assert "—" in btn84.text() or "Épuisé" in cell84.toolTip()
 
 
 def test_appliance_workflow_desk_tab_removal(qapp, mock_data_manager_large):

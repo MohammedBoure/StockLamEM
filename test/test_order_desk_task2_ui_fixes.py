@@ -86,21 +86,26 @@ def test_table_row_height_and_action_column_metrics(qapp, mock_data_manager):
     row_height = desk.table.verticalHeader().defaultSectionSize()
     assert row_height >= 44, f"Row height {row_height}px is too small, expected >= 44px"
 
-    # 2. Action column width must be >= 180px
-    action_col_width = desk.table.columnWidth(6)
-    assert action_col_width >= 180, f"Action column width {action_col_width}px is too narrow, expected >= 180px"
+    # 2. Dedicated Price column (col 6) and Action column (col 7)
+    price_col_width = desk.table.columnWidth(6)
+    assert price_col_width >= 140, f"Price column width {price_col_width}px is too narrow, expected >= 140px"
+    action_col_width = desk.table.columnWidth(7)
+    assert action_col_width >= 50, f"Action column width {action_col_width}px is too narrow, expected >= 50px"
 
-    # 3. Check row 0 action button
+    # 3. Check row 0 price widget and action button
     assert desk.table.rowCount() >= 2
-    cell_w0 = desk.table.cellWidget(0, 6)
+    cell_p0 = desk.table.cellWidget(0, 6)
+    assert cell_p0 is not None
+    assert "115 000" in cell_p0.toolTip() or "115 000" in desk.table.item(0, 6).text()
+
+    cell_w0 = desk.table.cellWidget(0, 7)
     assert cell_w0 is not None
     btn0 = cell_w0.findChild(QPushButton)
     assert btn0 is not None
-    assert btn0.height() >= 30 or btn0.minimumHeight() >= 30
-    assert "+ Ajouter" in btn0.text()
-    assert "115 000,00 DA" in btn0.text()
+    assert btn0.height() >= 26 or btn0.minimumHeight() >= 26
+    assert "+" in btn0.text()
 
-    # Total button height + cell layout margins must fit cleanly within row_height
+    # Total button height + cell layout margins must fit cleanly within row_height with zero clipping
     margins = cell_w0.layout().contentsMargins()
     total_needed_h = (btn0.minimumHeight() or btn0.height()) + margins.top() + margins.bottom()
     assert total_needed_h <= row_height, (
@@ -108,13 +113,12 @@ def test_table_row_height_and_action_column_metrics(qapp, mock_data_manager):
     )
 
     # 4. Check row 1 (out of stock item)
-    cell_w1 = desk.table.cellWidget(1, 6)
+    cell_w1 = desk.table.cellWidget(1, 7)
     assert cell_w1 is not None
     btn1 = cell_w1.findChild(QPushButton)
     assert btn1 is not None
     assert not btn1.isEnabled()
-    assert "Épuisé" in btn1.text()
-    assert "🚫" not in btn1.text(), "Out-of-stock button should not contain emojis"
+    assert "—" in btn1.text() or "Épuisé" in cell_w1.toolTip()
 
 
 def test_client_search_combobox_layout_and_dimensions(qapp, mock_data_manager):
