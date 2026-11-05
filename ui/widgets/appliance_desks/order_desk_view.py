@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (
 )
 from .quick_client_dialog import QuickClientDialog
 
-from ui.formatting import format_money
+from ui.formatting import format_money, format_quantity
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
 from ui.icons import get_duotone_icon, get_trash_icon
 
@@ -1055,27 +1055,18 @@ class OrderDeskWidget(QWidget):
         layout.addWidget(make_filter_lbl("Marque :", "fa5s.tag", "filter"))
         self.cbo_mark = QComboBox()
         self.cbo_mark.setFixedHeight(34)
-        self.cbo_mark.setFixedWidth(110)
-        self.cbo_mark.addItems(["Tous", "Bosch", "Samsung", "LG", "Brandt", "Condor", "Cristor", "Midea", "Moulinex"])
-        self.cbo_mark.currentTextChanged.connect(self.refresh_catalog)
+        self.cbo_mark.setMinimumWidth(110)
+        self.populate_manufacturers()
+        self.cbo_mark.currentIndexChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_mark)
 
         # 3. Catégorie Filter
         layout.addWidget(make_filter_lbl("Catégorie :", "fa5s.th-large", "filter"))
         self.cbo_category = QComboBox()
         self.cbo_category.setFixedHeight(34)
-        self.cbo_category.setFixedWidth(145)
-        self.cbo_category.addItems([
-            "Tous",
-            "Gros Électroménager",
-            "Petit Électroménager",
-            "Réfrigérateurs",
-            "Lave-linge",
-            "Climatisation",
-            "Téléviseurs & Multimédia",
-            "Cuisson & Fours",
-        ])
-        self.cbo_category.currentTextChanged.connect(self.refresh_catalog)
+        self.cbo_category.setMinimumWidth(145)
+        self.populate_families()
+        self.cbo_category.currentIndexChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_category)
 
         # 4. Vibrant Couleur Filter with Swatches & Live Indicator
@@ -1199,6 +1190,143 @@ class OrderDeskWidget(QWidget):
         layout.addWidget(btn_refresh)
 
         return panel
+
+    def _adjust_combo_view_width(self, combo: QComboBox) -> None:
+        """Expands dropdown popup width to comfortably fit the longest item without truncation."""
+        if not combo:
+            return
+        width = combo.width()
+        fm = combo.fontMetrics()
+        for i in range(combo.count()):
+            text_width = fm.horizontalAdvance(combo.itemText(i)) + 35
+            if text_width > width:
+                width = text_width
+        if combo.view():
+            combo.view().setMinimumWidth(max(width, combo.minimumWidth()))
+
+    def populate_manufacturers(self) -> None:
+        """Populates the Marque combobox dynamically from database manufacturers and catalog items, matching Stock & Magasin."""
+        if not hasattr(self, "cbo_mark") or not self.cbo_mark:
+            return
+        curr_text = self.cbo_mark.currentText()
+        self.cbo_mark.blockSignals(True)
+        self.cbo_mark.clear()
+        self.cbo_mark.addItem("Tous", None)
+
+        marques = set()
+        # 1. From data_manager.manufacturers
+        if self.data_manager and hasattr(self.data_manager, "manufacturers"):
+            try:
+                for m in self.data_manager.manufacturers.get_all_manufacturers():
+                    m_name = (m.get("Manuf_Name") or "").strip()
+                    if m_name:
+                        marques.add(m_name)
+            except Exception as e:
+                logger.debug(f"Could not load manufacturers from manager: {e}")
+
+        # 2. From _catalog_cache
+        if hasattr(self, "_catalog_cache") and self._catalog_cache:
+            for item in self._catalog_cache:
+                m_name = (item.get("Brand_Mark") or "").strip()
+                if m_name and m_name.lower() not in ("générique", "generique", "tous", "all"):
+                    marques.add(m_name)
+
+        if not marques:
+            marques.update(["Bosch", "Samsung", "LG", "Brandt", "Condor", "Cristor", "Midea", "Moulinex"])
+
+        for m_name in sorted(list(marques), key=lambda s: s.lower()):
+            self.cbo_mark.addItem(m_name, m_name)
+
+        idx = self.cbo_mark.findText(curr_text)
+        if idx >= 0:
+            self.cbo_mark.setCurrentIndex(idx)
+        else:
+            self.cbo_mark.setCurrentIndex(0)
+
+        self._adjust_combo_view_width(self.cbo_mark)
+        self.cbo_mark.blockSignals(False)
+
+    def populate_families(self) -> None:
+        """Populates the Catégorie / Famille combobox dynamically from database families and catalog items, matching Stock & Magasin."""
+        if not hasattr(self, "cbo_category") or not self.cbo_category:
+            return
+        curr_text = self.cbo_category.currentText()
+        self.cbo_category.blockSignals(True)
+        self.cbo_category.clear()
+        self.cbo_category.addItem("Tous", None)
+
+        families = set()
+        # 1. From data_manager.families
+        if self.data_manager and hasattr(self.data_manager, "families"):
+            try:
+                for f in self.data_manager.families.get_all_families():
+                    f_name = (f.get("Family_Name") or "").strip()
+                    if f_name:
+                        families.add(f_name)
+            except Exception as e:
+                logger.debug(f"Could not load families from manager: {e}")
+
+        # 2. From _catalog_cache
+        if hasattr(self, "_catalog_cache") and self._catalog_cache:
+            for item in self._catalog_cache:
+                c_name = (item.get("Category_Name") or "").strip()
+                if c_name and c_name.lower() not in ("électroménager", "electromenager", "tous", "all"):
+                    families.add(c_name)
+
+        if not families:
+            families.update([
+                "Gros Électroménager",
+                "Petit Électroménager",
+                "Réfrigérateurs",
+                "Lave-linge",
+                "Climatisation",
+                "Téléviseurs & Multimédia",
+                "Cuisson & Fours",
+            ])
+
+        for f_name in sorted(list(families), key=lambda s: s.lower()):
+            self.cbo_category.addItem(f_name, f_name)
+
+        idx = self.cbo_category.findText(curr_text)
+        if idx >= 0:
+            self.cbo_category.setCurrentIndex(idx)
+        else:
+            self.cbo_category.setCurrentIndex(0)
+
+        self._adjust_combo_view_width(self.cbo_category)
+        self.cbo_category.blockSignals(False)
+
+    def _sync_catalog_brands_and_categories_to_combos(self) -> None:
+        """
+        Ensures any distinct manufacturers or categories in the loaded catalog cache
+        are present in cbo_mark and cbo_category without resetting the active selection.
+        """
+        if not hasattr(self, "_catalog_cache") or not self._catalog_cache:
+            return
+
+        # 1. Sync Brands
+        if hasattr(self, "cbo_mark") and self.cbo_mark:
+            existing_marks = {self.cbo_mark.itemText(i).strip().lower() for i in range(self.cbo_mark.count())}
+            self.cbo_mark.blockSignals(True)
+            for it in self._catalog_cache:
+                m = str(it.get("Brand_Mark") or "").strip()
+                if m and m.lower() not in existing_marks and m.lower() not in ("générique", "generique", "tous", "all"):
+                    existing_marks.add(m.lower())
+                    self.cbo_mark.addItem(m, m)
+            self._adjust_combo_view_width(self.cbo_mark)
+            self.cbo_mark.blockSignals(False)
+
+        # 2. Sync Categories
+        if hasattr(self, "cbo_category") and self.cbo_category:
+            existing_cats = {self.cbo_category.itemText(i).strip().lower() for i in range(self.cbo_category.count())}
+            self.cbo_category.blockSignals(True)
+            for it in self._catalog_cache:
+                c = str(it.get("Category_Name") or "").strip()
+                if c and c.lower() not in existing_cats and c.lower() not in ("électroménager", "electromenager", "tous", "all"):
+                    existing_cats.add(c.lower())
+                    self.cbo_category.addItem(c, c)
+            self._adjust_combo_view_width(self.cbo_category)
+            self.cbo_category.blockSignals(False)
 
     def _load_colors_into_combo(self) -> None:
         """Loads available product colors with real visual swatches into the filter combobox."""
@@ -1455,7 +1583,158 @@ class OrderDeskWidget(QWidget):
         self.table.verticalScrollBar().valueChanged.connect(self._on_catalog_scroll)
 
         layout.addWidget(self.table, 1)
+
+        # Bottom summary information bar matching Stock & Magasin -> Stock Actuel
+        self.catalog_bottom_bar = self._create_catalog_bottom_bar()
+        layout.addWidget(self.catalog_bottom_bar)
+
         return panel
+
+    def _create_catalog_bottom_bar(self) -> QWidget:
+        """
+        Builds the bottom summary information bar matching Stock & Magasin -> Stock Actuel:
+        - Valeur Totale (TTC) of filtered items (teal badge)
+        - Stock disponible affiché (green badge)
+        - Loaded count vs total filtered items (slate text)
+        """
+        bottom_frame = QFrame()
+        self.bottom_frame = bottom_frame
+        bottom_frame.setObjectName("CatalogBottomBar")
+        bottom_frame.setFixedHeight(38)
+        bottom_frame.setStyleSheet("""
+            QFrame#CatalogBottomBar {
+                background-color: #F8FAFC;
+                border-top: 1.5px solid #CBD5E1;
+                border-radius: 4px;
+            }
+            QLabel {
+                font-size: 11px;
+                font-weight: 700;
+            }
+        """)
+        bar_layout = QHBoxLayout(bottom_frame)
+        bar_layout.setContentsMargins(8, 4, 8, 4)
+        bar_layout.setSpacing(10)
+
+        # 1. Total Value badge (TTC)
+        self.lbl_total_value = QLabel("Valeur Totale : 0,00 DA")
+        self.lbl_total_value.setObjectName("LblCatalogTotalValue")
+        self.lbl_total_value.setStyleSheet("""
+            QLabel#LblCatalogTotalValue {
+                color: #007572;
+                border: 1px solid #A3E4D7;
+                border-radius: 4px;
+                padding: 4px 10px;
+                background-color: #E8F8F5;
+            }
+        """)
+        bar_layout.addWidget(self.lbl_total_value)
+
+        # 2. Total Quantity available badge
+        self.lbl_total_quantity = QLabel("Stock disponible affiché : 0")
+        self.lbl_total_quantity.setObjectName("LblCatalogTotalQuantity")
+        self.lbl_total_quantity.setStyleSheet("""
+            QLabel#LblCatalogTotalQuantity {
+                color: #1E8449;
+                border: 1px solid #82E0AA;
+                border-radius: 4px;
+                padding: 4px 10px;
+                background-color: #EAFAF1;
+            }
+        """)
+        bar_layout.addWidget(self.lbl_total_quantity)
+
+        # 3. Count Info: Displayed / Total
+        self.lbl_count_info = QLabel("Affichage: 0 / 0")
+        self.lbl_count_info.setObjectName("LblCatalogCountInfo")
+        self.lbl_count_info.setStyleSheet("""
+            QLabel#LblCatalogCountInfo {
+                color: #64748B;
+                font-weight: 700;
+                margin-left: 5px;
+            }
+        """)
+        bar_layout.addWidget(self.lbl_count_info)
+
+        bar_layout.addStretch()
+
+        return bottom_frame
+
+    def _update_catalog_filter_metrics(self) -> None:
+        """Updates the filter summary labels and badges matching Stock & Magasin -> Stock Actuel."""
+        total_items = len(self._catalog_filtered_items) if hasattr(self, "_catalog_filtered_items") else 0
+        loaded_count = getattr(self, "_catalog_loaded_count", 0)
+
+        total_available_qty = 0
+        total_value_ttc = 0.0
+
+        if hasattr(self, "_catalog_filtered_items") and self._catalog_filtered_items:
+            for it in self._catalog_filtered_items:
+                qty = max(0, int(it.get("Available_Theoretical_Qty") or 0))
+                price = float(it.get("Unit_Price_TTC") or it.get("Price_1_TTC") or 0.0)
+                total_available_qty += qty
+                total_value_ttc += (qty * price)
+
+        # Update Bottom Bar labels (matching Stock Actuel)
+        if hasattr(self, "lbl_total_value") and self.lbl_total_value:
+            self.lbl_total_value.setText(f"Valeur Totale : {format_money(total_value_ttc)} DA")
+            self.lbl_total_value.setToolTip(f"Valeur marchande TTC totale des {total_items} produit(s) filtré(s)")
+
+        if hasattr(self, "lbl_total_quantity") and self.lbl_total_quantity:
+            self.lbl_total_quantity.setText(f"Stock disponible affiché : {format_quantity(total_available_qty)}")
+            self.lbl_total_quantity.setToolTip(f"Quantité totale d'unités disponibles immédiatement à la vente")
+
+        if hasattr(self, "lbl_count_info") and self.lbl_count_info:
+            self.lbl_count_info.setText(f"Affichage: {loaded_count} / {total_items}")
+            self.lbl_count_info.setToolTip(f"{loaded_count} produit(s) affiché(s) sur un total de {total_items} correspondant aux filtres")
+
+        # Update Top KPI count badge
+        if hasattr(self, "lbl_catalog_count_badge") and self.lbl_catalog_count_badge:
+            if total_items == 1:
+                self.lbl_catalog_count_badge.setText(f"1 produit trouvé ({format_quantity(total_available_qty)} en stock)")
+                self.lbl_catalog_count_badge.setStyleSheet("""
+                    QLabel {
+                        background-color: #E6F4F1;
+                        color: #007572;
+                        font-size: 11px;
+                        font-weight: 800;
+                        border: 1px solid #A7F3D0;
+                        border-radius: 13px;
+                        padding: 2px 10px;
+                    }
+                """)
+            elif total_items > 1:
+                self.lbl_catalog_count_badge.setText(f"{total_items} produits trouvés ({format_quantity(total_available_qty)} en stock)")
+                self.lbl_catalog_count_badge.setStyleSheet("""
+                    QLabel {
+                        background-color: #E6F4F1;
+                        color: #007572;
+                        font-size: 11px;
+                        font-weight: 800;
+                        border: 1px solid #A7F3D0;
+                        border-radius: 13px;
+                        padding: 2px 10px;
+                    }
+                """)
+            else:
+                self.lbl_catalog_count_badge.setText("0 résultat")
+                self.lbl_catalog_count_badge.setStyleSheet("""
+                    QLabel {
+                        background-color: #F8FAFC;
+                        color: #94A3B8;
+                        font-size: 11px;
+                        font-weight: 700;
+                        border: 1px solid #E2E8F0;
+                        border-radius: 13px;
+                        padding: 2px 10px;
+                    }
+                """)
+            self.lbl_catalog_count_badge.setToolTip(
+                f"Catalogue Filtré :\n"
+                f"• {total_items} produit(s)\n"
+                f"• {format_quantity(total_available_qty)} unités disponibles en stock\n"
+                f"• {format_money(total_value_ttc)} DA de valeur marchande TTC"
+            )
 
     def _adjust_catalog_column_widths(self) -> None:
         """
@@ -1909,8 +2188,34 @@ class OrderDeskWidget(QWidget):
     def refresh_catalog(self) -> None:
         """Loads catalog items from database (or fallback showcase rows) with theoretical availability and resets lazy loading."""
         search_txt = self.txt_search.text().strip() if hasattr(self, "txt_search") else ""
-        mark_txt = self.cbo_mark.currentText() if hasattr(self, "cbo_mark") else "Tous"
-        cat_txt = self.cbo_category.currentText() if hasattr(self, "cbo_category") else "Tous"
+
+        # Extract brand filter term
+        mark_txt = "Tous"
+        if hasattr(self, "cbo_mark") and self.cbo_mark:
+            m_data = self.cbo_mark.currentData()
+            if m_data and str(m_data).strip().lower() not in ("tous", "all", "toutes", "none"):
+                mark_txt = str(m_data).strip()
+            else:
+                m_txt = self.cbo_mark.currentText().strip()
+                clean_m = m_txt.replace("🏭", "").replace("📁", "").strip()
+                if clean_m.lower() not in ("tous", "all", "toutes", "marques", ""):
+                    mark_txt = clean_m
+                else:
+                    mark_txt = "Tous"
+
+        # Extract category / family filter term
+        cat_txt = "Tous"
+        if hasattr(self, "cbo_category") and self.cbo_category:
+            c_data = self.cbo_category.currentData()
+            if c_data and str(c_data).strip().lower() not in ("tous", "all", "toutes", "none"):
+                cat_txt = str(c_data).strip()
+            else:
+                c_txt = self.cbo_category.currentText().strip()
+                clean_c = c_txt.replace("📁", "").replace("🏭", "").strip()
+                if clean_c.lower() not in ("tous", "all", "toutes", "familles", "catégories", ""):
+                    cat_txt = clean_c
+                else:
+                    cat_txt = "Tous"
 
         col_txt = "Tous"
         if hasattr(self, "cbo_color") and self.cbo_color:
@@ -1946,11 +2251,39 @@ class OrderDeskWidget(QWidget):
                     color_finish=col_txt,
                 )
             self._catalog_cache = items
-            if only_avail:
-                items = [
-                    it for it in items
-                    if int(it.get("Available_Theoretical_Qty") or 0) > 0
-                ]
+            s_low = search_txt.lower()
+            m_low = mark_txt.lower() if mark_txt != "Tous" else ""
+            c_low = cat_txt.lower() if cat_txt != "Tous" else ""
+            col_low = col_txt.lower() if col_txt != "Tous" else ""
+
+            filtered_db_items = []
+            for it in items:
+                if only_avail:
+                    avail_qty = int(it.get("Available_Theoretical_Qty") or 0)
+                    if avail_qty <= 0:
+                        continue
+                if s_low:
+                    name_match = s_low in str(it.get("Product_Name", "")).lower()
+                    mark_match = s_low in str(it.get("Brand_Mark", "")).lower()
+                    cat_match = s_low in str(it.get("Category_Name", "")).lower()
+                    col_match = s_low in str(it.get("Color_Finish", "")).lower()
+                    bar_match = s_low in str(it.get("Barcode", "")).lower()
+                    if not (name_match or mark_match or cat_match or col_match or bar_match):
+                        continue
+                if m_low:
+                    it_mark = str(it.get("Brand_Mark", "")).lower()
+                    if m_low not in it_mark and it_mark not in m_low:
+                        continue
+                if c_low:
+                    it_cat = str(it.get("Category_Name", "")).lower()
+                    if c_low not in it_cat and it_cat not in c_low:
+                        continue
+                if col_low:
+                    it_col = str(it.get("Color_Finish", "")).lower()
+                    if col_low not in it_col and it_col not in col_low:
+                        continue
+                filtered_db_items.append(it)
+            items = filtered_db_items
         else:
             # Fallback showcase catalog in-memory filtering (offline / test mode)
             if not self._catalog_cache:
@@ -1991,9 +2324,9 @@ class OrderDeskWidget(QWidget):
                 ]
 
             s_low = search_txt.lower()
-            m_low = mark_txt.lower()
-            c_low = cat_txt.lower()
-            col_low = col_txt.lower()
+            m_low = mark_txt.lower() if mark_txt != "Tous" else ""
+            c_low = cat_txt.lower() if cat_txt != "Tous" else ""
+            col_low = col_txt.lower() if col_txt != "Tous" else ""
 
             for it in self._catalog_cache:
                 if only_avail:
@@ -2004,17 +2337,21 @@ class OrderDeskWidget(QWidget):
                     name_match = s_low in str(it.get("Product_Name", "")).lower()
                     mark_match = s_low in str(it.get("Brand_Mark", "")).lower()
                     cat_match = s_low in str(it.get("Category_Name", "")).lower()
+                    col_match = s_low in str(it.get("Color_Finish", "")).lower()
                     bar_match = s_low in str(it.get("Barcode", "")).lower()
-                    if not (name_match or mark_match or cat_match or bar_match):
+                    if not (name_match or mark_match or cat_match or col_match or bar_match):
                         continue
-                if m_low and m_low not in ("tous", "all"):
-                    if m_low != str(it.get("Brand_Mark", "")).lower():
+                if m_low:
+                    it_mark = str(it.get("Brand_Mark", "")).lower()
+                    if m_low not in it_mark and it_mark not in m_low:
                         continue
-                if c_low and c_low not in ("tous", "all"):
-                    if c_low != str(it.get("Category_Name", "")).lower():
+                if c_low:
+                    it_cat = str(it.get("Category_Name", "")).lower()
+                    if c_low not in it_cat and it_cat not in c_low:
                         continue
-                if col_low and col_low not in ("tous", "all"):
-                    if col_low != str(it.get("Color_Finish", "")).lower():
+                if col_low:
+                    it_col = str(it.get("Color_Finish", "")).lower()
+                    if col_low not in it_col and it_col not in col_low:
                         continue
                 items.append(it)
 
@@ -2022,50 +2359,12 @@ class OrderDeskWidget(QWidget):
         self._catalog_loaded_count = 0
         self.table.setRowCount(0)
 
-        # Synchronize dynamic color finishes and update live KPI badge
+        # Synchronize dynamic color finishes, brands, and categories
         self._sync_catalog_colors_to_combo()
-        total_items = len(items)
-        if hasattr(self, "lbl_catalog_count_badge") and self.lbl_catalog_count_badge:
-            if total_items == 1:
-                self.lbl_catalog_count_badge.setText("1 produit trouvé")
-                self.lbl_catalog_count_badge.setStyleSheet("""
-                    QLabel {
-                        background-color: #E6F4F1;
-                        color: #007572;
-                        font-size: 11px;
-                        font-weight: 800;
-                        border: 1px solid #A7F3D0;
-                        border-radius: 13px;
-                        padding: 2px 10px;
-                    }
-                """)
-            elif total_items > 1:
-                self.lbl_catalog_count_badge.setText(f"{total_items} produits trouvés")
-                self.lbl_catalog_count_badge.setStyleSheet("""
-                    QLabel {
-                        background-color: #E6F4F1;
-                        color: #007572;
-                        font-size: 11px;
-                        font-weight: 800;
-                        border: 1px solid #A7F3D0;
-                        border-radius: 13px;
-                        padding: 2px 10px;
-                    }
-                """)
-            else:
-                self.lbl_catalog_count_badge.setText("0 résultat")
-                self.lbl_catalog_count_badge.setStyleSheet("""
-                    QLabel {
-                        background-color: #F8FAFC;
-                        color: #94A3B8;
-                        font-size: 11px;
-                        font-weight: 700;
-                        border: 1px solid #E2E8F0;
-                        border-radius: 13px;
-                        padding: 2px 10px;
-                    }
-                """)
-            self.lbl_catalog_count_badge.setToolTip(f"Catalogue : {total_items} produit(s) correspondant aux filtres")
+        self._sync_catalog_brands_and_categories_to_combos()
+
+        # Update filter metrics & summary information matching Stock & Magasin -> Stock Actuel
+        self._update_catalog_filter_metrics()
 
         self._load_next_catalog_chunk()
 
@@ -2101,6 +2400,8 @@ class OrderDeskWidget(QWidget):
                     )
                 else:
                     self.lbl_cat_title.setText("Catalogue des Produits Disponibles (0)")
+
+            self._update_catalog_filter_metrics()
         finally:
             self._is_loading_chunk = False
 

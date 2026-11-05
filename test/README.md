@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_filters_like_stock_actuel.py`**:
+  - *Scope*: Verifies Task #8 deliverables: dynamic loading of Brands (`cbo_mark`) from database manufacturers and catalog cache, dynamic loading of Categories (`cbo_category`) from database families and catalog cache, automatic combo view expansion (`_adjust_combo_view_width`), accurate filter application across all criteria, and rendering of the Stock Actuel filter metrics in the dedicated bottom bar (`lbl_total_value`, `lbl_total_quantity`, `lbl_count_info`) and KPI badges.
 - **`test_order_desk_price_dropdown_menu.py`**:
   - *Scope*: Verifies Task #7 deliverables: dedicated Price column (Column 6, `Prix TTC`) displays only the primary price (`Prix 1 - Détail / Comptoir`) on an interactive styled button (`QPushButton#BtnPriceDropdown`) with dropdown chevron (`▾`); complete elimination of overlapping text fragments (QTableWidgetItem text empty, secondary labels hidden); dropdown menu (`PriceTierMenu`) triggered on click listing all 3 tiers with active checkmarks; and dynamic price tier selection updating displayed button text and adding products to cart at the selected price tier (`selected_price_ttc`).
 - **`test_order_desk_available_only_filter.py`**:

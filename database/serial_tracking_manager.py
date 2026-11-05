@@ -343,6 +343,7 @@ class SerialTrackingManager:
                 c_term = (category_name or "").strip().lower()
                 col_term = (color_finish or "").strip().lower()
 
+                WILDCARD_TERMS = {"tous", "all", "toutes", "none", "marques", "familles", "toutes les marques", "toutes les familles", ""}
                 for r in rows:
                     mark_val = str(r.get("Brand_Mark") or "")
                     cat_val = str(r.get("Category_Name") or "")
@@ -355,11 +356,11 @@ class SerialTrackingManager:
                         for field in (name_val, mark_val, cat_val, col_val, bc_val)
                     ):
                         continue
-                    if b_term and b_term != "tous" and b_term not in mark_val.lower():
+                    if b_term and b_term not in WILDCARD_TERMS and b_term not in mark_val.lower() and mark_val.lower() not in b_term:
                         continue
-                    if c_term and c_term != "tous" and c_term not in cat_val.lower():
+                    if c_term and c_term not in WILDCARD_TERMS and c_term not in cat_val.lower() and cat_val.lower() not in c_term:
                         continue
-                    if col_term and col_term != "tous" and col_term not in col_val.lower():
+                    if col_term and col_term not in WILDCARD_TERMS and col_term not in col_val.lower() and col_val.lower() not in col_term:
                         continue
 
                     phys = int(r.get("Physical_Qty") or 0)

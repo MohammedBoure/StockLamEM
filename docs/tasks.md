@@ -26,7 +26,7 @@
 في Bureaux & SAV ثم Commandes (oder desk)  tab sesion   في هذه الواجهة الجدول الظاهر العمود PRIX TTC الظاهر تظهر 4 أسعار متداخل و هذا غير مناسب أريده أن يكون بالشكل التالي و هو أن يظهر فقط السعر الاول و  الأسعار الأخر يتم عرضها عند الضغط لتظهر القائمة المنسدلة 
 
 
-# 8 : medium
+# 8 [COMPLETED]: medium
 في Bureaux & SAV ثم Commandes (oder desk)  tab sesion   
 في filter أريد أن تكون الفلاتر تعمل بنفس الشكل الموجود في stock & magasin    stock actuale  أريد ان تعمل و بشكل صحيح و تظهر  معلومات الفلترة بشكل صحيح 
 ![image](assets/image_20261105_182143.png)
