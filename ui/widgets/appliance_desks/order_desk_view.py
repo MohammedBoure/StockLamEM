@@ -11,11 +11,12 @@ Provides:
 - Generation of Bon C (بيع مباشر), Bon Crédit (أجل), and Bon de Livraison (توصيل).
 """
 
+import logging
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QEvent, QObject, QSettings, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -49,6 +50,9 @@ try:
     import qtawesome as qta
 except ImportError:
     qta = None
+
+
+logger = logging.getLogger("StockLamPlus.OrderDesk")
 
 
 COLOR_PALETTE = {
@@ -130,6 +134,94 @@ class ColorBadgeWidget(QWidget):
         self.setToolTip(tt)
         self.swatch.setToolTip(tt)
         self.lbl_text.setToolTip(tt)
+
+
+class ColorFilterBadge(QFrame):
+    """
+    Vibrant live preview pill badge for the active color filter in Order Desk:
+    - Multi-color gradient dot when 'Tous' is selected
+    - Direct antialiased color dot with border when a specific color is chosen
+    - Responsive color name label and rich tooltips with hex codes
+    - Interactive click to quickly reset or toggle color filter
+    """
+
+    clicked = Signal()
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setObjectName("ColorFilterBadge")
+        self.setFixedHeight(34)
+        self.setCursor(Qt.PointingHandCursor)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 2, 8, 2)
+        layout.setSpacing(6)
+        layout.setAlignment(Qt.AlignCenter)
+
+        self.dot = QFrame()
+        self.dot.setFixedSize(14, 14)
+        layout.addWidget(self.dot)
+
+        self.lbl_text = QLabel("Toutes")
+        self.lbl_text.setStyleSheet(
+            "font-size: 11px; font-weight: 700; color: #475569; background: transparent; border: none;"
+        )
+        layout.addWidget(self.lbl_text)
+
+        self.update_color("Tous", "")
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+    def update_color(self, name: str, hex_code: str = "") -> None:
+        clean_name = str(name or "Tous").strip()
+        if not clean_name or clean_name.lower() in ("tous", "all", "toutes", "toutes les couleurs"):
+            self.dot.setStyleSheet(
+                "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+                "stop:0 #007572, stop:0.35 #2563EB, stop:0.7 #DC2626, stop:1 #D97706); "
+                "border-radius: 7px; border: 1px solid rgba(0,0,0,0.25);"
+            )
+            self.lbl_text.setText("Toutes")
+            self.lbl_text.setStyleSheet(
+                "font-size: 11px; font-weight: 700; color: #475569; background: transparent; border: none;"
+            )
+            self.setStyleSheet("""
+                QFrame#ColorFilterBadge {
+                    background-color: #F8FAFC;
+                    border: 1.5px solid #CBD5E1;
+                    border-radius: 6px;
+                }
+                QFrame#ColorFilterBadge:hover {
+                    background-color: #F1F5F9;
+                    border-color: #94A3B8;
+                }
+            """)
+            self.setToolTip("Couleurs : Toutes les finitions sont affichées (cliquez pour choisir)")
+        else:
+            actual_hex = hex_code or get_color_hex(clean_name)
+            border = "#94A3B8" if actual_hex.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "rgba(0,0,0,0.3)"
+            self.dot.setStyleSheet(
+                f"background-color: {actual_hex}; border-radius: 7px; border: 1.2px solid {border};"
+            )
+            self.lbl_text.setText(clean_name)
+            self.lbl_text.setStyleSheet(
+                "font-size: 11px; font-weight: 800; color: #007572; background: transparent; border: none;"
+            )
+            self.setStyleSheet("""
+                QFrame#ColorFilterBadge {
+                    background-color: #F0FDFA;
+                    border: 1.5px solid #007572;
+                    border-radius: 6px;
+                }
+                QFrame#ColorFilterBadge:hover {
+                    background-color: #CCFBF1;
+                    border-color: #0A5C59;
+                }
+            """)
+            self.setToolTip(f"Filtre actif : {clean_name} ({actual_hex})\nCliquez pour réinitialiser sur 'Toutes'")
+
 
 TABLE_STYLE = """
     QTableWidget {
@@ -556,35 +648,58 @@ class OrderDeskWidget(QWidget):
     def _create_top_filter_bar(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("OrderTopFilterBar")
-        panel.setFixedHeight(48)
+        panel.setFixedHeight(54)
         panel.setStyleSheet("""
             QFrame#OrderTopFilterBar {
-                background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 6px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #F0FDFA, stop:0.04 #FFFFFF, stop:0.96 #FFFFFF, stop:1 #F8FAFC);
+                border: 1px solid #CBD5E1;
+                border-left: 4px solid #007572;
+                border-radius: 8px;
             }
             QLabel {
                 border: none;
                 background: transparent;
             }
             QComboBox {
-                background-color: #F8FAFC;
-                border: 1px solid #CBD5E1;
-                border-radius: 5px;
+                background-color: #FFFFFF;
+                border: 1.5px solid #CBD5E1;
+                border-radius: 6px;
                 padding: 2px 8px;
                 font-size: 12px;
+                font-weight: 600;
                 color: #1E293B;
             }
             QComboBox:hover {
                 border-color: #007572;
+                background-color: #F0FDFA;
+            }
+            QComboBox:focus {
+                border: 1.5px solid #007572;
+                background-color: #FFFFFF;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 18px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                selection-background-color: #E6F4F1;
+                selection-color: #007572;
+                padding: 4px;
             }
             QLineEdit {
-                background-color: #F8FAFC;
-                border: 1px solid #CBD5E1;
-                border-radius: 5px;
+                background-color: #FFFFFF;
+                border: 1.5px solid #CBD5E1;
+                border-radius: 6px;
                 padding: 2px 10px;
                 font-size: 12px;
+                font-weight: 500;
                 color: #1E293B;
+            }
+            QLineEdit:hover {
+                border-color: #94A3B8;
             }
             QLineEdit:focus {
                 border: 1.5px solid #007572;
@@ -592,37 +707,65 @@ class OrderDeskWidget(QWidget):
             }
         """)
         layout = QHBoxLayout(panel)
-        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setContentsMargins(12, 6, 12, 6)
         layout.setSpacing(8)
+
+        # 1. Vibrant Filter Title Badge
+        filter_badge = QFrame()
+        filter_badge.setObjectName("FilterTitleBadge")
+        filter_badge.setStyleSheet("""
+            QFrame#FilterTitleBadge {
+                background-color: #E6F4F1;
+                border: 1px solid #A7F3D0;
+                border-radius: 6px;
+            }
+        """)
+        fb_layout = QHBoxLayout(filter_badge)
+        fb_layout.setContentsMargins(8, 4, 8, 4)
+        fb_layout.setSpacing(5)
 
         f_icon = QLabel()
         if qta:
-            f_icon.setPixmap(qta.icon("fa5s.filter", color="#007572").pixmap(14, 14))
+            f_icon.setPixmap(qta.icon("fa5s.filter", color="#007572").pixmap(12, 12))
         else:
-            f_icon.setPixmap(get_duotone_icon("filter", 14).pixmap(14, 14))
-        layout.addWidget(f_icon)
+            f_icon.setPixmap(get_duotone_icon("filter", 12).pixmap(12, 12))
+        fb_layout.addWidget(f_icon)
 
-        title = QLabel("FILTRES :")
+        title = QLabel("FILTRES")
         title.setStyleSheet("font-size: 11px; font-weight: 800; color: #007572; letter-spacing: 0.5px;")
-        layout.addWidget(title)
+        fb_layout.addWidget(title)
+        layout.addWidget(filter_badge)
 
-        def make_lbl(txt: str) -> QLabel:
+        def make_filter_lbl(txt: str, icon_name: str, fallback_icon: str) -> QWidget:
+            w = QWidget()
+            w_layout = QHBoxLayout(w)
+            w_layout.setContentsMargins(0, 0, 0, 0)
+            w_layout.setSpacing(4)
+            ico = QLabel()
+            if qta:
+                ico.setPixmap(qta.icon(icon_name, color="#007572").pixmap(12, 12))
+            else:
+                ico.setPixmap(get_duotone_icon(fallback_icon, 12).pixmap(12, 12))
+            w_layout.addWidget(ico)
             lbl = QLabel(txt)
-            lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
-            return lbl
+            lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #334155; background: transparent;")
+            w_layout.addWidget(lbl)
+            return w
 
-        layout.addWidget(make_lbl("Marque :"))
+        # 2. Marque Filter
+        layout.addWidget(make_filter_lbl("Marque :", "fa5s.tag", "filter"))
         self.cbo_mark = QComboBox()
-        self.cbo_mark.setFixedHeight(32)
-        self.cbo_mark.setFixedWidth(115)
+        self.cbo_mark.setFixedHeight(34)
+        self.cbo_mark.setFixedWidth(110)
         self.cbo_mark.addItems(["Tous", "Bosch", "Samsung", "LG", "Brandt", "Condor", "Cristor", "Midea", "Moulinex"])
         self.cbo_mark.currentTextChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_mark)
 
-        layout.addWidget(make_lbl("Catégorie :"))
+        # 3. Catégorie Filter
+        layout.addWidget(make_filter_lbl("Catégorie :", "fa5s.th-large", "filter"))
         self.cbo_category = QComboBox()
-        self.cbo_category.setFixedHeight(32)
-        self.cbo_category.setFixedWidth(155)
+        self.cbo_category.setFixedHeight(34)
+        self.cbo_category.setFixedWidth(145)
         self.cbo_category.addItems([
             "Tous",
             "Gros Électroménager",
@@ -636,43 +779,241 @@ class OrderDeskWidget(QWidget):
         self.cbo_category.currentTextChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_category)
 
-        layout.addWidget(make_lbl("Couleur :"))
+        # 4. Vibrant Couleur Filter with Swatches & Live Indicator
+        layout.addWidget(make_filter_lbl("Couleur :", "fa5s.palette", "filter"))
         self.cbo_color = QComboBox()
-        self.cbo_color.setFixedHeight(32)
-        self.cbo_color.setFixedWidth(95)
-        self.cbo_color.addItems(["Tous", "Inox", "Blanc", "Noir", "Silver", "Gris"])
-        self.cbo_color.currentTextChanged.connect(self.refresh_catalog)
+        self.cbo_color.setFixedHeight(34)
+        self.cbo_color.setFixedWidth(115)
+        self.cbo_color.setIconSize(QSize(14, 14))
+        self._load_colors_into_combo()
+        self.cbo_color.currentIndexChanged.connect(self._on_color_filter_changed)
         layout.addWidget(self.cbo_color)
 
+        self.color_preview_badge = ColorFilterBadge()
+        self.color_preview_badge.clicked.connect(self._on_color_badge_clicked)
+        self._update_color_filter_swatch()
+        layout.addWidget(self.color_preview_badge)
+
+        # 5. Search Bar with Instant Clear
         self.txt_search = QLineEdit()
-        self.txt_search.setFixedHeight(32)
-        self.txt_search.setMinimumWidth(170)
-        self.txt_search.setPlaceholderText("Rechercher désignation, marque, catégorie, code-barres...")
+        self.txt_search.setFixedHeight(34)
+        self.txt_search.setMinimumWidth(160)
+        self.txt_search.setPlaceholderText("Rechercher désignation, marque, réf, code-barres...")
+        self.txt_search.setClearButtonEnabled(True)
+        if qta:
+            self.txt_search.addAction(qta.icon("fa5s.search", color="#94A3B8"), QLineEdit.LeadingPosition)
         self.txt_search.textChanged.connect(self.refresh_catalog)
         self.txt_search.returnPressed.connect(self._on_search_return_pressed)
         layout.addWidget(self.txt_search, 1)
 
+        # 6. Live Catalog Count KPI Badge
+        self.lbl_catalog_count_badge = QLabel("0 produit")
+        self.lbl_catalog_count_badge.setFixedHeight(26)
+        self.lbl_catalog_count_badge.setStyleSheet("""
+            QLabel {
+                background-color: #E6F4F1;
+                color: #007572;
+                font-size: 11px;
+                font-weight: 800;
+                border: 1px solid #A7F3D0;
+                border-radius: 13px;
+                padding: 2px 10px;
+            }
+        """)
+        layout.addWidget(self.lbl_catalog_count_badge)
+
+        # 7. Action Buttons
         btn_reset = QPushButton("Réinitialiser")
-        btn_reset.setIcon(get_duotone_icon("refresh", 13))
+        if qta:
+            btn_reset.setIcon(qta.icon("fa5s.undo", color="#64748B"))
+        else:
+            btn_reset.setIcon(get_duotone_icon("refresh", 13))
         btn_reset.setIconSize(QSize(13, 13))
         btn_reset.setCursor(Qt.PointingHandCursor)
-        btn_reset.setFixedHeight(32)
+        btn_reset.setFixedHeight(34)
         btn_reset.setFixedWidth(105)
         btn_reset.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
+        btn_reset.setToolTip("Réinitialiser tous les filtres de recherche")
         btn_reset.clicked.connect(self._reset_filters)
         layout.addWidget(btn_reset)
 
         btn_refresh = QPushButton("Actualiser")
-        btn_refresh.setIcon(get_duotone_icon("refresh", 13))
+        if qta:
+            btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color="#007572"))
+        else:
+            btn_refresh.setIcon(get_duotone_icon("refresh", 13))
         btn_refresh.setIconSize(QSize(13, 13))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(32)
+        btn_refresh.setFixedHeight(34)
         btn_refresh.setFixedWidth(95)
         btn_refresh.setStyleSheet(OUTLINE_BTN_STYLE)
+        btn_refresh.setToolTip("Recharger le catalogue depuis la base de données")
         btn_refresh.clicked.connect(self.refresh_catalog)
         layout.addWidget(btn_refresh)
 
         return panel
+
+    def _load_colors_into_combo(self) -> None:
+        """Loads available product colors with real visual swatches into the filter combobox."""
+        if not hasattr(self, "cbo_color") or not self.cbo_color:
+            return
+
+        current_selected = ""
+        c_data = self.cbo_color.currentData()
+        if isinstance(c_data, dict):
+            current_selected = c_data.get("Color_Name", "")
+        elif isinstance(c_data, str):
+            current_selected = c_data
+        if not current_selected:
+            current_selected = self.cbo_color.currentText()
+
+        self.cbo_color.blockSignals(True)
+        self.cbo_color.clear()
+
+        # 1. "Tous" option with palette icon
+        if qta:
+            icon_all = qta.icon("fa5s.palette", color="#007572")
+        else:
+            icon_all = get_duotone_icon("filter", 14)
+        self.cbo_color.addItem(icon_all, "Tous", {"Color_Name": "Tous", "Color_Code": ""})
+
+        # 2. Collect colors from ProductColorManager or default registry
+        colors_list: List[Dict[str, Any]] = []
+        color_mgr = getattr(self.data_manager, "product_colors", None) or getattr(self.data_manager, "colors", None)
+        if not color_mgr and hasattr(self.data_manager, "db") and self.data_manager.db:
+            try:
+                from database.product_color_manager import ProductColorManager
+                color_mgr = ProductColorManager(self.data_manager.db)
+            except Exception:
+                color_mgr = None
+
+        if color_mgr and hasattr(color_mgr, "get_all_colors"):
+            try:
+                colors_list = color_mgr.get_all_colors(active_only=True)
+            except Exception as e:
+                logger.debug(f"Could not load colors via manager: {e}")
+
+        if not colors_list:
+            from database.product_color_manager import DEFAULT_PRODUCT_COLORS
+            colors_list = [
+                {"Color_Name": name, "Color_Code": code, "Description": desc}
+                for name, code, desc in DEFAULT_PRODUCT_COLORS
+            ]
+
+        seen_names = {"tous"}
+        for c in colors_list:
+            name = str(c.get("Color_Name") or "").strip()
+            if name:
+                seen_names.add(name.lower())
+
+        # Also merge colors from catalog cache if available
+        if hasattr(self, "_catalog_cache") and self._catalog_cache:
+            for item in self._catalog_cache:
+                c_fin = str(item.get("Color_Finish") or "").strip()
+                if c_fin and c_fin.lower() not in seen_names and c_fin.lower() != "standard":
+                    seen_names.add(c_fin.lower())
+                    colors_list.append({
+                        "Color_Name": c_fin,
+                        "Color_Code": get_color_hex(c_fin),
+                        "Description": f"Finition {c_fin}",
+                    })
+
+        # 3. Add each color with high-res circular swatch icon
+        select_index = 0
+        for idx, c in enumerate(colors_list, start=1):
+            name = str(c.get("Color_Name") or "").strip()
+            code = str(c.get("Color_Code") or get_color_hex(name)).strip()
+            if not name:
+                continue
+
+            pixmap = QPixmap(14, 14)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QBrush(QColor(code)))
+            border_qcol = QColor("#94A3B8" if code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "rgba(0,0,0,0.3)")
+            painter.setPen(QPen(border_qcol, 1.2))
+            painter.drawEllipse(1, 1, 12, 12)
+            painter.end()
+
+            self.cbo_color.addItem(QIcon(pixmap), name, {"Color_Name": name, "Color_Code": code})
+
+            if current_selected and name.lower() == current_selected.lower():
+                select_index = idx
+
+        self.cbo_color.setCurrentIndex(select_index)
+        self.cbo_color.blockSignals(False)
+
+        # Update the live swatch badge
+        self._update_color_filter_swatch()
+
+    def _sync_catalog_colors_to_combo(self) -> None:
+        """Ensures any distinct color finishes present in loaded catalog items exist in the combobox."""
+        if not hasattr(self, "cbo_color") or not self.cbo_color:
+            return
+        if not hasattr(self, "_catalog_cache") or not self._catalog_cache:
+            return
+
+        existing_names = set()
+        for i in range(self.cbo_color.count()):
+            d = self.cbo_color.itemData(i)
+            c_name = d.get("Color_Name") if isinstance(d, dict) else self.cbo_color.itemText(i)
+            if c_name:
+                existing_names.add(str(c_name).strip().lower())
+
+        added_any = False
+        for item in self._catalog_cache:
+            c_fin = str(item.get("Color_Finish") or "").strip()
+            if c_fin and c_fin.lower() not in existing_names and c_fin.lower() != "standard":
+                existing_names.add(c_fin.lower())
+                code = get_color_hex(c_fin)
+
+                pixmap = QPixmap(14, 14)
+                pixmap.fill(Qt.transparent)
+                painter = QPainter(pixmap)
+                painter.setRenderHint(QPainter.Antialiasing)
+                painter.setBrush(QBrush(QColor(code)))
+                border_qcol = QColor("#94A3B8" if code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "rgba(0,0,0,0.3)")
+                painter.setPen(QPen(border_qcol, 1.2))
+                painter.drawEllipse(1, 1, 12, 12)
+                painter.end()
+
+                self.cbo_color.blockSignals(True)
+                self.cbo_color.addItem(QIcon(pixmap), c_fin, {"Color_Name": c_fin, "Color_Code": code})
+                self.cbo_color.blockSignals(False)
+                added_any = True
+
+    def _on_color_filter_changed(self) -> None:
+        self._update_color_filter_swatch()
+        self.refresh_catalog()
+
+    def _update_color_filter_swatch(self) -> None:
+        """Updates the live color badge widget next to the color combobox."""
+        if not hasattr(self, "color_preview_badge") or not self.color_preview_badge:
+            return
+
+        name = "Tous"
+        code = ""
+        if hasattr(self, "cbo_color") and self.cbo_color:
+            c_data = self.cbo_color.currentData()
+            if isinstance(c_data, dict):
+                name = c_data.get("Color_Name") or "Tous"
+                code = c_data.get("Color_Code") or ""
+            elif isinstance(c_data, str) and c_data:
+                name = c_data
+                code = get_color_hex(name)
+            else:
+                name = self.cbo_color.currentText() or "Tous"
+                code = get_color_hex(name)
+
+        self.color_preview_badge.update_color(name, code)
+
+    def _on_color_badge_clicked(self) -> None:
+        if hasattr(self, "cbo_color") and self.cbo_color:
+            if self.cbo_color.currentIndex() != 0:
+                self.cbo_color.setCurrentIndex(0)
+            else:
+                self.cbo_color.showPopup()
 
     def _create_catalog_panel(self) -> QWidget:
         panel = QFrame()
@@ -1139,10 +1480,15 @@ class OrderDeskWidget(QWidget):
         self.cbo_client.blockSignals(False)
 
     def _reset_filters(self) -> None:
-        self.cbo_mark.setCurrentIndex(0)
-        self.cbo_category.setCurrentIndex(0)
-        self.cbo_color.setCurrentIndex(0)
-        self.txt_search.clear()
+        if hasattr(self, "cbo_mark") and self.cbo_mark:
+            self.cbo_mark.setCurrentIndex(0)
+        if hasattr(self, "cbo_category") and self.cbo_category:
+            self.cbo_category.setCurrentIndex(0)
+        if hasattr(self, "cbo_color") and self.cbo_color:
+            self.cbo_color.setCurrentIndex(0)
+        if hasattr(self, "txt_search") and self.txt_search:
+            self.txt_search.clear()
+        self._update_color_filter_swatch()
         self.refresh_catalog()
 
     def refresh_catalog(self) -> None:
@@ -1150,7 +1496,18 @@ class OrderDeskWidget(QWidget):
         search_txt = self.txt_search.text().strip() if hasattr(self, "txt_search") else ""
         mark_txt = self.cbo_mark.currentText() if hasattr(self, "cbo_mark") else "Tous"
         cat_txt = self.cbo_category.currentText() if hasattr(self, "cbo_category") else "Tous"
-        col_txt = self.cbo_color.currentText() if hasattr(self, "cbo_color") else "Tous"
+
+        col_txt = "Tous"
+        if hasattr(self, "cbo_color") and self.cbo_color:
+            c_data = self.cbo_color.currentData()
+            if isinstance(c_data, dict):
+                col_txt = c_data.get("Color_Name") or self.cbo_color.currentText()
+            elif isinstance(c_data, str) and c_data:
+                col_txt = c_data
+            else:
+                col_txt = self.cbo_color.currentText()
+        if not col_txt:
+            col_txt = "Tous"
 
         items: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "serials"):
@@ -1227,6 +1584,52 @@ class OrderDeskWidget(QWidget):
         self._catalog_filtered_items = items
         self._catalog_loaded_count = 0
         self.table.setRowCount(0)
+
+        # Synchronize dynamic color finishes and update live KPI badge
+        self._sync_catalog_colors_to_combo()
+        total_items = len(items)
+        if hasattr(self, "lbl_catalog_count_badge") and self.lbl_catalog_count_badge:
+            if total_items == 1:
+                self.lbl_catalog_count_badge.setText("1 produit trouvé")
+                self.lbl_catalog_count_badge.setStyleSheet("""
+                    QLabel {
+                        background-color: #E6F4F1;
+                        color: #007572;
+                        font-size: 11px;
+                        font-weight: 800;
+                        border: 1px solid #A7F3D0;
+                        border-radius: 13px;
+                        padding: 2px 10px;
+                    }
+                """)
+            elif total_items > 1:
+                self.lbl_catalog_count_badge.setText(f"{total_items} produits trouvés")
+                self.lbl_catalog_count_badge.setStyleSheet("""
+                    QLabel {
+                        background-color: #E6F4F1;
+                        color: #007572;
+                        font-size: 11px;
+                        font-weight: 800;
+                        border: 1px solid #A7F3D0;
+                        border-radius: 13px;
+                        padding: 2px 10px;
+                    }
+                """)
+            else:
+                self.lbl_catalog_count_badge.setText("0 résultat")
+                self.lbl_catalog_count_badge.setStyleSheet("""
+                    QLabel {
+                        background-color: #F8FAFC;
+                        color: #94A3B8;
+                        font-size: 11px;
+                        font-weight: 700;
+                        border: 1px solid #E2E8F0;
+                        border-radius: 13px;
+                        padding: 2px 10px;
+                    }
+                """)
+            self.lbl_catalog_count_badge.setToolTip(f"Catalogue : {total_items} produit(s) correspondant aux filtres")
+
         self._load_next_catalog_chunk()
 
     def _load_next_catalog_chunk(self) -> None:

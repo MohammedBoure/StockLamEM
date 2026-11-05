@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_filter_vibrancy_and_colors.py`**:
+  - *Scope*: Verifies Task #3 deliverables: presence of circular visual color swatches in the filter combobox (`cbo_color`), live `ColorFilterBadge` preview displaying swatch dot, color name, and hex codes, interactive badge click-to-reset behavior, vibrant styling of `OrderTopFilterBar` (gradient, left accent border, vector badges for Marque/Catégorie/Couleur), instant clear button on search field (`setClearButtonEnabled(True)`), and live catalog product counter badge (`lbl_catalog_count_badge`).
 - **`test_order_desk_horizontal_scroll.py`**:
   - *Scope*: Verifies Task #2 deliverables: prevention of product name (`Désignation Produit`, column 1) clipping when the catalog table is narrowed or the splitter is moved; enforces minimum clamped column width (>= 280px); validates automatic horizontal scrollbar activation with smooth pixel scrolling (`ScrollPerPixel`) when viewport is narrower than total column widths (>= 918px); validates dynamic space expansion on wide screens (>= 1600px); and verifies manual header drag protection clamping width at >= 260px.
 - **`test_order_desk_session_bar_compact.py`**:

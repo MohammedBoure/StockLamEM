@@ -5,7 +5,7 @@
 # 2 [COMPLETED]: medium
 في Bureaux & SAV ثم Commandes (oder desk)  tab sesion 
 إسم المنتوج ييصبح غير ظاهر بالكامل في حال تقليص حجم الجدول أريد  أن يبقى الجدول ظاهرا كل ما فيه بشكل كامل و لو عنى الامر إضافة scrool جانبي 
-# 3 : medium
+# 3 [COMPLETED]: medium
 في Bureaux & SAV ثم Commandes (oder desk)  tab sesion 
 في الفلاتر أريد أن يظهر اللون أيضا أريد واجهة أكثر حيوية و خاصة في الجزء الخاص بالفلاتر 
 
