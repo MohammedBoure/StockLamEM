@@ -658,7 +658,7 @@ class OrderDeskWidget(QWidget):
         ])
         self.table.setStyleSheet(TABLE_STYLE)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(38)
+        self.table.verticalHeader().setDefaultSectionSize(46)
         self.table.horizontalHeader().setFixedHeight(38)
         self.table.horizontalHeader().setMinimumSectionSize(52)
         self.table.setShowGrid(True)
@@ -691,7 +691,7 @@ class OrderDeskWidget(QWidget):
         h.setSectionResizeMode(5, QHeaderView.Fixed)
         self.table.setColumnWidth(5, 52)
         h.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 142)
+        self.table.setColumnWidth(6, 185)
 
         layout.addWidget(self.table, 1)
         return panel
@@ -751,34 +751,78 @@ class OrderDeskWidget(QWidget):
         header_row.addWidget(btn_clear)
         layout.addLayout(header_row)
 
-        # Client Selection Row with fast search by Name/Phone & Quick Add
-        client_row = QHBoxLayout()
-        client_row.setSpacing(6)
-        lbl_cl = QLabel("Client :")
-        lbl_cl.setStyleSheet("font-size: 12px; font-weight: 700; color: #2C3E50;")
-        client_row.addWidget(lbl_cl)
+        # Client Selection Header & Dedicated Full-Width Combobox (Fixing horizontal & vertical clipping)
+        client_header = QHBoxLayout()
+        client_header.setSpacing(6)
+        cl_icon = QLabel()
+        cl_icon.setPixmap(get_duotone_icon("users", 14).pixmap(14, 14))
+        client_header.addWidget(cl_icon)
+        lbl_cl = QLabel("Client associé :")
+        lbl_cl.setStyleSheet("font-size: 12px; font-weight: 700; color: #1E293B;")
+        client_header.addWidget(lbl_cl)
+        client_header.addStretch()
 
-        self.cbo_client = QComboBox()
-        self.cbo_client.setFixedHeight(32)
-        self.cbo_client.setEditable(True)
-        self.cbo_client.setInsertPolicy(QComboBox.NoInsert)
-        if self.cbo_client.lineEdit():
-            self.cbo_client.lineEdit().setPlaceholderText("🔍 Rechercher par nom ou tél...")
-        self._load_clients_into_combo()
-        self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
-        client_row.addWidget(self.cbo_client, stretch=1)
-
-        btn_new_client = QPushButton("+ Client")
+        btn_new_client = QPushButton("+ Nouveau Client")
         btn_new_client.setIcon(get_duotone_icon("users", 13))
         btn_new_client.setIconSize(QSize(13, 13))
         btn_new_client.setCursor(Qt.PointingHandCursor)
-        btn_new_client.setFixedHeight(32)
+        btn_new_client.setFixedHeight(28)
         btn_new_client.setStyleSheet(OUTLINE_BTN_STYLE)
         btn_new_client.setToolTip("Ajouter rapidement un nouveau client en quelques secondes")
         btn_new_client.clicked.connect(self._open_quick_client_dialog)
-        client_row.addWidget(btn_new_client)
+        client_header.addWidget(btn_new_client)
+        layout.addLayout(client_header)
 
-        layout.addLayout(client_row)
+        self.cbo_client = QComboBox()
+        self.cbo_client.setObjectName("OrderClientCombo")
+        self.cbo_client.setFixedHeight(36)
+        self.cbo_client.setMinimumHeight(36)
+        self.cbo_client.setEditable(True)
+        self.cbo_client.setInsertPolicy(QComboBox.NoInsert)
+        self.cbo_client.setStyleSheet("""
+            QComboBox#OrderClientCombo {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #1E293B;
+                min-height: 36px;
+            }
+            QComboBox#OrderClientCombo:hover {
+                border-color: #0E7471;
+            }
+            QComboBox#OrderClientCombo:focus {
+                border-color: #0E7471;
+            }
+            QComboBox#OrderClientCombo::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 26px;
+                border-left: 1px solid #E2E8F0;
+                background-color: #F8FAFC;
+                border-top-right-radius: 6px;
+                border-bottom-right-radius: 6px;
+            }
+            QComboBox#OrderClientCombo QAbstractItemView {
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                background-color: #FFFFFF;
+                selection-background-color: #E6F4F1;
+                selection-color: #0E7471;
+                font-size: 12px;
+                padding: 4px;
+            }
+        """)
+        if self.cbo_client.lineEdit():
+            self.cbo_client.lineEdit().setPlaceholderText("Rechercher par nom ou n° téléphone...")
+            self.cbo_client.lineEdit().setStyleSheet(
+                "border: none; background: transparent; font-size: 12px; font-weight: 600; color: #1E293B; padding: 0 4px;"
+            )
+        self._load_clients_into_combo()
+        self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
+        layout.addWidget(self.cbo_client)
 
         # Cart Items Table
         self.cart_table = QTableWidget(0, 4)
@@ -956,7 +1000,7 @@ class OrderDeskWidget(QWidget):
         for idx, c in enumerate(self._clients_cache):
             display = c["Client_Name"]
             if c.get("Phone"):
-                display += f"  —  📞 {c['Phone']}"
+                display += f"  —  Tél: {c['Phone']}"
             self.cbo_client.addItem(display, c["Client_ID"])
             if selected_id is not None and c["Client_ID"] == selected_id:
                 select_idx = idx
@@ -1096,7 +1140,9 @@ class OrderDeskWidget(QWidget):
 
             btn = QPushButton()
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(28)
+            btn.setFixedHeight(30)
+            btn.setMinimumHeight(30)
+            btn.setMaximumHeight(30)
 
             if avail > 0:
                 btn.setText(f"+ Ajouter • {format_money(price)} DA")
@@ -1111,10 +1157,8 @@ class OrderDeskWidget(QWidget):
                         color: #FFFFFF;
                         font-weight: 700;
                         font-size: 11px;
-                        min-height: 28px;
-                        max-height: 28px;
-                        padding: 3px 8px;
-                        border-radius: 4px;
+                        padding: 0 10px;
+                        border-radius: 5px;
                         border: 1px solid #005A57;
                     }
                     QPushButton:hover {
@@ -1128,7 +1172,9 @@ class OrderDeskWidget(QWidget):
                 )
                 btn.clicked.connect(lambda checked=False, p=prod: self._add_product_to_session(self._active_session_id, p))
             else:
-                btn.setText("🚫 Épuisé")
+                btn.setText("Épuisé")
+                btn.setIcon(get_duotone_icon("package_box", 13))
+                btn.setIconSize(QSize(13, 13))
                 btn.setEnabled(False)
                 btn.setToolTip("Rupture de stock théorique")
                 btn.setStyleSheet(
@@ -1138,10 +1184,8 @@ class OrderDeskWidget(QWidget):
                         color: #94A3B8;
                         font-weight: 600;
                         font-size: 11px;
-                        min-height: 28px;
-                        max-height: 28px;
-                        padding: 3px 8px;
-                        border-radius: 4px;
+                        padding: 0 10px;
+                        border-radius: 5px;
                         border: 1px solid #E2E8F0;
                     }
                     """
@@ -1150,7 +1194,8 @@ class OrderDeskWidget(QWidget):
             cell_widget = QWidget()
             cell_widget.setStyleSheet("background: transparent;")
             cell_layout = QHBoxLayout(cell_widget)
-            cell_layout.setContentsMargins(4, 3, 4, 3)
+            cell_layout.setContentsMargins(6, 4, 6, 4)
+            cell_layout.setAlignment(Qt.AlignCenter)
             cell_layout.addWidget(btn)
             self.table.setCellWidget(row, 6, cell_widget)
 

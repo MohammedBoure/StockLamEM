@@ -26,6 +26,8 @@ This test suite enforces strict software quality gatekeeping across:
 
 - **`test_order_desk_task1_enhancements.py`**:
   - *Scope*: Verifies Task #1 enhancements in Order Desk (`OrderDeskWidget`): universal barcode recognition across product, batch, and serial barcodes with auto-addition to cart; cart stores strictly theoretical products without literal serial registration; category column width >= 160px with tooltips; increased action button heights under Total TTC (`Bon Comptant` >= 44px, `Bon Crédit` / `Bon de Livraison` >= 40px); movable horizontal separator (`QSplitter`) with persistent position memory via `QSettings`; interactive `ColorBadgeWidget` displaying visual color swatches and tooltips with hex codes; elegant session close button management (hidden when only 1 session, custom styled when > 1); and removal of redundant "Associer Scanner USB" button from the session bar.
+- **`test_order_desk_task2_ui_fixes.py`**:
+  - *Scope*: Verifies Task #2 ergonomic and clipping fixes in Order Desk: table default row height >= 44px (46px) and action column width >= 180px (185px) eliminating bottom button clipping; button height 30px with 4px margins vertically centered; out-of-stock button cleanly labeled "Épuisé" without emojis; client search combobox height >= 36px with dedicated full-width layout and separate header row for "+ Nouveau Client" eliminating horizontal and vertical text clipping.
 - **`test_product_colors_and_bon_comptant.py`**:
   - *Scope*: Verifies Task #5 deliverables: renaming of Bon C to Bon Comptant across Order Desk and Cashier Desk UI, full CRUD and active filtering in ProductColorManager, and UI integration of ProductColorsTab within Master Data (Données de base).
 - **`test_batch_reception_path_restriction.py`**:
