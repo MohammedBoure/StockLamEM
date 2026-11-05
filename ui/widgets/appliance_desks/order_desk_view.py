@@ -14,9 +14,10 @@ Provides:
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QSettings, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QSettings, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QCompleter,
     QDialog,
@@ -151,6 +152,48 @@ TABLE_STYLE = """
         border: none;
         border-bottom: 2px solid #007572;
         border-right: 1px solid #E2E8F0;
+    }
+    QScrollBar:horizontal {
+        border: none;
+        background: #F8FAFC;
+        height: 10px;
+        margin: 0px 0px 0px 0px;
+        border-radius: 5px;
+    }
+    QScrollBar::handle:horizontal {
+        background: #CBD5E1;
+        min-width: 25px;
+        border-radius: 5px;
+    }
+    QScrollBar::handle:horizontal:hover {
+        background: #007572;
+    }
+    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+        width: 0px;
+        height: 0px;
+        background: none;
+        border: none;
+    }
+    QScrollBar:vertical {
+        border: none;
+        background: #F8FAFC;
+        width: 10px;
+        margin: 0px 0px 0px 0px;
+        border-radius: 5px;
+    }
+    QScrollBar::handle:vertical {
+        background: #CBD5E1;
+        min-height: 25px;
+        border-radius: 5px;
+    }
+    QScrollBar::handle:vertical:hover {
+        background: #007572;
+    }
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+        width: 0px;
+        height: 0px;
+        background: none;
+        border: none;
     }
 """
 
@@ -409,6 +452,7 @@ class OrderDeskWidget(QWidget):
         self.splitter.setStretchFactor(1, 0)
         self._restore_splitter_state()
         self.splitter.splitterMoved.connect(self._save_splitter_state)
+        self.splitter.splitterMoved.connect(lambda: self._adjust_catalog_column_widths())
         content_layout.addWidget(self.splitter, 1)
 
         self.scroll_area.setWidget(content_widget)
@@ -693,11 +737,14 @@ class OrderDeskWidget(QWidget):
         # Automatic horizontal scrollbar as needed to prevent any clipping
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
 
         h = self.table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Interactive)
         self.table.setColumnWidth(0, 80)
-        h.setSectionResizeMode(1, QHeaderView.Stretch)
+        h.setSectionResizeMode(1, QHeaderView.Interactive)
+        self.table.setColumnWidth(1, 280)
         h.setSectionResizeMode(2, QHeaderView.Interactive)
         self.table.setColumnWidth(2, 160)
         h.setSectionResizeMode(3, QHeaderView.Interactive)
@@ -709,11 +756,68 @@ class OrderDeskWidget(QWidget):
         h.setSectionResizeMode(6, QHeaderView.Fixed)
         self.table.setColumnWidth(6, 195)
 
+        h.sectionResized.connect(self._on_catalog_header_section_resized)
+        self.table.installEventFilter(self)
+
         # Connect scroll listener for professional lazy loading
         self.table.verticalScrollBar().valueChanged.connect(self._on_catalog_scroll)
 
         layout.addWidget(self.table, 1)
         return panel
+
+    def _adjust_catalog_column_widths(self) -> None:
+        """
+        Dynamically adjusts 'Désignation Produit' column (index 1) width:
+        - When the catalog table viewport has surplus space, column 1 stretches smoothly to fill it.
+        - When the table is narrowed (e.g. by dragging the splitter or resizing), column 1 is clamped
+          to a minimum of 280px, activating the horizontal scrollbar so product names and details
+          are 100% visible and never clipped.
+        """
+        if getattr(self, "_is_adjusting_columns", False):
+            return
+        if not hasattr(self, "table") or self.table is None:
+            return
+
+        self._is_adjusting_columns = True
+        try:
+            viewport_w = self.table.viewport().width()
+            if viewport_w <= 0:
+                if self.table.columnWidth(1) < 280:
+                    self.table.setColumnWidth(1, 280)
+                return
+
+            other_widths = sum(self.table.columnWidth(c) for c in (0, 2, 3, 4, 5, 6))
+            min_desig_width = 280
+            avail = viewport_w - other_widths
+            target = max(min_desig_width, avail)
+
+            if self.table.columnWidth(1) != target:
+                self.table.setColumnWidth(1, target)
+        finally:
+            self._is_adjusting_columns = False
+
+    def _on_catalog_header_section_resized(self, logical_index: int, old_size: int, new_size: int) -> None:
+        """Ensures designation column does not shrink below readable threshold and updates layout."""
+        if getattr(self, "_is_adjusting_columns", False):
+            return
+        if logical_index == 1:
+            if new_size < 260:
+                self.table.setColumnWidth(1, 260)
+        else:
+            self._adjust_catalog_column_widths()
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if watched is getattr(self, "table", None) and event.type() == QEvent.Resize:
+            self._adjust_catalog_column_widths()
+        return super().eventFilter(watched, event)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._adjust_catalog_column_widths()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._adjust_catalog_column_widths()
 
     def _create_cart_panel(self) -> QWidget:
         panel = QFrame()
@@ -856,6 +960,8 @@ class OrderDeskWidget(QWidget):
         self.cart_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.cart_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.cart_table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.cart_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.cart_table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         ch = self.cart_table.horizontalHeader()
         ch.setSectionResizeMode(0, QHeaderView.Stretch)
         ch.setSectionResizeMode(1, QHeaderView.Interactive)

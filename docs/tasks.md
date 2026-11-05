@@ -2,7 +2,7 @@
 في Bureaux & SAV ثم Commandes (oder desk)  tab sesion 
 غير مناسب و إرتفاعه كبير أريد أقل حجم ممكن و أيضا زر إزالة tab غير موجود بشكل صحيح 
 
-# 2 : medium
+# 2 [COMPLETED]: medium
 في Bureaux & SAV ثم Commandes (oder desk)  tab sesion 
 إسم المنتوج ييصبح غير ظاهر بالكامل في حال تقليص حجم الجدول أريد  أن يبقى الجدول ظاهرا كل ما فيه بشكل كامل و لو عنى الامر إضافة scrool جانبي 
 # 3 : medium

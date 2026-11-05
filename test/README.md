@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_horizontal_scroll.py`**:
+  - *Scope*: Verifies Task #2 deliverables: prevention of product name (`Désignation Produit`, column 1) clipping when the catalog table is narrowed or the splitter is moved; enforces minimum clamped column width (>= 280px); validates automatic horizontal scrollbar activation with smooth pixel scrolling (`ScrollPerPixel`) when viewport is narrower than total column widths (>= 918px); validates dynamic space expansion on wide screens (>= 1600px); and verifies manual header drag protection clamping width at >= 260px.
 - **`test_order_desk_session_bar_compact.py`**:
   - *Scope*: Verifies Task #1 compact session bar deliverables: ultra-compact session bar height (<= 28px, tabs 22px height), compact '+ Nouvelle Session' button (22px), presence of close button ('×', 16x16) on all tabs with high-contrast color styling (white on active teal tab, slate on inactive tab, red hover), and clean session close/reset behavior for both single and multiple sessions.
 - **`test_remove_tracabilite_lots_tab.py`**:
