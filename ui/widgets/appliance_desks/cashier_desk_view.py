@@ -62,7 +62,7 @@ class AdminAuthModal(QDialog):
     ):
         super().__init__(parent)
         self.setWindowTitle("Autorisation Superviseur (Admin) — Bon Crédit")
-        self.setFixedSize(480, 390)
+        self.setFixedSize(480, 410)
         self.setStyleSheet("""
             QDialog {
                 background-color: #FFFFFF;
@@ -141,17 +141,43 @@ class AdminAuthModal(QDialog):
         btn_box.addStretch()
         btn_cancel = QPushButton("Annuler")
         btn_cancel.setCursor(Qt.PointingHandCursor)
-        btn_cancel.setFixedHeight(36)
-        btn_cancel.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
+        btn_cancel.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1.5px solid #CBD5E1;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 38px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #F1F5F9; border-color: #94A3B8; color: #1E293B; }
+            QPushButton:pressed { background-color: #E2E8F0; }
+        """)
+        btn_cancel.setFixedHeight(40)
         btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(btn_cancel)
 
         btn_auth = QPushButton("Autoriser le Bon Crédit")
-        btn_auth.setIcon(get_duotone_icon("shield_admin", 14))
-        btn_auth.setIconSize(QSize(14, 14))
+        btn_auth.setIcon(get_duotone_icon("shield_admin", 15))
+        btn_auth.setIconSize(QSize(15, 15))
         btn_auth.setCursor(Qt.PointingHandCursor)
-        btn_auth.setFixedHeight(36)
-        btn_auth.setStyleSheet(PRIMARY_BTN_STYLE)
+        btn_auth.setStyleSheet("""
+            QPushButton {
+                background-color: #007572;
+                color: #FFFFFF;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 38px;
+                padding: 0 16px;
+                border-radius: 5px;
+                border: 1px solid #005A57;
+            }
+            QPushButton:hover { background-color: #005A57; border-color: #003D3A; }
+            QPushButton:pressed { background-color: #003D3A; }
+        """)
+        btn_auth.setFixedHeight(40)
         btn_auth.clicked.connect(self._verify_credentials)
         btn_box.addWidget(btn_auth)
 
@@ -188,7 +214,7 @@ class BonRetourDialog(QDialog):
     def __init__(self, data_manager=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Bon de Retour — Avoir & Versement Virtuel")
-        self.setFixedSize(520, 430)
+        self.setFixedSize(520, 450)
         self.setStyleSheet("""
             QDialog {
                 background-color: #FFFFFF;
@@ -282,17 +308,43 @@ class BonRetourDialog(QDialog):
         btn_row.addStretch()
         btn_cancel = QPushButton("Annuler")
         btn_cancel.setCursor(Qt.PointingHandCursor)
-        btn_cancel.setFixedHeight(36)
-        btn_cancel.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
+        btn_cancel.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1.5px solid #CBD5E1;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 38px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #F1F5F9; border-color: #94A3B8; color: #1E293B; }
+            QPushButton:pressed { background-color: #E2E8F0; }
+        """)
+        btn_cancel.setFixedHeight(40)
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
         btn_ok = QPushButton("Valider Bon de Retour (Versement Virtuel)")
-        btn_ok.setIcon(get_duotone_icon("return_arrow", 14))
-        btn_ok.setIconSize(QSize(14, 14))
+        btn_ok.setIcon(get_duotone_icon("return_arrow", 15))
+        btn_ok.setIconSize(QSize(15, 15))
         btn_ok.setCursor(Qt.PointingHandCursor)
-        btn_ok.setFixedHeight(36)
-        btn_ok.setStyleSheet(PRIMARY_BTN_STYLE)
+        btn_ok.setStyleSheet("""
+            QPushButton {
+                background-color: #007572;
+                color: #FFFFFF;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 38px;
+                padding: 0 16px;
+                border-radius: 5px;
+                border: 1px solid #005A57;
+            }
+            QPushButton:hover { background-color: #005A57; border-color: #003D3A; }
+            QPushButton:pressed { background-color: #003D3A; }
+        """)
+        btn_ok.setFixedHeight(40)
         btn_ok.clicked.connect(self._process_return)
         btn_row.addWidget(btn_ok)
         layout.addLayout(btn_row)
@@ -415,23 +467,49 @@ class CashierDeskWidget(QWidget):
         ops_bar = QHBoxLayout()
         ops_bar.setSpacing(10)
 
-        btn_versement = QPushButton("Enregistrer un Versement Client (Dépôt Espèces)")
-        btn_versement.setIcon(get_duotone_icon("kpi_wallet", 16))
-        btn_versement.setIconSize(QSize(16, 16))
-        btn_versement.setCursor(Qt.PointingHandCursor)
-        btn_versement.setFixedHeight(36)
-        btn_versement.setStyleSheet(OUTLINE_BTN_STYLE)
-        btn_versement.clicked.connect(self._open_versement_dialog)
-        ops_bar.addWidget(btn_versement)
+        self.btn_versement = QPushButton("Enregistrer un Versement Client (Dépôt Espèces)")
+        self.btn_versement.setIcon(get_duotone_icon("kpi_wallet", 16))
+        self.btn_versement.setIconSize(QSize(16, 16))
+        self.btn_versement.setCursor(Qt.PointingHandCursor)
+        self.btn_versement.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #007572;
+                border: 1.5px solid #007572;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 42px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #E6F4F1; border-color: #005A57; color: #005A57; }
+            QPushButton:pressed { background-color: #CCEBE6; }
+        """)
+        self.btn_versement.setFixedHeight(44)
+        self.btn_versement.clicked.connect(self._open_versement_dialog)
+        ops_bar.addWidget(self.btn_versement)
 
-        btn_retour = QPushButton("Émettre Bon de Retour (Versement Virtuel)")
-        btn_retour.setIcon(get_duotone_icon("return_arrow", 16))
-        btn_retour.setIconSize(QSize(16, 16))
-        btn_retour.setCursor(Qt.PointingHandCursor)
-        btn_retour.setFixedHeight(36)
-        btn_retour.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
-        btn_retour.clicked.connect(self._open_retour_dialog)
-        ops_bar.addWidget(btn_retour)
+        self.btn_retour = QPushButton("Émettre Bon de Retour (Versement Virtuel)")
+        self.btn_retour.setIcon(get_duotone_icon("return_arrow", 16))
+        self.btn_retour.setIconSize(QSize(16, 16))
+        self.btn_retour.setCursor(Qt.PointingHandCursor)
+        self.btn_retour.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1.5px solid #CBD5E1;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 42px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #F1F5F9; border-color: #94A3B8; color: #1E293B; }
+            QPushButton:pressed { background-color: #E2E8F0; }
+        """)
+        self.btn_retour.setFixedHeight(44)
+        self.btn_retour.clicked.connect(self._open_retour_dialog)
+        ops_bar.addWidget(self.btn_retour)
         l_layout.addLayout(ops_bar)
 
         layout.addWidget(left_panel, stretch=3)
@@ -540,13 +618,30 @@ class CashierDeskWidget(QWidget):
         form.addWidget(self.txt_tpe, 1, 1)
         r_layout.addLayout(form)
 
-        # Action Buttons for the 3 Order Bond Types
+        # Action Buttons for the 3 Order Bond Types (Heightened for prominent enterprise UX)
         self.btn_val_bon_c = QPushButton("Valider Bon Comptant (Encaissement Direct -> Sortie)")
-        self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 16))
-        self.btn_val_bon_c.setIconSize(QSize(16, 16))
+        self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 18))
+        self.btn_val_bon_c.setIconSize(QSize(18, 18))
         self.btn_val_bon_c.setCursor(Qt.PointingHandCursor)
-        self.btn_val_bon_c.setFixedHeight(38)
-        self.btn_val_bon_c.setStyleSheet(PRIMARY_BTN_STYLE)
+        self.btn_val_bon_c.setFixedHeight(46)
+        self.btn_val_bon_c.setStyleSheet("""
+            QPushButton {
+                background-color: #007572;
+                color: #FFFFFF;
+                font-weight: 700;
+                font-size: 12px;
+                padding: 0 16px;
+                border-radius: 5px;
+                border: 1px solid #005A57;
+            }
+            QPushButton:hover {
+                background-color: #005A57;
+                border-color: #003D3A;
+            }
+            QPushButton:pressed {
+                background-color: #003D3A;
+            }
+        """)
         self.btn_val_bon_c.clicked.connect(self._finalize_bon_c)
         r_layout.addWidget(self.btn_val_bon_c)
 
@@ -554,8 +649,21 @@ class CashierDeskWidget(QWidget):
         self.btn_val_credit.setIcon(get_duotone_icon("shield_admin", 16))
         self.btn_val_credit.setIconSize(QSize(16, 16))
         self.btn_val_credit.setCursor(Qt.PointingHandCursor)
-        self.btn_val_credit.setFixedHeight(36)
-        self.btn_val_credit.setStyleSheet(OUTLINE_BTN_STYLE)
+        self.btn_val_credit.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #007572;
+                border: 1.5px solid #007572;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 40px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #E6F4F1; border-color: #005A57; color: #005A57; }
+            QPushButton:pressed { background-color: #CCEBE6; }
+        """)
+        self.btn_val_credit.setFixedHeight(42)
         self.btn_val_credit.clicked.connect(self._authorize_bon_credit)
         r_layout.addWidget(self.btn_val_credit)
 
@@ -563,8 +671,21 @@ class CashierDeskWidget(QWidget):
         self.btn_val_livraison.setIcon(get_duotone_icon("truck_delivery", 16))
         self.btn_val_livraison.setIconSize(QSize(16, 16))
         self.btn_val_livraison.setCursor(Qt.PointingHandCursor)
-        self.btn_val_livraison.setFixedHeight(36)
-        self.btn_val_livraison.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
+        self.btn_val_livraison.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1.5px solid #CBD5E1;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 40px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #F1F5F9; border-color: #94A3B8; color: #1E293B; }
+            QPushButton:pressed { background-color: #E2E8F0; }
+        """)
+        self.btn_val_livraison.setFixedHeight(42)
         self.btn_val_livraison.clicked.connect(self._handle_bon_livraison)
         r_layout.addWidget(self.btn_val_livraison)
 

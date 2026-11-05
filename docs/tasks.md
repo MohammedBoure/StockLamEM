@@ -4,7 +4,7 @@ Bureaux & SAV في 1. Commandes (Order Desk)  البار كود لما أضع ل
 # 2 [COMPLETED]: medium
 Bureaux & SAV في 1. Commandes (Order Desk)  في الجددول عمود action الأزرار تظهر بشكل مقصوص من الأسفل و لا تظهر بشكل كامل و صحيح أي هذا خطأ تصميمي و أيضا في حقل الإدخال الخاص بالبحث عن عميل يظهر مقصوصا 
 
-# 3 : medium
+# 3 [COMPLETED]: medium
 Bureaux & SAV في 2. Caisse & Règlements الأزرار الموجودة في جانب اvalider أريدها أن تكون بإرتفاع أكبر و أيضا الأزرار في الأسفل للحفظ و bon de retour 
 
 # 4 : medium
