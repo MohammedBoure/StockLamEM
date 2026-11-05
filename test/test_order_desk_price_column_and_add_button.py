@@ -148,7 +148,8 @@ def test_action_column_borderless_plus_in_framed_slot(qapp, mock_data_manager):
     assert cart[0]["product_id"] == 101
     assert cart[0]["unit_price_ttc"] == 100000.0  # Standard Prix 1 for client 1
 
-    # 2. Out of stock row (Row 1)
+    # 2. Out of stock row: toggle chk_available_only to False to display exhausted items
+    desk.chk_available_only.setChecked(False)
     act_w1 = desk.table.cellWidget(1, 7)
     assert isinstance(act_w1, AddActionCellWidget)
     assert act_w1.is_available is False

@@ -80,6 +80,7 @@ def mock_data_manager():
 def test_table_row_height_and_action_column_metrics(qapp, mock_data_manager):
     """Verifies that the catalog table row height and column width prevent any bottom or side clipping."""
     desk = OrderDeskWidget(data_manager=mock_data_manager)
+    desk.chk_available_only.setChecked(False)
     desk.refresh_catalog()
 
     # 1. Row height must be >= 44px

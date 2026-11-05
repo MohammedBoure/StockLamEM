@@ -291,6 +291,7 @@ class SerialTrackingManager:
         category_name: str = "",
         color_finish: str = "",
         product_id: Optional[int] = None,
+        only_available: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Returns catalog items with theoretical stock metrics for the Order Desk:
@@ -364,6 +365,8 @@ class SerialTrackingManager:
                     phys = int(r.get("Physical_Qty") or 0)
                     res = int(r.get("Reserved_Qty") or 0)
                     avail = max(0, phys - res)
+                    if only_available and avail <= 0:
+                        continue
                     price_ht = Decimal(str(r.get("Batch_Selling_Price_HT") or r.get("Default_Selling_Price_HT") or "0.00"))
                     price_ht_2 = Decimal(str(r.get("Batch_Selling_Price_HT_2") or "0.00"))
                     price_ht_3 = Decimal(str(r.get("Batch_Selling_Price_HT_3") or "0.00"))

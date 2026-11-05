@@ -19,6 +19,7 @@ from PySide6.QtCore import QEvent, QObject, QSettings, QSize, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
@@ -992,7 +993,55 @@ class OrderDeskWidget(QWidget):
         self._update_color_filter_swatch()
         layout.addWidget(self.color_preview_badge)
 
-        # 5. Search Bar with Instant Clear
+        # 5. Disponibles Uniquement Filter (Checked by default)
+        self.chk_available_only = QCheckBox("Disponibles uniquement")
+        self.chk_available_only.setObjectName("ChkAvailableOnly")
+        self.chk_available_only.setChecked(True)
+        self.chk_available_only.setFixedHeight(34)
+        self.chk_available_only.setCursor(Qt.PointingHandCursor)
+        self.chk_available_only.setToolTip(
+            "Afficher uniquement les produits disponibles en stock théorique (Actif par défaut)"
+        )
+        self.chk_available_only.setStyleSheet("""
+            QCheckBox#ChkAvailableOnly {
+                color: #007572;
+                font-size: 11px;
+                font-weight: 700;
+                spacing: 7px;
+                background-color: #E6F4F1;
+                border: 1.5px solid #007572;
+                border-radius: 6px;
+                padding: 0 10px;
+            }
+            QCheckBox#ChkAvailableOnly:hover {
+                background-color: #CCEBE5;
+            }
+            QCheckBox#ChkAvailableOnly:!checked {
+                color: #64748B;
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+            }
+            QCheckBox#ChkAvailableOnly::indicator {
+                width: 15px;
+                height: 15px;
+                border-radius: 3px;
+                border: 1.5px solid #007572;
+                background-color: #FFFFFF;
+            }
+            QCheckBox#ChkAvailableOnly::indicator:!checked {
+                border-color: #94A3B8;
+                background-color: #FFFFFF;
+            }
+            QCheckBox#ChkAvailableOnly::indicator:checked {
+                background-color: #007572;
+                border-color: #007572;
+            }
+        """)
+        self.chk_available_only.toggled.connect(self._on_available_only_toggled)
+        self.btn_available_only = self.chk_available_only  # Convenient alias
+        layout.addWidget(self.chk_available_only)
+
+        # 6. Search Bar with Instant Clear
         self.txt_search = QLineEdit()
         self.txt_search.setFixedHeight(34)
         self.txt_search.setMinimumWidth(160)
@@ -1739,6 +1788,10 @@ class OrderDeskWidget(QWidget):
         self.cbo_client.setCurrentIndex(select_idx)
         self.cbo_client.blockSignals(False)
 
+    def _on_available_only_toggled(self, checked: bool) -> None:
+        """Refreshes catalog when availability filter is toggled."""
+        self.refresh_catalog()
+
     def _reset_filters(self) -> None:
         if hasattr(self, "cbo_mark") and self.cbo_mark:
             self.cbo_mark.setCurrentIndex(0)
@@ -1748,6 +1801,8 @@ class OrderDeskWidget(QWidget):
             self.cbo_color.setCurrentIndex(0)
         if hasattr(self, "txt_search") and self.txt_search:
             self.txt_search.clear()
+        if hasattr(self, "chk_available_only") and self.chk_available_only:
+            self.chk_available_only.setChecked(True)
         self._update_color_filter_swatch()
         self.refresh_catalog()
 
@@ -1769,15 +1824,33 @@ class OrderDeskWidget(QWidget):
         if not col_txt:
             col_txt = "Tous"
 
+        only_avail = True
+        if hasattr(self, "chk_available_only") and self.chk_available_only is not None:
+            only_avail = self.chk_available_only.isChecked()
+
         items: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "serials"):
-            items = self.data_manager.serials.get_catalog_with_theoretical_stock(
-                search=search_txt,
-                brand_mark=mark_txt,
-                category_name=cat_txt,
-                color_finish=col_txt,
-            )
+            try:
+                items = self.data_manager.serials.get_catalog_with_theoretical_stock(
+                    search=search_txt,
+                    brand_mark=mark_txt,
+                    category_name=cat_txt,
+                    color_finish=col_txt,
+                    only_available=only_avail,
+                )
+            except TypeError:
+                items = self.data_manager.serials.get_catalog_with_theoretical_stock(
+                    search=search_txt,
+                    brand_mark=mark_txt,
+                    category_name=cat_txt,
+                    color_finish=col_txt,
+                )
             self._catalog_cache = items
+            if only_avail:
+                items = [
+                    it for it in items
+                    if int(it.get("Available_Theoretical_Qty") or 0) > 0
+                ]
         else:
             # Fallback showcase catalog in-memory filtering (offline / test mode)
             if not self._catalog_cache:
@@ -1823,6 +1896,10 @@ class OrderDeskWidget(QWidget):
             col_low = col_txt.lower()
 
             for it in self._catalog_cache:
+                if only_avail:
+                    avail_qty = int(it.get("Available_Theoretical_Qty") or 0)
+                    if avail_qty <= 0:
+                        continue
                 if s_low:
                     name_match = s_low in str(it.get("Product_Name", "")).lower()
                     mark_match = s_low in str(it.get("Brand_Mark", "")).lower()

@@ -267,6 +267,7 @@ def test_order_desk_quick_client_search_and_redesigned_action_buttons(qapp):
         "Unit_Price_TTC": 45000.0,
     }
     desk._catalog_cache.append(out_of_stock_prod)
+    desk.chk_available_only.setChecked(False)
     desk.txt_search.setText("Four Encastrable Épuisé")
     assert desk.table.rowCount() == 1
     cell_out = desk.table.cellWidget(0, 7)

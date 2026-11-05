@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_available_only_filter.py`**:
+  - *Scope*: Verifies Task #6 deliverables: default active state of the 'Disponibles uniquement' filter (`chk_available_only.isChecked() == True`), automatic filtering and hiding of exhausted/out-of-stock items (`Available_Theoretical_Qty <= 0`), dynamic toggle behavior revealing exhausted items with disabled `—` action slots when unchecked, filter restoration to `True` upon clicking 'Réinitialiser' (`_reset_filters`), and backend support in `SerialTrackingManager.get_catalog_with_theoretical_stock(only_available=True)`.
 - **`test_order_desk_cart_table_and_remove_item.py`**:
   - *Scope*: Verifies Task #5 deliverables: 5-column layout in the Order Desk active session cart table (`cart_table`: Désignation, Couleur, Qté, Total TTC, Suppr.), visual color representation using `ColorBadgeWidget` (circular swatch dot with border, color name, and hex tooltip), dedicated per-row removal button (`CartRemoveCellWidget`) with vector trash icon and hover feedback, instant row deletion with live total and session tab badge recalculation, responsive designation clamping (>= 180px), and horizontal scrolling support (`ScrollPerPixel`) preventing control clipping.
 - **`test_order_desk_price_column_and_add_button.py`**:

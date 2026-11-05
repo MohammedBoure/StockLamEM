@@ -80,6 +80,7 @@ def mock_data_manager_large():
 def test_order_desk_lazy_loading(qapp, mock_data_manager_large):
     """Verifies that catalog items load in chunks of 35 and incrementally expand on demand."""
     desk = OrderDeskWidget(data_manager=mock_data_manager_large)
+    desk.chk_available_only.setChecked(False)
     desk.refresh_catalog()
 
     # 1. First chunk should have exactly 35 items
@@ -163,6 +164,7 @@ def test_order_desk_session_tabs_and_close_buttons(qapp, mock_data_manager_large
 def test_order_desk_action_column_and_exhausted_state(qapp, mock_data_manager_large):
     """Verifies action button design for available and exhausted items."""
     desk = OrderDeskWidget(data_manager=mock_data_manager_large)
+    desk.chk_available_only.setChecked(False)
     desk.refresh_catalog()
 
     # Load all items so we can inspect exhausted items
