@@ -9,12 +9,14 @@ from .appliance_workflow_tab import ApplianceWorkflowTab
 from .cashier_desk_view import AdminAuthModal, BonRetourDialog, CashierDeskWidget
 from .dispatch_desk_view import DispatchDeskWidget
 from .order_desk_view import OrderDeskWidget
+from .quick_client_dialog import QuickClientDialog
 from .sav_kanban_view import IrreparableDefectModal, SAVKanbanWidget, SAVReceptionDialog
 from .serial_batch_view import SerialBatchRegistryWidget
 
 __all__ = [
     "ApplianceWorkflowTab",
     "OrderDeskWidget",
+    "QuickClientDialog",
     "CashierDeskWidget",
     "AdminAuthModal",
     "BonRetourDialog",

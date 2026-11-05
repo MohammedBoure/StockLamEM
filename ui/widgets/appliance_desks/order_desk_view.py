@@ -18,6 +18,8 @@ from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QComboBox,
+    QCompleter,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -34,6 +36,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from .quick_client_dialog import QuickClientDialog
 
 from ui.formatting import format_money
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
@@ -42,54 +45,75 @@ from ui.icons import get_duotone_icon, get_trash_icon
 TABLE_STYLE = """
     QTableWidget {
         background-color: #FFFFFF;
-        border: 1px solid #DDE3EA;
+        border: 1px solid #DCDFE6;
         border-radius: 6px;
-        gridline-color: #E2E8F0;
+        gridline-color: #F1F5F9;
         selection-background-color: #E6F4F1;
-        selection-color: #0F172A;
-        alternate-background-color: #F8FAFC;
+        selection-color: #007572;
+        alternate-background-color: #FAFBFC;
+        font-size: 12px;
+        color: #2C3E50;
     }
     QHeaderView::section {
         background-color: #F8FAFC;
-        color: #0F172A;
+        color: #2C3E50;
         font-weight: 700;
         font-size: 12px;
-        padding: 6px 4px;
+        padding: 6px 6px;
         border: none;
-        border-bottom: 2px solid #0E7471;
+        border-bottom: 2px solid #007572;
         border-right: 1px solid #E2E8F0;
     }
 """
 
 PRIMARY_BTN_STYLE = """
     QPushButton {
-        background-color: #0E7471;
+        background-color: #007572;
         color: #FFFFFF;
         font-weight: 700;
         min-height: 0px;
         padding: 4px 14px;
-        border-radius: 6px;
+        border-radius: 4px;
         border: none;
         font-size: 12px;
     }
-    QPushButton:hover { background-color: #0A5C59; }
-    QPushButton:pressed { background-color: #084846; }
-    QPushButton:disabled { background-color: #CBD5E1; color: #94A3B8; }
+    QPushButton:hover { background-color: #005A57; }
+    QPushButton:pressed { background-color: #003D3A; }
+    QPushButton:disabled { background-color: #F1F5F9; color: #94A3B8; border: 1px solid #E2E8F0; }
 """
 
 OUTLINE_BTN_STYLE = """
     QPushButton {
         background-color: #FFFFFF;
-        color: #0E7471;
-        border: 1.5px solid #0E7471;
+        color: #007572;
+        border: 1.5px solid #007572;
         font-weight: 700;
         min-height: 0px;
         padding: 4px 12px;
-        border-radius: 6px;
+        border-radius: 4px;
         font-size: 12px;
     }
-    QPushButton:hover { background-color: #E6F4F1; border-color: #0A5C59; color: #0A5C59; }
-    QPushButton:pressed { background-color: #CCEBE5; }
+    QPushButton:hover { background-color: #E6F4F1; border-color: #005A57; color: #005A57; }
+    QPushButton:pressed { background-color: #CCEBE6; }
+    QPushButton:disabled { background-color: #F8FAFC; color: #94A3B8; border-color: #CBD5E1; }
+"""
+
+DANGER_BTN_STYLE = """
+    QPushButton {
+        background-color: #FFFFFF;
+        color: #C0392B;
+        border: 1px solid #E74C3C;
+        border-radius: 4px;
+        padding: 2px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        min-height: 28px;
+    }
+    QPushButton:hover {
+        background-color: #FDF2F2;
+        border-color: #C0392B;
+        color: #962D22;
+    }
 """
 
 SLATE_OUTLINE_BTN_STYLE = """
@@ -100,7 +124,7 @@ SLATE_OUTLINE_BTN_STYLE = """
         font-weight: 600;
         min-height: 0px;
         padding: 4px 12px;
-        border-radius: 6px;
+        border-radius: 4px;
         font-size: 12px;
     }
     QPushButton:hover { background-color: #F8FAFC; border-color: #94A3B8; color: #0F172A; }
@@ -185,6 +209,8 @@ class CartQtyStepper(QWidget):
             self._qty -= 1
             self.lbl_qty.setText(str(self._qty))
             self.qtyChanged.emit(self._qty)
+        elif self._qty == 1:
+            self.qtyChanged.emit(0)
 
     def _increment(self) -> None:
         if self._qty < self._max:
@@ -572,7 +598,7 @@ class OrderDeskWidget(QWidget):
         h.setSectionResizeMode(5, QHeaderView.Fixed)
         self.table.setColumnWidth(5, 52)
         h.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 115)
+        self.table.setColumnWidth(6, 142)
 
         layout.addWidget(self.table, 1)
         return panel
@@ -633,17 +659,33 @@ class OrderDeskWidget(QWidget):
         header_row.addWidget(btn_clear)
         layout.addLayout(header_row)
 
-        # Client Selection Row
+        # Client Selection Row with fast search by Name/Phone & Quick Add
         client_row = QHBoxLayout()
-        client_row.setSpacing(8)
+        client_row.setSpacing(6)
         lbl_cl = QLabel("Client :")
-        lbl_cl.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        lbl_cl.setStyleSheet("font-size: 12px; font-weight: 700; color: #2C3E50;")
         client_row.addWidget(lbl_cl)
+
         self.cbo_client = QComboBox()
-        self.cbo_client.setFixedHeight(34)
+        self.cbo_client.setFixedHeight(32)
+        self.cbo_client.setEditable(True)
+        self.cbo_client.setInsertPolicy(QComboBox.NoInsert)
+        if self.cbo_client.lineEdit():
+            self.cbo_client.lineEdit().setPlaceholderText("🔍 Rechercher par nom ou tél...")
         self._load_clients_into_combo()
         self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
         client_row.addWidget(self.cbo_client, stretch=1)
+
+        btn_new_client = QPushButton("+ Client")
+        btn_new_client.setIcon(get_duotone_icon("users", 13))
+        btn_new_client.setIconSize(QSize(13, 13))
+        btn_new_client.setCursor(Qt.PointingHandCursor)
+        btn_new_client.setFixedHeight(32)
+        btn_new_client.setStyleSheet(OUTLINE_BTN_STYLE)
+        btn_new_client.setToolTip("Ajouter rapidement un nouveau client en quelques secondes")
+        btn_new_client.clicked.connect(self._open_quick_client_dialog)
+        client_row.addWidget(btn_new_client)
+
         layout.addLayout(client_row)
 
         # Cart Items Table
@@ -680,15 +722,15 @@ class OrderDeskWidget(QWidget):
         self.txt_delivery_addr.textChanged.connect(self._on_delivery_addr_changed)
         layout.addWidget(self.txt_delivery_addr)
 
-        # Summary Total Box
+        # Summary Total Box (Styled matching Stock & Magasin KPI badges)
         total_box = QFrame()
         total_box.setObjectName("CartTotalBox")
-        total_box.setFixedHeight(42)
+        total_box.setFixedHeight(44)
         total_box.setStyleSheet("""
             QFrame#CartTotalBox {
-                background-color: #F8FAFC;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
+                background-color: #E8F8F5;
+                border: 1px solid #A3E4D7;
+                border-radius: 4px;
             }
             QLabel {
                 border: none;
@@ -698,11 +740,11 @@ class OrderDeskWidget(QWidget):
         tot_layout = QHBoxLayout(total_box)
         tot_layout.setContentsMargins(12, 0, 12, 0)
         lbl_tot_tag = QLabel("TOTAL COMMANDE TTC :")
-        lbl_tot_tag.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B;")
+        lbl_tot_tag.setStyleSheet("font-size: 11px; font-weight: 700; color: #007572;")
         tot_layout.addWidget(lbl_tot_tag)
         tot_layout.addStretch()
         self.lbl_total = QLabel("0.00 DA")
-        self.lbl_total.setStyleSheet("font-size: 15px; font-weight: 800; color: #0E7471;")
+        self.lbl_total.setStyleSheet("font-size: 16px; font-weight: 800; color: #007572;")
         tot_layout.addWidget(self.lbl_total)
         layout.addWidget(total_box)
 
@@ -741,25 +783,82 @@ class OrderDeskWidget(QWidget):
         layout.addLayout(sec_row)
         return panel
 
+    def _open_quick_client_dialog(self) -> None:
+        dlg = QuickClientDialog(data_manager=self.data_manager, parent=self)
+        if dlg.exec() == QDialog.Accepted and dlg.created_client:
+            new_c = dlg.created_client
+            if not new_c.get("Client_ID"):
+                new_c["Client_ID"] = max([c["Client_ID"] for c in getattr(self, "_clients_cache", [])], default=1) + 1
+
+            if not hasattr(self, "_clients_cache"):
+                self._clients_cache = []
+            self._clients_cache.append(new_c)
+
+            self._load_clients_into_combo(selected_id=new_c["Client_ID"])
+
+            # Set as active session's client
+            if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
+                self._sessions[self._active_session_id]["client_id"] = new_c["Client_ID"]
+
+            # Auto-fill delivery address if provided and currently empty
+            if new_c.get("Address") and hasattr(self, "txt_delivery_addr") and not self.txt_delivery_addr.text().strip():
+                self.txt_delivery_addr.setText(new_c["Address"])
+
+            self.lbl_scanner_status.setText(f"Client '{new_c['Client_Name']}' créé et sélectionné")
+
     def _on_client_changed(self, idx: int) -> None:
         if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
             cid = self.cbo_client.currentData()
             if cid is not None:
                 self._sessions[self._active_session_id]["client_id"] = int(cid)
+                for c in getattr(self, "_clients_cache", []):
+                    if c.get("Client_ID") == int(cid) and c.get("Address") and hasattr(self, "txt_delivery_addr"):
+                        if not self.txt_delivery_addr.text().strip():
+                            self.txt_delivery_addr.setText(c["Address"])
+                        break
 
-    def _load_clients_into_combo(self) -> None:
+    def _load_clients_into_combo(self, selected_id: Optional[int] = None) -> None:
+        self.cbo_client.blockSignals(True)
         self.cbo_client.clear()
-        self.cbo_client.addItem("Client Comptoir (Standard)", 1)
-        if self.data_manager and hasattr(self.data_manager, "clients"):
-            try:
-                clients = self.data_manager.clients.get_all_clients() or []
-                for c in clients:
-                    cid = c.get("Client_ID")
-                    cname = c.get("Client_Name") or f"Client #{cid}"
-                    if cid:
-                        self.cbo_client.addItem(cname, int(cid))
-            except Exception:
-                pass
+
+        if not hasattr(self, "_clients_cache") or not self._clients_cache:
+            self._clients_cache = [
+                {"Client_ID": 1, "Client_Name": "Client Comptoir (Standard)", "Phone": "", "Address": ""}
+            ]
+            if self.data_manager and hasattr(self.data_manager, "clients"):
+                try:
+                    clients = self.data_manager.clients.get_all_clients() or []
+                    for c in clients:
+                        cid = c.get("Client_ID")
+                        cname = str(c.get("Client_Name") or f"Client #{cid}").strip()
+                        cphone = str(c.get("Phone") or "").strip()
+                        caddr = str(c.get("Address") or "").strip()
+                        if cid and int(cid) != 1:
+                            self._clients_cache.append({
+                                "Client_ID": int(cid),
+                                "Client_Name": cname,
+                                "Phone": cphone,
+                                "Address": caddr,
+                            })
+                except Exception as err:
+                    logger.debug(f"Error loading clients: {err}")
+
+        select_idx = 0
+        for idx, c in enumerate(self._clients_cache):
+            display = c["Client_Name"]
+            if c.get("Phone"):
+                display += f"  —  📞 {c['Phone']}"
+            self.cbo_client.addItem(display, c["Client_ID"])
+            if selected_id is not None and c["Client_ID"] == selected_id:
+                select_idx = idx
+
+        completer = QCompleter(self.cbo_client.model(), self.cbo_client)
+        completer.setFilterMode(Qt.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.cbo_client.setCompleter(completer)
+
+        self.cbo_client.setCurrentIndex(select_idx)
+        self.cbo_client.blockSignals(False)
 
     def _reset_filters(self) -> None:
         self.cbo_mark.setCurrentIndex(0)
@@ -783,45 +882,70 @@ class OrderDeskWidget(QWidget):
                 category_name=cat_txt,
                 color_finish=col_txt,
             )
+            self._catalog_cache = items
+        else:
+            # Fallback showcase catalog in-memory filtering (offline / test mode)
+            if not self._catalog_cache:
+                self._catalog_cache = [
+                    {
+                        "Product_ID": 101,
+                        "Brand_Mark": "Bosch",
+                        "Product_Name": "KGN39VLEB Combi NoFrost 368L",
+                        "Category_Name": "Réfrigérateurs",
+                        "Color_Finish": "Inox",
+                        "Physical_Qty": 8,
+                        "Available_Theoretical_Qty": 7,
+                        "Unit_Price_TTC": 115000.0,
+                        "Barcode": "4242005198030",
+                    },
+                    {
+                        "Product_ID": 102,
+                        "Brand_Mark": "LG",
+                        "Product_Name": "F4J6TY0W DirectDrive 9kg",
+                        "Category_Name": "Lave-linge",
+                        "Color_Finish": "Blanc",
+                        "Physical_Qty": 12,
+                        "Available_Theoretical_Qty": 12,
+                        "Unit_Price_TTC": 88000.0,
+                        "Barcode": "8806098321092",
+                    },
+                    {
+                        "Product_ID": 103,
+                        "Brand_Mark": "Midea",
+                        "Product_Name": "Inverter 12000 BTU Split",
+                        "Category_Name": "Climatisation",
+                        "Color_Finish": "Blanc",
+                        "Physical_Qty": 5,
+                        "Available_Theoretical_Qty": 4,
+                        "Unit_Price_TTC": 64000.0,
+                        "Barcode": "6939962711029",
+                    },
+                ]
 
-        if not items and not (self.data_manager and hasattr(self.data_manager, "serials")):
-            items = [
-                {
-                    "Product_ID": 101,
-                    "Brand_Mark": "Bosch",
-                    "Product_Name": "KGN39VLEB Combi NoFrost 368L",
-                    "Category_Name": "Réfrigérateurs",
-                    "Color_Finish": "Inox",
-                    "Physical_Qty": 8,
-                    "Available_Theoretical_Qty": 7,
-                    "Unit_Price_TTC": 115000.0,
-                    "Barcode": "4242005198030",
-                },
-                {
-                    "Product_ID": 102,
-                    "Brand_Mark": "LG",
-                    "Product_Name": "F4J6TY0W DirectDrive 9kg",
-                    "Category_Name": "Lave-linge",
-                    "Color_Finish": "Blanc",
-                    "Physical_Qty": 12,
-                    "Available_Theoretical_Qty": 12,
-                    "Unit_Price_TTC": 88000.0,
-                    "Barcode": "8806098321092",
-                },
-                {
-                    "Product_ID": 103,
-                    "Brand_Mark": "Midea",
-                    "Product_Name": "Inverter 12000 BTU Split",
-                    "Category_Name": "Climatisation",
-                    "Color_Finish": "Blanc",
-                    "Physical_Qty": 5,
-                    "Available_Theoretical_Qty": 4,
-                    "Unit_Price_TTC": 64000.0,
-                    "Barcode": "6939962711029",
-                },
-            ]
+            s_low = search_txt.lower()
+            m_low = mark_txt.lower()
+            c_low = cat_txt.lower()
+            col_low = col_txt.lower()
 
-        self._catalog_cache = items
+            for it in self._catalog_cache:
+                if s_low:
+                    name_match = s_low in str(it.get("Product_Name", "")).lower()
+                    mark_match = s_low in str(it.get("Brand_Mark", "")).lower()
+                    cat_match = s_low in str(it.get("Category_Name", "")).lower()
+                    bar_match = s_low in str(it.get("Barcode", "")).lower()
+                    if not (name_match or mark_match or cat_match or bar_match):
+                        continue
+                if m_low and m_low not in ("tous", "all"):
+                    if m_low != str(it.get("Brand_Mark", "")).lower():
+                        continue
+                if c_low and c_low not in ("tous", "all"):
+                    if c_low != str(it.get("Category_Name", "")).lower():
+                        continue
+                if col_low and col_low not in ("tous", "all"):
+                    if col_low != str(it.get("Color_Finish", "")).lower():
+                        continue
+                items.append(it)
+
         self.table.setRowCount(0)
         for prod in items:
             row = self.table.rowCount()
@@ -856,33 +980,63 @@ class OrderDeskWidget(QWidget):
             it_avail.setToolTip(f"Quantité disponible : {avail}")
             self.table.setItem(row, 5, it_avail)
 
-            btn = QPushButton(f"+ {format_money(price)}")
+            btn = QPushButton()
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(26)
-            btn.setEnabled(avail > 0)
-            btn.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #0E7471;
-                    color: #FFFFFF;
-                    font-weight: 700;
-                    font-size: 11px;
-                    min-height: 0px;
-                    max-height: 26px;
-                    padding: 2px 8px;
-                    border-radius: 4px;
-                    border: none;
-                }
-                QPushButton:hover { background-color: #0A5C59; }
-                QPushButton:disabled { background-color: #E2E8F0; color: #94A3B8; }
-                """
-            )
-            btn.clicked.connect(lambda checked=False, p=prod: self._add_product_to_session(self._active_session_id, p))
+            btn.setFixedHeight(28)
+
+            if avail > 0:
+                btn.setText(f"+ Ajouter • {format_money(price)} DA")
+                btn.setIcon(get_duotone_icon("pos", 13))
+                btn.setIconSize(QSize(13, 13))
+                btn.setEnabled(True)
+                btn.setToolTip(f"Ajouter '{name}' au panier ({self._sessions[self._active_session_id]['label']})")
+                btn.setStyleSheet(
+                    """
+                    QPushButton {
+                        background-color: #007572;
+                        color: #FFFFFF;
+                        font-weight: 700;
+                        font-size: 11px;
+                        min-height: 28px;
+                        max-height: 28px;
+                        padding: 3px 8px;
+                        border-radius: 4px;
+                        border: 1px solid #005A57;
+                    }
+                    QPushButton:hover {
+                        background-color: #005A57;
+                        border-color: #003D3A;
+                    }
+                    QPushButton:pressed {
+                        background-color: #003D3A;
+                    }
+                    """
+                )
+                btn.clicked.connect(lambda checked=False, p=prod: self._add_product_to_session(self._active_session_id, p))
+            else:
+                btn.setText("🚫 Épuisé")
+                btn.setEnabled(False)
+                btn.setToolTip("Rupture de stock théorique")
+                btn.setStyleSheet(
+                    """
+                    QPushButton {
+                        background-color: #F8FAFC;
+                        color: #94A3B8;
+                        font-weight: 600;
+                        font-size: 11px;
+                        min-height: 28px;
+                        max-height: 28px;
+                        padding: 3px 8px;
+                        border-radius: 4px;
+                        border: 1px solid #E2E8F0;
+                    }
+                    """
+                )
 
             cell_widget = QWidget()
             cell_widget.setStyleSheet("background: transparent;")
             cell_layout = QHBoxLayout(cell_widget)
-            cell_layout.setContentsMargins(6, 4, 6, 4)
+            cell_layout.setContentsMargins(4, 3, 4, 3)
             cell_layout.addWidget(btn)
             self.table.setCellWidget(row, 6, cell_widget)
 
@@ -1219,6 +1373,11 @@ class OrderDeskWidget(QWidget):
     def _update_line_qty(self, index: int, new_qty: int) -> None:
         cart = self._sessions[self._active_session_id]["cart"]
         if 0 <= index < len(cart):
+            if new_qty <= 0:
+                del cart[index]
+                self._refresh_cart_ui()
+                self._update_tab_label(self._active_session_id)
+                return
             cart[index]["quantity"] = int(new_qty)
             line_tot = cart[index]["unit_price_ttc"] * cart[index]["quantity"]
             it_tot = self.cart_table.item(index, 3)

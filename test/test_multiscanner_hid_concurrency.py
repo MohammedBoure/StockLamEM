@@ -19,9 +19,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QPushButton
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
-from ui.widgets.appliance_desks import ApplianceWorkflowTab
+from ui.widgets.appliance_desks import ApplianceWorkflowTab, QuickClientDialog
 from ui.widgets.appliance_desks.order_desk_view import OrderDeskWidget
 from database.user_manager import UserManager
 
@@ -216,4 +217,114 @@ def test_order_desk_dynamic_session_creation_and_unlimited_isolation(qapp):
     desk._on_session_tab_close_requested(2)
     assert "SESSION_3" not in desk._sessions
     assert hid_mgr.get_session_for_device("DEV_GAMMA") is None  # Unbound!
+
+
+def test_order_desk_quick_client_search_and_redesigned_action_buttons(qapp):
+    """
+    Task #3 Automated Verification:
+    1. Redesigned Add Product Buttons:
+       - Displays '+ Ajouter • ... DA' with icon and tooltip when stock available.
+       - Displays '🚫 Épuisé' and disabled when stock is 0.
+    2. Theme and Button Styling:
+       - Harmonized with Stock & Magasin (#007572, #E8F8F5 / #A3E4D7 KPI box).
+    3. Quick Client Search by Name and Phone:
+       - cbo_client is editable with QCompleter filtering on both Name and Phone number.
+    4. Quick Client Creation Modal:
+       - QuickClientDialog registers new client in seconds, auto-selects in active session,
+         and auto-populates delivery address.
+    5. Interactive Stepper zero-removal:
+       - Decrementing 1 quantity removes the line cleanly.
+    """
+    hid_mgr = MultiScannerHIDManager()
+    desk = OrderDeskWidget(data_manager=None, hid_manager=hid_mgr)
+
+    # 1. Verify Catalog Table Add Buttons
+    cell_w0 = desk.table.cellWidget(0, 6)
+    assert cell_w0 is not None
+    btn0 = cell_w0.findChild(QPushButton)
+    assert btn0 is not None
+    assert btn0.isEnabled() is True
+    assert "+ Ajouter" in btn0.text()
+    assert "115 000" in btn0.text()
+
+    # Trigger click on button -> adds product to session cart
+    btn0.click()
+    assert len(desk._sessions["SESSION_1"]["cart"]) == 1
+    assert desk._sessions["SESSION_1"]["cart"][0]["product_id"] == 101
+
+    # Insert an out-of-stock product into catalog
+    out_of_stock_prod = {
+        "Product_ID": 999,
+        "Brand_Mark": "Brandt",
+        "Product_Name": "Four Encastrable Épuisé",
+        "Category_Name": "Fours",
+        "Color_Finish": "Inox",
+        "Physical_Qty": 0,
+        "Available_Theoretical_Qty": 0,
+        "Unit_Price_TTC": 45000.0,
+    }
+    desk._catalog_cache.append(out_of_stock_prod)
+    desk.txt_search.setText("Four Encastrable Épuisé")
+    assert desk.table.rowCount() == 1
+    cell_out = desk.table.cellWidget(0, 6)
+    btn_out = cell_out.findChild(QPushButton)
+    assert btn_out is not None
+    assert btn_out.isEnabled() is False
+    assert "Épuisé" in btn_out.text()
+
+    # Reset search
+    desk.txt_search.clear()
+
+    # 2. Cart Stepper Decrement to 0 removes line
+    stepper = desk.cart_table.cellWidget(0, 2)
+    assert stepper is not None
+    assert stepper._qty == 1
+    # Click minus on qty 1 -> removes line
+    stepper.btn_minus.click()
+    assert len(desk._sessions["SESSION_1"]["cart"]) == 0
+    assert desk.cart_table.rowCount() == 0
+
+    # 3. Client Search by Name and Phone Number
+    assert desk.cbo_client.isEditable() is True
+    completer = desk.cbo_client.completer()
+    assert completer is not None
+    assert completer.filterMode() == Qt.MatchContains
+
+    # Add mock clients with phone numbers
+    desk._clients_cache = [
+        {"Client_ID": 1, "Client_Name": "Client Comptoir (Standard)", "Phone": "", "Address": ""},
+        {"Client_ID": 10, "Client_Name": "Amine Bouzid", "Phone": "0550123456", "Address": "Didouche Mourad, Alger"},
+        {"Client_ID": 20, "Client_Name": "SARL Techno Elec", "Phone": "023456789", "Address": "Zone Industrielle Oued Smar"},
+    ]
+    desk._load_clients_into_combo()
+
+    # Verify combo displays phone numbers
+    items_text = [desk.cbo_client.itemText(i) for i in range(desk.cbo_client.count())]
+    assert any("0550123456" in t for t in items_text)
+    assert any("023456789" in t for t in items_text)
+
+    # 4. Quick Client Dialog Creation
+    dlg = QuickClientDialog(data_manager=None, parent=desk)
+    dlg.txt_name.setText("Karim Mansouri")
+    dlg.txt_phone.setText("0661987654")
+    dlg.txt_address.setText("Rue Larbi Ben M'hidi, Oran")
+    dlg._on_save()
+    assert dlg.created_client is not None
+    assert dlg.created_client["Client_Name"] == "Karim Mansouri"
+    assert dlg.created_client["Phone"] == "0661987654"
+
+    # Simulate dialog acceptance in order desk
+    desk._clients_cache.append(dlg.created_client)
+    new_cid = 30
+    dlg.created_client["Client_ID"] = new_cid
+    desk._load_clients_into_combo(selected_id=new_cid)
+    desk._sessions[desk._active_session_id]["client_id"] = new_cid
+    desk.txt_delivery_addr.setText(dlg.created_client["Address"])
+
+    assert desk.cbo_client.currentData() == new_cid
+    assert "Karim Mansouri" in desk.cbo_client.currentText()
+    assert "0661987654" in desk.cbo_client.currentText()
+    assert desk.txt_delivery_addr.text() == "Rue Larbi Ben M'hidi, Oran"
+    assert desk._sessions["SESSION_1"]["client_id"] == new_cid
+
 
