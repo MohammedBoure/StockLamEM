@@ -44,6 +44,11 @@ from ui.formatting import format_money
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
 from ui.icons import get_duotone_icon, get_trash_icon
 
+try:
+    import qtawesome as qta
+except ImportError:
+    qta = None
+
 
 COLOR_PALETTE = {
     "inox": "#8A9EA7",
@@ -128,21 +133,21 @@ class ColorBadgeWidget(QWidget):
 TABLE_STYLE = """
     QTableWidget {
         background-color: #FFFFFF;
-        border: 1px solid #DCDFE6;
-        border-radius: 6px;
+        border: none;
+        border-radius: 4px;
         gridline-color: #F1F5F9;
         selection-background-color: #E6F4F1;
         selection-color: #007572;
-        alternate-background-color: #FAFBFC;
+        alternate-background-color: #F8FAFC;
         font-size: 12px;
-        color: #2C3E50;
+        color: #1E293B;
     }
     QHeaderView::section {
         background-color: #F8FAFC;
-        color: #2C3E50;
+        color: #334155;
         font-weight: 700;
         font-size: 12px;
-        padding: 6px 6px;
+        padding: 8px 6px;
         border: none;
         border-bottom: 2px solid #007572;
         border-right: 1px solid #E2E8F0;
@@ -332,6 +337,10 @@ class OrderDeskWidget(QWidget):
         }
         self._active_session_id = "SESSION_1"
         self._catalog_cache: List[Dict[str, Any]] = []
+        self._catalog_filtered_items: List[Dict[str, Any]] = []
+        self._catalog_loaded_count: int = 0
+        self._catalog_chunk_size: int = 35
+        self._is_loading_chunk: bool = False
 
         # Connect global listener to automatically route all hardware scanner inputs
         self.scanDispatched.connect(self._process_scanned_barcode)
@@ -406,53 +415,46 @@ class OrderDeskWidget(QWidget):
         root_layout.addWidget(self.scroll_area)
 
     def _create_session_tabs_bar(self) -> QWidget:
-        session_bar = QFrame()
+        session_bar = QWidget()
         session_bar.setObjectName("SessionTabsBar")
-        session_bar.setFixedHeight(48)
+        session_bar.setFixedHeight(44)
         session_bar.setStyleSheet("""
-            QFrame#SessionTabsBar {
-                background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
+            QWidget#SessionTabsBar {
+                background: transparent;
+                border: none;
             }
             QTabBar#SessionTabBar {
-                border-bottom: none;
+                border-bottom: 2px solid #CBD5E1;
             }
             QTabBar#SessionTabBar::tab {
-                background-color: #F1F5F9;
+                background-color: #E2E8F0;
                 color: #475569;
                 font-weight: 700;
                 font-size: 12px;
-                padding: 6px 14px;
+                padding: 7px 18px;
                 margin-right: 4px;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
                 border: 1px solid #CBD5E1;
+                border-bottom: none;
                 min-height: 24px;
             }
             QTabBar#SessionTabBar::tab:selected {
-                background-color: #0E7471;
+                background-color: #007572;
                 color: #FFFFFF;
-                border-color: #0E7471;
+                border: 1px solid #007572;
+                border-bottom: 2px solid #007572;
             }
             QTabBar#SessionTabBar::tab:hover:!selected {
-                background-color: #E2E8F0;
+                background-color: #CBD5E1;
                 color: #0F172A;
-            }
-            QLabel {
-                border: none;
-                background: transparent;
             }
         """)
         sb_layout = QHBoxLayout(session_bar)
-        sb_layout.setContentsMargins(10, 4, 12, 4)
+        sb_layout.setContentsMargins(0, 0, 0, 0)
         sb_layout.setSpacing(10)
 
-        lbl_scan_icon = QLabel()
-        lbl_scan_icon.setPixmap(get_duotone_icon("barcode_scan", 18).pixmap(18, 18))
-        sb_layout.addWidget(lbl_scan_icon)
-
-        # Specialized Session Tabs
+        # Specialized Connected Session Tabs
         self.session_tab_bar = QTabBar()
         self.session_tab_bar.setObjectName("SessionTabBar")
         self.session_tab_bar.setDrawBase(False)
@@ -468,23 +470,36 @@ class OrderDeskWidget(QWidget):
 
         # "+ Nouvelle Session" Button
         btn_new_sess = QPushButton("+ Nouvelle Session")
-        btn_new_sess.setIcon(get_duotone_icon("barcode_scan", 14))
-        btn_new_sess.setIconSize(QSize(14, 14))
+        if qta:
+            btn_new_sess.setIcon(qta.icon("fa5s.plus", color="#007572"))
+            btn_new_sess.setIconSize(QSize(11, 11))
         btn_new_sess.setCursor(Qt.PointingHandCursor)
-        btn_new_sess.setFixedHeight(32)
-        btn_new_sess.setStyleSheet(PRIMARY_BTN_STYLE)
+        btn_new_sess.setFixedHeight(30)
+        btn_new_sess.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #007572;
+                font-weight: 700;
+                font-size: 11px;
+                border: 1.5px dashed #007572;
+                border-radius: 5px;
+                padding: 0 12px;
+            }
+            QPushButton:hover {
+                background-color: #E6F4F1;
+            }
+            QPushButton:pressed {
+                background-color: #CCEBE5;
+            }
+        """)
         btn_new_sess.clicked.connect(self._create_new_session)
         sb_layout.addWidget(btn_new_sess)
 
         sb_layout.addStretch()
 
-        # Scanner isolation badge
-        self.lbl_scanner_status = QLabel("Isolation HID Active")
-        self.lbl_scanner_status.setToolTip("Chaque scanner USB / HID est routé vers sa propre session")
-        self.lbl_scanner_status.setStyleSheet(
-            "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #E6F4F1; "
-            "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 8px;"
-        )
+        # Invisible label placeholder to retain programmatic compatibility without displaying unwanted text
+        self.lbl_scanner_status = QLabel("")
+        self.lbl_scanner_status.setVisible(False)
         sb_layout.addWidget(self.lbl_scanner_status)
 
         return session_bar
@@ -492,11 +507,11 @@ class OrderDeskWidget(QWidget):
     def _create_top_filter_bar(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("OrderTopFilterBar")
-        panel.setFixedHeight(50)
+        panel.setFixedHeight(48)
         panel.setStyleSheet("""
             QFrame#OrderTopFilterBar {
                 background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
+                border: 1px solid #E2E8F0;
                 border-radius: 6px;
             }
             QLabel {
@@ -504,38 +519,42 @@ class OrderDeskWidget(QWidget):
                 background: transparent;
             }
             QComboBox {
-                background-color: #FFFFFF;
+                background-color: #F8FAFC;
                 border: 1px solid #CBD5E1;
                 border-radius: 5px;
-                padding: 3px 8px;
+                padding: 2px 8px;
                 font-size: 12px;
                 color: #1E293B;
             }
             QComboBox:hover {
-                border-color: #0E7471;
+                border-color: #007572;
             }
             QLineEdit {
-                background-color: #FFFFFF;
+                background-color: #F8FAFC;
                 border: 1px solid #CBD5E1;
                 border-radius: 5px;
-                padding: 3px 10px;
+                padding: 2px 10px;
                 font-size: 12px;
                 color: #1E293B;
             }
             QLineEdit:focus {
-                border: 1.5px solid #0E7471;
+                border: 1.5px solid #007572;
+                background-color: #FFFFFF;
             }
         """)
         layout = QHBoxLayout(panel)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(10)
+        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setSpacing(8)
 
         f_icon = QLabel()
-        f_icon.setPixmap(get_duotone_icon("filter", 16).pixmap(16, 16))
+        if qta:
+            f_icon.setPixmap(qta.icon("fa5s.filter", color="#007572").pixmap(14, 14))
+        else:
+            f_icon.setPixmap(get_duotone_icon("filter", 14).pixmap(14, 14))
         layout.addWidget(f_icon)
 
         title = QLabel("FILTRES :")
-        title.setStyleSheet("font-size: 11px; font-weight: 800; color: #0E7471; letter-spacing: 0.5px;")
+        title.setStyleSheet("font-size: 11px; font-weight: 800; color: #007572; letter-spacing: 0.5px;")
         layout.addWidget(title)
 
         def make_lbl(txt: str) -> QLabel:
@@ -545,7 +564,7 @@ class OrderDeskWidget(QWidget):
 
         layout.addWidget(make_lbl("Marque :"))
         self.cbo_mark = QComboBox()
-        self.cbo_mark.setFixedHeight(34)
+        self.cbo_mark.setFixedHeight(32)
         self.cbo_mark.setFixedWidth(115)
         self.cbo_mark.addItems(["Tous", "Bosch", "Samsung", "LG", "Brandt", "Condor", "Cristor", "Midea", "Moulinex"])
         self.cbo_mark.currentTextChanged.connect(self.refresh_catalog)
@@ -553,7 +572,7 @@ class OrderDeskWidget(QWidget):
 
         layout.addWidget(make_lbl("Catégorie :"))
         self.cbo_category = QComboBox()
-        self.cbo_category.setFixedHeight(34)
+        self.cbo_category.setFixedHeight(32)
         self.cbo_category.setFixedWidth(155)
         self.cbo_category.addItems([
             "Tous",
@@ -570,14 +589,14 @@ class OrderDeskWidget(QWidget):
 
         layout.addWidget(make_lbl("Couleur :"))
         self.cbo_color = QComboBox()
-        self.cbo_color.setFixedHeight(34)
+        self.cbo_color.setFixedHeight(32)
         self.cbo_color.setFixedWidth(95)
         self.cbo_color.addItems(["Tous", "Inox", "Blanc", "Noir", "Silver", "Gris"])
         self.cbo_color.currentTextChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_color)
 
         self.txt_search = QLineEdit()
-        self.txt_search.setFixedHeight(34)
+        self.txt_search.setFixedHeight(32)
         self.txt_search.setMinimumWidth(170)
         self.txt_search.setPlaceholderText("Rechercher désignation, marque, catégorie, code-barres...")
         self.txt_search.textChanged.connect(self.refresh_catalog)
@@ -588,7 +607,7 @@ class OrderDeskWidget(QWidget):
         btn_reset.setIcon(get_duotone_icon("refresh", 13))
         btn_reset.setIconSize(QSize(13, 13))
         btn_reset.setCursor(Qt.PointingHandCursor)
-        btn_reset.setFixedHeight(34)
+        btn_reset.setFixedHeight(32)
         btn_reset.setFixedWidth(105)
         btn_reset.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         btn_reset.clicked.connect(self._reset_filters)
@@ -598,22 +617,11 @@ class OrderDeskWidget(QWidget):
         btn_refresh.setIcon(get_duotone_icon("refresh", 13))
         btn_refresh.setIconSize(QSize(13, 13))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(34)
+        btn_refresh.setFixedHeight(32)
         btn_refresh.setFixedWidth(95)
         btn_refresh.setStyleSheet(OUTLINE_BTN_STYLE)
         btn_refresh.clicked.connect(self.refresh_catalog)
         layout.addWidget(btn_refresh)
-
-        lbl_info = QLabel("Vente Théorique")
-        lbl_info.setToolTip(
-            "Ce bureau réserve uniquement le modèle et la quantité théorique sans bloquer de N° de Série physique.\n"
-            "Le scan du N° de Série s'effectue exclusivement au Bureau de Sortie."
-        )
-        lbl_info.setStyleSheet(
-            "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #F8FAFC; "
-            "border: 1px solid #CBD5E1; border-left: 3px solid #0E7471; border-radius: 4px; padding: 4px 8px;"
-        )
-        layout.addWidget(lbl_info)
 
         return panel
 
@@ -623,7 +631,7 @@ class OrderDeskWidget(QWidget):
         panel.setStyleSheet("""
             QFrame#OrderCatalogPanel {
                 background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
+                border: 1px solid #E2E8F0;
                 border-radius: 6px;
             }
             QLabel {
@@ -632,17 +640,20 @@ class OrderDeskWidget(QWidget):
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         cat_header = QHBoxLayout()
         cat_header.setSpacing(8)
         cat_icon = QLabel()
-        cat_icon.setPixmap(get_duotone_icon("pos", 16).pixmap(16, 16))
+        if qta:
+            cat_icon.setPixmap(qta.icon("fa5s.th-list", color="#007572").pixmap(15, 15))
+        else:
+            cat_icon.setPixmap(get_duotone_icon("pos", 16).pixmap(16, 16))
         cat_header.addWidget(cat_icon)
-        lbl_cat_title = QLabel("Catalogue des Produits Disponibles")
-        lbl_cat_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
-        cat_header.addWidget(lbl_cat_title)
+        self.lbl_cat_title = QLabel("Catalogue des Produits Disponibles")
+        self.lbl_cat_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        cat_header.addWidget(self.lbl_cat_title)
         cat_header.addStretch()
         layout.addLayout(cat_header)
 
@@ -658,9 +669,9 @@ class OrderDeskWidget(QWidget):
         ])
         self.table.setStyleSheet(TABLE_STYLE)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(46)
+        self.table.verticalHeader().setDefaultSectionSize(48)
         self.table.horizontalHeader().setFixedHeight(38)
-        self.table.horizontalHeader().setMinimumSectionSize(52)
+        self.table.horizontalHeader().setMinimumSectionSize(45)
         self.table.setShowGrid(True)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -680,18 +691,21 @@ class OrderDeskWidget(QWidget):
 
         h = self.table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 85)
+        self.table.setColumnWidth(0, 80)
         h.setSectionResizeMode(1, QHeaderView.Stretch)
         h.setSectionResizeMode(2, QHeaderView.Interactive)
-        self.table.setColumnWidth(2, 165)
+        self.table.setColumnWidth(2, 160)
         h.setSectionResizeMode(3, QHeaderView.Interactive)
-        self.table.setColumnWidth(3, 115)
+        self.table.setColumnWidth(3, 105)
         h.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 52)
+        self.table.setColumnWidth(4, 48)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 52)
+        self.table.setColumnWidth(5, 50)
         h.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 185)
+        self.table.setColumnWidth(6, 195)
+
+        # Connect scroll listener for professional lazy loading
+        self.table.verticalScrollBar().valueChanged.connect(self._on_catalog_scroll)
 
         layout.addWidget(self.table, 1)
         return panel
@@ -703,7 +717,7 @@ class OrderDeskWidget(QWidget):
         panel.setStyleSheet("""
             QFrame#OrderCartPanel {
                 background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
+                border: 1px solid #E2E8F0;
                 border-radius: 6px;
             }
             QLabel {
@@ -1021,7 +1035,7 @@ class OrderDeskWidget(QWidget):
         self.refresh_catalog()
 
     def refresh_catalog(self) -> None:
-        """Loads catalog items from database (or fallback showcase rows) with theoretical availability."""
+        """Loads catalog items from database (or fallback showcase rows) with theoretical availability and resets lazy loading."""
         search_txt = self.txt_search.text().strip() if hasattr(self, "txt_search") else ""
         mark_txt = self.cbo_mark.currentText() if hasattr(self, "cbo_mark") else "Tous"
         cat_txt = self.cbo_category.currentText() if hasattr(self, "cbo_category") else "Tous"
@@ -1099,105 +1113,158 @@ class OrderDeskWidget(QWidget):
                         continue
                 items.append(it)
 
+        self._catalog_filtered_items = items
+        self._catalog_loaded_count = 0
         self.table.setRowCount(0)
-        for prod in items:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
-            mark = str(prod.get("Brand_Mark") or "Générique")
-            name = str(prod.get("Product_Name") or "")
-            cat = str(prod.get("Category_Name") or "Électroménager")
-            color = str(prod.get("Color_Finish") or "Standard")
-            phys = int(prod.get("Physical_Qty") or 0)
-            avail = int(prod.get("Available_Theoretical_Qty") or 0)
-            price = float(prod.get("Unit_Price_TTC") or 0.0)
+        self._load_next_catalog_chunk()
 
-            it_mark = QTableWidgetItem(mark)
-            it_mark.setFont(QFont("Segoe UI", 10, QFont.Bold))
-            self.table.setItem(row, 0, it_mark)
+    def _load_next_catalog_chunk(self) -> None:
+        """Appends the next chunk of catalog rows into the table (lazy loading)."""
+        if getattr(self, "_is_loading_chunk", False):
+            return
+        if not hasattr(self, "_catalog_filtered_items"):
+            return
 
-            self.table.setItem(row, 1, QTableWidgetItem(name))
+        total = len(self._catalog_filtered_items)
+        if self._catalog_loaded_count >= total and total > 0:
+            return
 
-            it_cat = QTableWidgetItem(cat)
-            it_cat.setToolTip(f"Catégorie : {cat}")
-            self.table.setItem(row, 2, it_cat)
+        self._is_loading_chunk = True
+        try:
+            chunk_size = getattr(self, "_catalog_chunk_size", 35)
+            start_idx = self._catalog_loaded_count
+            end_idx = min(start_idx + chunk_size, total)
 
-            it_col = QTableWidgetItem(color)
-            it_col.setTextAlignment(Qt.AlignCenter)
-            it_col.setToolTip(f"Couleur / Finition : {color}\nCode Hex : {get_color_hex(color)}")
-            self.table.setItem(row, 3, it_col)
-            self.table.setCellWidget(row, 3, ColorBadgeWidget(color))
+            self.table.setUpdatesEnabled(False)
+            for i in range(start_idx, end_idx):
+                prod = self._catalog_filtered_items[i]
+                self._append_catalog_row(prod)
+            self.table.setUpdatesEnabled(True)
 
-            it_phys = QTableWidgetItem(str(phys))
-            it_phys.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row, 4, it_phys)
+            self._catalog_loaded_count = end_idx
 
-            it_avail = QTableWidgetItem(str(avail))
-            it_avail.setTextAlignment(Qt.AlignCenter)
-            it_avail.setForeground(QColor("#16A34A" if avail > 0 else "#94A3B8"))
-            it_avail.setFont(QFont("Segoe UI", 10, QFont.Bold))
-            it_avail.setToolTip(f"Quantité disponible : {avail}")
-            self.table.setItem(row, 5, it_avail)
+            if hasattr(self, "lbl_cat_title"):
+                if total > 0:
+                    self.lbl_cat_title.setText(
+                        f"Catalogue des Produits Disponibles ({self._catalog_loaded_count} / {total})"
+                    )
+                else:
+                    self.lbl_cat_title.setText("Catalogue des Produits Disponibles (0)")
+        finally:
+            self._is_loading_chunk = False
 
-            btn = QPushButton()
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(30)
-            btn.setMinimumHeight(30)
-            btn.setMaximumHeight(30)
+    def _on_catalog_scroll(self, value: int) -> None:
+        """Detects scroll near bottom to load the next chunk of catalog rows."""
+        vbar = self.table.verticalScrollBar()
+        if vbar.maximum() > 0 and value >= vbar.maximum() - 4:
+            if hasattr(self, "_catalog_filtered_items") and self._catalog_loaded_count < len(self._catalog_filtered_items):
+                self._load_next_catalog_chunk()
 
-            if avail > 0:
-                btn.setText(f"+ Ajouter • {format_money(price)} DA")
-                btn.setIcon(get_duotone_icon("pos", 13))
-                btn.setIconSize(QSize(13, 13))
-                btn.setEnabled(True)
-                btn.setToolTip(f"Ajouter '{name}' au panier ({self._sessions[self._active_session_id]['label']})")
-                btn.setStyleSheet(
-                    """
-                    QPushButton {
-                        background-color: #007572;
-                        color: #FFFFFF;
-                        font-weight: 700;
-                        font-size: 11px;
-                        padding: 0 10px;
-                        border-radius: 5px;
-                        border: 1px solid #005A57;
-                    }
-                    QPushButton:hover {
-                        background-color: #005A57;
-                        border-color: #003D3A;
-                    }
-                    QPushButton:pressed {
-                        background-color: #003D3A;
-                    }
-                    """
-                )
-                btn.clicked.connect(lambda checked=False, p=prod: self._add_product_to_session(self._active_session_id, p))
+    def _append_catalog_row(self, prod: Dict[str, Any]) -> None:
+        """Renders an individual product row into the catalog table with high enterprise ergonomics."""
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        mark = str(prod.get("Brand_Mark") or "Générique")
+        name = str(prod.get("Product_Name") or "")
+        cat = str(prod.get("Category_Name") or "Électroménager")
+        color = str(prod.get("Color_Finish") or "Standard")
+        phys = int(prod.get("Physical_Qty") or 0)
+        avail = int(prod.get("Available_Theoretical_Qty") or 0)
+        price = float(prod.get("Unit_Price_TTC") or 0.0)
+
+        it_mark = QTableWidgetItem(mark)
+        it_mark.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.table.setItem(row, 0, it_mark)
+
+        it_name = QTableWidgetItem(name)
+        it_name.setToolTip(name)
+        self.table.setItem(row, 1, it_name)
+
+        it_cat = QTableWidgetItem(cat)
+        it_cat.setToolTip(f"Catégorie : {cat}")
+        self.table.setItem(row, 2, it_cat)
+
+        # Fix: do NOT set color text on QTableWidgetItem to prevent double overlapping text
+        it_col = QTableWidgetItem("")
+        it_col.setData(Qt.UserRole, color)
+        it_col.setTextAlignment(Qt.AlignCenter)
+        it_col.setToolTip(f"Couleur / Finition : {color}\nCode Hex : {get_color_hex(color)}")
+        self.table.setItem(row, 3, it_col)
+        self.table.setCellWidget(row, 3, ColorBadgeWidget(color))
+
+        it_phys = QTableWidgetItem(str(phys))
+        it_phys.setTextAlignment(Qt.AlignCenter)
+        self.table.setItem(row, 4, it_phys)
+
+        it_avail = QTableWidgetItem(str(avail))
+        it_avail.setTextAlignment(Qt.AlignCenter)
+        it_avail.setForeground(QColor("#16A34A" if avail > 0 else "#94A3B8"))
+        it_avail.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        it_avail.setToolTip(f"Quantité disponible : {avail}")
+        self.table.setItem(row, 5, it_avail)
+
+        btn = QPushButton()
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setFixedHeight(30)
+        btn.setMinimumHeight(30)
+        btn.setMaximumHeight(30)
+
+        if avail > 0:
+            btn.setText(f"+ Ajouter • {format_money(price)} DA")
+            if qta:
+                btn.setIcon(qta.icon("fa5s.cart-plus", color="#FFFFFF"))
             else:
-                btn.setText("Épuisé")
-                btn.setIcon(get_duotone_icon("package_box", 13))
-                btn.setIconSize(QSize(13, 13))
-                btn.setEnabled(False)
-                btn.setToolTip("Rupture de stock théorique")
-                btn.setStyleSheet(
-                    """
-                    QPushButton {
-                        background-color: #F8FAFC;
-                        color: #94A3B8;
-                        font-weight: 600;
-                        font-size: 11px;
-                        padding: 0 10px;
-                        border-radius: 5px;
-                        border: 1px solid #E2E8F0;
-                    }
-                    """
-                )
+                btn.setIcon(get_duotone_icon("payment_white", 13))
+            btn.setIconSize(QSize(13, 13))
+            btn.setEnabled(True)
+            btn.setToolTip(f"Ajouter '{name}' au panier ({self._sessions[self._active_session_id]['label']})")
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #007572;
+                    color: #FFFFFF;
+                    font-weight: 700;
+                    font-size: 11px;
+                    padding: 0 10px;
+                    border-radius: 5px;
+                    border: 1px solid #005A57;
+                }
+                QPushButton:hover {
+                    background-color: #005A57;
+                    border-color: #003D3A;
+                }
+                QPushButton:pressed {
+                    background-color: #003D3A;
+                }
+            """)
+            btn.clicked.connect(lambda checked=False, p=prod: self._add_product_to_session(self._active_session_id, p))
+        else:
+            btn.setText("Épuisé")
+            if qta:
+                btn.setIcon(qta.icon("fa5s.ban", color="#94A3B8"))
+            else:
+                btn.setIcon(get_duotone_icon("alert_warning", 13))
+            btn.setIconSize(QSize(13, 13))
+            btn.setEnabled(False)
+            btn.setToolTip("Rupture de stock théorique")
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #F8FAFC;
+                    color: #94A3B8;
+                    font-weight: 600;
+                    font-size: 11px;
+                    padding: 0 10px;
+                    border-radius: 5px;
+                    border: 1px solid #E2E8F0;
+                }
+            """)
 
-            cell_widget = QWidget()
-            cell_widget.setStyleSheet("background: transparent;")
-            cell_layout = QHBoxLayout(cell_widget)
-            cell_layout.setContentsMargins(6, 4, 6, 4)
-            cell_layout.setAlignment(Qt.AlignCenter)
-            cell_layout.addWidget(btn)
-            self.table.setCellWidget(row, 6, cell_widget)
+        cell_widget = QWidget()
+        cell_widget.setStyleSheet("background: transparent;")
+        cell_layout = QHBoxLayout(cell_widget)
+        cell_layout.setContentsMargins(4, 4, 4, 4)
+        cell_layout.setAlignment(Qt.AlignCenter)
+        cell_layout.addWidget(btn)
+        self.table.setCellWidget(row, 6, cell_widget)
 
     # =========================================================================
     # MULTI-SESSION & MULTI-SCANNER ROUTING (Tabs & HID Isolation)
@@ -1245,10 +1312,10 @@ class OrderDeskWidget(QWidget):
                 if saved_sizes and isinstance(saved_sizes, (list, tuple)) and len(saved_sizes) == 2:
                     self.splitter.setSizes([int(saved_sizes[0]), int(saved_sizes[1])])
                 else:
-                    self.splitter.setSizes([720, 360])
+                    self.splitter.setSizes([850, 380])
         except Exception as err:
             logger.debug(f"Could not restore splitter state: {err}")
-            self.splitter.setSizes([720, 360])
+            self.splitter.setSizes([850, 380])
 
     def _update_tab_close_buttons(self) -> None:
         """Attaches sleek, human-crafted close buttons to tabs when more than 1 session exists."""
@@ -1269,16 +1336,16 @@ class OrderDeskWidget(QWidget):
                 QPushButton {
                     border: none;
                     background-color: transparent;
-                    color: #64748B;
+                    color: #94A3B8;
                     font-size: 15px;
                     font-weight: bold;
                     line-height: 14px;
-                    border-radius: 9px;
+                    border-radius: 4px;
                     padding-bottom: 2px;
                 }
                 QPushButton:hover {
-                    background-color: #EF4444;
-                    color: #FFFFFF;
+                    background-color: #FEE2E2;
+                    color: #DC2626;
                 }
             """)
             btn.clicked.connect(lambda checked=False, target_sid=sid: self._close_session_by_id(target_sid))
@@ -1334,8 +1401,12 @@ class OrderDeskWidget(QWidget):
             scanner_tag = f" [{sdata['scanner_id']}]" if sdata.get("scanner_id") else ""
             cart_count = len(sdata.get("cart", []))
             count_tag = f" ({cart_count})" if cart_count > 0 else ""
+            if qta:
+                tab_icon = qta.icon("fa5s.cash-register", color="#007572")
+            else:
+                tab_icon = get_duotone_icon("pos", 14)
             tab_pos = self.session_tab_bar.addTab(
-                get_duotone_icon("barcode_scan", 14),
+                tab_icon,
                 f"{sdata['label']}{scanner_tag}{count_tag}",
             )
             self.session_tab_bar.setTabData(tab_pos, sid)

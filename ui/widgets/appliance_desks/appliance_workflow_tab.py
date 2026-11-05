@@ -205,7 +205,7 @@ class ApplianceWorkflowTab(QWidget):
         self.desk_tabs.addTab(
             self.batch_registry_desk,
             get_duotone_icon("edit_lots", 18),
-            "5. Traçabilité && Lots",
+            "5. Référentiel Lots && Séries",
         )
 
         layout.addWidget(self.desk_tabs, 1)
