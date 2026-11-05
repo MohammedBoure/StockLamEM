@@ -14,7 +14,7 @@ Provides:
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QSettings, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QComboBox,
@@ -26,10 +26,12 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSpinBox,
+    QSplitter,
     QTabBar,
     QTableWidget,
     QTableWidgetItem,
@@ -41,6 +43,87 @@ from .quick_client_dialog import QuickClientDialog
 from ui.formatting import format_money
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
 from ui.icons import get_duotone_icon, get_trash_icon
+
+
+COLOR_PALETTE = {
+    "inox": "#8A9EA7",
+    "acier": "#8A9EA7",
+    "blanc": "#FFFFFF",
+    "white": "#FFFFFF",
+    "noir": "#1E293B",
+    "black": "#1E293B",
+    "silver": "#CBD5E1",
+    "argent": "#CBD5E1",
+    "gris": "#64748B",
+    "grey": "#64748B",
+    "gray": "#64748B",
+    "gris anthracite": "#475569",
+    "anthracite": "#475569",
+    "beige": "#F5F5DC",
+    "crème": "#FDFBF7",
+    "creme": "#FDFBF7",
+    "rouge": "#DC2626",
+    "red": "#DC2626",
+    "marron": "#78350F",
+    "brown": "#78350F",
+    "bleu": "#2563EB",
+    "blue": "#2563EB",
+    "vert": "#16A34A",
+    "green": "#16A34A",
+    "doré": "#D97706",
+    "dore": "#D97706",
+    "gold": "#D97706",
+}
+
+
+def get_color_hex(color_name: str) -> str:
+    """Returns the hex color code for a color name, with fallback to neutral slate."""
+    if not color_name:
+        return "#94A3B8"
+    c_clean = str(color_name).strip()
+    if c_clean.startswith("#") and len(c_clean) in (4, 7):
+        return c_clean
+    return COLOR_PALETTE.get(c_clean.lower(), "#94A3B8")
+
+
+class ColorBadgeWidget(QWidget):
+    """
+    Renders the direct visual application of a color finish:
+    - Circular swatch preview with subtle border (prevents white on white blending)
+    - Clean color name text
+    - Rich interactive tooltip with color name, hex code, and application notice
+    """
+
+    def __init__(self, color_name: str, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.color_name = color_name or "Standard"
+        self.hex_code = get_color_hex(self.color_name)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 2, 6, 2)
+        layout.setSpacing(6)
+        layout.setAlignment(Qt.AlignCenter)
+
+        # Swatch dot
+        self.swatch = QFrame()
+        self.swatch.setFixedSize(13, 13)
+        border_col = "#94A3B8" if self.hex_code.upper() in ("#FFFFFF", "#FDFBF7", "#F5F5DC") else "rgba(0,0,0,0.25)"
+        self.swatch.setStyleSheet(
+            f"background-color: {self.hex_code}; border: 1px solid {border_col}; border-radius: 6px;"
+        )
+        layout.addWidget(self.swatch)
+
+        # Name label
+        self.lbl_text = QLabel(self.color_name)
+        self.lbl_text.setStyleSheet(
+            "font-size: 11px; font-weight: 600; color: #334155; background: transparent; border: none;"
+        )
+        layout.addWidget(self.lbl_text)
+
+        tt = f"Couleur / Finition : {self.color_name}\nCode Hex : {self.hex_code}\n(Aperçu visuel direct)"
+        self.setToolTip(tt)
+        self.swatch.setToolTip(tt)
+        self.lbl_text.setToolTip(tt)
 
 TABLE_STYLE = """
     QTableWidget {
@@ -294,12 +377,30 @@ class OrderDeskWidget(QWidget):
         filter_bar = self._create_top_filter_bar()
         content_layout.addWidget(filter_bar)
 
-        # 3. Main 2-Column Body: Catalog (Left) + Cart (Right)
-        body_layout = QHBoxLayout()
-        body_layout.setSpacing(10)
-        body_layout.addWidget(self._create_catalog_panel(), stretch=1)
-        body_layout.addWidget(self._create_cart_panel(), stretch=0)
-        content_layout.addLayout(body_layout, 1)
+        # 3. Main 2-Column Body: Catalog (Left) + Cart (Right) with Movable Splitter
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setObjectName("OrderDeskMainSplitter")
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.setStyleSheet("""
+            QSplitter#OrderDeskMainSplitter::handle {
+                background-color: #E2E8F0;
+                width: 6px;
+                margin: 4px 1px;
+                border-radius: 3px;
+            }
+            QSplitter#OrderDeskMainSplitter::handle:hover {
+                background-color: #007572;
+            }
+        """)
+        self.catalog_panel = self._create_catalog_panel()
+        self.cart_panel = self._create_cart_panel()
+        self.splitter.addWidget(self.catalog_panel)
+        self.splitter.addWidget(self.cart_panel)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 0)
+        self._restore_splitter_state()
+        self.splitter.splitterMoved.connect(self._save_splitter_state)
+        content_layout.addWidget(self.splitter, 1)
 
         self.scroll_area.setWidget(content_widget)
         root_layout.addWidget(self.scroll_area)
@@ -356,9 +457,10 @@ class OrderDeskWidget(QWidget):
         self.session_tab_bar.setObjectName("SessionTabBar")
         self.session_tab_bar.setDrawBase(False)
         self.session_tab_bar.setUsesScrollButtons(True)
-        self.session_tab_bar.setTabsClosable(True)
+        self.session_tab_bar.setTabsClosable(False)  # Managed via custom sleek close buttons
         self.session_tab_bar.setCursor(Qt.PointingHandCursor)
-        self.session_tab_bar.tabCloseRequested.connect(self._on_session_tab_close_requested)
+        self.session_tab_bar.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.session_tab_bar.customContextMenuRequested.connect(self._on_session_tab_context_menu)
         self.session_tab_bar.currentChanged.connect(self._on_session_tab_switched)
 
         self._sync_session_tabs()
@@ -373,16 +475,6 @@ class OrderDeskWidget(QWidget):
         btn_new_sess.setStyleSheet(PRIMARY_BTN_STYLE)
         btn_new_sess.clicked.connect(self._create_new_session)
         sb_layout.addWidget(btn_new_sess)
-
-        # "Associer Scanner USB" Button
-        btn_bind_scanner = QPushButton("Associer Scanner USB")
-        btn_bind_scanner.setIcon(get_duotone_icon("barcode_scan", 14))
-        btn_bind_scanner.setIconSize(QSize(14, 14))
-        btn_bind_scanner.setCursor(Qt.PointingHandCursor)
-        btn_bind_scanner.setFixedHeight(32)
-        btn_bind_scanner.setStyleSheet(OUTLINE_BTN_STYLE)
-        btn_bind_scanner.clicked.connect(self._prompt_scanner_binding)
-        sb_layout.addWidget(btn_bind_scanner)
 
         sb_layout.addStretch()
 
@@ -489,6 +581,7 @@ class OrderDeskWidget(QWidget):
         self.txt_search.setMinimumWidth(170)
         self.txt_search.setPlaceholderText("Rechercher désignation, marque, catégorie, code-barres...")
         self.txt_search.textChanged.connect(self.refresh_catalog)
+        self.txt_search.returnPressed.connect(self._on_search_return_pressed)
         layout.addWidget(self.txt_search, 1)
 
         btn_reset = QPushButton("Réinitialiser")
@@ -590,9 +683,9 @@ class OrderDeskWidget(QWidget):
         self.table.setColumnWidth(0, 85)
         h.setSectionResizeMode(1, QHeaderView.Stretch)
         h.setSectionResizeMode(2, QHeaderView.Interactive)
-        self.table.setColumnWidth(2, 110)
+        self.table.setColumnWidth(2, 165)
         h.setSectionResizeMode(3, QHeaderView.Interactive)
-        self.table.setColumnWidth(3, 75)
+        self.table.setColumnWidth(3, 115)
         h.setSectionResizeMode(4, QHeaderView.Fixed)
         self.table.setColumnWidth(4, 52)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
@@ -606,8 +699,7 @@ class OrderDeskWidget(QWidget):
     def _create_cart_panel(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("OrderCartPanel")
-        panel.setMinimumWidth(320)
-        panel.setMaximumWidth(380)
+        panel.setMinimumWidth(300)
         panel.setStyleSheet("""
             QFrame#OrderCartPanel {
                 background-color: #FFFFFF;
@@ -748,17 +840,34 @@ class OrderDeskWidget(QWidget):
         tot_layout.addWidget(self.lbl_total)
         layout.addWidget(total_box)
 
-        # Primary CTA: Bon C
+        # Primary CTA: Bon C (Increased height for prominent enterprise hierarchy)
         btn_bon_c = QPushButton("Émettre Bon Comptant (Vente Directe -> Caisse)")
         btn_bon_c.setIcon(get_duotone_icon("payment_white", 16))
         btn_bon_c.setIconSize(QSize(16, 16))
         btn_bon_c.setCursor(Qt.PointingHandCursor)
-        btn_bon_c.setFixedHeight(38)
-        btn_bon_c.setStyleSheet(PRIMARY_BTN_STYLE)
+        btn_bon_c.setFixedHeight(44)
+        btn_bon_c.setStyleSheet("""
+            QPushButton {
+                background-color: #007572;
+                color: #FFFFFF;
+                font-weight: 700;
+                font-size: 12px;
+                border: 1px solid #005A57;
+                border-radius: 5px;
+                padding: 0 12px;
+            }
+            QPushButton:hover {
+                background-color: #005A57;
+                border-color: #003D3A;
+            }
+            QPushButton:pressed {
+                background-color: #003D3A;
+            }
+        """)
         btn_bon_c.clicked.connect(lambda: self._submit_order("BON_C"))
         layout.addWidget(btn_bon_c)
 
-        # Secondary Row: Bon Crédit & Bon de Livraison side-by-side
+        # Secondary Row: Bon Crédit & Bon de Livraison side-by-side (Increased height)
         sec_row = QHBoxLayout()
         sec_row.setSpacing(8)
 
@@ -766,7 +875,7 @@ class OrderDeskWidget(QWidget):
         btn_credit.setIcon(get_duotone_icon("shield_admin", 15))
         btn_credit.setIconSize(QSize(15, 15))
         btn_credit.setCursor(Qt.PointingHandCursor)
-        btn_credit.setFixedHeight(36)
+        btn_credit.setFixedHeight(40)
         btn_credit.setStyleSheet(OUTLINE_BTN_STYLE)
         btn_credit.clicked.connect(lambda: self._submit_order("BON_CREDIT"))
         sec_row.addWidget(btn_credit)
@@ -775,7 +884,7 @@ class OrderDeskWidget(QWidget):
         btn_livraison.setIcon(get_duotone_icon("truck_delivery", 15))
         btn_livraison.setIconSize(QSize(15, 15))
         btn_livraison.setCursor(Qt.PointingHandCursor)
-        btn_livraison.setFixedHeight(36)
+        btn_livraison.setFixedHeight(40)
         btn_livraison.setStyleSheet(OUTLINE_BTN_STYLE)
         btn_livraison.clicked.connect(lambda: self._submit_order("BON_LIVRAISON"))
         sec_row.addWidget(btn_livraison)
@@ -963,11 +1072,16 @@ class OrderDeskWidget(QWidget):
             self.table.setItem(row, 0, it_mark)
 
             self.table.setItem(row, 1, QTableWidgetItem(name))
-            self.table.setItem(row, 2, QTableWidgetItem(cat))
+
+            it_cat = QTableWidgetItem(cat)
+            it_cat.setToolTip(f"Catégorie : {cat}")
+            self.table.setItem(row, 2, it_cat)
 
             it_col = QTableWidgetItem(color)
             it_col.setTextAlignment(Qt.AlignCenter)
+            it_col.setToolTip(f"Couleur / Finition : {color}\nCode Hex : {get_color_hex(color)}")
             self.table.setItem(row, 3, it_col)
+            self.table.setCellWidget(row, 3, ColorBadgeWidget(color))
 
             it_phys = QTableWidgetItem(str(phys))
             it_phys.setTextAlignment(Qt.AlignCenter)
@@ -1063,6 +1177,105 @@ class OrderDeskWidget(QWidget):
             if self.session_tab_bar.tabData(idx) == sid:
                 self.session_tab_bar.setTabText(idx, tab_text)
                 break
+        self._update_tab_close_buttons()
+
+    def _save_splitter_state(self, *args) -> None:
+        """Persists the movable separator state between catalog and cart across sessions."""
+        try:
+            settings = QSettings("StockLam", "OrderDesk")
+            settings.setValue("main_splitter_state", self.splitter.saveState())
+            settings.setValue("main_splitter_sizes", self.splitter.sizes())
+        except Exception as err:
+            logger.debug(f"Could not persist splitter state: {err}")
+
+    def _restore_splitter_state(self) -> None:
+        """Restores the user's previously saved separator position."""
+        try:
+            settings = QSettings("StockLam", "OrderDesk")
+            saved_state = settings.value("main_splitter_state")
+            if saved_state:
+                self.splitter.restoreState(saved_state)
+            else:
+                saved_sizes = settings.value("main_splitter_sizes")
+                if saved_sizes and isinstance(saved_sizes, (list, tuple)) and len(saved_sizes) == 2:
+                    self.splitter.setSizes([int(saved_sizes[0]), int(saved_sizes[1])])
+                else:
+                    self.splitter.setSizes([720, 360])
+        except Exception as err:
+            logger.debug(f"Could not restore splitter state: {err}")
+            self.splitter.setSizes([720, 360])
+
+    def _update_tab_close_buttons(self) -> None:
+        """Attaches sleek, human-crafted close buttons to tabs when more than 1 session exists."""
+        if not hasattr(self, "session_tab_bar"):
+            return
+        total_tabs = self.session_tab_bar.count()
+        for idx in range(total_tabs):
+            sid = self.session_tab_bar.tabData(idx)
+            if total_tabs <= 1:
+                self.session_tab_bar.setTabButton(idx, QTabBar.RightSide, None)
+                continue
+
+            btn = QPushButton("×")
+            btn.setFixedSize(18, 18)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setToolTip("Fermer cette session")
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    background-color: transparent;
+                    color: #64748B;
+                    font-size: 15px;
+                    font-weight: bold;
+                    line-height: 14px;
+                    border-radius: 9px;
+                    padding-bottom: 2px;
+                }
+                QPushButton:hover {
+                    background-color: #EF4444;
+                    color: #FFFFFF;
+                }
+            """)
+            btn.clicked.connect(lambda checked=False, target_sid=sid: self._close_session_by_id(target_sid))
+            self.session_tab_bar.setTabButton(idx, QTabBar.RightSide, btn)
+
+    def _close_session_by_id(self, sid: str) -> None:
+        """Closes session corresponding to the provided ID after user confirmation."""
+        if not hasattr(self, "session_tab_bar"):
+            return
+        for idx in range(self.session_tab_bar.count()):
+            if self.session_tab_bar.tabData(idx) == sid:
+                self._on_session_tab_close_requested(idx)
+                break
+
+    def _clear_session_cart(self, sid: str) -> None:
+        """Empties cart items for a given session ID."""
+        if sid in self._sessions:
+            self._sessions[sid]["cart"] = []
+            self._sessions[sid]["delivery_address"] = ""
+            if sid == self._active_session_id and hasattr(self, "txt_delivery_addr"):
+                self.txt_delivery_addr.clear()
+            self._update_tab_label(sid)
+            if sid == self._active_session_id:
+                self._refresh_cart_ui()
+
+    def _on_session_tab_context_menu(self, pos) -> None:
+        """Right-click context menu on session tabs for rapid session management."""
+        tab_idx = self.session_tab_bar.tabAt(pos)
+        if tab_idx < 0:
+            return
+        sid = self.session_tab_bar.tabData(tab_idx)
+        sdata = self._sessions.get(sid, {})
+        menu = QMenu(self)
+
+        act_clear = menu.addAction(f"Vider le panier ({len(sdata.get('cart', []))} articles)")
+        act_clear.triggered.connect(lambda: self._clear_session_cart(sid))
+
+        if self.session_tab_bar.count() > 1:
+            act_close = menu.addAction(f"Fermer '{sdata.get('label', sid)}'")
+            act_close.triggered.connect(lambda: self._close_session_by_id(sid))
+
+        menu.exec(self.session_tab_bar.mapToGlobal(pos))
 
     def _sync_session_tabs(self) -> None:
         """Synchronizes the session tab bar with the active sessions dictionary."""
@@ -1085,6 +1298,7 @@ class OrderDeskWidget(QWidget):
                 target_idx = tab_pos
         self.session_tab_bar.setCurrentIndex(target_idx)
         self.session_tab_bar.blockSignals(False)
+        self._update_tab_close_buttons()
 
     def _on_session_tab_switched(self, idx: int) -> None:
         if idx < 0 or not hasattr(self, "session_tab_bar") or idx >= self.session_tab_bar.count():
@@ -1160,6 +1374,7 @@ class OrderDeskWidget(QWidget):
         new_idx = min(index, self.session_tab_bar.count() - 1)
         self.session_tab_bar.setCurrentIndex(new_idx)
         self._on_session_tab_switched(new_idx)
+        self._update_tab_close_buttons()
 
     def _create_new_session(self, scanner_id: Optional[str] = None) -> str:
         self._session_counter += 1
@@ -1188,6 +1403,7 @@ class OrderDeskWidget(QWidget):
             self.session_tab_bar.setTabData(tab_idx, sid)
             if scanner_id is None:
                 self.session_tab_bar.setCurrentIndex(tab_idx)
+            self._update_tab_close_buttons()
 
         return sid
 
@@ -1281,24 +1497,77 @@ class OrderDeskWidget(QWidget):
         target_sid = self._resolve_session_for_device(device_id)
         self._on_scanner_input_for_session(target_sid, device_id, barcode)
 
+    def _find_product_by_barcode(self, barcode: str) -> Optional[Dict[str, Any]]:
+        """
+        Universal barcode resolver for Order Desk:
+        Matches barcode against:
+        - serial tracking manager (checking Products_Master, Inventory_Batches, Product_Serials)
+        - catalog cache (with comma-separated barcode support and composite barcodes)
+        - database catalog reload
+        The barcode is strictly used for theoretical product recognition; no serial is locked in cart.
+        """
+        clean_bc = str(barcode or "").strip()
+        if not clean_bc:
+            return None
+
+        # 1. Ask serial_tracking_manager if available
+        if self.data_manager and hasattr(self.data_manager, "serials"):
+            if hasattr(self.data_manager.serials, "find_product_by_any_barcode"):
+                found = self.data_manager.serials.find_product_by_any_barcode(clean_bc)
+                if found:
+                    return found
+
+        # 2. Check in-memory catalog cache
+        for p in getattr(self, "_catalog_cache", []):
+            p_bar = str(p.get("Barcode") or "").strip()
+            bar_tokens = [t.strip() for t in p_bar.split(",") if t.strip()]
+            if clean_bc in bar_tokens or p_bar == clean_bc or str(p.get("Product_ID")) == clean_bc:
+                return p
+            # Check composite serial format: e.g. "101::SERIAL"
+            if "::" in clean_bc and clean_bc.split("::")[0] == str(p.get("Product_ID")):
+                return p
+
+        # 3. If cache was filtered, check if data_manager can reload without filter
+        if self.data_manager and hasattr(self.data_manager, "serials"):
+            full_items = self.data_manager.serials.get_catalog_with_theoretical_stock(search=clean_bc)
+            if full_items:
+                return full_items[0]
+
+        return None
+
+    def _on_search_return_pressed(self) -> None:
+        """Handles enter key / scanner wedge in the search field to auto-add matched barcode product."""
+        query = self.txt_search.text().strip()
+        if not query:
+            return
+        matched_prod = self._find_product_by_barcode(query)
+        if matched_prod:
+            self._add_product_to_session(self._active_session_id, matched_prod)
+            self.txt_search.blockSignals(True)
+            self.txt_search.clear()
+            self.txt_search.blockSignals(False)
+            self.refresh_catalog()
+            s_label = self._sessions.get(self._active_session_id, {}).get("label", "Session")
+            self.lbl_scanner_status.setText(
+                f"Code-barres identifié -> {s_label} : {matched_prod.get('Product_Name')} (Ajouté)"
+            )
+        else:
+            self.refresh_catalog()
+
     def _on_scanner_input_for_session(self, session_id: str, device_id: str, barcode: str) -> None:
         """Routes a barcode scan directly into its bound session's cart without disturbing other sessions."""
         clean_bc = barcode.strip()
-        matched_prod = None
-        for p in self._catalog_cache:
-            if str(p.get("Barcode") or "").strip() == clean_bc or str(p.get("Product_ID")) == clean_bc:
-                matched_prod = p
-                break
+        matched_prod = self._find_product_by_barcode(clean_bc)
 
         if matched_prod:
             self._add_product_to_session(session_id, matched_prod)
             s_label = self._sessions.get(session_id, {}).get("label", session_id)
             self.lbl_scanner_status.setText(
-                f"Scan [{device_id}] -> {s_label} : {matched_prod.get('Product_Name')}"
+                f"Scan [{device_id}] -> {s_label} : {matched_prod.get('Product_Name')} (Ajouté)"
             )
         else:
             self.lbl_scanner_status.setText(
-                f"Scan [{device_id}] ({clean_bc}) : Référence introuvable dans le catalogue"
+                f"Scan [{device_id}] ({clean_bc}) : Référence introuvable dans le stock"
             )
 
     def _add_product_to_session(self, session_id: str, prod: Dict[str, Any]) -> None:

@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Proves that customer product returns (`Bon de Retour`) and SAV irreparable compensations strictly credit client virtual wallets (`Client_Wallets`) with zero impact on the physical cash drawer ($\Delta \text{Till\_Balance} \equiv 0.00\text{ DA}$); tests bcrypt-based administrative authentication and credit ceiling boundaries for `Bon Crédit`.
 - **`test_multiscanner_hid_concurrency.py`**:
 
+- **`test_order_desk_task1_enhancements.py`**:
+  - *Scope*: Verifies Task #1 enhancements in Order Desk (`OrderDeskWidget`): universal barcode recognition across product, batch, and serial barcodes with auto-addition to cart; cart stores strictly theoretical products without literal serial registration; category column width >= 160px with tooltips; increased action button heights under Total TTC (`Bon Comptant` >= 44px, `Bon Crédit` / `Bon de Livraison` >= 40px); movable horizontal separator (`QSplitter`) with persistent position memory via `QSettings`; interactive `ColorBadgeWidget` displaying visual color swatches and tooltips with hex codes; elegant session close button management (hidden when only 1 session, custom styled when > 1); and removal of redundant "Associer Scanner USB" button from the session bar.
 - **`test_product_colors_and_bon_comptant.py`**:
   - *Scope*: Verifies Task #5 deliverables: renaming of Bon C to Bon Comptant across Order Desk and Cashier Desk UI, full CRUD and active filtering in ProductColorManager, and UI integration of ProductColorsTab within Master Data (Données de base).
 - **`test_batch_reception_path_restriction.py`**:

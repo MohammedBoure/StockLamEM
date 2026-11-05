@@ -290,6 +290,7 @@ class SerialTrackingManager:
         brand_mark: str = "",
         category_name: str = "",
         color_finish: str = "",
+        product_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Returns catalog items with theoretical stock metrics for the Order Desk:
@@ -301,7 +302,13 @@ class SerialTrackingManager:
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                query = """
+                where_clauses = ["p.Deleted_At IS NULL"]
+                params = []
+                if product_id is not None:
+                    where_clauses.append("p.Product_ID = %s")
+                    params.append(int(product_id))
+
+                query = f"""
                     SELECT
                         p.Product_ID,
                         p.Product_Name,
@@ -320,11 +327,11 @@ class SerialTrackingManager:
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
                     LEFT JOIN Inventory_Batches b ON p.Product_ID = b.Product_ID
-                    WHERE p.Deleted_At IS NULL
+                    WHERE {' AND '.join(where_clauses)}
                     GROUP BY p.Product_ID
                     ORDER BY p.Product_Name ASC
                 """
-                cursor.execute(query)
+                cursor.execute(query, tuple(params) if params else ())
                 rows = cursor.fetchall() or []
 
                 results = []
@@ -370,6 +377,95 @@ class SerialTrackingManager:
         except Exception as err:
             logger.error(f"Error fetching catalog with theoretical stock: {err}")
             return []
+
+    def find_product_by_any_barcode(self, barcode: str) -> Optional[Dict[str, Any]]:
+        """
+        Universal barcode resolver for Order Desk theoretical lookups:
+        Resolves an input barcode string against:
+        1. Composite serial barcode (<Product_ID>::<SERIAL>)
+        2. Products_Master Barcode field (exact match or comma-delimited element)
+        3. Products_Master Product_ID
+        4. Inventory_Batches Internal_Barcode or External_Barcode / Lot_Number
+        5. Product_Serials Barcode_Serial_Composite or Serial_Number
+        Returns full theoretical catalog details if found, or None.
+        """
+        if not barcode:
+            return None
+        clean_bc = str(barcode).strip()
+        if not clean_bc:
+            return None
+
+        # 1. Composite barcode fast resolution: e.g. "101::SN9928"
+        if "::" in clean_bc:
+            parts = clean_bc.split("::", 1)
+            if parts[0].isdigit():
+                found = self.get_catalog_with_theoretical_stock(product_id=int(parts[0]))
+                if found:
+                    return found[0]
+
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+
+                # 2. Check Products_Master directly
+                cursor.execute(
+                    """
+                    SELECT Product_ID FROM Products_Master
+                    WHERE Deleted_At IS NULL
+                      AND (
+                          Barcode = %s
+                          OR FIND_IN_SET(%s, REPLACE(Barcode, ' ', '')) > 0
+                          OR (Product_ID = %s AND %s REGEXP '^[0-9]+$')
+                      )
+                    LIMIT 1
+                    """,
+                    (clean_bc, clean_bc, clean_bc if clean_bc.isdigit() else 0, clean_bc),
+                )
+                row = cursor.fetchone()
+                if row:
+                    found = self.get_catalog_with_theoretical_stock(product_id=int(row["Product_ID"]))
+                    if found:
+                        return found[0]
+
+                # 3. Check Inventory_Batches (Internal_Barcode, External_Barcode, Lot_Number)
+                cursor.execute(
+                    """
+                    SELECT Product_ID FROM Inventory_Batches
+                    WHERE Internal_Barcode = %s
+                       OR External_Barcode = %s
+                       OR Lot_Number = %s
+                    ORDER BY Batch_ID DESC
+                    LIMIT 1
+                    """,
+                    (clean_bc, clean_bc, clean_bc),
+                )
+                row = cursor.fetchone()
+                if row:
+                    found = self.get_catalog_with_theoretical_stock(product_id=int(row["Product_ID"]))
+                    if found:
+                        return found[0]
+
+                # 4. Check Product_Serials (Serial_Number, Barcode_Serial_Composite)
+                cursor.execute(
+                    """
+                    SELECT Product_ID FROM Product_Serials
+                    WHERE Serial_Number = %s
+                       OR Barcode_Serial_Composite = %s
+                    ORDER BY Serial_ID DESC
+                    LIMIT 1
+                    """,
+                    (clean_bc.upper(), clean_bc),
+                )
+                row = cursor.fetchone()
+                if row:
+                    found = self.get_catalog_with_theoretical_stock(product_id=int(row["Product_ID"]))
+                    if found:
+                        return found[0]
+
+        except Exception as err:
+            logger.error(f"Error finding product by barcode '{clean_bc}': {err}")
+
+        return None
 
     def get_serial_details(self, serial_number: str) -> Optional[Dict[str, Any]]:
         """Looks up a specific physical serial number along with its product and batch metadata."""
