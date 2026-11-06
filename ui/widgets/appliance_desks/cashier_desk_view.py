@@ -386,6 +386,328 @@ class BonRetourDialog(QDialog):
             QMessageBox.critical(self, "Erreur Retour", str(err))
 
 
+class ClientWalletDialog(QDialog):
+    """
+    Dialog allowing cashiers to view the Versement & Virtual Credit Wallet balance of any client.
+    Displays:
+    - Versement (Dépôt Espèces en Caisse)
+    - Versement Virtuel (Avoirs Retours & SAV)
+    - Total Portefeuille Disponible
+    - Historique des transactions récentes
+    """
+
+    def __init__(self, data_manager=None, parent=None, default_client_id: Optional[int] = None):
+        super().__init__(parent)
+        self.data_manager = data_manager
+        self.default_client_id = default_client_id
+        self.setWindowTitle("Portefeuille & Solde Versement Client")
+        self.setMinimumSize(640, 500)
+        self.setModal(True)
+        self._init_ui()
+        self._load_clients()
+
+    def _init_ui(self):
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #1E293B;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(14)
+
+        # Header with icon
+        hdr_layout = QHBoxLayout()
+        hdr_layout.setSpacing(10)
+        ic = QLabel()
+        ic.setPixmap(get_duotone_icon("kpi_wallet", 24).pixmap(24, 24))
+        hdr_layout.addWidget(ic)
+
+        title_box = QVBoxLayout()
+        title_box.setSpacing(2)
+        lbl_title = QLabel("Solde Versement & Portefeuille Client")
+        lbl_title.setStyleSheet("font-size: 16px; font-weight: 800; color: #007572;")
+        lbl_sub = QLabel("Consultation des dépôts en espèces et des avoirs virtuels disponibles")
+        lbl_sub.setStyleSheet("font-size: 11px; color: #64748B;")
+        title_box.addWidget(lbl_title)
+        title_box.addWidget(lbl_sub)
+        hdr_layout.addLayout(title_box)
+        hdr_layout.addStretch()
+        layout.addLayout(hdr_layout)
+
+        # Client selector bar
+        sel_frame = QFrame()
+        sel_frame.setStyleSheet("""
+            QFrame {
+                background-color: #F8FAFC;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+            }
+        """)
+        sel_layout = QHBoxLayout(sel_frame)
+        sel_layout.setContentsMargins(12, 10, 12, 10)
+        sel_layout.setSpacing(10)
+
+        lbl_c = QLabel("Client :")
+        lbl_c.setStyleSheet("font-weight: 700; color: #334155; font-size: 12px;")
+        sel_layout.addWidget(lbl_c)
+
+        self.cbo_clients = QComboBox()
+        self.cbo_clients.setEditable(True)
+        self.cbo_clients.setFixedHeight(34)
+        self.cbo_clients.setStyleSheet("""
+            QComboBox {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 4px;
+                padding: 4px 10px;
+                font-size: 12px;
+                color: #1E293B;
+            }
+            QComboBox:focus {
+                border-color: #007572;
+            }
+        """)
+        self.cbo_clients.currentIndexChanged.connect(self._on_client_selection_changed)
+        sel_layout.addWidget(self.cbo_clients, 1)
+
+        self.btn_refresh = QPushButton("Actualiser")
+        self.btn_refresh.setIcon(get_duotone_icon("refresh", 13))
+        self.btn_refresh.setIconSize(QSize(13, 13))
+        self.btn_refresh.setCursor(Qt.PointingHandCursor)
+        self.btn_refresh.setFixedHeight(34)
+        self.btn_refresh.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #007572;
+                border: 1px solid #007572;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 0 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #E6F4F1; }
+        """)
+        self.btn_refresh.clicked.connect(self._refresh_client_wallet)
+        sel_layout.addWidget(self.btn_refresh)
+
+        layout.addWidget(sel_frame)
+
+        # 3 Metric KPI Cards
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(10)
+
+        self.card_real = self._create_kpi_card(
+            title="Versement (Dépôt Espèces)",
+            value="0.00 DA",
+            subtitle="Espèces réelles en Caisse",
+            accent_color="#007572",
+            bg_color="#F0FDFA",
+            border_color="#BCE3DC",
+        )
+        cards_layout.addWidget(self.card_real)
+
+        self.card_virt = self._create_kpi_card(
+            title="Versement Virtuel",
+            value="0.00 DA",
+            subtitle="Avoirs Retours & SAV",
+            accent_color="#0284C7",
+            bg_color="#F0F9FF",
+            border_color="#BAE6FD",
+        )
+        cards_layout.addWidget(self.card_virt)
+
+        self.card_tot = self._create_kpi_card(
+            title="Total Portefeuille",
+            value="0.00 DA",
+            subtitle="Solde total disponible",
+            accent_color="#0F172A",
+            bg_color="#F8FAFC",
+            border_color="#CBD5E1",
+        )
+        cards_layout.addWidget(self.card_tot)
+
+        layout.addLayout(cards_layout)
+
+        # Recent Transactions Section
+        lbl_hist = QLabel("Historique des Mouvements de Portefeuille (Versement / Déduction)")
+        lbl_hist.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155; margin-top: 4px;")
+        layout.addWidget(lbl_hist)
+
+        self.table_tx = QTableWidget()
+        cols = ["Date / Heure", "Type", "Montant", "Nouveau Solde", "Source / Notes"]
+        self.table_tx.setColumnCount(len(cols))
+        self.table_tx.setHorizontalHeaderLabels(cols)
+        self.table_tx.setStyleSheet(TABLE_STYLE)
+        self.table_tx.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table_tx.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table_tx.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.table_tx.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.table_tx.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        self.table_tx.verticalHeader().setVisible(False)
+        self.table_tx.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table_tx.setAlternatingRowColors(True)
+        layout.addWidget(self.table_tx, 1)
+
+        # Bottom close button
+        btn_box = QHBoxLayout()
+        btn_box.addStretch()
+
+        self.btn_close = QPushButton("Fermer")
+        self.btn_close.setCursor(Qt.PointingHandCursor)
+        self.btn_close.setFixedHeight(36)
+        self.btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1.5px solid #CBD5E1;
+                font-weight: 700;
+                font-size: 12px;
+                padding: 0 20px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #F1F5F9; border-color: #94A3B8; color: #1E293B; }
+        """)
+        self.btn_close.clicked.connect(self.accept)
+        btn_box.addWidget(self.btn_close)
+        layout.addLayout(btn_box)
+
+    def _create_kpi_card(self, title, value, subtitle, accent_color, bg_color, border_color):
+        card = QFrame()
+        card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 6px;
+            }}
+        """)
+        l = QVBoxLayout(card)
+        l.setContentsMargins(12, 10, 12, 10)
+        l.setSpacing(3)
+
+        lbl_t = QLabel(title)
+        lbl_t.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {accent_color};")
+        l.addWidget(lbl_t)
+
+        lbl_v = QLabel(value)
+        lbl_v.setObjectName("lbl_kpi_val")
+        lbl_v.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {accent_color};")
+        l.addWidget(lbl_v)
+
+        lbl_s = QLabel(subtitle)
+        lbl_s.setStyleSheet("font-size: 10px; color: #64748B;")
+        l.addWidget(lbl_s)
+        return card
+
+    def _load_clients(self):
+        clients = []
+        if self.data_manager and hasattr(self.data_manager, "clients"):
+            try:
+                if hasattr(self.data_manager.clients, "get_all_clients"):
+                    clients = self.data_manager.clients.get_all_clients() or []
+                elif hasattr(self.data_manager.clients, "get_all_clients_with_balances"):
+                    clients = self.data_manager.clients.get_all_clients_with_balances() or []
+            except Exception as e:
+                logger.error(f"Error loading clients: {e}")
+
+        if not clients and self.default_client_id:
+            clients = [{"Client_ID": self.default_client_id, "Client_Name": f"Client #{self.default_client_id}"}]
+
+        self.cbo_clients.blockSignals(True)
+        self.cbo_clients.clear()
+        target_index = 0
+        for idx, c in enumerate(clients):
+            cid = c.get("Client_ID") or c.get("id") or (idx + 1)
+            name = c.get("Client_Name") or f"Client #{cid}"
+            phone = c.get("Phone") or ""
+            disp = f"{name} (ID: {cid})" + (f" - {phone}" if phone else "")
+            self.cbo_clients.addItem(disp, cid)
+            if self.default_client_id and int(cid) == int(self.default_client_id):
+                target_index = idx
+
+        if self.cbo_clients.count() > 0:
+            self.cbo_clients.setCurrentIndex(target_index)
+        self.cbo_clients.blockSignals(False)
+
+        self._refresh_client_wallet()
+
+    def _on_client_selection_changed(self):
+        self._refresh_client_wallet()
+
+    def _refresh_client_wallet(self):
+        cid = self.cbo_clients.currentData()
+        if not cid:
+            return
+
+        wallet_info = {"current_balance": 0.0, "real_deposit_balance": 0.0, "virtual_credit_balance": 0.0}
+        txs = []
+        if self.data_manager and hasattr(self.data_manager, "bonds"):
+            try:
+                wallet_info = self.data_manager.bonds.get_client_wallet(int(cid))
+                if hasattr(self.data_manager.bonds, "get_client_wallet_transactions"):
+                    txs = self.data_manager.bonds.get_client_wallet_transactions(int(cid))
+            except Exception as e:
+                logger.error(f"Error fetching wallet details for client {cid}: {e}")
+
+        real_val = float(wallet_info.get("real_deposit_balance", 0.0))
+        virt_val = float(wallet_info.get("virtual_credit_balance", 0.0))
+        tot_val = float(wallet_info.get("current_balance", 0.0))
+
+        lbl_r = self.card_real.findChild(QLabel, "lbl_kpi_val")
+        if lbl_r:
+            lbl_r.setText(f"{format_money(real_val)} DA")
+
+        lbl_v = self.card_virt.findChild(QLabel, "lbl_kpi_val")
+        if lbl_v:
+            lbl_v.setText(f"{format_money(virt_val)} DA")
+
+        lbl_t = self.card_tot.findChild(QLabel, "lbl_kpi_val")
+        if lbl_t:
+            lbl_t.setText(f"{format_money(tot_val)} DA")
+
+        # Populate Transactions Table
+        self.table_tx.setRowCount(0)
+        type_labels = {
+            "REAL_CASH_VERSEMENT": "Versement Espèces",
+            "RETURN_VIRTUAL_CREDIT": "Avoir / Bon de Retour",
+            "SAV_IRREPARABLE_COMPENSATION": "Compensation SAV",
+            "SALES_PURCHASE_DEBIT": "Déduction Vente",
+            "ADMIN_ADJUSTMENT": "Ajustement Admin",
+            "CASH_DISBURSEMENT_REFUND": "Remboursement Espèces",
+        }
+        for tx in txs:
+            row = self.table_tx.rowCount()
+            self.table_tx.insertRow(row)
+
+            dt = str(tx.get("Created_At") or "")[:19]
+            self.table_tx.setItem(row, 0, QTableWidgetItem(dt))
+
+            raw_t = str(tx.get("Transaction_Type") or "")
+            it_type = QTableWidgetItem(type_labels.get(raw_t, raw_t))
+            self.table_tx.setItem(row, 1, it_type)
+
+            amt = float(tx.get("Amount") or 0.0)
+            is_credit = raw_t in ("REAL_CASH_VERSEMENT", "RETURN_VIRTUAL_CREDIT", "SAV_IRREPARABLE_COMPENSATION")
+            amt_str = f"{'+' if is_credit else '-'} {format_money(amt)} DA"
+            it_amt = QTableWidgetItem(amt_str)
+            it_amt.setForeground(QColor("#007572" if is_credit else "#DC2626"))
+            it_amt.setFont(QFont("Segoe UI", 9, QFont.Bold))
+            self.table_tx.setItem(row, 2, it_amt)
+
+            bal_after = float(tx.get("Balance_After") or 0.0)
+            it_bal = QTableWidgetItem(f"{format_money(bal_after)} DA")
+            it_bal.setFont(QFont("Segoe UI", 9, QFont.Bold))
+            self.table_tx.setItem(row, 3, it_bal)
+
+            notes = str(tx.get("Transaction_Notes") or "")
+            self.table_tx.setItem(row, 4, QTableWidgetItem(notes))
+
+
 class CashierDeskWidget(QWidget):
     """Cashier Desk (Caisse) console handling all 6 Bond financial interactions and Wallet settlements."""
 
@@ -476,14 +798,15 @@ class CashierDeskWidget(QWidget):
         self.queue_table.itemSelectionChanged.connect(self._on_order_selected)
         l_layout.addWidget(self.queue_table, 1)
 
-        # Standalone Caisse Operations: Versement & Bon de Retour
+        # Standalone Caisse Operations: Versement, Versement Virtuel & Solde Versement
         ops_bar = QHBoxLayout()
         ops_bar.setSpacing(10)
 
-        self.btn_versement = QPushButton("Enregistrer un Versement Client (Dépôt Espèces)")
+        self.btn_versement = QPushButton("Versement")
         self.btn_versement.setIcon(get_duotone_icon("kpi_wallet", 16))
         self.btn_versement.setIconSize(QSize(16, 16))
         self.btn_versement.setCursor(Qt.PointingHandCursor)
+        self.btn_versement.setToolTip("Enregistrer un Versement Client (Dépôt Espèces)")
         self.btn_versement.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
@@ -502,10 +825,11 @@ class CashierDeskWidget(QWidget):
         self.btn_versement.clicked.connect(self._open_versement_dialog)
         ops_bar.addWidget(self.btn_versement)
 
-        self.btn_retour = QPushButton("Émettre Bon de Retour (Versement Virtuel)")
+        self.btn_retour = QPushButton("Versement Virtuel")
         self.btn_retour.setIcon(get_duotone_icon("return_arrow", 16))
         self.btn_retour.setIconSize(QSize(16, 16))
         self.btn_retour.setCursor(Qt.PointingHandCursor)
+        self.btn_retour.setToolTip("Émettre Bon de Retour (Versement Virtuel)")
         self.btn_retour.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
@@ -523,6 +847,30 @@ class CashierDeskWidget(QWidget):
         self.btn_retour.setFixedHeight(44)
         self.btn_retour.clicked.connect(self._open_retour_dialog)
         ops_bar.addWidget(self.btn_retour)
+
+        self.btn_wallet_balance = QPushButton("Solde Versement")
+        self.btn_wallet_balance.setIcon(get_duotone_icon("kpi_wallet", 16))
+        self.btn_wallet_balance.setIconSize(QSize(16, 16))
+        self.btn_wallet_balance.setCursor(Qt.PointingHandCursor)
+        self.btn_wallet_balance.setToolTip("Consulter le montant dans la محفظة / portefeuille versement du client")
+        self.btn_wallet_balance.setStyleSheet("""
+            QPushButton {
+                background-color: #F8FAFC;
+                color: #007572;
+                border: 1.5px solid #007572;
+                font-weight: 700;
+                font-size: 12px;
+                min-height: 42px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #E6F4F1; border-color: #005A57; }
+            QPushButton:pressed { background-color: #CCEBE6; }
+        """)
+        self.btn_wallet_balance.setFixedHeight(44)
+        self.btn_wallet_balance.clicked.connect(self._show_client_wallet_dialog)
+        ops_bar.addWidget(self.btn_wallet_balance)
+
         l_layout.addLayout(ops_bar)
 
         layout.addWidget(left_panel, stretch=3)
@@ -551,7 +899,7 @@ class CashierDeskWidget(QWidget):
         w_ic = QLabel()
         w_ic.setPixmap(get_duotone_icon("kpi_wallet", 18).pixmap(18, 18))
         s_hdr.addWidget(w_ic)
-        lbl_settle = QLabel("Console d'Encaissement & Validation Caisse")
+        lbl_settle = QLabel("Validation Caisse")
         lbl_settle.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         s_hdr.addWidget(lbl_settle)
         s_hdr.addStretch()
@@ -595,12 +943,38 @@ class CashierDeskWidget(QWidget):
         w_layout = QVBoxLayout(wallet_box)
         w_layout.setContentsMargins(12, 10, 12, 10)
         w_layout.setSpacing(6)
+
+        w_header_row = QHBoxLayout()
+        w_header_row.setSpacing(8)
+
         self.lbl_wallet_details = QLabel(
             "Portefeuille Client : <b>0.00 DA</b><br>"
             "<span style='font-size:11px; color:#475569;'>Dépôt Espèces (Versement) : 0.00 DA  |  Avoir Virtuel : 0.00 DA</span>"
         )
         self.lbl_wallet_details.setStyleSheet("font-size: 12px; color: #0F766E;")
-        w_layout.addWidget(self.lbl_wallet_details)
+        w_header_row.addWidget(self.lbl_wallet_details, 1)
+
+        self.btn_inspect_wallet = QPushButton("Détails Solde")
+        self.btn_inspect_wallet.setIcon(get_duotone_icon("kpi_wallet", 13))
+        self.btn_inspect_wallet.setIconSize(QSize(13, 13))
+        self.btn_inspect_wallet.setCursor(Qt.PointingHandCursor)
+        self.btn_inspect_wallet.setFixedHeight(30)
+        self.btn_inspect_wallet.setToolTip("Consulter le détail du solde versement du client")
+        self.btn_inspect_wallet.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #007572;
+                border: 1px solid #007572;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 0 10px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #E6F4F1; }
+        """)
+        self.btn_inspect_wallet.clicked.connect(self._show_client_wallet_dialog)
+        w_header_row.addWidget(self.btn_inspect_wallet)
+        w_layout.addLayout(w_header_row)
 
         self.cb_wallet = QCheckBox("Déduire du solde portefeuille client (Versement / Virtuel)")
         self.cb_wallet.setStyleSheet("color: #0E7471; font-weight: 700; font-size: 12px;")
@@ -632,7 +1006,8 @@ class CashierDeskWidget(QWidget):
         r_layout.addLayout(form)
 
         # Action Buttons for the 3 Order Bond Types (Heightened for prominent enterprise UX)
-        self.btn_val_bon_c = QPushButton("Valider Bon Comptant (Encaissement Direct -> Sortie)")
+        self.btn_val_bon_c = QPushButton("Valider Bon Comptant")
+        self.btn_val_bon_c.setToolTip("Valider Bon Comptant (Encaissement Direct -> Sortie)")
         self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 18))
         self.btn_val_bon_c.setIconSize(QSize(18, 18))
         self.btn_val_bon_c.setCursor(Qt.PointingHandCursor)
@@ -680,7 +1055,8 @@ class CashierDeskWidget(QWidget):
         self.btn_val_credit.clicked.connect(self._authorize_bon_credit)
         r_layout.addWidget(self.btn_val_credit)
 
-        self.btn_val_livraison = QPushButton("Valider Bon de Livraison (Acompte / Solde COD)")
+        self.btn_val_livraison = QPushButton("Valider Bon de Livraison")
+        self.btn_val_livraison.setToolTip("Valider Bon de Livraison (Acompte / Solde COD)")
         self.btn_val_livraison.setIcon(get_duotone_icon("truck_delivery", 16))
         self.btn_val_livraison.setIconSize(QSize(16, 16))
         self.btn_val_livraison.setCursor(Qt.PointingHandCursor)
@@ -1055,4 +1431,18 @@ class CashierDeskWidget(QWidget):
                 f"Avoir Virtuel crédité : {format_money(float(r.get('credited_virtual_amount', 0.0)))} DA\n"
                 "Impact sur la liquidité Caisse physique : 0.00 DA",
             )
+            self._on_order_selected()
+
+    def _show_client_wallet_dialog(self) -> None:
+        """Opens the modal dialog displaying the client's Versement and Virtual Credit Wallet balance."""
+        cid = None
+        if self._selected_order:
+            try:
+                cid = int(self._selected_order.get("Client_ID") or 0) or None
+            except Exception:
+                cid = None
+
+        dlg = ClientWalletDialog(data_manager=self.data_manager, parent=self, default_client_id=cid)
+        dlg.exec()
+        if self._selected_order:
             self._on_order_selected()

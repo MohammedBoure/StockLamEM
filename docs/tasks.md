@@ -11,7 +11,7 @@ service apres-vente(SAV)
 أريد أسماء أقصر لتقليل المساحة التي يأخذها nav bar 
 
 
-# 3 : high
+# 3 [COMPLETED]: high
 
 أريد في  Bureaux Opérationnels ثم Caisse & Règlements 
 أن يوجد زر يمكن الضغط عليه لعرض المبلغ الذي في محفظة versement للعميل 

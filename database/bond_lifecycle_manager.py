@@ -318,6 +318,29 @@ class BondLifecycleManager:
                 "status": "ACTIVE",
             }
 
+    def get_client_wallet_transactions(self, client_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+        """Returns recent wallet transactions for the given client."""
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT Transaction_ID, Transaction_Type, Amount, Balance_Before, Balance_After,
+                           Source_Document_Type, Source_Document_ID, Affects_Physical_Caisse,
+                           Transaction_Notes, Created_At
+                    FROM Client_Wallet_Transactions
+                    WHERE Client_ID = %s
+                    ORDER BY Transaction_ID DESC
+                    LIMIT %s
+                    """,
+                    (int(client_id), int(limit)),
+                )
+                rows = cursor.fetchall() or []
+                return [dict(r) for r in rows]
+        except Exception as err:
+            logger.error(f"Error fetching client wallet transactions: {err}")
+            return []
+
     def record_real_versement(
         self,
         client_id: int,
