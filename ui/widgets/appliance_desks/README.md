@@ -107,7 +107,14 @@ This directory contains the PySide6 UI desk modules implementing the 4-desk Elec
   - **De-nested Clean Panels & Lazy Loading**: Seamless panels eliminating stacked containers, catalog lazy loading (35-item batches on demand and on scroll) with dynamic item counters, fix for double overlapping text in the Color column (pure `ColorBadgeWidget` rendering).
   - **Ergonomic Buttons & Splitter**: Heightened and widened Action buttons (30px height, 195px column) with crisp white shopping cart icons, complete removal of obsolete "Vente Théorique" and "Isolation HID Active" texts, movable horizontal splitter (`QSplitter`) with persistent position memory across restarts (`QSettings`), expanded category column width (160px) with full descriptive tooltips, interactive `ColorBadgeWidget` displaying real visual color swatches and tooltips with hex codes, heightened Total TTC action buttons (`Bon Comptant` 44px, `Bon Crédit` and `Bon de Livraison` 40px), full-width client search combobox (36px height) with separate header row for `+ Nouveau Client`, universal barcode recognition with automatic cart addition, pure theoretical reservations without literal serial registration, tab right-click context menus, and visual theme harmonization with `Stock & Magasin` (`#007572`).
 - **`quick_client_dialog.py`**: `QuickClientDialog` modal dialog providing instant, in-context customer registration (Name, Phone number, Delivery address, Initial credit limit) directly from the Order Desk without leaving the screen.
-- **`cashier_desk_view.py`**: `CashierDeskWidget`, `AdminAuthModal`, `BonRetourDialog`, `ClientWalletDialog`, and `OrderArticlesDialog` (Tasks #3, #4, #5 & #8):
+- **`cashier_desk_view.py`**: `CashierDeskWidget`, `AdminAuthModal`, `BonRetourDialog`, `ClientWalletDialog`, `OrderArticlesDialog`, and `VersementDialog` (Tasks #3, #4, #5 & #8):
+  * **Dedicated Cash Deposit Modal (`VersementDialog` - Task #8)**: Full-featured modal dialog allowing cashiers to register cash versement deposits directly into the physical till and client wallet:
+    - Searchable client selector (`QComboBox` + `QCompleter`) populated exclusively from existing `Clients` in the database.
+    - Warning banner and disabled submit button if the database has zero registered clients, completely preventing MySQL Foreign Key 1452 errors.
+    - Live display of client's current wallet balance (cash deposit vs virtual credit).
+    - Amount input (`QDoubleSpinBox`) with fast-add increment chips (`+5 000`, `+10 000`, `+20 000`, `+50 000`, `+100 000` DA).
+    - Real-time projected balance calculation (`Nouveau solde portefeuille après versement`).
+    - Submits atomically via `BondLifecycleManager.record_real_versement`.
   * **Purchased Products & Bon Line Items Display (`OrderArticlesDialog` - Task #8)**: Dedicated modal dialog and interactive triggers allowing cashiers to view the full breakdown of ordered items for any voucher:
     - `Détails Articles` button on `SelectedOrderSummaryCard` displaying dynamic counts (`Détails Articles (N)`).
     - Double-clicking any row in the Caisse queue table (`queue_table`) automatically displays the dialog.

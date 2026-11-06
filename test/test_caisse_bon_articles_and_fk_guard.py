@@ -24,6 +24,7 @@ from database.bond_lifecycle_manager import BondLifecycleManager
 from ui.widgets.appliance_desks.cashier_desk_view import (
     CashierDeskWidget,
     OrderArticlesDialog,
+    VersementDialog,
 )
 
 
@@ -35,6 +36,7 @@ class TestCaisseBonArticlesAndFKGuard(unittest.TestCase):
 
     def setUp(self):
         self.mock_data_manager = MagicMock()
+        self.mock_data_manager.current_user = {"Role": "Admin", "User_ID": 1}
         self.widget = CashierDeskWidget(data_manager=self.mock_data_manager)
 
     def tearDown(self):
@@ -198,6 +200,49 @@ class TestCaisseBonArticlesAndFKGuard(unittest.TestCase):
         }
         self.widget._selected_order = sample_order
         self.widget._on_table_cell_double_clicked(0, 0)
+        mock_exec.assert_called_once()
+
+    def test_versement_dialog_client_selection_and_projection(self):
+        """Verifies VersementDialog populates clients, fetches wallet, and calculates projected balance."""
+        mock_dm = MagicMock()
+        mock_dm.clients.get_all_clients.return_value = [
+            {"Client_ID": 42, "Client_Name": "Client Valide", "Phone": "0550112233"},
+            {"Client_ID": 99, "Client_Name": "Autre Client", "Phone": ""},
+        ]
+        mock_dm.bonds.get_client_wallet.return_value = {
+            "current_balance": 15000.0,
+            "real_deposit_balance": 10000.0,
+            "virtual_credit_balance": 5000.0,
+        }
+
+        dlg = VersementDialog(data_manager=mock_dm, default_client_id=42)
+        self.assertEqual(dlg.cbo_client.count(), 2)
+        self.assertEqual(dlg.cbo_client.currentData(), 42)
+        self.assertIn("15", dlg.lbl_current_bal.text())
+        self.assertTrue(dlg.btn_confirm.isEnabled())
+
+        # Test projected balance with 20,000 DA deposit
+        dlg.spin_amount.setValue(20000.0)
+        self.assertIn("35", dlg.lbl_projected.text())
+        dlg.deleteLater()
+
+    def test_versement_dialog_empty_clients_disables_confirm(self):
+        """Verifies VersementDialog disables confirmation when no clients exist, preventing FK 1452."""
+        mock_dm = MagicMock()
+        mock_dm.clients.get_all_clients.return_value = []
+
+        dlg = VersementDialog(data_manager=mock_dm)
+        self.assertEqual(dlg.cbo_client.count(), 0)
+        self.assertFalse(dlg.btn_confirm.isEnabled())
+        self.assertFalse(dlg.lbl_no_client_warn.isHidden())
+        dlg.deleteLater()
+
+    @patch.object(VersementDialog, "exec")
+    def test_open_versement_dialog_launches_modal(self, mock_exec):
+        """Verifies clicking versement opens the VersementDialog modal."""
+        mock_exec.return_value = 0
+        self.widget._can_do = MagicMock(return_value=True)
+        self.widget._open_versement_dialog()
         mock_exec.assert_called_once()
 
 

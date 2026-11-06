@@ -21,6 +21,7 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QCompleter,
     QDialog,
     QDoubleSpinBox,
     QFormLayout,
@@ -922,6 +923,367 @@ class OrderArticlesDialog(QDialog):
             it_tot = QTableWidgetItem(f"{format_money(ltot)} DA")
             it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row, 7, it_tot)
+
+
+class VersementDialog(QDialog):
+    """Dialogue modal d'enregistrement d'un versement espèces client (Caisse physique)."""
+
+    def __init__(
+        self,
+        data_manager: Any = None,
+        default_client_id: Optional[int] = None,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent)
+        self.data_manager = data_manager
+        self.default_client_id = default_client_id
+        self.result_data: Optional[Dict[str, Any]] = None
+        self._wallet_info: Dict[str, Any] = {
+            "current_balance": 0.0,
+            "real_deposit_balance": 0.0,
+            "virtual_credit_balance": 0.0,
+        }
+        self.setWindowTitle("Versement Espèces — Portefeuille Client")
+        self.setFixedSize(540, 530)
+        self._init_ui()
+        self._load_clients()
+
+    def _init_ui(self) -> None:
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+                color: #1E293B;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+                font-family: 'Segoe UI', -apple-system, sans-serif;
+            }
+        """)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 20, 22, 20)
+        layout.setSpacing(12)
+
+        # Header Info Card
+        hdr_frame = QFrame()
+        hdr_frame.setStyleSheet("""
+            QFrame {
+                background-color: #F8FAFC;
+                border: 1px solid #DDE3EA;
+                border-left: 4px solid #007572;
+                border-radius: 6px;
+            }
+            QLabel { border: none; background: transparent; }
+        """)
+        hdr_layout = QVBoxLayout(hdr_frame)
+        hdr_layout.setContentsMargins(14, 10, 14, 10)
+        hdr_layout.setSpacing(3)
+
+        lbl_hdr_title = QLabel("Enregistrement d'un Versement Espèces")
+        lbl_hdr_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #007572;")
+        lbl_hdr_sub = QLabel("Ce versement crédite le compte du client et augmente la liquidité physique en Caisse.")
+        lbl_hdr_sub.setStyleSheet("font-size: 11px; color: #64748B;")
+        hdr_layout.addWidget(lbl_hdr_title)
+        hdr_layout.addWidget(lbl_hdr_sub)
+        layout.addWidget(hdr_frame)
+
+        # Client Selection Box
+        lbl_client_title = QLabel("Client Bénéficiaire :")
+        lbl_client_title.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155;")
+        layout.addWidget(lbl_client_title)
+
+        self.cbo_client = QComboBox()
+        self.cbo_client.setEditable(True)
+        self.cbo_client.setFixedHeight(36)
+        self.cbo_client.setStyleSheet("""
+            QComboBox {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 5px;
+                padding: 4px 10px;
+                font-size: 12px;
+                color: #1E293B;
+            }
+            QComboBox:focus {
+                border-color: #007572;
+            }
+        """)
+        self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
+        layout.addWidget(self.cbo_client)
+
+        self.lbl_no_client_warn = QLabel("Aucun client n'est enregistré dans la base de données. Veuillez d'abord créer un client.")
+        self.lbl_no_client_warn.setStyleSheet("font-size: 11px; color: #DC2626; font-weight: 600;")
+        self.lbl_no_client_warn.setVisible(False)
+        layout.addWidget(self.lbl_no_client_warn)
+
+        # Current Client Wallet Balance Card
+        self.wallet_card = QFrame()
+        self.wallet_card.setStyleSheet("""
+            QFrame {
+                background-color: #F0FDFA;
+                border: 1px solid #BCE3DC;
+                border-radius: 6px;
+            }
+            QLabel { border: none; background: transparent; }
+        """)
+        w_layout = QVBoxLayout(self.wallet_card)
+        w_layout.setContentsMargins(12, 8, 12, 8)
+        w_layout.setSpacing(2)
+
+        self.lbl_current_bal = QLabel("Solde Portefeuille Actuel : 0.00 DA")
+        self.lbl_current_bal.setStyleSheet("font-size: 12px; font-weight: 700; color: #007572;")
+        self.lbl_sub_bal = QLabel("Dépôt Espèces : 0.00 DA  |  Avoir Virtuel : 0.00 DA")
+        self.lbl_sub_bal.setStyleSheet("font-size: 11px; color: #64748B;")
+        w_layout.addWidget(self.lbl_current_bal)
+        w_layout.addWidget(self.lbl_sub_bal)
+        layout.addWidget(self.wallet_card)
+
+        # Amount Input
+        lbl_amt_title = QLabel("Montant Déposé en Espèces (DA) :")
+        lbl_amt_title.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155;")
+        layout.addWidget(lbl_amt_title)
+
+        self.spin_amount = QDoubleSpinBox()
+        self.spin_amount.setRange(1.0, 100000000.0)
+        self.spin_amount.setDecimals(2)
+        self.spin_amount.setValue(10000.0)
+        self.spin_amount.setSingleStep(1000.0)
+        self.spin_amount.setFixedHeight(38)
+        self.spin_amount.setGroupSeparatorShown(True)
+        self.spin_amount.setSuffix(" DA")
+        self.spin_amount.setStyleSheet("""
+            QDoubleSpinBox {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 5px;
+                padding: 4px 10px;
+                font-size: 15px;
+                font-weight: 800;
+                color: #007572;
+            }
+            QDoubleSpinBox:focus {
+                border-color: #007572;
+            }
+        """)
+        self.spin_amount.valueChanged.connect(self._recalc_projected)
+        layout.addWidget(self.spin_amount)
+
+        # Quick Add Amount Chips
+        chips_layout = QHBoxLayout()
+        chips_layout.setSpacing(6)
+        for add_v in (5000, 10000, 20000, 50000, 100000):
+            btn_chip = QPushButton(f"+{add_v:,.0f}".replace(",", " "))
+            btn_chip.setFixedHeight(26)
+            btn_chip.setCursor(Qt.PointingHandCursor)
+            btn_chip.setStyleSheet("""
+                QPushButton {
+                    background-color: #F1F5F9;
+                    color: #334155;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 0 8px;
+                }
+                QPushButton:hover {
+                    background-color: #E2E8F0;
+                    border-color: #94A3B8;
+                }
+            """)
+            btn_chip.clicked.connect(lambda _, v=add_v: self.spin_amount.setValue(self.spin_amount.value() + v))
+            chips_layout.addWidget(btn_chip)
+        layout.addLayout(chips_layout)
+
+        # Notes / Reference
+        lbl_notes_title = QLabel("Observation / Motif :")
+        lbl_notes_title.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155;")
+        layout.addWidget(lbl_notes_title)
+
+        self.txt_notes = QLineEdit("Versement espèces en caisse")
+        self.txt_notes.setFixedHeight(34)
+        self.txt_notes.setStyleSheet("""
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 5px;
+                padding: 4px 10px;
+                font-size: 12px;
+                color: #1E293B;
+            }
+            QLineEdit:focus {
+                border-color: #007572;
+            }
+        """)
+        layout.addWidget(self.txt_notes)
+
+        # Projected Balance Preview
+        self.lbl_projected = QLabel("Nouveau solde portefeuille après versement : 10 000.00 DA")
+        self.lbl_projected.setStyleSheet("""
+            font-size: 12px;
+            font-weight: 700;
+            color: #0F766E;
+            padding: 4px 0;
+        """)
+        layout.addWidget(self.lbl_projected)
+
+        layout.addStretch()
+
+        # Action Buttons
+        btn_box = QHBoxLayout()
+        btn_box.setSpacing(10)
+
+        self.btn_cancel = QPushButton("Annuler")
+        self.btn_cancel.setFixedHeight(40)
+        self.btn_cancel.setCursor(Qt.PointingHandCursor)
+        self.btn_cancel.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #64748B;
+                border: 1px solid #CBD5E1;
+                border-radius: 5px;
+                font-weight: 700;
+                font-size: 12px;
+                padding: 0 16px;
+            }
+            QPushButton:hover { background-color: #F1F5F9; }
+        """)
+        self.btn_cancel.clicked.connect(self.reject)
+        btn_box.addWidget(self.btn_cancel)
+
+        self.btn_confirm = QPushButton("Valider le Versement")
+        self.btn_confirm.setFixedHeight(40)
+        self.btn_confirm.setCursor(Qt.PointingHandCursor)
+        self.btn_confirm.setStyleSheet("""
+            QPushButton {
+                background-color: #007572;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 5px;
+                font-weight: 800;
+                font-size: 13px;
+                padding: 0 20px;
+            }
+            QPushButton:hover { background-color: #005F5C; }
+            QPushButton:disabled { background-color: #CBD5E1; color: #94A3B8; }
+        """)
+        self.btn_confirm.clicked.connect(self._on_confirm_versement)
+        btn_box.addWidget(self.btn_confirm, 1)
+
+        layout.addLayout(btn_box)
+
+    def _load_clients(self) -> None:
+        clients = []
+        if self.data_manager and hasattr(self.data_manager, "clients"):
+            try:
+                if hasattr(self.data_manager.clients, "get_all_clients"):
+                    clients = self.data_manager.clients.get_all_clients() or []
+                elif hasattr(self.data_manager.clients, "get_all_clients_with_balances"):
+                    clients = self.data_manager.clients.get_all_clients_with_balances() or []
+            except Exception as err:
+                logger.error(f"Error loading clients for versement: {err}")
+
+        self.cbo_client.blockSignals(True)
+        self.cbo_client.clear()
+
+        if not clients:
+            self.lbl_no_client_warn.setVisible(True)
+            self.btn_confirm.setEnabled(False)
+            self.cbo_client.blockSignals(False)
+            return
+
+        self.lbl_no_client_warn.setVisible(False)
+        self.btn_confirm.setEnabled(True)
+
+        target_idx = 0
+        for idx, c in enumerate(clients):
+            cid = c.get("Client_ID") or c.get("id")
+            if cid is None:
+                continue
+            name = c.get("Client_Name") or f"Client #{cid}"
+            phone = c.get("Phone") or c.get("Phone_Number") or ""
+            disp = f"{name} (ID: {cid})" + (f" - {phone}" if phone else "")
+            self.cbo_client.addItem(disp, int(cid))
+            if self.default_client_id and int(cid) == int(self.default_client_id):
+                target_idx = idx
+
+        completer = QCompleter(self.cbo_client.model(), self.cbo_client)
+        completer.setFilterMode(Qt.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.cbo_client.setCompleter(completer)
+
+        if self.cbo_client.count() > 0:
+            self.cbo_client.setCurrentIndex(target_idx)
+        self.cbo_client.blockSignals(False)
+
+        self._on_client_changed()
+
+    def _on_client_changed(self) -> None:
+        cid = self.cbo_client.currentData()
+        if not cid:
+            self._wallet_info = {"current_balance": 0.0, "real_deposit_balance": 0.0, "virtual_credit_balance": 0.0}
+            self.lbl_current_bal.setText("Solde Portefeuille Actuel : 0.00 DA")
+            self.lbl_sub_bal.setText("Dépôt Espèces : 0.00 DA  |  Avoir Virtuel : 0.00 DA")
+            self._recalc_projected()
+            return
+
+        if self.data_manager and hasattr(self.data_manager, "bonds"):
+            try:
+                self._wallet_info = self.data_manager.bonds.get_client_wallet(int(cid)) or {}
+            except Exception as err:
+                logger.error(f"Error fetching wallet for client #{cid}: {err}")
+                self._wallet_info = {"current_balance": 0.0, "real_deposit_balance": 0.0, "virtual_credit_balance": 0.0}
+
+        cur_tot = float(self._wallet_info.get("current_balance") or 0.0)
+        cur_real = float(self._wallet_info.get("real_deposit_balance") or 0.0)
+        cur_virt = float(self._wallet_info.get("virtual_credit_balance") or 0.0)
+
+        self.lbl_current_bal.setText(f"Solde Portefeuille Actuel : {format_money(cur_tot)} DA")
+        self.lbl_sub_bal.setText(f"Dépôt Espèces : {format_money(cur_real)} DA  |  Avoir Virtuel : {format_money(cur_virt)} DA")
+        self._recalc_projected()
+
+    def _recalc_projected(self) -> None:
+        amt = float(self.spin_amount.value())
+        cur_tot = float(self._wallet_info.get("current_balance") or 0.0)
+        proj = cur_tot + amt
+        self.lbl_projected.setText(f"Nouveau solde portefeuille après versement : <b style='color:#007572;'>{format_money(proj)} DA</b>")
+
+    def _on_confirm_versement(self) -> None:
+        cid = self.cbo_client.currentData()
+        if not cid:
+            QMessageBox.warning(self, "Client Requis", "Veuillez sélectionner un client enregistré valide.")
+            return
+
+        amt = Decimal(str(self.spin_amount.value())).quantize(Decimal("0.01"))
+        if amt <= Decimal("0.00"):
+            QMessageBox.warning(self, "Montant Invalide", "Le montant du versement doit être strictement supérieur à zéro.")
+            return
+
+        notes = self.txt_notes.text().strip() or "Versement espèces en caisse"
+
+        try:
+            if self.data_manager and hasattr(self.data_manager, "bonds"):
+                uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
+                res = self.data_manager.bonds.record_real_versement(
+                    client_id=int(cid),
+                    amount_cash=amt,
+                    cashier_user_id=uid,
+                    cash_session_id=1,
+                    notes=notes,
+                )
+            else:
+                cur_tot = float(self._wallet_info.get("current_balance") or 0.0)
+                res = {
+                    "success": True,
+                    "client_id": int(cid),
+                    "deposit_amount": float(amt),
+                    "new_wallet_balance": cur_tot + float(amt),
+                }
+
+            self.result_data = res
+            self.accept()
+        except Exception as err:
+            logger.error(f"Error in versement dialog: {err}")
+            QMessageBox.critical(self, "Erreur Versement", str(err))
 
 
 class CashierDeskWidget(QWidget):
@@ -2064,68 +2426,19 @@ class CashierDeskWidget(QWidget):
             QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'enregistrer des versements clients.")
             return
 
-        cid_default = int((self._selected_order or {}).get("Client_ID") or 1)
-        clients = []
-        if self.data_manager and hasattr(self.data_manager, "clients"):
+        cid_default = None
+        if self._selected_order:
             try:
-                clients = self.data_manager.clients.get_all_clients() or []
-            except Exception as err:
-                logger.error(f"Error fetching clients list: {err}")
-                clients = []
+                cid_default = int(self._selected_order.get("Client_ID") or 0) or None
+            except Exception:
+                cid_default = None
 
-        if clients:
-            client_options = [f"#{c['Client_ID']} - {c.get('Client_Name', 'Client')}" for c in clients]
-            default_idx = 0
-            for idx, c in enumerate(clients):
-                if c.get("Client_ID") == cid_default:
-                    default_idx = idx
-                    break
-            chosen_item, ok1 = QInputDialog.getItem(
-                self,
-                "Versement Client (Dépôt Espèces)",
-                "Sélectionnez le Client :",
-                client_options,
-                default_idx,
-                False,
-            )
-            if not ok1 or not chosen_item:
-                return
-            cid = int(chosen_item.split(" - ")[0].replace("#", "").strip())
-        else:
-            cid, ok1 = QInputDialog.getInt(
-                self,
-                "Versement Client (Dépôt Espèces)",
-                "ID du Client :",
-                value=cid_default,
-                minValue=1,
-            )
-            if not ok1:
-                return
-        amt, ok2 = QInputDialog.getDouble(
-            self,
-            "Versement Client (Dépôt Espèces)",
-            "Montant déposé en espèces (entre dans la Caisse physique) :",
-            value=10000.0,
-            minValue=1.0,
-            maxValue=100000000.0,
-            decimals=2,
-        )
-        if not ok2:
-            return
-
-        try:
-            if self.data_manager and hasattr(self.data_manager, "bonds"):
-                uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
-                res = self.data_manager.bonds.record_real_versement(
-                    client_id=cid,
-                    amount_cash=Decimal(str(amt)),
-                    cashier_user_id=uid,
-                    cash_session_id=1,
-                )
-                new_bal = res["new_wallet_balance"]
-            else:
-                new_bal = self._wallet_info.get("current_balance", 0.0) + amt
-
+        dlg = VersementDialog(self.data_manager, default_client_id=cid_default, parent=self)
+        if dlg.exec() == QDialog.Accepted and dlg.result_data:
+            res = dlg.result_data
+            amt = float(res.get("deposit_amount", 0.0))
+            cid = res.get("client_id")
+            new_bal = float(res.get("new_wallet_balance", 0.0))
             QMessageBox.information(
                 self,
                 "Versement Enregistré",
@@ -2133,8 +2446,6 @@ class CashierDeskWidget(QWidget):
                 f"Nouveau solde portefeuille Client #{cid} : {format_money(new_bal)} DA.",
             )
             self._on_order_selected()
-        except Exception as err:
-            QMessageBox.critical(self, "Erreur Versement", str(err))
 
     def _open_retour_dialog(self) -> None:
         if not self._can_do("act_caisse_bon_retour"):

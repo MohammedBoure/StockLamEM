@@ -238,6 +238,10 @@ class BondLifecycleManager:
 
     def _get_or_create_wallet_locked(self, cursor, client_id: int) -> Dict[str, Any]:
         """Locks and fetches the client's wallet row, initializing it if absent."""
+        cursor.execute("SELECT Client_ID, Client_Name FROM Clients WHERE Client_ID = %s", (int(client_id),))
+        if not cursor.fetchone():
+            raise ValueError(f"Le client avec l'ID #{client_id} n'existe pas dans la base de données.")
+
         cursor.execute(
             """
             SELECT Wallet_ID, Client_ID, Current_Balance,

@@ -19,6 +19,12 @@ class ClientPaymentManager:
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor()
+                # Verify client exists to prevent Foreign Key constraint error 1452
+                cursor.execute("SELECT Client_ID FROM Clients WHERE Client_ID = %s", (client_id,))
+                if not cursor.fetchone():
+                    logging.error(f"Cannot add payment: Client #{client_id} does not exist in Clients table.")
+                    return None
+
                 query = """
                     INSERT INTO Client_Payments 
                     (Client_ID, Invoice_ID, Payment_Date, Amount, Payment_Method, Reference, Notes, Created_By) 
