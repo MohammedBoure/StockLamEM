@@ -708,6 +708,222 @@ class ClientWalletDialog(QDialog):
             self.table_tx.setItem(row, 4, QTableWidgetItem(notes))
 
 
+class OrderArticlesDialog(QDialog):
+    """Dialogue affichant les détails complets des articles et produits d'un bon de commande."""
+
+    def __init__(
+        self,
+        order_data: Dict[str, Any],
+        parent: Optional[QWidget] = None,
+        lines: Optional[List[Dict[str, Any]]] = None,
+    ):
+        super().__init__(parent)
+        self.order_data = order_data or {}
+        self.lines = lines if lines is not None else (self.order_data.get("lines") or [])
+        order_no = self.order_data.get("Order_Number") or f"#{self.order_data.get('Order_ID', '')}"
+        self.setWindowTitle(f"Articles du Bon N° {order_no}")
+        self.setMinimumSize(840, 480)
+        self.resize(900, 520)
+        self._init_ui()
+
+    def _init_ui(self) -> None:
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #F8FAFC;
+            }
+            QLabel {
+                color: #1E293B;
+                font-family: 'Segoe UI', -apple-system, sans-serif;
+            }
+        """)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        # Header Info Card
+        header_card = QFrame()
+        header_card.setObjectName("OrderArticlesHeaderCard")
+        header_card.setStyleSheet("""
+            QFrame#OrderArticlesHeaderCard {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        h_layout = QHBoxLayout(header_card)
+        h_layout.setContentsMargins(16, 12, 16, 12)
+        h_layout.setSpacing(16)
+
+        # Left Column: Order No, Client, Date
+        v_left = QVBoxLayout()
+        v_left.setSpacing(4)
+        order_no = self.order_data.get("Order_Number") or f"#{self.order_data.get('Order_ID', '')}"
+        lbl_order_no = QLabel(f"Bon N° : <span style='color:#0E7471; font-weight:800;'>{order_no}</span>")
+        lbl_order_no.setStyleSheet("font-size: 15px;")
+        v_left.addWidget(lbl_order_no)
+
+        client_name = self.order_data.get("Client_Name") or "Client Comptoir"
+        client_phone = self.order_data.get("Client_Phone") or self.order_data.get("Delivery_Phone") or ""
+        phone_txt = f"  •  Tél : {client_phone}" if client_phone else ""
+        lbl_client = QLabel(f"Client : <b>{client_name}</b>{phone_txt}")
+        lbl_client.setStyleSheet("font-size: 12px; color: #334155;")
+        v_left.addWidget(lbl_client)
+
+        date_val = str(self.order_data.get("Order_Date") or "")
+        if date_val:
+            lbl_date = QLabel(f"Date : {date_val[:16]}")
+            lbl_date.setStyleSheet("font-size: 11px; color: #64748B;")
+            v_left.addWidget(lbl_date)
+
+        h_layout.addLayout(v_left, 1)
+
+        # Right Column: Type Badge, Total TTC, Status
+        v_right = QVBoxLayout()
+        v_right.setSpacing(4)
+        v_right.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        tot_ttc = float(self.order_data.get("Total_Amount_TTC") or 0.0)
+        lbl_total = QLabel(f"Total TTC : <span style='color:#0E7471; font-weight:800;'>{format_money(tot_ttc)} DA</span>")
+        lbl_total.setStyleSheet("font-size: 16px;")
+        lbl_total.setAlignment(Qt.AlignRight)
+        v_right.addWidget(lbl_total)
+
+        btype = self.order_data.get("Bond_Type") or "BON_C"
+        type_labels = {
+            "BON_C": "Bon Comptant",
+            "BON_CREDIT": "Bon Crédit",
+            "BON_LIVRAISON": "Bon de Livraison",
+        }
+        lbl_type = QLabel(type_labels.get(btype, btype))
+        lbl_type.setStyleSheet("""
+            background-color: #E6F4F1;
+            color: #0E7471;
+            border: 1px solid #99D1C9;
+            border-radius: 4px;
+            padding: 2px 10px;
+            font-size: 11px;
+            font-weight: 700;
+        """)
+        lbl_type.setAlignment(Qt.AlignCenter)
+        v_right.addWidget(lbl_type, 0, Qt.AlignRight)
+
+        h_layout.addLayout(v_right)
+        layout.addWidget(header_card)
+
+        # Products Table
+        self.table = QTableWidget(0, 8)
+        self.table.setHorizontalHeaderLabels([
+            "#", "Réf / Code-barres", "Désignation Produit", "Marque", "Couleur", "Qté", "Prix Unit. TTC", "Total TTC"
+        ])
+        self.table.setStyleSheet(TABLE_STYLE)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.horizontalHeader().setFixedHeight(36)
+        self.table.setShowGrid(True)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeToContents)
+
+        self._populate_lines()
+        layout.addWidget(self.table, 1)
+
+        # Bottom Bar
+        b_row = QHBoxLayout()
+        b_row.setSpacing(12)
+
+        nb_lines = len(self.lines)
+        total_units = sum(int(l.get("Quantity_Ordered") or 0) for l in self.lines)
+        lbl_summary = QLabel(f"<b>{nb_lines}</b> article(s)  •  <b>{total_units}</b> pièce(s) au total")
+        lbl_summary.setStyleSheet("font-size: 12px; color: #475569;")
+        b_row.addWidget(lbl_summary)
+
+        b_row.addStretch()
+
+        btn_close = QPushButton("Fermer")
+        btn_close.setCursor(Qt.PointingHandCursor)
+        btn_close.setFixedHeight(34)
+        btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: #0E7471;
+                color: #FFFFFF;
+                border: 1px solid #005A57;
+                border-radius: 4px;
+                padding: 0 20px;
+                font-weight: 700;
+                font-size: 12px;
+            }
+            QPushButton:hover { background-color: #005A57; }
+        """)
+        btn_close.clicked.connect(self.accept)
+        b_row.addWidget(btn_close)
+
+        layout.addLayout(b_row)
+
+    def _populate_lines(self) -> None:
+        self.table.setRowCount(0)
+        for idx, line in enumerate(self.lines, start=1):
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+
+            # 0: #
+            it_idx = QTableWidgetItem(str(idx))
+            it_idx.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 0, it_idx)
+
+            # 1: Code / Réf
+            ref_val = str(line.get("Barcode") or line.get("Product_ID") or "")
+            it_ref = QTableWidgetItem(ref_val)
+            it_ref.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 1, it_ref)
+
+            # 2: Désignation Produit
+            p_name = str(line.get("Product_Name") or f"Produit #{line.get('Product_ID', '')}")
+            it_name = QTableWidgetItem(p_name)
+            it_name.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            self.table.setItem(row, 2, it_name)
+
+            # 3: Marque
+            it_brand = QTableWidgetItem(str(line.get("Brand_Mark") or "-"))
+            it_brand.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 3, it_brand)
+
+            # 4: Couleur
+            it_col = QTableWidgetItem(str(line.get("Color_Finish") or line.get("Requested_Color") or "-"))
+            it_col.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 4, it_col)
+
+            # 5: Qté
+            qty = int(line.get("Quantity_Ordered") or 0)
+            it_qty = QTableWidgetItem(str(qty))
+            it_qty.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 5, it_qty)
+
+            # 6: Prix Unitaire TTC
+            pu = float(line.get("Unit_Price_TTC") or 0.0)
+            it_pu = QTableWidgetItem(f"{format_money(pu)} DA")
+            it_pu.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.table.setItem(row, 6, it_pu)
+
+            # 7: Total TTC
+            ltot = float(line.get("Line_Total_TTC") or (pu * qty))
+            it_tot = QTableWidgetItem(f"{format_money(ltot)} DA")
+            it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.table.setItem(row, 7, it_tot)
+
+
 class CashierDeskWidget(QWidget):
     """Cashier Desk (Caisse) console handling all 6 Bond financial interactions and Wallet settlements."""
 
@@ -925,6 +1141,8 @@ class CashierDeskWidget(QWidget):
         self.queue_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
 
         self.queue_table.itemSelectionChanged.connect(self._on_order_selected)
+        self.queue_table.cellDoubleClicked.connect(self._on_table_cell_double_clicked)
+        self.queue_table.setToolTip("Double-cliquez sur une ligne pour afficher les détails des articles du bon")
         l_layout.addWidget(self.queue_table, 1)
 
         # Standalone Caisse Operations: Versement, Versement Virtuel & Solde Versement
@@ -1049,10 +1267,40 @@ class CashierDeskWidget(QWidget):
         """)
         sel_layout = QVBoxLayout(self.selected_card)
         sel_layout.setContentsMargins(12, 10, 12, 10)
+        sel_layout.setSpacing(8)
+
+        card_top_row = QHBoxLayout()
+        card_top_row.setSpacing(10)
+
         self.lbl_selected_info = QLabel("Sélectionnez un bon dans la file d'attente pour le traiter...")
         self.lbl_selected_info.setWordWrap(True)
         self.lbl_selected_info.setStyleSheet("font-size: 12px; color: #334155;")
-        sel_layout.addWidget(self.lbl_selected_info)
+        card_top_row.addWidget(self.lbl_selected_info, 1)
+
+        self.btn_view_articles = QPushButton("Détails Articles")
+        self.btn_view_articles.setIcon(get_duotone_icon("statement", 14))
+        self.btn_view_articles.setIconSize(QSize(14, 14))
+        self.btn_view_articles.setCursor(Qt.PointingHandCursor)
+        self.btn_view_articles.setFixedHeight(32)
+        self.btn_view_articles.setEnabled(False)
+        self.btn_view_articles.setToolTip("Consulter la liste détaillée des articles et produits commandés dans ce bon")
+        self.btn_view_articles.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #0E7471;
+                border: 1.5px solid #0E7471;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 0 10px;
+                border-radius: 4px;
+            }
+            QPushButton:hover:enabled { background-color: #E6F4F1; }
+            QPushButton:disabled { color: #94A3B8; border-color: #CBD5E1; background-color: #F1F5F9; }
+        """)
+        self.btn_view_articles.clicked.connect(self._show_order_articles_dialog)
+        card_top_row.addWidget(self.btn_view_articles, 0, Qt.AlignVCenter)
+
+        sel_layout.addLayout(card_top_row)
         r_layout.addWidget(self.selected_card)
 
         # Customer Wallet Box (Real Versement + Virtual Credit)
@@ -1310,6 +1558,9 @@ class CashierDeskWidget(QWidget):
             self._selected_order = None
             if hasattr(self, "lbl_selected_info"):
                 self.lbl_selected_info.setText("Sélectionnez un bon dans la file d'attente pour le traiter...")
+            if hasattr(self, "btn_view_articles"):
+                self.btn_view_articles.setEnabled(False)
+                self.btn_view_articles.setText("Détails Articles")
             return
 
         it = self.queue_table.item(row, 0)
@@ -1328,6 +1579,9 @@ class CashierDeskWidget(QWidget):
             self._selected_order = None
             if hasattr(self, "lbl_selected_info"):
                 self.lbl_selected_info.setText("Sélectionnez un bon dans la file d'attente pour le traiter...")
+            if hasattr(self, "btn_view_articles"):
+                self.btn_view_articles.setEnabled(False)
+                self.btn_view_articles.setText("Détails Articles")
             return
 
         self._selected_order = ord_item
@@ -1342,11 +1596,21 @@ class CashierDeskWidget(QWidget):
                 "virtual_credit_balance": 25000.0,
             }
 
+        lines = ord_item.get("lines") or []
+        nb_lines = len(lines)
+        tot_units = sum(int(l.get("Quantity_Ordered") or 0) for l in lines)
+        articles_txt = f"<br><span style='font-size:11px; color:#475569;'><b>{nb_lines}</b> article(s) commandé(s) ({tot_units} pièce(s))</span>" if nb_lines > 0 else ""
+
         tot = float(ord_item.get("Total_Amount_TTC") or 0.0)
         self.lbl_selected_info.setText(
             f"Bon N° : <b>{ord_item.get('Order_Number')}</b>  |  Type : <b>{ord_item.get('Bond_Type')}</b><br>"
             f"Client : <b>{ord_item.get('Client_Name')}</b>  |  Total TTC : <b style='color:#0E7471;'>{format_money(tot)} DA</b>"
+            f"{articles_txt}"
         )
+        if hasattr(self, "btn_view_articles"):
+            self.btn_view_articles.setEnabled(True)
+            self.btn_view_articles.setText(f"Détails Articles ({nb_lines})" if nb_lines > 0 else "Détails Articles")
+
         self.lbl_wallet_details.setText(
             f"Portefeuille Client : <b>{format_money(self._wallet_info['current_balance'])} DA</b><br>"
             f"<span style='font-size:11px; color:#475569;'>Dépôt Espèces : {format_money(self._wallet_info['real_deposit_balance'])} DA  |  "
@@ -1354,6 +1618,28 @@ class CashierDeskWidget(QWidget):
         )
         self.txt_cash.setText(str(int(tot)) if ord_item.get("Bond_Type") == "BON_C" else "0")
         self._recalculate_amounts()
+
+    def _on_table_cell_double_clicked(self, row: int, col: int) -> None:
+        """Double-clicking any table cell displays the ordered products dialog."""
+        self._show_order_articles_dialog()
+
+    def _show_order_articles_dialog(self) -> None:
+        """Display the modal dialog with purchased product details for the selected bon."""
+        if not self._selected_order:
+            return
+
+        order_id = self._selected_order.get("Order_ID")
+        lines = self._selected_order.get("lines")
+        if not lines and self.data_manager and hasattr(self.data_manager, "bonds") and order_id:
+            try:
+                lines = self.data_manager.bonds.get_order_lines(order_id)
+                self._selected_order["lines"] = lines
+            except Exception as err:
+                logger.error(f"Error loading order lines for articles dialog: {err}")
+                lines = []
+
+        dialog = OrderArticlesDialog(self._selected_order, parent=self, lines=lines)
+        dialog.exec()
 
     # =========================================================================
     # BARCODE SCANNING, BON TYPE DETECTION & QUEUE MANAGEMENT (Task #5)
@@ -1779,15 +2065,42 @@ class CashierDeskWidget(QWidget):
             return
 
         cid_default = int((self._selected_order or {}).get("Client_ID") or 1)
-        cid, ok1 = QInputDialog.getInt(
-            self,
-            "Versement Client (Dépôt Espèces)",
-            "ID du Client :",
-            value=cid_default,
-            minValue=1,
-        )
-        if not ok1:
-            return
+        clients = []
+        if self.data_manager and hasattr(self.data_manager, "clients"):
+            try:
+                clients = self.data_manager.clients.get_all_clients() or []
+            except Exception as err:
+                logger.error(f"Error fetching clients list: {err}")
+                clients = []
+
+        if clients:
+            client_options = [f"#{c['Client_ID']} - {c.get('Client_Name', 'Client')}" for c in clients]
+            default_idx = 0
+            for idx, c in enumerate(clients):
+                if c.get("Client_ID") == cid_default:
+                    default_idx = idx
+                    break
+            chosen_item, ok1 = QInputDialog.getItem(
+                self,
+                "Versement Client (Dépôt Espèces)",
+                "Sélectionnez le Client :",
+                client_options,
+                default_idx,
+                False,
+            )
+            if not ok1 or not chosen_item:
+                return
+            cid = int(chosen_item.split(" - ")[0].replace("#", "").strip())
+        else:
+            cid, ok1 = QInputDialog.getInt(
+                self,
+                "Versement Client (Dépôt Espèces)",
+                "ID du Client :",
+                value=cid_default,
+                minValue=1,
+            )
+            if not ok1:
+                return
         amt, ok2 = QInputDialog.getDouble(
             self,
             "Versement Client (Dépôt Espèces)",

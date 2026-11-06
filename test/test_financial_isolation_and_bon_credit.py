@@ -159,6 +159,13 @@ class FinancialMockCursor:
         q_upper = q.upper()
         p = tuple(params or ())
 
+        # Client lookup
+        if "FROM CLIENTS WHERE CLIENT_ID = %S" in q_upper:
+            cid = int(p[0])
+            c = self.db.clients.get(cid)
+            self._rows = [c.copy()] if c else []
+            return
+
         # Wallet queries
         if "FROM CLIENT_WALLETS WHERE CLIENT_ID = %S FOR UPDATE" in q_upper:
             cid = int(p[0])

@@ -365,6 +365,12 @@ class BondLifecycleManager:
             if hasattr(conn, "start_transaction"):
                 conn.start_transaction()
 
+            # Ensure client exists to prevent Foreign Key constraint error 1452
+            cursor.execute("SELECT Client_ID, Client_Name FROM Clients WHERE Client_ID = %s", (int(client_id),))
+            cl_record = cursor.fetchone()
+            if not cl_record:
+                raise ValueError(f"Le client avec l'ID #{client_id} n'existe pas dans la base de données.")
+
             wallet = self._get_or_create_wallet_locked(cursor, client_id)
             bal_before = wallet["Current_Balance"]
             bal_after = (bal_before + deposit).quantize(Decimal("0.01"))
@@ -1670,7 +1676,7 @@ class BondLifecycleManager:
     # =========================================================================
 
     def get_caisse_order_queue(self) -> List[Dict[str, Any]]:
-        """Returns orders awaiting payment/validation at the Caisse Desk."""
+        """Returns orders awaiting payment/validation at the Caisse Desk, including purchased product lines."""
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
@@ -1679,6 +1685,7 @@ class BondLifecycleManager:
                     SELECT
                         o.Order_ID, o.Order_Number, o.Client_ID,
                         COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone_Number, '') AS Client_Phone,
                         COALESCE(c.Credit_Limit, 0.00) AS Credit_Limit,
                         COALESCE(c.Current_Debt, 0.00) AS Current_Debt,
                         o.Bond_Type, o.Total_Amount_HT, o.Total_Amount_TTC,
@@ -1691,9 +1698,56 @@ class BondLifecycleManager:
                     LIMIT 200
                     """
                 )
-                return cursor.fetchall() or []
+                orders = cursor.fetchall() or []
+                for ord_item in orders:
+                    cursor.execute(
+                        """
+                        SELECT
+                            l.Line_ID, l.Product_ID,
+                            COALESCE(p.Product_Name, CONCAT('Produit #', l.Product_ID)) AS Product_Name,
+                            COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                            COALESCE(l.Requested_Color, p.Color_Finish, '') AS Color_Finish,
+                            COALESCE(p.Barcode, '') AS Barcode,
+                            l.Quantity_Ordered, l.Quantity_Dispatched, l.Unit_Price_TTC,
+                            l.Line_Total_TTC
+                        FROM Sales_Order_Lines_Theoretical l
+                        LEFT JOIN Products_Master p ON l.Product_ID = p.Product_ID
+                        WHERE l.Order_ID = %s
+                        ORDER BY l.Line_ID ASC
+                        """,
+                        (ord_item["Order_ID"],),
+                    )
+                    ord_item["lines"] = cursor.fetchall() or []
+                return orders
         except Exception as err:
             logger.error(f"Error fetching Caisse order queue: {err}")
+            return []
+
+    def get_order_lines(self, order_id: int) -> List[Dict[str, Any]]:
+        """Fetch all theoretical product lines for a given order ID."""
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT
+                        l.Line_ID, l.Product_ID,
+                        COALESCE(p.Product_Name, CONCAT('Produit #', l.Product_ID)) AS Product_Name,
+                        COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                        COALESCE(l.Requested_Color, p.Color_Finish, '') AS Color_Finish,
+                        COALESCE(p.Barcode, '') AS Barcode,
+                        l.Quantity_Ordered, l.Quantity_Dispatched, l.Unit_Price_TTC,
+                        l.Line_Total_TTC
+                    FROM Sales_Order_Lines_Theoretical l
+                    LEFT JOIN Products_Master p ON l.Product_ID = p.Product_ID
+                    WHERE l.Order_ID = %s
+                    ORDER BY l.Line_ID ASC
+                    """,
+                    (int(order_id),),
+                )
+                return cursor.fetchall() or []
+        except Exception as err:
+            logger.error(f"Error fetching order lines for order #{order_id}: {err}")
             return []
 
     def get_dispatch_order_queue(self) -> List[Dict[str, Any]]:
