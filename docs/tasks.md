@@ -35,7 +35,7 @@ Console d'Encaissement & Validation Caisse
 to 
 Validation Caisse
 
-# 4 : medium
+# 4 [COMPLETED]: medium
 
 لا أريد أي TPE في 
 أريد في  Bureaux Opérationnels ثم Caisse & Règlements 

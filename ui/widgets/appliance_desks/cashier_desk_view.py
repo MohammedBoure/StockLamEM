@@ -4,7 +4,7 @@ ui/widgets/appliance_desks/cashier_desk_view.py
 ===============================================
 Cashier Desk UI (Bureau Caisse & Règlements - مكتب الصندوق).
 Implements financial settlements and liquidity safeguards for all Caisse bond flows:
-1. Bon C (بيع مباشر): Confirm payment in cash/card/wallet and unlock Dispatch.
+1. Bon C (بيع مباشر): Confirm payment in cash / client wallet and unlock Dispatch.
 2. Bon Crédit (أجل): Requires Admin password/PIN override (AdminAuthModal), supports partial advance or full debt.
 3. Bon de Livraison (توصيل): Record optional advance payment before dispatch and settle remaining COD balance after delivery.
 4. Versement (إيداع مالي): Record real cash deposit into Client Wallet (enters physical Caisse).
@@ -995,14 +995,6 @@ class CashierDeskWidget(QWidget):
         self.txt_cash.setFixedHeight(36)
         self.txt_cash.textChanged.connect(self._recalculate_amounts)
         form.addWidget(self.txt_cash, 0, 1)
-
-        lbl_t = QLabel("Paiement Carte CIB / TPE (DA) :")
-        lbl_t.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
-        form.addWidget(lbl_t, 1, 0)
-        self.txt_tpe = QLineEdit("0")
-        self.txt_tpe.setFixedHeight(36)
-        self.txt_tpe.textChanged.connect(self._recalculate_amounts)
-        form.addWidget(self.txt_tpe, 1, 1)
         r_layout.addLayout(form)
 
         # Action Buttons for the 3 Order Bond Types (Heightened for prominent enterprise UX)
@@ -1177,7 +1169,6 @@ class CashierDeskWidget(QWidget):
             f"Avoir Virtuel : {format_money(self._wallet_info['virtual_credit_balance'])} DA</span>"
         )
         self.txt_cash.setText(str(int(tot)) if ord_item.get("Bond_Type") == "BON_C" else "0")
-        self.txt_tpe.setText("0")
         self._recalculate_amounts()
 
     def _get_wallet_deduction(self) -> float:
@@ -1214,16 +1205,15 @@ class CashierDeskWidget(QWidget):
 
         try:
             cash_val = float(self.txt_cash.text().strip() or "0")
-            card_val = float(self.txt_tpe.text().strip() or "0")
         except ValueError:
             QMessageBox.warning(self, "Montant invalide", "Veuillez saisir un montant numérique valide.")
             return
 
-        if cash_val + card_val + w_ded < tot:
+        if cash_val + w_ded < tot:
             QMessageBox.warning(
                 self,
                 "Montant Insuffisant",
-                f"Le total encaissé ({format_money(cash_val + card_val + w_ded)} DA) est inférieur au montant du Bon Comptant ({format_money(tot)} DA).",
+                f"Le total encaissé ({format_money(cash_val + w_ded)} DA) est inférieur au montant du Bon Comptant ({format_money(tot)} DA).",
             )
             return
 
@@ -1235,7 +1225,7 @@ class CashierDeskWidget(QWidget):
                     cashier_user_id=uid,
                     cash_session_id=1,
                     amount_paid_cash=Decimal(str(cash_val)),
-                    amount_paid_card=Decimal(str(card_val)),
+                    amount_paid_card=Decimal("0.00"),
                     amount_paid_wallet=Decimal(str(w_ded)),
                 )
             self.orderSettled.emit(order_num, "BON_C_PAID")

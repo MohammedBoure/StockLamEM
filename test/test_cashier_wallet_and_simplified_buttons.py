@@ -185,6 +185,25 @@ class TestCashierWalletAndSimplifiedButtons(unittest.TestCase):
         self.assertEqual(txs[0]["Transaction_Type"], "REAL_CASH_VERSEMENT")
         self.assertEqual(txs[0]["Amount"], Decimal("5000.00"))
 
+    def test_no_tpe_fields_in_caisse_reglements(self):
+        """Verifies Task #4: No TPE / Carte CIB fields exist in Caisse & Règlements."""
+        desk = CashierDeskWidget(data_manager=self.mock_dm)
+
+        # 1. txt_tpe attribute does not exist on desk
+        self.assertFalse(hasattr(desk, "txt_tpe"))
+
+        # 2. No label mentions TPE or Carte CIB
+        all_labels = [lbl.text() for lbl in desk.findChildren(QLabel)]
+        for text in all_labels:
+            self.assertNotIn("TPE", text)
+            self.assertNotIn("Carte CIB", text)
+
+        # 3. Cash input is present and functional
+        self.assertTrue(hasattr(desk, "txt_cash"))
+
+        desk.deleteLater()
+        app.processEvents()
+
 
 if __name__ == "__main__":
     unittest.main()
