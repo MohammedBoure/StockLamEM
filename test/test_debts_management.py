@@ -528,6 +528,133 @@ class TestDebtsManagementUI(unittest.TestCase):
         sub_dlg2.close()
         dlg.close()
 
+    def test_tables_vertical_headers_hidden_and_selection_styling(self):
+        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        from PySide6.QtCore import Qt
+        tab = DebtsManagementTab(self.mock_dm)
+
+        # 1. Vertical row number headers must be completely hidden
+        self.assertFalse(tab.table_clients.verticalHeader().isVisible())
+        self.assertFalse(tab.table_invoices.verticalHeader().isVisible())
+
+        # 2. Selection style must preserve readable dark slate text (#0F172A)
+        self.assertIn("color: #0F172A", tab.table_clients.styleSheet())
+        self.assertIn("#E6F4F1", tab.table_clients.styleSheet())
+
+        # 3. Empty card styling must scope labels with border: none
+        self.assertIn("border: none !important;", tab.empty_invoices_card.styleSheet())
+        self.assertIn("QFrame#EmptyInvoicesCard", tab.empty_invoices_card.styleSheet())
+
+    def test_client_zero_or_negative_debt_disables_solder_button(self):
+        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        from PySide6.QtWidgets import QPushButton
+        from PySide6.QtCore import Qt
+
+        clients_data = [
+            {
+                'Client_ID': 1,
+                'Client_Name': 'azeaze',
+                'Phone': '0555001122',
+                'Credit_Limit': 0.0,
+                'total_invoiced': 0.0,
+                'total_paid': 2000.01,
+                'Current_Balance': -2000.01,
+                'Last_Payment_Date': '2026-03-01',
+                'Status_Badge': 'Normal'
+            },
+            {
+                'Client_ID': 2,
+                'Client_Name': 'Client Débiteur Actif',
+                'Phone': '0666112233',
+                'Credit_Limit': 50000.0,
+                'total_invoiced': 25000.0,
+                'total_paid': 10000.0,
+                'Current_Balance': 15000.0,
+                'Last_Payment_Date': '2026-02-15',
+                'Status_Badge': 'Normal'
+            }
+        ]
+        self.mock_dm.clients.get_debtor_clients_summary.return_value = clients_data
+        self.mock_dm.clients.get_client_unpaid_invoices.return_value = []
+
+        tab = DebtsManagementTab(self.mock_dm)
+        tab.load_debtors_table()
+
+        # Check badge count
+        self.assertIn("2 clients", tab.lbl_master_count_badge.text())
+
+        # Row 0: Solde -2000.01 -> Solder button disabled
+        cell_widget_0 = tab.table_clients.cellWidget(0, 9)
+        buttons_0 = cell_widget_0.findChildren(QPushButton)
+        btn_solder_0 = [b for b in buttons_0 if b.text() == "Solder"][0]
+        self.assertFalse(btn_solder_0.isEnabled())
+        self.assertEqual(btn_solder_0.cursor().shape(), Qt.ForbiddenCursor)
+
+        # Row 1: Solde 15000.0 -> Solder button enabled
+        cell_widget_1 = tab.table_clients.cellWidget(1, 9)
+        buttons_1 = cell_widget_1.findChildren(QPushButton)
+        btn_solder_1 = [b for b in buttons_1 if b.text() == "Solder"][0]
+        self.assertTrue(btn_solder_1.isEnabled())
+        self.assertEqual(btn_solder_1.cursor().shape(), Qt.PointingHandCursor)
+
+    def test_filter_bar_reset_and_actions(self):
+        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        tab = DebtsManagementTab(self.mock_dm)
+
+        # Change filter values
+        tab.spin_min_debt.setValue(5000.0)
+        tab.cb_status_filter.setCurrentIndex(2)
+
+        # Trigger reset
+        tab.btn_reset.click()
+
+        # Verify default values restored
+        self.assertEqual(tab.spin_min_debt.value(), 0.0)
+        self.assertEqual(tab.cb_status_filter.currentIndex(), 0)
+
+    def test_detail_section_empty_state_and_global_pay_button(self):
+        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        tab = DebtsManagementTab(self.mock_dm)
+
+        # 1. Client with zero unpaid invoices
+        client_clean = {
+            'Client_ID': 99,
+            'Client_Name': 'Client À Jour',
+            'Current_Balance': 0.0
+        }
+        self.mock_dm.clients.get_client_unpaid_invoices.return_value = []
+        tab._load_detail_invoices(client_clean)
+
+        self.assertEqual(tab.detail_stack.currentIndex(), 1)
+        self.assertFalse(tab.btn_detail_global_pay.isEnabled())
+        self.assertIn("Aucune créance impayée", tab.lbl_empty_title.text())
+
+        # 2. Client with unpaid invoices
+        client_debtor = {
+            'Client_ID': 88,
+            'Client_Name': 'Client Débiteur',
+            'Current_Balance': 10000.0
+        }
+        self.mock_dm.clients.get_client_unpaid_invoices.return_value = [
+            {
+                'Invoice_ID': 501,
+                'Invoice_No': 'FAC-2026-0501',
+                'Invoice_Date': '2026-03-01',
+                'Due_Date': '2026-03-15',
+                'Days_Overdue': 0,
+                'Is_Overdue': False,
+                'Total_Amount_TTC': 10000.0,
+                'Paid_Amount': 0.0,
+                'Remaining_Balance': 10000.0,
+                'Status': 'Validated'
+            }
+        ]
+        tab._load_detail_invoices(client_debtor)
+
+        self.assertEqual(tab.detail_stack.currentIndex(), 0)
+        self.assertTrue(tab.btn_detail_global_pay.isEnabled())
+        self.assertEqual(tab.table_invoices.rowCount(), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
