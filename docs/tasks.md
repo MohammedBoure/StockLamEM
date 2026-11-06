@@ -2,7 +2,7 @@
 
 أريد نقل clients من données de Base إلى أن تكون لها button van bar خاص بها بالكامل و أن يكون عرض البيانات في الواجهة عبر lazy loading 
 
-# 2 : medium
+# 2 [COMPLETED]: medium
 
 في nav bar 
 bureaux Opérationnels 

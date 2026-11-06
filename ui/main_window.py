@@ -73,9 +73,13 @@ class MainWindow(QMainWindow):
 
         # --- حالة الشريط الجانبي ---
         self.is_sidebar_expanded = True
-        self.sidebar_full_width = 260
+        self.sidebar_full_width = 240
         self.sidebar_compact_width = 70
         self.button_texts = {}
+        self.button_tooltips = {
+            14: "Bureaux Opérationnels (Commandes, Caisse, Sortie)",
+            15: "Service Après-Vente (SAV) & Réparations",
+        }
 
         full_name = self.current_user.get('Full_Name', 'Utilisateur') if self.current_user else 'Invité'
         self.setWindowTitle(f"{get_app_name()} | {full_name}")
@@ -320,8 +324,8 @@ class MainWindow(QMainWindow):
             (11, "Vente en Gros B2B", "wholesale"),
             (12, "Historique Ventes", "sales_history"),
             (13, "Créances Clients", "debts"),
-            (14, "Bureaux Opérationnels", "barcode_scan"),
-            (15, "Service Après-Vente (SAV)", "wrench_sav"),
+            (14, "Bureaux", "barcode_scan"),
+            (15, "SAV", "wrench_sav"),
             (7, "Traçabilité", "history"),
             (5, "Utilisateurs", "users"),
             (4, "Paramètres", "settings"),
@@ -351,6 +355,8 @@ class MainWindow(QMainWindow):
             btn.setProperty("class", "nav_button")
             btn.setCursor(Qt.PointingHandCursor)
             self.button_texts[btn] = text
+            if btn_id in self.button_tooltips:
+                btn.setToolTip(self.button_tooltips[btn_id])
             self.nav_group.addButton(btn, btn_id)
             nav_layout.addWidget(btn)
 
@@ -397,13 +403,21 @@ class MainWindow(QMainWindow):
             self.update_header_layout(compact=True)
             for btn in self.nav_group.buttons() + [self.btn_logout]:
                 btn.setText("")
-                btn.setToolTip(self.button_texts[btn].replace("&&", "&"))
+                btn_id = self.nav_group.id(btn)
+                if btn_id in self.button_tooltips:
+                    btn.setToolTip(self.button_tooltips[btn_id])
+                else:
+                    btn.setToolTip(self.button_texts.get(btn, "").replace("&&", "&"))
         else:
             self.sidebar_container.setProperty("state", "expanded")
             self.update_header_layout(compact=False)
             for btn in self.nav_group.buttons() + [self.btn_logout]:
                 btn.setText(self.button_texts[btn])
-                btn.setToolTip("")
+                btn_id = self.nav_group.id(btn)
+                if btn_id in self.button_tooltips:
+                    btn.setToolTip(self.button_tooltips[btn_id])
+                else:
+                    btn.setToolTip("")
 
         self.is_sidebar_expanded = not self.is_sidebar_expanded
         self.sidebar_container.style().unpolish(self.sidebar_container)
