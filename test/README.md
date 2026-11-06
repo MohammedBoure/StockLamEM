@@ -16,6 +16,8 @@ This test suite enforces strict software quality gatekeeping across:
 ## 2. Itemized Breakdown of Test Files & Harness Modules
 
 ### 2.1. Specialized Appliance Retail, Concurrency & Security Gatekeeping
+- **`test_bons_caisse_dynamic_and_clients_versement.py`**:
+  - *Scope*: Validates SQL column alignment (`Unit_Price_Received`, `Total_Return_Value`, `Return_Date`, `Clients.Phone`), dynamic Cashier Desk (`Caisse`) action button switching by bon type (`BC`, `BCréde`, and `BL` advance vs 0 DA COD options), Order Desk `Bons du Jour` editing and A4 PDF export (`bon_pdf_export.py`, `order_bons_dialog.py`), strict visibility persistence of unclosed `Bon de Livraison` across Order Desk and Caisse queues, and the minimalist `Versements` dialog (`ClientVersementsDialog`) in `ClientsTab`.
 - **[`docs/analysis_testing_and_validation_matrix.md`](file:///home/pluto/projects/StockLamPlus/docs/analysis_testing_and_validation_matrix.md)**:
   - *Scope*: Master validation matrix, mathematical proof of physical cash drawer isolation, threat modeling, and acceptance criteria.
 - **`test_serial_uniqueness_and_concurrency.py`**:

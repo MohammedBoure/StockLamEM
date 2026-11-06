@@ -1249,7 +1249,7 @@ class SalesManager:
                     ) AS Dispatched_Serials,
                     COALESCE(
                         (
-                            SELECT AVG(COALESCE(NULLIF(ib.Unit_Cost_Landed, 0), ib.Unit_Price_Received, 0))
+                            SELECT AVG(COALESCE(ib.Unit_Price_Received, 0))
                             FROM Inventory_Batches ib
                             WHERE ib.Product_ID = l.Product_ID
                         ),
@@ -1348,7 +1348,7 @@ class SalesManager:
                                 SELECT SUM(
                                     sol.Quantity_Ordered * COALESCE(
                                         (
-                                            SELECT AVG(COALESCE(NULLIF(ib.Unit_Cost_Landed, 0), ib.Unit_Price_Received, 0))
+                                            SELECT AVG(COALESCE(ib.Unit_Price_Received, 0))
                                             FROM Inventory_Batches ib
                                             WHERE ib.Product_ID = sol.Product_ID
                                         ),
@@ -1455,8 +1455,8 @@ class SalesManager:
                         rb.Original_Invoice_ID,
                         rb.Client_ID,
                         rb.Return_Reason,
-                        rb.Total_Credit_Issued,
-                        rb.Created_At,
+                        rb.Total_Return_Value,
+                        rb.Return_Date,
                         COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
                         COALESCE(NULLIF(u.Full_Name, ''), u.Username, 'Caissier') AS User_Name
                     FROM Return_Bonds rb
@@ -1466,24 +1466,24 @@ class SalesManager:
                 """
                 ret_params = []
                 if start_date:
-                    ret_query += " AND rb.Created_At >= %s"
+                    ret_query += " AND rb.Return_Date >= %s"
                     ret_params.append(start_date)
                 if end_date:
-                    ret_query += " AND rb.Created_At <= %s"
+                    ret_query += " AND rb.Return_Date <= %s"
                     ret_params.append(end_date)
                 if client_id:
                     ret_query += " AND rb.Client_ID = %s"
                     ret_params.append(client_id)
                 cursor.execute(ret_query, tuple(ret_params))
                 for rb in cursor.fetchall() or []:
-                    amt = float(rb.get('Total_Credit_Issued') or 0.0)
+                    amt = float(rb.get('Total_Return_Value') or 0.0)
                     rows.append({
                         'Row_Type': 'Return',
                         'Operation_ID': f"RET-{rb['Return_Bond_ID']}",
                         'Invoice_ID': rb.get('Original_Invoice_ID'),
                         'Invoice_No': rb.get('Return_Bond_Number'),
-                        'Invoice_Date': rb.get('Created_At'),
-                        'Event_Date': rb.get('Created_At'),
+                        'Invoice_Date': rb.get('Return_Date'),
+                        'Event_Date': rb.get('Return_Date'),
                         'Operation_Label': 'Bon de Retour (Avoir Virtuel)',
                         'Client_Name': rb.get('Client_Name') or 'Client Comptoir',
                         'Status': 'Returned',

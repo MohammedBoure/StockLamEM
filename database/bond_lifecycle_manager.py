@@ -232,6 +232,354 @@ class BondLifecycleManager:
             if hasattr(self.db, "get_raw_connection"):
                 conn.close()
 
+    def get_order_by_id(self, order_id: int) -> Optional[Dict[str, Any]]:
+        """Fetches a single theoretical order with client metadata, invoice info, and product lines."""
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT
+                        o.Order_ID, o.Order_Number, o.Client_ID, o.Order_Desk_User_ID,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
+                        COALESCE(c.Address, '') AS Client_Address,
+                        o.Bond_Type, o.Total_Amount_HT, o.Total_Amount_TTC,
+                        o.Status, o.Payment_Method_Requested, o.Order_Date,
+                        o.Delivery_Address, o.Delivery_Phone, o.Delivery_Notes,
+                        i.Invoice_ID, i.Invoice_No,
+                        COALESCE(i.Amount_Paid_Cash, 0.00) + COALESCE(i.Amount_Paid_Wallet, 0.00) AS Amount_Paid_So_Far,
+                        COALESCE(i.Amount_Remaining_Credit, o.Total_Amount_TTC) AS Amount_Remaining_Credit
+                    FROM Sales_Orders_Theoretical o
+                    LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID AND i.Status != 'Cancelled'
+                    WHERE o.Order_ID = %s
+                    LIMIT 1
+                    """,
+                    (int(order_id),),
+                )
+                order = cursor.fetchone()
+                if not order:
+                    return None
+                order["lines"] = self.get_order_lines(int(order_id))
+                return order
+        except Exception as err:
+            logger.error(f"Error fetching order #{order_id}: {err}")
+            return None
+
+    def get_order_desk_bons(
+        self,
+        order_date: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Returns all bons created on `order_date` (defaults to today) PLUS all unclosed
+        Bon de Livraison (BL) orders from any date so no unclosed BL ever disappears.
+        """
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                params: List[Any] = []
+                if order_date:
+                    date_cond = "DATE(o.Order_Date) = %s"
+                    params.append(order_date)
+                else:
+                    date_cond = "DATE(o.Order_Date) = CURDATE()"
+
+                user_cond = ""
+                if user_id is not None:
+                    user_cond = " AND (o.Order_Desk_User_ID = %s OR o.Bond_Type = 'BON_LIVRAISON')"
+                    params.append(int(user_id))
+
+                cursor.execute(
+                    f"""
+                    SELECT
+                        o.Order_ID, o.Order_Number, o.Client_ID, o.Order_Desk_User_ID,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
+                        o.Bond_Type, o.Total_Amount_HT, o.Total_Amount_TTC,
+                        o.Status, o.Payment_Method_Requested, o.Order_Date,
+                        o.Delivery_Address, o.Delivery_Phone, o.Delivery_Notes,
+                        i.Invoice_ID, i.Invoice_No,
+                        COALESCE(i.Amount_Paid_Cash, 0.00) + COALESCE(i.Amount_Paid_Wallet, 0.00) AS Amount_Paid_So_Far,
+                        CASE
+                            WHEN o.Status = 'COMPLETED' THEN 0.00
+                            WHEN i.Invoice_ID IS NOT NULL THEN COALESCE(i.Amount_Remaining_Credit, 0.00)
+                            ELSE o.Total_Amount_TTC
+                        END AS Amount_Remaining_Credit
+                    FROM Sales_Orders_Theoretical o
+                    LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID AND i.Status != 'Cancelled'
+                    WHERE o.Status != 'CANCELLED'
+                      AND (
+                          ({date_cond})
+                          OR (o.Bond_Type = 'BON_LIVRAISON' AND o.Status NOT IN ('COMPLETED', 'CANCELLED'))
+                      )
+                      {user_cond}
+                    ORDER BY
+                        CASE WHEN o.Bond_Type = 'BON_LIVRAISON' AND o.Status != 'COMPLETED' THEN 0 ELSE 1 END ASC,
+                        o.Order_Date DESC, o.Order_ID DESC
+                    LIMIT 250
+                    """,
+                    tuple(params),
+                )
+                orders = cursor.fetchall() or []
+                for ord_item in orders:
+                    ord_item["lines"] = self.get_order_lines(int(ord_item["Order_ID"]))
+                return orders
+        except Exception as err:
+            logger.error(f"Error fetching Order Desk bons: {err}")
+            return []
+
+    def update_sales_order_draft(
+        self,
+        order_id: int,
+        client_id: int,
+        bond_type: str,
+        items: List[Dict[str, Any]],
+        delivery_address: Optional[str] = None,
+        user_id: int = 1,
+    ) -> Dict[str, Any]:
+        """
+        Atomically modifies an existing Order Desk bon (client, type, delivery address, and lines)
+        as long as no physical serials have been dispatched yet and it is not paid/closed.
+        Adjusts Theoretical_Reserved_Qty on Inventory_Batches accurately.
+        """
+        if not items:
+            raise ValueError("Le bon doit contenir au moins un article.")
+
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            if hasattr(conn, "start_transaction"):
+                conn.start_transaction()
+
+            cursor.execute(
+                """
+                SELECT Order_ID, Order_Number, Client_ID, Bond_Type, Status
+                FROM Sales_Orders_Theoretical
+                WHERE Order_ID = %s
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            order = cursor.fetchone()
+            if not order:
+                raise ValueError("Bon introuvable.")
+
+            status = str(order.get("Status") or "")
+            if status in ("COMPLETED", "CANCELLED", "DISPATCHED_PENDING_COD", "PARTIALLY_DISPATCHED"):
+                raise ValueError(f"Modification impossible : ce bon est déjà expédié ou clôturé ({status}).")
+
+            cursor.execute(
+                """
+                SELECT Line_ID, Product_ID, Quantity_Ordered, Quantity_Dispatched
+                FROM Sales_Order_Lines_Theoretical
+                WHERE Order_ID = %s
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            old_lines = cursor.fetchall() or []
+            if any(int(l.get("Quantity_Dispatched") or 0) > 0 for l in old_lines):
+                raise ValueError("Modification impossible : des articles ont déjà quitté le magasin.")
+
+            cursor.execute(
+                """
+                SELECT Invoice_ID, Amount_Paid_Cash, Amount_Paid_Wallet
+                FROM Sales_Invoices
+                WHERE Order_ID = %s AND Status != 'Cancelled'
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            existing_inv = cursor.fetchone()
+            if status != "CONFIRMED_PENDING_PAYMENT" and order.get("Bond_Type") != "BON_LIVRAISON":
+                raise ValueError("Ce bon a déjà été validé en Caisse et ne peut plus être modifié.")
+
+            # 1. Release previous theoretical reservations
+            for old_l in old_lines:
+                old_pid = int(old_l["Product_ID"])
+                old_qty = int(old_l["Quantity_Ordered"])
+                if old_qty <= 0:
+                    continue
+                cursor.execute(
+                    """
+                    SELECT Batch_ID, COALESCE(Theoretical_Reserved_Qty, 0) AS Theoretical_Reserved_Qty
+                    FROM Inventory_Batches
+                    WHERE Product_ID = %s AND Theoretical_Reserved_Qty > 0
+                    ORDER BY Batch_ID DESC
+                    FOR UPDATE
+                    """,
+                    (old_pid,),
+                )
+                rel_rem = old_qty
+                for b in cursor.fetchall() or []:
+                    alloc = min(rel_rem, int(b["Theoretical_Reserved_Qty"]))
+                    cursor.execute(
+                        """
+                        UPDATE Inventory_Batches
+                        SET Theoretical_Reserved_Qty = GREATEST(0, Theoretical_Reserved_Qty - %s)
+                        WHERE Batch_ID = %s
+                        """,
+                        (alloc, b["Batch_ID"]),
+                    )
+                    rel_rem -= alloc
+                    if rel_rem <= 0:
+                        break
+
+            cursor.execute("DELETE FROM Sales_Order_Lines_Theoretical WHERE Order_ID = %s", (int(order_id),))
+
+            # 2. Reserve new theoretical lines
+            normalized_bond = (bond_type or order.get("Bond_Type") or "BON_C").strip().upper()
+            if normalized_bond not in ("BON_C", "BON_CREDIT", "BON_LIVRAISON"):
+                normalized_bond = "BON_C"
+            if existing_inv and normalized_bond != order.get("Bond_Type"):
+                normalized_bond = str(order.get("Bond_Type"))
+
+            total_ttc = sum(
+                (Decimal(str(it["unit_price_ttc"])) * int(it["quantity"])).quantize(Decimal("0.01"))
+                for it in items
+            )
+            total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
+
+            line_sql = """
+                INSERT INTO Sales_Order_Lines_Theoretical (
+                    Order_ID, Product_ID, Requested_Color, Quantity_Ordered,
+                    Unit_Price_HT, Tax_Rate, Unit_Price_TTC, Line_Total_TTC
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            for it in items:
+                prod_id = int(it["product_id"])
+                req_qty = int(it["quantity"])
+                if req_qty <= 0:
+                    raise ValueError("La quantité commandée doit être supérieure à zéro.")
+                p_ttc = Decimal(str(it["unit_price_ttc"])).quantize(Decimal("0.01"))
+                p_ht = (p_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
+                line_ttc = (p_ttc * req_qty).quantize(Decimal("0.01"))
+                req_color = it.get("color") or it.get("coloure")
+
+                cursor.execute(
+                    """
+                    SELECT Batch_ID, Quantity_Current, COALESCE(Theoretical_Reserved_Qty, 0) AS Theoretical_Reserved_Qty
+                    FROM Inventory_Batches
+                    WHERE Product_ID = %s AND Status IN ('Available', 'ACTIVE')
+                    ORDER BY Batch_ID ASC
+                    FOR UPDATE
+                    """,
+                    (prod_id,),
+                )
+                batches = cursor.fetchall() or []
+                total_avail = sum(
+                    int(b["Quantity_Current"]) - int(b.get("Theoretical_Reserved_Qty") or 0)
+                    for b in batches
+                )
+                if total_avail < req_qty:
+                    raise ValueError(
+                        f"Stock théorique insuffisant pour le produit #{prod_id} (Demandé: {req_qty}, Dispo: {total_avail})."
+                    )
+
+                rem_res = req_qty
+                for b in batches:
+                    b_avail = int(b["Quantity_Current"]) - int(b.get("Theoretical_Reserved_Qty") or 0)
+                    if b_avail <= 0:
+                        continue
+                    alloc = min(rem_res, b_avail)
+                    cursor.execute(
+                        """
+                        UPDATE Inventory_Batches
+                        SET Theoretical_Reserved_Qty = COALESCE(Theoretical_Reserved_Qty, 0) + %s
+                        WHERE Batch_ID = %s
+                        """,
+                        (alloc, b["Batch_ID"]),
+                    )
+                    rem_res -= alloc
+                    if rem_res == 0:
+                        break
+
+                cursor.execute(
+                    line_sql,
+                    (int(order_id), prod_id, req_color, req_qty, p_ht, Decimal("19.00"), p_ttc, line_ttc),
+                )
+
+            pay_req_map = {
+                "BON_C": "CASH",
+                "BON_CREDIT": "CREDIT",
+                "BON_LIVRAISON": "LIVRAISON_COD",
+            }
+            cursor.execute(
+                """
+                UPDATE Sales_Orders_Theoretical
+                SET Client_ID = %s,
+                    Bond_Type = %s,
+                    Payment_Method_Requested = %s,
+                    Total_Amount_HT = %s,
+                    Total_Amount_TTC = %s,
+                    Delivery_Address = %s
+                WHERE Order_ID = %s
+                """,
+                (
+                    int(client_id),
+                    normalized_bond,
+                    pay_req_map.get(normalized_bond, "CASH"),
+                    total_ht,
+                    total_ttc,
+                    delivery_address,
+                    int(order_id),
+                ),
+            )
+
+            if existing_inv:
+                already_paid = (
+                    Decimal(str(existing_inv.get("Amount_Paid_Cash") or "0.00"))
+                    + Decimal(str(existing_inv.get("Amount_Paid_Wallet") or "0.00"))
+                ).quantize(Decimal("0.01"))
+                if total_ttc < already_paid:
+                    raise ValueError(
+                        f"Le nouveau montant TTC ({total_ttc} DA) est inférieur à l'acompte déjà versé ({already_paid} DA)."
+                    )
+                new_rem = (total_ttc - already_paid).quantize(Decimal("0.01"))
+                new_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
+                new_inv_st = "Paid" if new_rem == Decimal("0.00") else "Validated"
+                cursor.execute(
+                    """
+                    UPDATE Sales_Invoices
+                    SET Client_ID = %s,
+                        Total_Amount_HT = %s,
+                        Total_TVA = %s,
+                        Total_Amount_TTC = %s,
+                        Amount_Remaining_Credit = %s,
+                        Status = %s
+                    WHERE Invoice_ID = %s
+                    """,
+                    (
+                        int(client_id),
+                        total_ht,
+                        new_tva,
+                        total_ttc,
+                        new_rem,
+                        new_inv_st,
+                        int(existing_inv["Invoice_ID"]),
+                    ),
+                )
+
+            conn.commit()
+            return {
+                "success": True,
+                "order_id": int(order_id),
+                "order_number": order.get("Order_Number"),
+                "bond_type": normalized_bond,
+                "total_ttc": float(total_ttc),
+            }
+        except Exception as err:
+            conn.rollback()
+            logger.error(f"Error updating order draft #{order_id}: {err}")
+            raise
+        finally:
+            cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
     # =========================================================================
     # 2. CLIENT WALLET & VERSEMENT (الإيداع المالي الفعلي والرصيد الافتراضي)
     # =========================================================================
@@ -1070,13 +1418,21 @@ class BondLifecycleManager:
 
             if inv.get("Order_ID"):
                 cursor.execute(
-                    """
-                    UPDATE Sales_Orders_Theoretical
-                    SET Status = 'COMPLETED'
-                    WHERE Order_ID = %s
-                    """,
+                    "SELECT Status FROM Sales_Orders_Theoretical WHERE Order_ID = %s FOR UPDATE",
                     (int(inv["Order_ID"]),),
                 )
+                ord_st_row = cursor.fetchone()
+                curr_ord_st = str((ord_st_row or {}).get("Status") or "")
+                # Close the BL order completely once both payment AND physical dispatch are completed
+                if curr_ord_st in ("DISPATCHED_PENDING_COD", "COMPLETED", ""):
+                    cursor.execute(
+                        """
+                        UPDATE Sales_Orders_Theoretical
+                        SET Status = 'COMPLETED'
+                        WHERE Order_ID = %s
+                        """,
+                        (int(inv["Order_ID"]),),
+                    )
 
             conn.commit()
             return {
@@ -1694,18 +2050,23 @@ class BondLifecycleManager:
                     SELECT
                         o.Order_ID, o.Order_Number, o.Client_ID,
                         COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
-                        COALESCE(c.Phone_Number, '') AS Client_Phone,
+                        COALESCE(c.Phone, '') AS Client_Phone,
                         COALESCE(c.Credit_Limit, 0.00) AS Credit_Limit,
                         COALESCE(c.Current_Debt, 0.00) AS Current_Debt,
                         o.Bond_Type, o.Total_Amount_HT, o.Total_Amount_TTC,
                         o.Status, o.Payment_Method_Requested, o.Order_Date,
                         o.Delivery_Address, o.Delivery_Phone,
                         i.Invoice_ID, i.Invoice_No,
-                        COALESCE(i.Amount_Remaining_Credit, o.Total_Amount_TTC) AS Amount_Remaining_Credit
+                        COALESCE(i.Amount_Paid_Cash, 0.00) + COALESCE(i.Amount_Paid_Wallet, 0.00) AS Amount_Paid_So_Far,
+                        CASE
+                            WHEN i.Invoice_ID IS NOT NULL THEN COALESCE(i.Amount_Remaining_Credit, 0.00)
+                            ELSE o.Total_Amount_TTC
+                        END AS Amount_Remaining_Credit
                     FROM Sales_Orders_Theoretical o
                     LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
                     LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID AND i.Status != 'Cancelled'
                     WHERE o.Status IN ('CONFIRMED_PENDING_PAYMENT', 'DISPATCHED_PENDING_COD')
+                       OR (o.Bond_Type = 'BON_LIVRAISON' AND o.Status NOT IN ('COMPLETED', 'CANCELLED'))
                     ORDER BY o.Order_Date DESC
                     LIMIT 200
                     """

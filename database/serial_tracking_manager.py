@@ -498,7 +498,7 @@ class SerialTrackingManager:
                         p.Barcode AS Product_Barcode,
                         b.Lot_Number,
                         b.Unit_Price_Received,
-                        COALESCE(b.Unit_Cost_Landed, b.Unit_Price_Received, 0.0) AS Unit_Cost_Landed,
+                        COALESCE(b.Unit_Price_Received, 0.0) AS Unit_Cost_Landed,
                         ROUND(
                             COALESCE(b.Selling_Price_HT, p.Default_Selling_Price_HT, 0.0)
                             * (1.0 + COALESCE(b.Selling_TVA_Percent, p.Selling_TVA_Percent, 19.0) / 100.0),

@@ -21,7 +21,8 @@ Ce dossier regroupe les interfaces de gestion des référentiels de données du 
   - Badge d'état dynamique de chargement (`X / Y clients`) et bouton manuel "Charger plus..." en bas de tableau.
   - Colonnes "Catégorie" (Prix 1 à 4), "Plafond Crédit" et "Solde Actuel" en temps réel.
   - Badge styling et coloration QBrush : Vert pastel lorsque Solde $\le$ Plafond de Crédit, et Rouge pastel en cas de dépassement (Solde > Plafond).
-  - Bouton d'action et menu contextuel sur clic droit : Relevé de Compte, Modifier, Supprimer.
+  - Bouton d'action (`Versements`, `Relevé de Compte`) et menu contextuel sur clic droit : Relevé de Compte, Versements & Solde, Modifier, Supprimer.
+- `client_versements_dialog.py` : Dialogue épuré et minimaliste (`ClientVersementsDialog`) accessible depuis l'onglet `Clients`, permettant de consulter en un coup d'œil le solde portefeuille actuel du client (`Solde`, `Espèces`, `Avoir`) et l'historique chronologique de tous ses versements sans surcharge de conteneurs.
 - `client_statement_dialog.py` : Dialogue interactif de Relevé de Compte Client ("Extrait de Compte") et consultation détaillée modalless :
   - En-tête épuré et libellés textuels ouverts (`<label>`) au-dessus des contrôles sans aucun encadrement parasite ni apparence de faux boutons.
   - Cartes KPI synthétiques planes et contrastées (Solde Antérieur, Total Débit, Total Crédit, Nouveau Solde Dû) avec bordures douces régulières (`#DDE3EA`, rayon 8px) et typographie renforcée de fort contraste.

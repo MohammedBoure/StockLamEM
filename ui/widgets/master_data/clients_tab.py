@@ -12,6 +12,7 @@ from PySide6.QtGui import QAction, QColor, QFont, QBrush
 
 from .dialogs import ClientDialog
 from .client_statement_dialog import ClientStatementDialog
+from .client_versements_dialog import ClientVersementsDialog
 from ui.formatting import format_money
 from ui.icons import get_duotone_icon
 
@@ -153,6 +154,28 @@ class ClientsTab(QWidget):
         """)
         self.btn_statement_top.clicked.connect(self.open_statement_dialog)
         t_layout.addWidget(self.btn_statement_top)
+
+        self.btn_versements = QPushButton("Versements")
+        self.btn_versements.setIcon(get_duotone_icon("kpi_wallet", 14))
+        self.btn_versements.setIconSize(QSize(14, 14))
+        self.btn_versements.setCursor(Qt.PointingHandCursor)
+        self.btn_versements.setFixedHeight(36)
+        self.btn_versements.setToolTip("Consulter l'historique des versements et le solde portefeuille du client")
+        self.btn_versements.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #007572;
+                border: 1.5px solid #007572;
+                font-weight: 700;
+                font-size: 12px;
+                padding: 0 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #E6F4F1; border-color: #005A57; color: #005A57; }
+            QPushButton:pressed { background-color: #CCEBE6; }
+        """)
+        self.btn_versements.clicked.connect(self.open_versements_dialog)
+        t_layout.addWidget(self.btn_versements)
 
         self.refresh_button = QPushButton("Actualiser")
         self.refresh_button.setIcon(get_duotone_icon("refresh", 14))
@@ -623,6 +646,19 @@ class ClientsTab(QWidget):
         dialog = ClientStatementDialog(self.data_manager, client_id, self)
         dialog.exec()
 
+    def open_versements_dialog(self):
+        client_id = None
+        row = self.clients_table.currentRow()
+        if row >= 0:
+            client_id_item = self.clients_table.item(row, 0)
+            if client_id_item:
+                try:
+                    client_id = int(client_id_item.text())
+                except ValueError:
+                    client_id = None
+        dialog = ClientVersementsDialog(self.data_manager, client_id=client_id, parent=self)
+        dialog.exec()
+
     def open_context_menu(self, pos):
         item = self.clients_table.itemAt(pos)
         if not item:
@@ -654,6 +690,10 @@ class ClientsTab(QWidget):
         act_statement.setIcon(get_duotone_icon("statement", 14))
         act_statement.triggered.connect(self.open_statement_dialog)
 
+        act_versements = QAction("Versements & Solde", self)
+        act_versements.setIcon(get_duotone_icon("kpi_wallet", 14))
+        act_versements.triggered.connect(self.open_versements_dialog)
+
         act_edit = QAction("Modifier le Client", self)
         act_edit.setIcon(get_duotone_icon("edit", 14))
         act_edit.triggered.connect(self.open_edit_dialog)
@@ -663,6 +703,7 @@ class ClientsTab(QWidget):
         act_delete.triggered.connect(self.delete_client)
 
         menu.addAction(act_statement)
+        menu.addAction(act_versements)
         menu.addSeparator()
         menu.addAction(act_edit)
         menu.addAction(act_delete)
