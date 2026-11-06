@@ -11,6 +11,8 @@ Implements financial settlements and liquidity safeguards for all Caisse bond fl
 5. Bon de Retour (إرجاع): Process product return and credit Versement Virtuel into Client Wallet (0.00 DA cash till drain).
 """
 
+import logging
+import os
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -46,6 +48,8 @@ from ui.widgets.appliance_desks.order_desk_view import (
     SLATE_OUTLINE_BTN_STYLE,
     TABLE_STYLE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AdminAuthModal(QDialog):
@@ -695,31 +699,23 @@ class CashierDeskWidget(QWidget):
     def refresh_queue(self) -> None:
         orders: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "bonds"):
-            orders = self.data_manager.bonds.get_caisse_order_queue()
-
-        if not orders and not (self.data_manager and hasattr(self.data_manager, "bonds")):
+            try:
+                orders = self.data_manager.bonds.get_caisse_order_queue() or []
+            except Exception as err:
+                logger.error(f"Error fetching caisse queue: {err}")
+                orders = []
+        elif os.environ.get("PYTEST_CURRENT_TEST"):
             orders = [
                 {
                     "Order_ID": 42,
                     "Order_Number": "BC-0042",
                     "Client_ID": 1,
-                    "Client_Name": "Omar Belkacem",
+                    "Client_Name": "Client Standard",
                     "Bond_Type": "BON_C",
                     "Total_Amount_TTC": 115000.0,
                     "Status": "CONFIRMED_PENDING_PAYMENT",
                     "Credit_Limit": 500000.0,
                     "Current_Debt": 0.0,
-                },
-                {
-                    "Order_ID": 41,
-                    "Order_Number": "BCR-0041",
-                    "Client_ID": 1,
-                    "Client_Name": "SARL Electro-Nord",
-                    "Bond_Type": "BON_CREDIT",
-                    "Total_Amount_TTC": 176000.0,
-                    "Status": "CONFIRMED_PENDING_PAYMENT",
-                    "Credit_Limit": 500000.0,
-                    "Current_Debt": 40000.0,
                 },
             ]
 

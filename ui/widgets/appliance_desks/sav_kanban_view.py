@@ -398,51 +398,11 @@ class SAVKanbanWidget(QWidget):
 
         tickets: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "sav"):
-            tickets = self.data_manager.sav.get_all_sav_tickets()
-
-        if not tickets and not (self.data_manager and hasattr(self.data_manager, "sav")):
-            tickets = [
-                {
-                    "SAV_Ticket_ID": 814,
-                    "Ticket_Number": "SAV-0814",
-                    "Client_Name": "Omar Belkacem",
-                    "Product_Name": "LG F4J6TY0W (Lave-linge)",
-                    "Serial_Number": "SN-LG-884102",
-                    "Customer_Stated_Symptom": "Cuve fissurée / Fuite tambour",
-                    "Current_Stage": "SAV_RECEIVED",
-                    "Resolution_Status": "PENDING_EVALUATION",
-                },
-                {
-                    "SAV_Ticket_ID": 811,
-                    "Ticket_Number": "SAV-0811",
-                    "Client_Name": "Khaled D.",
-                    "Product_Name": "Samsung RT46 (Réfrigérateur)",
-                    "Serial_Number": "SN-SAM-11902",
-                    "Customer_Stated_Symptom": "Compresseur / Gaz R600a",
-                    "Current_Stage": "SAV_SENT_TO_TECH",
-                    "Resolution_Status": "PENDING_EVALUATION",
-                },
-                {
-                    "SAV_Ticket_ID": 809,
-                    "Ticket_Number": "SAV-0809",
-                    "Client_Name": "Yacine B.",
-                    "Product_Name": "Brandt BXP6555X (Four)",
-                    "Serial_Number": "SN-BRD-4410",
-                    "Customer_Stated_Symptom": "Carte PCB remplacée et testée",
-                    "Current_Stage": "SAV_RETURNED_FROM_TECH",
-                    "Resolution_Status": "REPAIRED",
-                },
-                {
-                    "SAV_Ticket_ID": 802,
-                    "Ticket_Number": "SAV-0802",
-                    "Client_Name": "Salim T.",
-                    "Product_Name": "Midea 12000 BTU Split",
-                    "Serial_Number": "SN-MID-7721",
-                    "Customer_Stated_Symptom": "Test banc conforme — Remis au client",
-                    "Current_Stage": "SAV_CLOSED_DELIVERED",
-                    "Resolution_Status": "REPAIRED",
-                },
-            ]
+            try:
+                tickets = self.data_manager.sav.get_all_sav_tickets() or []
+            except Exception as err:
+                logger.error(f"Error fetching SAV tickets: {err}")
+                tickets = []
 
         for t in tickets:
             stage = str(t.get("Current_Stage") or "SAV_RECEIVED")

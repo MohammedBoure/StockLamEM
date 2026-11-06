@@ -412,82 +412,14 @@ class SAVWorkspaceTab(QWidget):
         return container
 
     def refresh_tickets(self) -> None:
-        """Loads SAV tickets from backend or fallback mock and refreshes all stage tables & KPIs."""
+        """Loads SAV tickets strictly from backend (no fake/mock fallback data) and refreshes all stage tables & KPIs."""
         tickets: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "sav"):
             try:
                 tickets = self.data_manager.sav.get_all_sav_tickets() or []
             except Exception as err:
                 logger.error(f"Error fetching SAV tickets: {err}")
-
-        if not tickets:
-            # Fallback showcase tickets for offline / test demonstration
-            tickets = [
-                {
-                    "SAV_Ticket_ID": 1,
-                    "Ticket_Number": "SAV-2026-00101",
-                    "Bon_Reparation_Barcode": "BREP-2026-00101",
-                    "Serial_Number": "BSH-KGN39-9901",
-                    "Product_Name": "KGN39VLEB Combi NoFrost 368L",
-                    "Brand_Mark": "Bosch",
-                    "Client_Name": "Amine Benali",
-                    "Technician_Name": "Atelier Central Alger",
-                    "Customer_Stated_Symptom": "Compresseur ne démarre pas / alarme froid",
-                    "Is_Under_Warranty": True,
-                    "Current_Stage": "SAV_RECEIVED",
-                    "Resolution_Status": "PENDING_EVALUATION",
-                    "Reception_Date": "2026-11-04 10:15",
-                    "Purchase_Price": 115000.0,
-                },
-                {
-                    "SAV_Ticket_ID": 2,
-                    "Ticket_Number": "SAV-2026-00102",
-                    "Bon_Reparation_Barcode": "BREP-2026-00102",
-                    "Serial_Number": "LG-F4J6-8802",
-                    "Product_Name": "F4J6TY0W DirectDrive 9kg",
-                    "Brand_Mark": "LG",
-                    "Client_Name": "Karim Meziane",
-                    "Technician_Name": "Tech. Mourad",
-                    "Customer_Stated_Symptom": "Bruit anormal essorage / roulement",
-                    "Is_Under_Warranty": True,
-                    "Current_Stage": "SAV_SENT_TO_TECH",
-                    "Resolution_Status": "IN_REPAIR",
-                    "Reception_Date": "2026-11-03 14:30",
-                    "Purchase_Price": 88000.0,
-                },
-                {
-                    "SAV_Ticket_ID": 3,
-                    "Ticket_Number": "SAV-2026-00103",
-                    "Bon_Reparation_Barcode": "BREP-2026-00103",
-                    "Serial_Number": "MID-INV12-7703",
-                    "Product_Name": "Inverter 12000 BTU Split",
-                    "Brand_Mark": "Midea",
-                    "Client_Name": "Société BTP Nord",
-                    "Technician_Name": "Tech. Mourad",
-                    "Customer_Stated_Symptom": "Fuite fluide frigorigène / recharge effectuée",
-                    "Is_Under_Warranty": False,
-                    "Current_Stage": "SAV_RETURNED_FROM_TECH",
-                    "Resolution_Status": "REPAIRED",
-                    "Reception_Date": "2026-11-02 09:00",
-                    "Purchase_Price": 64000.0,
-                },
-                {
-                    "SAV_Ticket_ID": 4,
-                    "Ticket_Number": "SAV-2026-00104",
-                    "Bon_Reparation_Barcode": "BREP-2026-00104",
-                    "Serial_Number": "SAM-WW90-6604",
-                    "Product_Name": "WW90T554DAN Ecobubble 9kg",
-                    "Brand_Mark": "Samsung",
-                    "Client_Name": "Yacine Cherif",
-                    "Technician_Name": "Atelier Central Alger",
-                    "Customer_Stated_Symptom": "Carte mère remplacée, test OK",
-                    "Is_Under_Warranty": True,
-                    "Current_Stage": "SAV_CLOSED_DELIVERED",
-                    "Resolution_Status": "REPAIRED",
-                    "Reception_Date": "2026-10-28 11:20",
-                    "Purchase_Price": 92000.0,
-                },
-            ]
+                tickets = []
 
         self._all_tickets = tickets
         self._update_all_stage_views()

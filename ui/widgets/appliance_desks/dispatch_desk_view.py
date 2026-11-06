@@ -197,42 +197,11 @@ class DispatchDeskWidget(QWidget):
     def refresh_dispatch_queue(self) -> None:
         orders: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "bonds"):
-            orders = self.data_manager.bonds.get_dispatch_order_queue()
-
-        if not orders and not (self.data_manager and hasattr(self.data_manager, "bonds")):
-            orders = [
-                {
-                    "Order_ID": 42,
-                    "Order_Number": "BC-0042",
-                    "Invoice_ID": 1042,
-                    "Invoice_No": "FAC-C-1042",
-                    "Client_Name": "Omar Belkacem",
-                    "Bond_Type": "BON_C",
-                    "Status": "PAID_PENDING_DISPATCH",
-                    "lines": [
-                        {
-                            "Line_ID": 1,
-                            "Product_ID": 101,
-                            "Brand_Mark": "Bosch",
-                            "Product_Name": "KGN39VLEB Combi 368L",
-                            "Color_Finish": "Inox",
-                            "Barcode": "4242005198030",
-                            "Quantity_Ordered": 1,
-                            "Quantity_Dispatched": 0,
-                        },
-                        {
-                            "Line_ID": 2,
-                            "Product_ID": 102,
-                            "Brand_Mark": "LG",
-                            "Product_Name": "F4J6TY0W DirectDrive 9kg",
-                            "Color_Finish": "Blanc",
-                            "Barcode": "8806098321092",
-                            "Quantity_Ordered": 1,
-                            "Quantity_Dispatched": 0,
-                        },
-                    ],
-                }
-            ]
+            try:
+                orders = self.data_manager.bonds.get_dispatch_order_queue() or []
+            except Exception as err:
+                logger.error(f"Error fetching dispatch queue: {err}")
+                orders = []
 
         self._dispatch_orders = orders
         self.cbo_orders.blockSignals(True)

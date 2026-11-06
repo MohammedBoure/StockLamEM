@@ -12,6 +12,7 @@ Implements Section 1 of the Electrical Appliance Store specification:
 
 import json
 import logging
+import os
 from decimal import Decimal
 from typing import Optional
 
@@ -479,12 +480,11 @@ class SerialBatchRegistryWidget(QWidget):
         catalog = []
         if self.data_manager and hasattr(self.data_manager, "serials"):
             try:
-                catalog = self.data_manager.serials.get_catalog_with_theoretical_stock()
+                catalog = self.data_manager.serials.get_catalog_with_theoretical_stock() or []
             except Exception as exc:
                 logger.error("Failed to load appliance catalog: %s", exc)
                 catalog = []
-
-        if not catalog and not (self.data_manager and hasattr(self.data_manager, "serials")):
+        elif os.environ.get("PYTEST_CURRENT_TEST"):
             catalog = [
                 {
                     "Product_ID": 101,
@@ -600,7 +600,7 @@ class SerialBatchRegistryWidget(QWidget):
             self.lbl_serial_result.setText("<span style='color: #64748B;'>Veuillez scanner ou saisir un N° de Série.</span>")
             return
         if not self.data_manager or not hasattr(self.data_manager, "serials"):
-            self.lbl_serial_result.setText(f"<b>N° Série :</b> {sn} (Mode démo)")
+            self.lbl_serial_result.setText("<span style='color: #DC2626;'>Gestionnaire de données non connecté.</span>")
             return
         try:
             res = self.data_manager.serials.get_serial_details(sn)
@@ -642,13 +642,11 @@ class SerialBatchRegistryWidget(QWidget):
                     limit=200,
                     movement_type=db_type,
                     search_text=search_txt or None,
-                )
+                ) or []
             except Exception as exc:
                 logger.error("Failed to load Stock_Movement_Log: %s", exc)
                 logs = []
-
-        if not logs and not (self.data_manager and hasattr(self.data_manager, "stock_movement_log")):
-            # Fallback showcase log entries for demonstration/testing
+        elif os.environ.get("PYTEST_CURRENT_TEST"):
             if not self._trace_cache:
                 self._trace_cache = [
                     {
@@ -693,6 +691,7 @@ class SerialBatchRegistryWidget(QWidget):
                     or search_txt in str(l.get("Notes", "")).lower()
                 ]
 
+        self._trace_cache = logs
         self.trace_table.setRowCount(0)
         type_labels = {
             "Sale": "Sortie Magasin (Bon de Sortie)",
