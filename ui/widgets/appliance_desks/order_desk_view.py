@@ -251,7 +251,7 @@ class ProductPriceWidget(QWidget):
         self.current_price = self.p1
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(0)
         layout.setAlignment(Qt.AlignCenter)
 
@@ -259,12 +259,12 @@ class ProductPriceWidget(QWidget):
         self.btn_price = QPushButton()
         self.btn_price.setObjectName("BtnPriceDropdown")
         self.btn_price.setCursor(Qt.PointingHandCursor)
-        self.btn_price.setFixedHeight(30)
+        self.btn_price.setFixedHeight(28)
         self.btn_price.setStyleSheet("""
             QPushButton#BtnPriceDropdown {
                 background-color: #FFFFFF;
                 color: #007572;
-                border: 1px solid #CED4DA;
+                border: 1.5px solid #CED4DA;
                 border-radius: 4px;
                 padding: 2px 8px;
                 font-size: 11px;
@@ -386,20 +386,20 @@ class AddActionCellWidget(QWidget):
         self.is_available = is_available
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignCenter)
 
         # The framed slot container
         self.slot_frame = QFrame()
         self.slot_frame.setObjectName("AddActionSlot")
-        self.slot_frame.setFixedSize(40, 32)
+        self.slot_frame.setFixedSize(38, 30)
         slot_layout = QHBoxLayout(self.slot_frame)
         slot_layout.setContentsMargins(0, 0, 0, 0)
         slot_layout.setAlignment(Qt.AlignCenter)
 
         self.btn_add = QPushButton("+")
         self.btn_add.setObjectName("BtnPlusOnly")
-        self.btn_add.setFixedSize(38, 30)
+        self.btn_add.setFixedSize(34, 26)
 
         if is_available:
             self.slot_frame.setCursor(Qt.PointingHandCursor)
@@ -407,7 +407,7 @@ class AddActionCellWidget(QWidget):
             self.slot_frame.setStyleSheet("""
                 QFrame#AddActionSlot {
                     background-color: #FFFFFF;
-                    border: 1px solid #CED4DA;
+                    border: 1.5px solid #CED4DA;
                     border-radius: 4px;
                 }
                 QFrame#AddActionSlot:hover {
@@ -420,7 +420,7 @@ class AddActionCellWidget(QWidget):
                     background: transparent;
                     border: none;
                     color: #007572;
-                    font-size: 19px;
+                    font-size: 17px;
                     font-weight: bold;
                     padding: 0;
                     margin: 0;
@@ -798,13 +798,13 @@ class OrderDeskWidget(QWidget):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # 0. Automatic Horizontal & Vertical Scroll Area ensuring all elements are fully visible
+        # 0. Automatic Horizontal Scroll Area ensuring responsive horizontal adaptability
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setObjectName("OrderDeskScrollArea")
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.setStyleSheet("""
             QScrollArea#OrderDeskScrollArea {
                 background: #FFFFFF;
@@ -819,7 +819,7 @@ class OrderDeskWidget(QWidget):
         content_widget.setObjectName("OrderDeskContentWidget")
         content_widget.setMinimumWidth(1080)
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(10, 8, 10, 10)
+        content_layout.setContentsMargins(10, 6, 10, 8)
         content_layout.setSpacing(6)
 
         # 1. Top Session Tabs Bar (Ultra-compact low profile)
@@ -847,8 +847,12 @@ class OrderDeskWidget(QWidget):
         """)
         self.catalog_panel = self._create_catalog_panel()
         self.cart_panel = self._create_cart_panel()
+        self.catalog_panel.setMinimumWidth(550)
+        self.cart_panel.setMinimumWidth(320)
         self.splitter.addWidget(self.catalog_panel)
         self.splitter.addWidget(self.cart_panel)
+        self.splitter.setCollapsible(0, False)
+        self.splitter.setCollapsible(1, False)
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 0)
         self._restore_splitter_state()
@@ -1202,9 +1206,6 @@ class OrderDeskWidget(QWidget):
         btn_refresh.setFixedHeight(32)
         btn_refresh.setFixedWidth(95)
         btn_refresh.setStyleSheet(PRIMARY_BTN_STYLE)
-        btn_refresh.setToolTip("Recharger le catalogue depuis la base de données")
-        btn_refresh.clicked.connect(self.refresh_catalog)
-        layout.addWidget(btn_refresh)
         btn_refresh.setToolTip("Recharger le catalogue depuis la base de données")
         btn_refresh.clicked.connect(self.refresh_catalog)
         layout.addWidget(btn_refresh)
@@ -1581,21 +1582,21 @@ class OrderDeskWidget(QWidget):
 
         h = self.table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 80)
+        self.table.setColumnWidth(0, 110)
         h.setSectionResizeMode(1, QHeaderView.Interactive)
         self.table.setColumnWidth(1, 280)
         h.setSectionResizeMode(2, QHeaderView.Interactive)
         self.table.setColumnWidth(2, 160)
         h.setSectionResizeMode(3, QHeaderView.Interactive)
-        self.table.setColumnWidth(3, 105)
+        self.table.setColumnWidth(3, 95)
         h.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 48)
+        self.table.setColumnWidth(4, 46)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 50)
+        self.table.setColumnWidth(5, 48)
         h.setSectionResizeMode(6, QHeaderView.Interactive)
-        self.table.setColumnWidth(6, 150)
+        self.table.setColumnWidth(6, 155)
         h.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.table.setColumnWidth(7, 55)
+        self.table.setColumnWidth(7, 65)
 
         h.sectionResized.connect(self._on_catalog_header_section_resized)
         self.table.installEventFilter(self)
@@ -2544,21 +2545,29 @@ class OrderDeskWidget(QWidget):
             logger.debug(f"Could not persist splitter state: {err}")
 
     def _restore_splitter_state(self) -> None:
-        """Restores the user's previously saved separator position."""
+        """Restores the user's previously saved separator position with safe minimum bounds."""
         try:
             settings = QSettings("StockLam", "OrderDesk")
             saved_state = settings.value("main_splitter_state")
             if saved_state:
                 self.splitter.restoreState(saved_state)
+                # Ensure minimum safety bounds after restore so panels are never squished
+                sizes = self.splitter.sizes()
+                if len(sizes) == 2:
+                    if sizes[1] < 320:
+                        total = sum(sizes)
+                        self.splitter.setSizes([max(500, total - 350), 350])
             else:
                 saved_sizes = settings.value("main_splitter_sizes")
                 if saved_sizes and isinstance(saved_sizes, (list, tuple)) and len(saved_sizes) == 2:
-                    self.splitter.setSizes([int(saved_sizes[0]), int(saved_sizes[1])])
+                    cat_sz = max(550, int(saved_sizes[0]))
+                    cart_sz = max(320, int(saved_sizes[1]))
+                    self.splitter.setSizes([cat_sz, cart_sz])
                 else:
-                    self.splitter.setSizes([850, 380])
+                    self.splitter.setSizes([780, 360])
         except Exception as err:
             logger.debug(f"Could not restore splitter state: {err}")
-            self.splitter.setSizes([850, 380])
+            self.splitter.setSizes([780, 360])
 
     def _update_tab_close_buttons(self) -> None:
         """Attaches sleek, human-crafted close buttons to all tabs with proper color contrast."""
