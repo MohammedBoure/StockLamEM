@@ -505,7 +505,7 @@ class MainWindow(QMainWindow):
             self.close()
 
     def _init_placeholders(self):
-        for i in range(15):
+        for i in range(16):
             self.content_area.addWidget(QWidget())
 
     def has_permission(self, perm_key):
@@ -677,9 +677,26 @@ class MainWindow(QMainWindow):
                         app.installNativeEventFilter(self.raw_input_filter)
                 except Exception as exc:
                     logging.debug(f"RawInput registration skipped: {exc}")
+            # Extract user permissions for ApplianceWorkflowTab RBAC
+            perms = self.current_user.get("Permissions", {}) if isinstance(self.current_user, dict) else {}
+            if isinstance(perms, str):
+                try:
+                    import json
+                    perms = json.loads(perms)
+                except Exception:
+                    perms = {}
+            user_perm_set = set()
+            if isinstance(perms, dict):
+                user_perm_set = {k for k, v in perms.items() if v}
+            elif isinstance(perms, list):
+                user_perm_set = set(perms)
+            if self.current_user and str(self.current_user.get('Role', '')).strip().lower() == 'admin':
+                user_perm_set.add("admin")
+
             widget = ApplianceWorkflowTab(
                 db_manager=self.data_manager,
                 current_user_id=int(u_id),
+                user_permissions=user_perm_set,
                 hid_manager=self.hid_scanner_manager,
                 parent=self,
                 include_sav=False,

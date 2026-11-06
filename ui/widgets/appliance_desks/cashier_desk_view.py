@@ -196,7 +196,8 @@ class AdminAuthModal(QDialog):
 
         if self.data_manager and hasattr(self.data_manager, "users"):
             user = self.data_manager.users.authenticate(username, secret)
-            if user and str(user.get("Role", "")).strip().lower() == "admin":
+            from ui.navigation_permissions import has_permission
+            if user and (str(user.get("Role", "")).strip().lower() == "admin" or has_permission(user, "act_caisse_bon_credit_auth")):
                 self.approved = True
                 self.admin_user_id = int(user.get("User_ID") or 1)
                 self.admin_secret = secret
@@ -402,6 +403,14 @@ class CashierDeskWidget(QWidget):
         }
         self._init_ui()
         self.refresh_queue()
+
+    def _can_do(self, perm_key: str) -> bool:
+        """Check if current user has permission; defaults to True if user not set (dev/test)."""
+        user = getattr(self.data_manager, "current_user", None)
+        if not user:
+            return True
+        from ui.navigation_permissions import has_permission
+        return has_permission(user, perm_key)
 
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
@@ -814,6 +823,10 @@ class CashierDeskWidget(QWidget):
     # =========================================================================
 
     def _finalize_bon_c(self) -> None:
+        if not self._can_do("act_caisse_settle"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'encaisser les commandes en caisse.")
+            return
+
         if not self._selected_order:
             QMessageBox.warning(self, "Sélection requise", "Veuillez sélectionner un bon dans la file d'attente.")
             return
@@ -919,6 +932,10 @@ class CashierDeskWidget(QWidget):
     # =========================================================================
 
     def _handle_bon_livraison(self) -> None:
+        if not self._can_do("act_caisse_settle"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation de valider les règlements de livraison.")
+            return
+
         if not self._selected_order:
             QMessageBox.warning(self, "Sélection requise", "Veuillez sélectionner un bon dans la file d'attente.")
             return
@@ -974,6 +991,10 @@ class CashierDeskWidget(QWidget):
     # =========================================================================
 
     def _open_versement_dialog(self) -> None:
+        if not self._can_do("act_caisse_versement"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'enregistrer des versements clients.")
+            return
+
         cid_default = int((self._selected_order or {}).get("Client_ID") or 1)
         cid, ok1 = QInputDialog.getInt(
             self,
@@ -1020,6 +1041,10 @@ class CashierDeskWidget(QWidget):
             QMessageBox.critical(self, "Erreur Versement", str(err))
 
     def _open_retour_dialog(self) -> None:
+        if not self._can_do("act_caisse_bon_retour"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'émettre des bons de retour.")
+            return
+
         dlg = BonRetourDialog(self.data_manager, self)
         if dlg.exec() == QDialog.Accepted and dlg.result_data:
             r = dlg.result_data

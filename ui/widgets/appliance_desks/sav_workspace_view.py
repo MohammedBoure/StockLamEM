@@ -79,29 +79,46 @@ class ActionCellWidget(QWidget):
         self.layout.setSpacing(6)
         self.layout.setAlignment(Qt.AlignCenter)
 
-    def add_action_button(self, text: str, color: str, callback, tooltip: str = "") -> QPushButton:
+    def add_action_button(self, text: str, color: str, callback, tooltip: str = "", enabled: bool = True) -> QPushButton:
         btn = QPushButton(text)
         btn.setFixedHeight(28)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setToolTip(tooltip or text)
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: #FFFFFF;
-                color: {color};
-                border: 1.2px solid {color};
-                border-radius: 4px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }}
-            QPushButton:hover {{
-                background-color: {color};
-                color: #FFFFFF;
-            }}
-            QPushButton:pressed {{
-                background-color: {color};
-            }}
-        """)
+        btn.setEnabled(enabled)
+        btn.setCursor(Qt.PointingHandCursor if enabled else Qt.ForbiddenCursor)
+        effective_tooltip = tooltip or text
+        if not enabled:
+            effective_tooltip = f"{effective_tooltip} (Action non autorisée)"
+        btn.setToolTip(effective_tooltip)
+        if enabled:
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: #FFFFFF;
+                    color: {color};
+                    border: 1.2px solid {color};
+                    border-radius: 4px;
+                    padding: 2px 8px;
+                    font-size: 10px;
+                    font-weight: 700;
+                }}
+                QPushButton:hover {{
+                    background-color: {color};
+                    color: #FFFFFF;
+                }}
+                QPushButton:pressed {{
+                    background-color: {color};
+                }}
+            """)
+        else:
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #F1F5F9;
+                    color: #94A3B8;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 4px;
+                    padding: 2px 8px;
+                    font-size: 10px;
+                    font-weight: 700;
+                }
+            """)
         btn.clicked.connect(callback)
         self.layout.addWidget(btn)
         return btn
@@ -123,6 +140,7 @@ class SAVWorkspaceTab(QWidget):
         self._all_tickets: List[Dict[str, Any]] = []
         self._stage_tables: Dict[str, QTableWidget] = {}
         self._stage_counts: Dict[str, int] = {}
+        self.btn_intake: Optional[QPushButton] = None
 
         self.setObjectName("SAVWorkspaceTabRoot")
         self.setStyleSheet("""
@@ -161,6 +179,13 @@ class SAVWorkspaceTab(QWidget):
 
         self._init_ui()
         self.refresh_tickets()
+
+    def _can_do(self, perm_key: str) -> bool:
+        """Check if current_user has granular permission. Fallbacks to True if user is None/empty."""
+        if not self.current_user:
+            return True
+        from ui.navigation_permissions import has_permission
+        return has_permission(self.current_user, perm_key)
 
     def _init_ui(self) -> None:
         root_layout = QVBoxLayout(self)
@@ -261,7 +286,6 @@ class SAVWorkspaceTab(QWidget):
         btn_intake = QPushButton("+ Réceptionner Appareil (Bon de Réparation)")
         btn_intake.setIcon(get_duotone_icon("wrench_sav", 16))
         btn_intake.setIconSize(QSize(16, 16))
-        btn_intake.setCursor(Qt.PointingHandCursor)
         btn_intake.setFixedHeight(36)
         btn_intake.setStyleSheet("""
             QPushButton {
@@ -279,8 +303,18 @@ class SAVWorkspaceTab(QWidget):
             QPushButton:pressed {
                 background-color: #003D3A;
             }
+            QPushButton:disabled {
+                background-color: #CBD5E1;
+                color: #94A3B8;
+            }
         """)
+        can_intake = self._can_do("act_sav_ticket_create")
+        btn_intake.setEnabled(can_intake)
+        btn_intake.setCursor(Qt.PointingHandCursor if can_intake else Qt.ForbiddenCursor)
+        if not can_intake:
+            btn_intake.setToolTip("Action non autorisée pour votre profil utilisateur")
         btn_intake.clicked.connect(self._open_reception_dialog)
+        self.btn_intake = btn_intake
         h_layout.addWidget(btn_intake)
 
         # Refresh button
@@ -576,12 +610,14 @@ class SAVWorkspaceTab(QWidget):
                     "#D97706",
                     lambda checked=False, t_copy=t: self._open_dispatch_dialog(t_copy),
                     "Affecter et envoyer l'appareil au technicien ou atelier",
+                    enabled=self._can_do("act_sav_dispatch_tech"),
                 )
                 act_widget.add_action_button(
                     "⚠️ Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
                     "Constater l'irréparabilité et émettre un avoir portefeuille",
+                    enabled=self._can_do("act_sav_declare_irreparable"),
                 )
             elif stage == "SAV_SENT_TO_TECH":
                 act_widget.add_action_button(
@@ -589,12 +625,14 @@ class SAVWorkspaceTab(QWidget):
                     "#0284C7",
                     lambda checked=False, t_copy=t: self._open_return_dialog(t_copy),
                     "Enregistrer le retour de l'appareil réparé",
+                    enabled=self._can_do("act_sav_return_tech"),
                 )
                 act_widget.add_action_button(
                     "⚠️ Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
                     "Appareil non réparable",
+                    enabled=self._can_do("act_sav_declare_irreparable"),
                 )
             elif stage == "SAV_RETURNED_FROM_TECH":
                 act_widget.add_action_button(
@@ -602,12 +640,14 @@ class SAVWorkspaceTab(QWidget):
                     "#16A34A",
                     lambda checked=False, t_copy=t: self._deliver_to_client(t_copy),
                     "Restituer l'appareil réparé au client et clôturer le ticket",
+                    enabled=self._can_do("act_sav_deliver_client"),
                 )
                 act_widget.add_action_button(
                     "⚠️ Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
                     "Constat irréparable avant remise",
+                    enabled=self._can_do("act_sav_declare_irreparable"),
                 )
             elif stage == "SAV_CLOSED_DELIVERED":
                 act_widget.add_action_button(
@@ -631,6 +671,10 @@ class SAVWorkspaceTab(QWidget):
         self._update_all_stage_views()
 
     def _open_reception_dialog(self) -> None:
+        if not self._can_do("act_sav_ticket_create"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'enregistrer une réception SAV.")
+            return
+
         dlg = SAVReceptionDialog(data_manager=self.data_manager, parent=self)
         if dlg.exec() == QDialog.Accepted and dlg.created_ticket:
             QMessageBox.information(
@@ -645,6 +689,10 @@ class SAVWorkspaceTab(QWidget):
             self.tabs.setCurrentIndex(1)  # Focus on Réception tab
 
     def _open_dispatch_dialog(self, ticket: Dict[str, Any]) -> None:
+        if not self._can_do("act_sav_dispatch_tech"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'envoyer l'appareil vers l'atelier technique.")
+            return
+
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
         tech_name, ok = QInputDialog.getText(
             self,
@@ -680,6 +728,10 @@ class SAVWorkspaceTab(QWidget):
             QMessageBox.critical(self, "Erreur Envoi", str(err))
 
     def _open_return_dialog(self, ticket: Dict[str, Any]) -> None:
+        if not self._can_do("act_sav_return_tech"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'enregistrer le retour de réparation.")
+            return
+
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
         diag, ok = QInputDialog.getText(
             self,
@@ -715,6 +767,10 @@ class SAVWorkspaceTab(QWidget):
             QMessageBox.critical(self, "Erreur Retour", str(err))
 
     def _deliver_to_client(self, ticket: Dict[str, Any]) -> None:
+        if not self._can_do("act_sav_deliver_client"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation de restituer l'appareil au client.")
+            return
+
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
         reply = QMessageBox.question(
             self,
@@ -749,6 +805,10 @@ class SAVWorkspaceTab(QWidget):
             QMessageBox.critical(self, "Erreur Restitution", str(err))
 
     def _declare_irreparable(self, ticket: Dict[str, Any]) -> None:
+        if not self._can_do("act_sav_declare_irreparable"):
+            QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation de déclarer un appareil irréparable.")
+            return
+
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
         price = float(ticket.get("Purchase_Price") or ticket.get("Unit_Price_TTC") or 80000.0)
 

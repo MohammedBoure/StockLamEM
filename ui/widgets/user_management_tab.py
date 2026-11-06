@@ -162,7 +162,9 @@ SYSTEM_PERMISSIONS = {
         "icon": "fa5s.history",
         "perms": {
             "nav_history": "Accès Traçabilité Globale",
-            "tab_inv_history": "Historique des mouvements de stock"
+            "tab_inv_history": "Historique des mouvements de stock",
+            "tab_serial_registry": "Référentiel Lots, Produits & N° de Série",
+            "act_serial_audit": "Audit instantané d'un N° de Série"
         }
     },
     "8. UTILISATEURS": {
@@ -185,6 +187,35 @@ SYSTEM_PERMISSIONS = {
             "tab_system_logs": "Logs Système",
             "tab_set_pdf": "Configuration PDF",
             "act_manage_stamps": "Ajouter et supprimer les cachets locaux"
+        }
+    },
+    "10. BUREAUX_WORKFLOW": {
+        "label": "🏢 Bureaux & Workflow Magasin",
+        "icon": "fa5s.cash-register",
+        "perms": {
+            "nav_appliance_workflow": "Accès au Workflow Multi-Bureaux",
+            "tab_desk_order": "Bureau des Commandes (Order Desk)",
+            "tab_desk_caisse": "Bureau Caisse (Encaissement & Règlements)",
+            "tab_desk_dispatch": "Bureau Sortie Magasin (Dispatch)",
+            "act_order_create": "Émettre des commandes (Comptant, Crédit, BL)",
+            "act_caisse_settle": "Valider et encaisser les commandes en caisse",
+            "act_caisse_bon_credit_auth": "Autoriser les bons à crédit (Superviseur)",
+            "act_caisse_versement": "Enregistrer des versements clients",
+            "act_caisse_bon_retour": "Émettre des bons de retour (Avoir virtuel)",
+            "act_dispatch_validate": "Valider la sortie physique et scanner les N° de série"
+        }
+    },
+    "11. SAV_WORKSPACE": {
+        "label": "🔧 Service Après-Vente (SAV)",
+        "icon": "fa5s.wrench",
+        "perms": {
+            "nav_sav": "Accès à l'Espace SAV & Réparations",
+            "tab_desk_sav": "Consulter les demandes et tickets SAV",
+            "act_sav_ticket_create": "Réceptionner un appareil et créer un ticket SAV",
+            "act_sav_dispatch_tech": "Envoyer un appareil vers l'atelier / technicien",
+            "act_sav_return_tech": "Enregistrer le retour de réparation",
+            "act_sav_deliver_client": "Restituer l'appareil au client et clôturer",
+            "act_sav_declare_irreparable": "Déclarer un appareil irréparable (Avoir portefeuille)"
         }
     }
 }
@@ -266,7 +297,19 @@ class UserDialog(BaseDialog):
             tech_perms = {
                 "nav_pos": True, "nav_sales": True, "act_create_sale": True, "act_validate_sale": True,
                 "nav_inventory": True, "tab_inv_list": True, "tab_inv_dispatch": True,
-                "nav_procurement": True, "tab_proc_reception": True, "tab_proc_credit": True
+                "nav_procurement": True, "tab_proc_reception": True, "tab_proc_credit": True,
+                # Bureaux Opérationnels & SAV pour profil Technicien
+                "nav_appliance_workflow": True,
+                "tab_desk_order": True,
+                "act_order_create": True,
+                "tab_desk_dispatch": True,
+                "act_dispatch_validate": True,
+                "nav_sav": True,
+                "tab_desk_sav": True,
+                "act_sav_ticket_create": True,
+                "act_sav_return_tech": True,
+                "tab_serial_registry": True,
+                "act_serial_audit": True,
             }
             self.set_permissions(tech_perms)
 
@@ -277,7 +320,13 @@ class UserDialog(BaseDialog):
         header_font = QFont()
         header_font.setBold(True)
 
-        for group_id, content in sorted(SYSTEM_PERMISSIONS.items()):
+        def _sort_key(item):
+            prefix = item[0].split(".")[0].strip()
+            num_part = "".join(ch for ch in prefix if ch.isdigit())
+            alpha_part = "".join(ch for ch in prefix if not ch.isdigit())
+            return (int(num_part) if num_part else 999, alpha_part)
+
+        for group_id, content in sorted(SYSTEM_PERMISSIONS.items(), key=_sort_key):
             group_item = QTreeWidgetItem(self.tree_perms)
             group_item.setText(0, content["label"])
             group_item.setIcon(0, qta.icon(content["icon"], color="#d4af37"))

@@ -5,6 +5,29 @@ This directory contains the PySide6 UI desk modules implementing the 4-desk Elec
 ## Files in this Directory
 
 - **`__init__.py`**: Package initializer exporting all desk widgets, modal dialogs, and the standalone `SAVWorkspaceTab`.
+- **User Permissions System & RBAC Integration (Task #5)**:
+  - **Bureaux Opérationnels (`10. BUREAUX_WORKFLOW`)**: Granular permission matrix integrated into `UserDialog` under `SYSTEM_PERMISSIONS`:
+    * `nav_appliance_workflow`: Left navbar entry access for the multi-desk operational hub.
+    * `tab_desk_order`: Access to Order Desk (Bureau des Commandes).
+    * `tab_desk_caisse`: Access to Cashier Desk (Bureau Caisse & Règlements).
+    * `tab_desk_dispatch`: Access to Warehouse Exit (Bureau Sortie Magasin).
+    * `act_order_create`: Authorization to issue commercial orders (Bon Comptant, Bon Crédit, Bon de Livraison).
+    * `act_caisse_settle`: Authorization to validate and settle cash payments at the cash drawer.
+    * `act_caisse_bon_credit_auth`: Dual-custody supervisor override to authorize deferred credit sales (`Bon Crédit`).
+    * `act_caisse_versement`: Authorization to record cash wallet deposits (`Versement`).
+    * `act_caisse_bon_retour`: Authorization to issue return vouchers with virtual wallet credit (`Bon de Retour`).
+    * `act_dispatch_validate`: Authorization to validate physical item departures and scan serial numbers.
+  - **Service Après-Vente (`11. SAV_WORKSPACE`)**: Granular permissions integrated into `UserDialog`:
+    * `nav_sav`: Left navbar entry access for the dedicated SAV & Repair workspace.
+    * `tab_desk_sav`: Permission to inspect and track SAV tickets.
+    * `act_sav_ticket_create`: Permission to receive defective units and emit repair vouchers (`btn_intake`).
+    * `act_sav_dispatch_tech`: Permission to transfer defective appliances to repair workshops.
+    * `act_sav_return_tech`: Permission to record repaired item returns from technicians.
+    * `act_sav_deliver_client`: Permission to return repaired items to clients and close tickets.
+    * `act_sav_declare_irreparable`: Permission to declare irreparable items and issue virtual wallet credit.
+  - **Physical Traceability (`7. TRACABILITE`)**:
+    * `tab_serial_registry`: Access to central Serial Number and Batch Registry.
+    * `act_serial_audit`: Instant barcode/serial audit card lookup.
 - **`appliance_workflow_tab.py`**: Unified `ApplianceWorkflowTab` hub combining the operational desks (Commandes, Caisse, Dispatch; SAV is decoupled into its own navbar page by default with `include_sav=False`) with real-time cross-desk Qt signal synchronization, RBAC tab visibility enforcement, vector duotone SVG tab icons, and Multi-Scanner HID routing (the redundant 'Traçabilité & Lots' tab was completely removed per Task #2, as physical traceability is centralized in the left navbar `Traçabilité`).
 - **`sav_workspace_view.py`**: Dedicated Multi-Tab Service Après-Vente (SAV) & Réparations Workspace (`SAVWorkspaceTab`, Task #9) completely decoupled from the sales operational desks into its own independent Left Navigation Bar button (`Page 15`, `nav_sav` / `wrench_sav` icon):
   - **Dedicated Status Tabs**: Separates every repair ticket lifecycle state into its own full-screen, dedicated tab:

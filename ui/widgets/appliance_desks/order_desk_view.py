@@ -3119,6 +3119,13 @@ class OrderDeskWidget(QWidget):
     # =========================================================================
 
     def _submit_order(self, bond_type: str) -> None:
+        user = getattr(self.data_manager, "current_user", None) if self.data_manager else None
+        if user:
+            from ui.navigation_permissions import has_permission
+            if not has_permission(user, "act_order_create"):
+                QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation d'émettre des commandes.")
+                return
+
         sdata = self._sessions[self._active_session_id]
         cart = sdata["cart"]
         if not cart:
