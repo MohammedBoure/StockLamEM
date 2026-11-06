@@ -113,11 +113,11 @@ class BondLifecycleManager:
                 normalized_bond = "BON_C"
 
             prefix_map = {
-                "BON_C": "BC",
-                "BON_CREDIT": "BCR",
-                "BON_LIVRAISON": "BLV",
+                "BON_C": "1-BC",
+                "BON_CREDIT": "2-BCR",
+                "BON_LIVRAISON": "3-BLV",
             }
-            prefix = prefix_map[normalized_bond]
+            prefix = prefix_map.get(normalized_bond, "1-BC")
             order_num = f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{int(datetime.now().timestamp() * 1000) % 100000:05d}"
 
             total_ttc = sum(
@@ -1081,6 +1081,117 @@ class BondLifecycleManager:
             raise
         finally:
             cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
+    def cancel_or_remove_caisse_order(
+        self,
+        order_id: int,
+        user_id: int = 1,
+        reason: str = "Annulation / Retrait Caisse",
+    ) -> Dict[str, Any]:
+        """
+        Cancels and removes an order pending in Caisse ('CONFIRMED_PENDING_PAYMENT' or 'DISPATCHED_PENDING_COD'),
+        releases the reserved theoretical stock on Inventory_Batches, and marks the order status as 'CANCELLED'.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True) if hasattr(conn, "cursor") else None
+        try:
+            if hasattr(conn, "start_transaction"):
+                conn.start_transaction()
+
+            # 1. Lock and inspect order
+            cursor.execute(
+                """
+                SELECT Order_ID, Order_Number, Client_ID, Bond_Type, Total_Amount_TTC, Status
+                FROM Sales_Orders_Theoretical
+                WHERE Order_ID = %s
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            order = cursor.fetchone()
+            if not order:
+                raise ValueError(f"Order #{order_id} not found.")
+
+            current_status = str(order.get("Status") or "")
+            if current_status not in ("CONFIRMED_PENDING_PAYMENT", "DISPATCHED_PENDING_COD"):
+                raise ValueError(
+                    f"Cannot cancel order '{order.get('Order_Number')}' in current status: {current_status}. "
+                    "Only pending Caisse orders can be removed or cancelled."
+                )
+
+            # 2. Retrieve order lines
+            cursor.execute(
+                """
+                SELECT Line_ID, Product_ID, Quantity_Ordered
+                FROM Sales_Order_Lines_Theoretical
+                WHERE Order_ID = %s
+                """,
+                (int(order_id),),
+            )
+            lines = cursor.fetchall() or []
+
+            # 3. Release theoretical reservations on active batches
+            for line in lines:
+                prod_id = int(line["Product_ID"])
+                qty_to_release = int(line["Quantity_Ordered"])
+                if qty_to_release <= 0:
+                    continue
+
+                cursor.execute(
+                    """
+                    SELECT Batch_ID, COALESCE(Theoretical_Reserved_Qty, 0) AS Theoretical_Reserved_Qty
+                    FROM Inventory_Batches
+                    WHERE Product_ID = %s AND Theoretical_Reserved_Qty > 0
+                    ORDER BY Batch_ID DESC
+                    FOR UPDATE
+                    """,
+                    (prod_id,),
+                )
+                batches = cursor.fetchall() or []
+                remaining = qty_to_release
+                for b in batches:
+                    res_qty = int(b["Theoretical_Reserved_Qty"])
+                    alloc = min(remaining, res_qty)
+                    cursor.execute(
+                        """
+                        UPDATE Inventory_Batches
+                        SET Theoretical_Reserved_Qty = GREATEST(0, Theoretical_Reserved_Qty - %s)
+                        WHERE Batch_ID = %s
+                        """,
+                        (alloc, b["Batch_ID"]),
+                    )
+                    remaining -= alloc
+                    if remaining <= 0:
+                        break
+
+            # 4. Set order Status to CANCELLED
+            cursor.execute(
+                """
+                UPDATE Sales_Orders_Theoretical
+                SET Status = 'CANCELLED', Cancellation_Reason = %s
+                WHERE Order_ID = %s
+                """,
+                (reason, int(order_id)),
+            )
+
+            conn.commit()
+            return {
+                "success": True,
+                "order_id": int(order_id),
+                "order_number": order.get("Order_Number"),
+                "status": "CANCELLED",
+                "message": f"Order {order.get('Order_Number')} successfully cancelled and removed from Caisse.",
+            }
+        except Exception as err:
+            if hasattr(conn, "rollback"):
+                conn.rollback()
+            logger.error(f"Failed to cancel/remove caisse order #{order_id}: {err}")
+            raise
+        finally:
+            if cursor:
+                cursor.close()
             if hasattr(self.db, "get_raw_connection"):
                 conn.close()
 

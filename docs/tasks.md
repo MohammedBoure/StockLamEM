@@ -41,7 +41,7 @@ Validation Caisse
 أريد في  Bureaux Opérationnels ثم Caisse & Règlements 
 
 
-# 5 : high
+# 5 [COMPLETED]: high
 أريد في  Bureaux Opérationnels ثم Caisse & Règlements 
 أن يوجد مكان لمسح bar code الخاص ب بأي bon و أريد المعيار التالي كل نوع bon دائما ما يبدأ بنفس الرقم من أجل تمييز النوع مباشرة من قبل واجهة Caisse & Règlements
 

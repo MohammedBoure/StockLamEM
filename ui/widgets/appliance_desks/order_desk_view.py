@@ -3161,10 +3161,16 @@ class OrderDeskWidget(QWidget):
                 )
             else:
                 total_val = sum(Decimal(str(i["unit_price_ttc"])) * int(i["quantity"]) for i in cart)
+                sim_prefixes = {
+                    "BON_C": "1-BC",
+                    "BON_CREDIT": "2-BCR",
+                    "BON_LIVRAISON": "3-BLV",
+                }
+                pfx = sim_prefixes.get(bond_type, "1-BC")
                 res = {
                     "success": True,
                     "order_id": 900,
-                    "order_number": f"{bond_type[:3]}-SIM-900",
+                    "order_number": f"{pfx}-SIM-900",
                     "bond_type": bond_type,
                     "total_ttc": float(total_val),
                     "scanner_session_id": self._active_session_id,
