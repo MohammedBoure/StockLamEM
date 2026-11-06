@@ -18,17 +18,19 @@ from unittest.mock import MagicMock
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from PySide6.QtWidgets import QApplication
+from decimal import Decimal
+import pathlib
+from PySide6.QtWidgets import QApplication, QPushButton
 
 from database.bond_lifecycle_manager import BondLifecycleManager
 from database.sales_manager import SalesManager
 from database.serial_tracking_manager import SerialTrackingManager
 from ui.widgets.appliance_desks.bon_pdf_export import export_order_bon_to_pdf
-from ui.widgets.appliance_desks.cashier_desk_view import CashierDeskWidget
+from ui.widgets.appliance_desks.cashier_desk_view import CashierDeskWidget, ClientWalletDialog
 from ui.widgets.appliance_desks.order_bons_dialog import OrderBonEditDialog, OrderDeskBonsDialog
 from ui.widgets.appliance_desks.order_desk_view import OrderDeskWidget
-from ui.widgets.master_data.client_versements_dialog import ClientVersementsDialog
-from ui.widgets.master_data.clients_tab import ClientsTab
+from ui.widgets.clients.client_versements_dialog import ClientVersementsDialog
+from ui.widgets.clients.clients_tab import ClientsTab
 
 
 class TestBonsCaisseDynamicAndClientsVersement(unittest.TestCase):
@@ -268,6 +270,75 @@ class TestBonsCaisseDynamicAndClientsVersement(unittest.TestCase):
 
         dlg.deleteLater()
         tab.deleteLater()
+
+    def test_every_navbar_interface_has_dedicated_folder_in_ui_widgets(self):
+        """Verifies every navbar workspace has its own folder under ui/widgets/ and zero loose .py files remain."""
+        widgets_dir = pathlib.Path(__file__).resolve().parent.parent / "ui" / "widgets"
+        expected_navbar_folders = {
+            "dashboard",        # 0: Tableau de Bord
+            "master_data",      # 1: Données de Base
+            "clients",          # 16: Clients
+            "procurement",      # 2: Achats & Entrées
+            "inventory",        # 3: Stock & Magasin
+            "billing",          # 6: Sous-Traitants
+            "reclamation",      # 8: Réclamations
+            "inventaire",       # 9: Inventaire
+            "sales",            # 10: Point de Vente
+            "wholesale_sales",  # 11: Vente en Gros B2B
+            "sales_history",    # 12: Historique Ventes
+            "debts",            # 13: Créances Clients
+            "appliance_desks",  # 14: Bureaux
+            "sav",              # 15: SAV
+            "history",          # 7: Traçabilité
+            "users",            # 5: Utilisateurs
+            "settings",         # 4: Paramètres
+        }
+        actual_dirs = {p.name for p in widgets_dir.iterdir() if p.is_dir() and not p.name.startswith("__")}
+        self.assertEqual(actual_dirs, expected_navbar_folders)
+        loose_py_files = [p.name for p in widgets_dir.glob("*.py") if p.name != "__init__.py"]
+        self.assertEqual(loose_py_files, [])
+
+    def test_visual_fixes_and_bl_advance_overpayment_change(self):
+        """Verifies ClientWalletDialog QFrame scoping, OrderDesk column/button fixes, and BL advance overpayment handling."""
+        dm = MagicMock()
+        dm.clients.get_all_clients.return_value = [{"Client_ID": 1, "Client_Name": "Client A", "Phone": "0550"}]
+        dm.bonds.get_client_wallet.return_value = {
+            "current_balance": 0.0,
+            "real_deposit_balance": 0.0,
+            "virtual_credit_balance": 0.0,
+        }
+        dm.bonds.get_client_wallet_transactions.return_value = []
+        dm.serials.get_catalog_with_theoretical_stock.return_value = []
+
+        w_dlg = ClientWalletDialog(data_manager=dm, default_client_id=1)
+        for card in (w_dlg.card_real, w_dlg.card_virt, w_dlg.card_tot):
+            self.assertTrue(bool(card.objectName()))
+            self.assertIn(f"QFrame#{card.objectName()}", card.styleSheet())
+            self.assertIn("border: none", card.styleSheet())
+        w_dlg.deleteLater()
+
+        desk = OrderDeskWidget(data_manager=dm)
+        self.assertGreaterEqual(desk.table.columnWidth(4), 56)
+        self.assertGreaterEqual(desk.table.columnWidth(5), 60)
+        new_sess_btn = next(b for b in desk.findChildren(QPushButton) if "Nouvelle Session" in b.text())
+        self.assertTrue(new_sess_btn.icon().isNull())
+        desk.deleteLater()
+
+        # Verify validate_bon_livraison_advance caps cash at Total TTC and returns change_due without raising
+        from test.test_financial_isolation_and_bon_credit import FinancialAndSAVMockDB
+        mock_db = FinancialAndSAVMockDB()
+        bond_mgr = BondLifecycleManager(mock_db)
+        res = bond_mgr.validate_bon_livraison_advance(
+            order_id=301,  # Total TTC = 75,000.00 DA
+            cashier_user_id=5,
+            cash_session_id=1,
+            advance_cash=Decimal("80000.00"),
+            advance_wallet=Decimal("0.00"),
+        )
+        self.assertTrue(res["success"])
+        self.assertEqual(res["advance_paid"], 75000.0)
+        self.assertEqual(res["change_due"], 5000.0)
+        self.assertEqual(res["remaining_on_delivery"], 0.0)
 
 
 if __name__ == "__main__":

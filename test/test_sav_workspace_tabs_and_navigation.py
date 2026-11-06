@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from PySide6.QtWidgets import QApplication, QMessageBox
 from ui.navigation_permissions import NAVIGATION_PERMISSION_FALLBACKS, has_navigation_permission
-from ui.widgets.appliance_desks.sav_workspace_view import SAVWorkspaceTab
+from ui.widgets.sav.sav_workspace_view import SAVWorkspaceTab
 
 
 @pytest.fixture(scope="module")

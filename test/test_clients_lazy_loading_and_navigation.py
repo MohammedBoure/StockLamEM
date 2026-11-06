@@ -105,7 +105,7 @@ class TestClientsLazyLoadingAndNavigation(unittest.TestCase):
 
     def test_clients_tab_lazy_loading(self):
         """Verify ClientsTab loads 50 clients initially and appends on load_more_clients."""
-        from ui.widgets.master_data.clients_tab import ClientsTab
+        from ui.widgets.clients.clients_tab import ClientsTab
 
         mock_dm = MagicMock()
         mock_dm.clients = self.client_manager
@@ -138,7 +138,7 @@ class TestClientsLazyLoadingAndNavigation(unittest.TestCase):
 
     def test_clients_tab_search_resets_and_lazy_loads(self):
         """Verify typing in search input filters results and resets offset."""
-        from ui.widgets.master_data.clients_tab import ClientsTab
+        from ui.widgets.clients.clients_tab import ClientsTab
 
         mock_dm = MagicMock()
         mock_dm.clients = self.client_manager
@@ -196,7 +196,7 @@ class TestClientsLazyLoadingAndNavigation(unittest.TestCase):
                 # 2. Switching to page 16 loads ClientsTab
                 win.switch_page(16)
                 current_widget = win.content_area.currentWidget()
-                from ui.widgets.master_data.clients_tab import ClientsTab
+                from ui.widgets.clients.clients_tab import ClientsTab
                 self.assertIsInstance(current_widget, ClientsTab)
 
                 # 3. Page 1 (Master Data) does not contain a "Clients" tab

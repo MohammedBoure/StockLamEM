@@ -541,22 +541,22 @@ TABLE_STYLE = """
         color: #2C3E50;
         font-weight: bold;
         font-size: 12px;
-        padding: 5px 8px;
+        padding: 5px 6px;
         border: none;
         border-bottom: 2px solid #007572;
         border-right: 1px solid #E2E8F0;
     }
     QScrollBar:horizontal {
-        border: 1px solid #CBD5E1;
+        border: none;
         background: #F1F5F9;
-        height: 12px;
-        margin: 0px 0px 0px 0px;
-        border-radius: 0px;
+        height: 7px;
+        margin: 0px;
+        border-radius: 3px;
     }
     QScrollBar::handle:horizontal {
         background: #007572;
         min-width: 35px;
-        border-radius: 0px;
+        border-radius: 3px;
     }
     QScrollBar::handle:horizontal:hover {
         background: #005A57;
@@ -571,16 +571,16 @@ TABLE_STYLE = """
         border: none;
     }
     QScrollBar:vertical {
-        border: 1px solid #CBD5E1;
+        border: none;
         background: #F1F5F9;
-        width: 12px;
-        margin: 0px 0px 0px 0px;
-        border-radius: 0px;
+        width: 7px;
+        margin: 0px;
+        border-radius: 3px;
     }
     QScrollBar::handle:vertical {
         background: #007572;
         min-height: 35px;
-        border-radius: 0px;
+        border-radius: 3px;
     }
     QScrollBar::handle:vertical:hover {
         background: #005A57;
@@ -924,11 +924,8 @@ class OrderDeskWidget(QWidget):
         self._sync_session_tabs()
         sb_layout.addWidget(self.session_tab_bar)
 
-        # "+ Nouvelle Session" Button (Ultra-compact, matching Stock Actuel button style)
+        # "+ Nouvelle Session" Button (Clean text without duplicate '+' icon)
         btn_new_sess = QPushButton("+ Nouvelle Session")
-        if qta:
-            btn_new_sess.setIcon(qta.icon("fa5s.plus", color="#007572"))
-            btn_new_sess.setIconSize(QSize(10, 10))
         btn_new_sess.setCursor(Qt.PointingHandCursor)
         btn_new_sess.setFixedHeight(22)
         btn_new_sess.setStyleSheet("""
@@ -1046,21 +1043,10 @@ class OrderDeskWidget(QWidget):
         self.filter_badge = QFrame()
         self.filter_badge.setVisible(False)
 
-        def make_filter_lbl(txt: str, icon_name: str, fallback_icon: str) -> QWidget:
-            w = QWidget()
-            w_layout = QHBoxLayout(w)
-            w_layout.setContentsMargins(0, 0, 0, 0)
-            w_layout.setSpacing(4)
-            ico = QLabel()
-            if qta:
-                ico.setPixmap(qta.icon(icon_name, color="#007572").pixmap(12, 12))
-            else:
-                ico.setPixmap(get_duotone_icon(fallback_icon, 12).pixmap(12, 12))
-            w_layout.addWidget(ico)
+        def make_filter_lbl(txt: str, icon_name: str = "", fallback_icon: str = "") -> QWidget:
             lbl = QLabel(txt)
-            lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #2C3E50; background: transparent;")
-            w_layout.addWidget(lbl)
-            return w
+            lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155; background: transparent; border: none;")
+            return lbl
 
         # 2. Marque Filter
         layout.addWidget(make_filter_lbl("Marque :", "fa5s.tag", "filter"))
@@ -1376,12 +1362,8 @@ class OrderDeskWidget(QWidget):
         self.cbo_color.blockSignals(True)
         self.cbo_color.clear()
 
-        # 1. "Tous" option with palette icon
-        if qta:
-            icon_all = qta.icon("fa5s.palette", color="#007572")
-        else:
-            icon_all = get_duotone_icon("filter", 14)
-        self.cbo_color.addItem(icon_all, "Tous", {"Color_Name": "Tous", "Color_Code": ""})
+        # 1. "Tous" option (clean, without redundant palette icon)
+        self.cbo_color.addItem("Tous", {"Color_Name": "Tous", "Color_Code": ""})
 
         # 2. Collect colors from ProductColorManager or default registry
         colors_list: List[Dict[str, Any]] = []
@@ -1586,21 +1568,21 @@ class OrderDeskWidget(QWidget):
 
         h = self.table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 110)
+        self.table.setColumnWidth(0, 115)
         h.setSectionResizeMode(1, QHeaderView.Interactive)
         self.table.setColumnWidth(1, 280)
         h.setSectionResizeMode(2, QHeaderView.Interactive)
         self.table.setColumnWidth(2, 160)
         h.setSectionResizeMode(3, QHeaderView.Interactive)
-        self.table.setColumnWidth(3, 95)
+        self.table.setColumnWidth(3, 86)
         h.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 46)
+        self.table.setColumnWidth(4, 56)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 48)
+        self.table.setColumnWidth(5, 60)
         h.setSectionResizeMode(6, QHeaderView.Interactive)
-        self.table.setColumnWidth(6, 155)
+        self.table.setColumnWidth(6, 150)
         h.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.table.setColumnWidth(7, 65)
+        self.table.setColumnWidth(7, 62)
 
         h.sectionResized.connect(self._on_catalog_header_section_resized)
         self.table.installEventFilter(self)
@@ -1896,8 +1878,8 @@ class OrderDeskWidget(QWidget):
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(8, 10, 8, 10)
+        layout.setSpacing(8)
 
         # Cart Header + Clear Button
         header_row = QHBoxLayout()
@@ -1931,20 +1913,15 @@ class OrderDeskWidget(QWidget):
         header_row.addWidget(btn_clear)
         layout.addLayout(header_row)
 
-        # Client Selection Header & Dedicated Full-Width Combobox (Fixing horizontal & vertical clipping)
+        # Client Selection Header & Dedicated Full-Width Combobox
         client_header = QHBoxLayout()
         client_header.setSpacing(6)
-        cl_icon = QLabel()
-        cl_icon.setPixmap(get_duotone_icon("users", 14).pixmap(14, 14))
-        client_header.addWidget(cl_icon)
-        lbl_cl = QLabel("Client associé :")
-        lbl_cl.setStyleSheet("font-size: 12px; font-weight: bold; color: #2C3E50;")
+        lbl_cl = QLabel("Client :")
+        lbl_cl.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155;")
         client_header.addWidget(lbl_cl)
         client_header.addStretch()
 
         btn_new_client = QPushButton("+ Nouveau Client")
-        btn_new_client.setIcon(get_duotone_icon("users", 13))
-        btn_new_client.setIconSize(QSize(13, 13))
         btn_new_client.setCursor(Qt.PointingHandCursor)
         btn_new_client.setFixedHeight(28)
         btn_new_client.setStyleSheet(OUTLINE_BTN_STYLE)
@@ -2094,8 +2071,8 @@ class OrderDeskWidget(QWidget):
         tot_layout.addWidget(self.lbl_total)
         layout.addWidget(total_box)
 
-        # Primary CTA: Bon C (Increased height for prominent enterprise hierarchy)
-        btn_bon_c = QPushButton("Émettre Bon Comptant (Vente Directe -> Caisse)")
+        # Primary CTA: Bon C
+        btn_bon_c = QPushButton("Émettre Bon Comptant")
         btn_bon_c.setIcon(get_duotone_icon("payment_white", 16))
         btn_bon_c.setIconSize(QSize(16, 16))
         btn_bon_c.setCursor(Qt.PointingHandCursor)
@@ -2120,11 +2097,11 @@ class OrderDeskWidget(QWidget):
         btn_bon_c.clicked.connect(lambda: self._submit_order("BON_C"))
         layout.addWidget(btn_bon_c)
 
-        # Secondary Row: Bon Crédit & Bon de Livraison side-by-side (Increased height)
+        # Secondary Row: Bon Crédit & Bon de Livraison side-by-side
         sec_row = QHBoxLayout()
         sec_row.setSpacing(8)
 
-        btn_credit = QPushButton("Bon Crédit (Admin)")
+        btn_credit = QPushButton("Bon Crédit")
         btn_credit.setIcon(get_duotone_icon("shield_admin", 15))
         btn_credit.setIconSize(QSize(15, 15))
         btn_credit.setCursor(Qt.PointingHandCursor)
@@ -2580,29 +2557,31 @@ class OrderDeskWidget(QWidget):
             logger.debug(f"Could not persist splitter state: {err}")
 
     def _restore_splitter_state(self) -> None:
-        """Restores the user's previously saved separator position with safe minimum bounds."""
+        """Restores the user's previously saved separator position with balanced catalog/cart proportions."""
         try:
             settings = QSettings("StockLam", "OrderDesk")
             saved_state = settings.value("main_splitter_state")
             if saved_state:
                 self.splitter.restoreState(saved_state)
-                # Ensure minimum safety bounds after restore so panels are never squished
                 sizes = self.splitter.sizes()
                 if len(sizes) == 2:
-                    if sizes[1] < 320:
-                        total = sum(sizes)
-                        self.splitter.setSizes([max(500, total - 350), 350])
+                    total = sum(sizes)
+                    if total > 0 and (sizes[0] / float(total)) < 0.69:
+                        cart_sz = max(430, min(465, int(total * 0.29)))
+                        self.splitter.setSizes([max(580, total - cart_sz), cart_sz])
+                    elif sizes[1] < 420 and total >= 1000:
+                        self.splitter.setSizes([max(560, total - 445), 445])
             else:
                 saved_sizes = settings.value("main_splitter_sizes")
                 if saved_sizes and isinstance(saved_sizes, (list, tuple)) and len(saved_sizes) == 2:
-                    cat_sz = max(550, int(saved_sizes[0]))
-                    cart_sz = max(320, int(saved_sizes[1]))
+                    cat_sz = max(720, int(saved_sizes[0]))
+                    cart_sz = max(430, min(465, int(saved_sizes[1])))
                     self.splitter.setSizes([cat_sz, cart_sz])
                 else:
-                    self.splitter.setSizes([780, 360])
+                    self.splitter.setSizes([1110, 455])
         except Exception as err:
             logger.debug(f"Could not restore splitter state: {err}")
-            self.splitter.setSizes([780, 360])
+            self.splitter.setSizes([1110, 455])
 
     def _update_tab_close_buttons(self) -> None:
         """Attaches sleek, human-crafted close buttons to all tabs with proper color contrast."""

@@ -501,7 +501,7 @@ class AnalysisView(QWidget):
         """)
         
         # إنشاء التبويبات
-        from ui.widgets.ai_analytics_tab import AiAnalyticsTab
+        from ui.widgets.dashboard.ai_analytics_tab import AiAnalyticsTab
         self.tab_valuation = StockValuationTab()
         self.tab_waste = WasteAnalysisTab()
         self.tab_consumption = FullConsumptionTab()

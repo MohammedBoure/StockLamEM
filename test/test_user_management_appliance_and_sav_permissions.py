@@ -29,9 +29,9 @@ from ui.navigation_permissions import (
     has_navigation_permission,
     has_permission,
 )
-from ui.widgets.user_management_tab import SYSTEM_PERMISSIONS, UserDialog
+from ui.widgets.users.user_management_tab import SYSTEM_PERMISSIONS, UserDialog
 from ui.widgets.appliance_desks.appliance_workflow_tab import ApplianceWorkflowTab
-from ui.widgets.appliance_desks.sav_workspace_view import SAVWorkspaceTab
+from ui.widgets.sav.sav_workspace_view import SAVWorkspaceTab
 from ui.widgets.appliance_desks.cashier_desk_view import CashierDeskWidget, AdminAuthModal
 from ui.widgets.appliance_desks.order_desk_view import OrderDeskWidget
 from ui.widgets.appliance_desks.dispatch_desk_view import DispatchDeskWidget

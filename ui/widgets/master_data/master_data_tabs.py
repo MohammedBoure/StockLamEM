@@ -11,7 +11,6 @@ from .waste_reasons_tab import WasteReasonsTab
 from .product_families_tab import ProductFamiliesTab
 from .packaging_units_tab import PackagingUnitsTab
 from .external_partners_tab import ExternalPartnersTab 
-from .clients_tab import ClientsTab
 from .caisses_tab import CaissesTab
 from .product_colors_tab import ProductColorsTab
 

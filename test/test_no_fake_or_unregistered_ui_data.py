@@ -19,8 +19,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from PySide6.QtWidgets import QApplication, QScrollArea
-from ui.widgets.appliance_desks.sav_workspace_view import SAVWorkspaceTab
-from ui.widgets.appliance_desks.sav_kanban_view import SAVKanbanWidget
+from ui.widgets.sav.sav_workspace_view import SAVWorkspaceTab
+from ui.widgets.sav.sav_kanban_view import SAVKanbanWidget
 from ui.widgets.appliance_desks.cashier_desk_view import CashierDeskWidget
 from ui.widgets.appliance_desks.dispatch_desk_view import DispatchDeskWidget
 from ui.widgets.appliance_desks.serial_batch_view import SerialBatchRegistryWidget

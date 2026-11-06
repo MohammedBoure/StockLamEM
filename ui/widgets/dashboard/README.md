@@ -13,3 +13,5 @@ Ce dossier regroupe les composants graphiques et les vues modulaires constituant
 - **`consumption_reports.py`** : Rapports détaillés de consommation avec tableaux interactifs, filtrage par période et exportation.
 - **`family_reception_tab.py`** : Onglet d'analyse des réceptions et entrées de stock ventilées par famille de produits dans le temps.
 - **`statistics_tabs.py`** : Onglets d'analyse statistique avancée, incluant la valorisation détaillée du stock (`StockValuationTab`), le rapport de consommation global (`FullConsumptionTab`), l'audit des stocks fantômes (`DeletedProductsAuditTab`), et l'analyse complète des rebuts et pertes par produit unique avec métriques financières précises (`WasteAnalysisTab`).
+- **`analysis_view.py`** : Vue d'analyse détaillée de la consommation et des mouvements de stock (`AnalysisTab`).
+- **`ai_analytics_tab.py`** : Module d'analyses prédictives et d'intelligence artificielle (`AIAnalyticsTab`).

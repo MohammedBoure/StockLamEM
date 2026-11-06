@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, QTimer
 from PySide6.QtGui import QColor, QBrush, QFont
 
-from .inventory.dialogs import BarcodeLineEdit
+from ui.widgets.inventory.dialogs import BarcodeLineEdit
 from ui.formatting import format_quantity
 
 

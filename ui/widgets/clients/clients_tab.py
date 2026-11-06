@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QAction, QColor, QFont, QBrush
 
-from .dialogs import ClientDialog
+from ui.widgets.master_data.dialogs import ClientDialog
 from .client_statement_dialog import ClientStatementDialog
 from .client_versements_dialog import ClientVersementsDialog
 from ui.formatting import format_money

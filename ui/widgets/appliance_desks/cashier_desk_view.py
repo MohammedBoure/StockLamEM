@@ -454,40 +454,13 @@ class ClientWalletDialog(QDialog):
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(14)
 
-        # Header with icon
-        hdr_layout = QHBoxLayout()
-        hdr_layout.setSpacing(10)
-        ic = QLabel()
-        ic.setPixmap(get_duotone_icon("kpi_wallet", 24).pixmap(24, 24))
-        hdr_layout.addWidget(ic)
-
-        title_box = QVBoxLayout()
-        title_box.setSpacing(2)
-        lbl_title = QLabel("Solde Versement & Portefeuille Client")
-        lbl_title.setStyleSheet("font-size: 16px; font-weight: 800; color: #007572;")
-        lbl_sub = QLabel("Consultation des dépôts en espèces et des avoirs virtuels disponibles")
-        lbl_sub.setStyleSheet("font-size: 11px; color: #64748B;")
-        title_box.addWidget(lbl_title)
-        title_box.addWidget(lbl_sub)
-        hdr_layout.addLayout(title_box)
-        hdr_layout.addStretch()
-        layout.addLayout(hdr_layout)
-
-        # Client selector bar
-        sel_frame = QFrame()
-        sel_frame.setStyleSheet("""
-            QFrame {
-                background-color: #F8FAFC;
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
-            }
-        """)
-        sel_layout = QHBoxLayout(sel_frame)
-        sel_layout.setContentsMargins(12, 10, 12, 10)
+        # Minimalist Header + Client Selector Row (no extra container frames)
+        sel_layout = QHBoxLayout()
+        sel_layout.setContentsMargins(0, 0, 0, 0)
         sel_layout.setSpacing(10)
 
         lbl_c = QLabel("Client :")
-        lbl_c.setStyleSheet("font-weight: 700; color: #334155; font-size: 12px;")
+        lbl_c.setStyleSheet("font-weight: 700; color: #334155; font-size: 12px; border: none; background: transparent;")
         sel_layout.addWidget(lbl_c)
 
         self.cbo_clients = QComboBox()
@@ -503,7 +476,11 @@ class ClientWalletDialog(QDialog):
                 color: #1E293B;
             }
             QComboBox:focus {
-                border-color: #007572;
+                border: 1.5px solid #007572;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
             }
         """)
         self.cbo_clients.currentIndexChanged.connect(self._on_client_selection_changed)
@@ -529,16 +506,16 @@ class ClientWalletDialog(QDialog):
         self.btn_refresh.clicked.connect(self._refresh_client_wallet)
         sel_layout.addWidget(self.btn_refresh)
 
-        layout.addWidget(sel_frame)
+        layout.addLayout(sel_layout)
 
-        # 3 Metric KPI Cards
+        # 3 Clean Scoped Metric KPI Cards (strictly scoped by objectName so QLabel children never get borders)
         cards_layout = QHBoxLayout()
         cards_layout.setSpacing(10)
 
         self.card_real = self._create_kpi_card(
-            title="Versement (Dépôt Espèces)",
+            obj_name="WalletCardReal",
+            title="Versement Espèces",
             value="0.00 DA",
-            subtitle="Espèces réelles en Caisse",
             accent_color="#007572",
             bg_color="#F0FDFA",
             border_color="#BCE3DC",
@@ -546,9 +523,9 @@ class ClientWalletDialog(QDialog):
         cards_layout.addWidget(self.card_real)
 
         self.card_virt = self._create_kpi_card(
+            obj_name="WalletCardVirt",
             title="Versement Virtuel",
             value="0.00 DA",
-            subtitle="Avoirs Retours & SAV",
             accent_color="#0284C7",
             bg_color="#F0F9FF",
             border_color="#BAE6FD",
@@ -556,9 +533,9 @@ class ClientWalletDialog(QDialog):
         cards_layout.addWidget(self.card_virt)
 
         self.card_tot = self._create_kpi_card(
-            title="Total Portefeuille",
+            obj_name="WalletCardTot",
+            title="Solde Disponible",
             value="0.00 DA",
-            subtitle="Solde total disponible",
             accent_color="#0F172A",
             bg_color="#F8FAFC",
             border_color="#CBD5E1",
@@ -566,11 +543,6 @@ class ClientWalletDialog(QDialog):
         cards_layout.addWidget(self.card_tot)
 
         layout.addLayout(cards_layout)
-
-        # Recent Transactions Section
-        lbl_hist = QLabel("Historique des Mouvements de Portefeuille (Versement / Déduction)")
-        lbl_hist.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155; margin-top: 4px;")
-        layout.addWidget(lbl_hist)
 
         self.table_tx = QTableWidget()
         cols = ["Date / Heure", "Type", "Montant", "Nouveau Solde", "Source / Notes"]
@@ -610,31 +582,32 @@ class ClientWalletDialog(QDialog):
         btn_box.addWidget(self.btn_close)
         layout.addLayout(btn_box)
 
-    def _create_kpi_card(self, title, value, subtitle, accent_color, bg_color, border_color):
+    def _create_kpi_card(self, obj_name, title, value, accent_color, bg_color, border_color):
         card = QFrame()
+        card.setObjectName(obj_name)
         card.setStyleSheet(f"""
-            QFrame {{
+            QFrame#{obj_name} {{
                 background-color: {bg_color};
                 border: 1px solid {border_color};
                 border-radius: 6px;
             }}
+            QFrame#{obj_name} QLabel {{
+                border: none;
+                background: transparent;
+            }}
         """)
         l = QVBoxLayout(card)
-        l.setContentsMargins(12, 10, 12, 10)
-        l.setSpacing(3)
+        l.setContentsMargins(12, 8, 12, 8)
+        l.setSpacing(2)
 
         lbl_t = QLabel(title)
-        lbl_t.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {accent_color};")
+        lbl_t.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {accent_color}; border: none; background: transparent;")
         l.addWidget(lbl_t)
 
         lbl_v = QLabel(value)
         lbl_v.setObjectName("lbl_kpi_val")
-        lbl_v.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {accent_color};")
+        lbl_v.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {accent_color}; border: none; background: transparent;")
         l.addWidget(lbl_v)
-
-        lbl_s = QLabel(subtitle)
-        lbl_s.setStyleSheet("font-size: 10px; color: #64748B;")
-        l.addWidget(lbl_s)
         return card
 
     def _load_clients(self):
@@ -996,28 +969,9 @@ class VersementDialog(QDialog):
         layout.setContentsMargins(22, 20, 22, 20)
         layout.setSpacing(12)
 
-        # Header Info Card
-        hdr_frame = QFrame()
-        hdr_frame.setStyleSheet("""
-            QFrame {
-                background-color: #F8FAFC;
-                border: 1px solid #DDE3EA;
-                border-left: 4px solid #007572;
-                border-radius: 6px;
-            }
-            QLabel { border: none; background: transparent; }
-        """)
-        hdr_layout = QVBoxLayout(hdr_frame)
-        hdr_layout.setContentsMargins(14, 10, 14, 10)
-        hdr_layout.setSpacing(3)
-
-        lbl_hdr_title = QLabel("Enregistrement d'un Versement Espèces")
-        lbl_hdr_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #007572;")
-        lbl_hdr_sub = QLabel("Ce versement crédite le compte du client et augmente la liquidité physique en Caisse.")
-        lbl_hdr_sub.setStyleSheet("font-size: 11px; color: #64748B;")
-        hdr_layout.addWidget(lbl_hdr_title)
-        hdr_layout.addWidget(lbl_hdr_sub)
-        layout.addWidget(hdr_frame)
+        lbl_hdr_title = QLabel("Nouveau Versement Espèces")
+        lbl_hdr_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #007572;")
+        layout.addWidget(lbl_hdr_title)
 
         # Client Selection Box
         lbl_client_title = QLabel("Client Bénéficiaire :")
@@ -1048,15 +1002,16 @@ class VersementDialog(QDialog):
         self.lbl_no_client_warn.setVisible(False)
         layout.addWidget(self.lbl_no_client_warn)
 
-        # Current Client Wallet Balance Card
+        # Current Client Wallet Balance Card (scoped by objectName)
         self.wallet_card = QFrame()
+        self.wallet_card.setObjectName("VersementWalletCard")
         self.wallet_card.setStyleSheet("""
-            QFrame {
+            QFrame#VersementWalletCard {
                 background-color: #F0FDFA;
                 border: 1px solid #BCE3DC;
                 border-radius: 6px;
             }
-            QLabel { border: none; background: transparent; }
+            QFrame#VersementWalletCard QLabel { border: none; background: transparent; }
         """)
         w_layout = QVBoxLayout(self.wallet_card)
         w_layout.setContentsMargins(12, 8, 12, 8)
@@ -1373,7 +1328,7 @@ class CashierDeskWidget(QWidget):
         q_icon.setPixmap(get_duotone_icon("payment", 18).pixmap(18, 18))
         top_q.addWidget(q_icon)
 
-        lbl_q = QLabel("File d'Attente des Bons en Caisse (Bon Comptant, Bon Crédit, Bon de Livraison)")
+        lbl_q = QLabel("File d'Attente Caisse")
         lbl_q.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
         top_q.addWidget(lbl_q)
         top_q.addStretch()
@@ -1417,14 +1372,13 @@ class CashierDeskWidget(QWidget):
         top_q.addWidget(btn_ref)
         l_layout.addLayout(top_q)
 
-        # Barcode Scanner & Type Recognition Bar (Task #5)
+        # Barcode Scanner & Type Recognition Bar (flat clean row, no nested box border)
         scan_frame = QFrame()
         scan_frame.setObjectName("CaisseScanFrame")
         scan_frame.setStyleSheet("""
             QFrame#CaisseScanFrame {
-                background-color: #F8FAFC;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
+                background: transparent;
+                border: none;
             }
             QLabel {
                 border: none;
@@ -1432,7 +1386,7 @@ class CashierDeskWidget(QWidget):
             }
         """)
         scan_layout = QHBoxLayout(scan_frame)
-        scan_layout.setContentsMargins(10, 6, 10, 6)
+        scan_layout.setContentsMargins(0, 2, 0, 2)
         scan_layout.setSpacing(8)
 
         sc_icon = QLabel()
@@ -2537,26 +2491,31 @@ class CashierDeskWidget(QWidget):
                     f"Le solde du Bon de Livraison ({order_num}) a été encaissé.",
                 )
             else:
-                if cash_val + w_ded <= 0:
+                tot_ttc = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
+                if tot_ttc > 0.0 and (cash_val + w_ded) <= 0:
                     QMessageBox.warning(
                         self,
                         "Montant Acompte Requis",
                         "Saisissez un montant d'acompte supérieur à 0 DA, ou cliquez sur « Payer à la Livraison (0 DA) ».",
                     )
                     return
+                adv_res = {}
                 if self.data_manager and hasattr(self.data_manager, "bonds"):
-                    self.data_manager.bonds.validate_bon_livraison_advance(
+                    adv_res = self.data_manager.bonds.validate_bon_livraison_advance(
                         order_id=order_id,
                         cashier_user_id=uid,
                         cash_session_id=1,
                         advance_cash=Decimal(str(cash_val)),
                         advance_wallet=Decimal(str(w_ded)),
-                    )
+                    ) or {}
                 self.orderSettled.emit(order_num, "BON_LIVRAISON_ADVANCE")
+                paid_eff = float(adv_res.get("advance_paid", min(tot_ttc, cash_val + w_ded)))
+                change_due = float(adv_res.get("change_due", max(0.0, (cash_val + w_ded) - tot_ttc)))
+                change_txt = f"\nMonnaie à rendre : {format_money(change_due)} DA" if change_due > 0.01 else ""
                 QMessageBox.information(
                     self,
                     "Bon de Livraison Validé (Acompte)",
-                    f"Acompte enregistré ({format_money(cash_val + w_ded)} DA) pour {order_num}.\n"
+                    f"Acompte enregistré ({format_money(paid_eff)} DA) pour {order_num}.{change_txt}\n"
                     "Le BL reste visible jusqu'à sa clôture complète.",
                 )
             self.refresh_queue()

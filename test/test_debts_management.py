@@ -389,7 +389,7 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.mock_dm.clients.get_all_clients.return_value = []
 
     def test_debts_summary_bar_and_tables(self):
-        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        from ui.widgets.debts.debts_management_tab import DebtsManagementTab
         tab = DebtsManagementTab(self.mock_dm)
 
         # Check KPI summary bar labels exist and display correct data
@@ -409,7 +409,7 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertEqual(tab.table_invoices.verticalHeader().defaultSectionSize(), 38)
 
     def test_global_payment_dialog_styling_and_heights(self):
-        from ui.widgets.sales.debts_management_tab import GlobalPaymentDialog
+        from ui.widgets.debts.debts_management_tab import GlobalPaymentDialog
         client_row = {
             'Client_ID': 12,
             'Client_Name': 'Laboratoire BioTest',
@@ -455,7 +455,7 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertEqual(dlg.edit_notes.height(), 38)
 
     def test_client_statement_dialog_redesign_and_modalless_details(self):
-        from ui.widgets.master_data.client_statement_dialog import ClientStatementDialog, TransactionDetailsDialog
+        from ui.widgets.clients.client_statement_dialog import ClientStatementDialog, TransactionDetailsDialog
         self.mock_dm.clients.get_client_ledger.return_value = {
             'client': {
                 'Client_ID': 12,
@@ -529,7 +529,7 @@ class TestDebtsManagementUI(unittest.TestCase):
         dlg.close()
 
     def test_tables_vertical_headers_hidden_and_selection_styling(self):
-        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        from ui.widgets.debts.debts_management_tab import DebtsManagementTab
         from PySide6.QtCore import Qt
         tab = DebtsManagementTab(self.mock_dm)
 
@@ -546,7 +546,7 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertIn("QFrame#EmptyInvoicesCard", tab.empty_invoices_card.styleSheet())
 
     def test_client_zero_or_negative_debt_disables_solder_button(self):
-        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        from ui.widgets.debts.debts_management_tab import DebtsManagementTab
         from PySide6.QtWidgets import QPushButton
         from PySide6.QtCore import Qt
 
@@ -598,7 +598,7 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertEqual(btn_solder_1.cursor().shape(), Qt.PointingHandCursor)
 
     def test_filter_bar_reset_and_actions(self):
-        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        from ui.widgets.debts.debts_management_tab import DebtsManagementTab
         tab = DebtsManagementTab(self.mock_dm)
 
         # Change filter values
@@ -613,7 +613,7 @@ class TestDebtsManagementUI(unittest.TestCase):
         self.assertEqual(tab.cb_status_filter.currentIndex(), 0)
 
     def test_detail_section_empty_state_and_global_pay_button(self):
-        from ui.widgets.sales.debts_management_tab import DebtsManagementTab
+        from ui.widgets.debts.debts_management_tab import DebtsManagementTab
         tab = DebtsManagementTab(self.mock_dm)
 
         # 1. Client with zero unpaid invoices

@@ -29,7 +29,7 @@ from ui.icons import get_duotone_icon
 from ui.widgets.appliance_desks.cashier_desk_view import CashierDeskWidget
 from ui.widgets.appliance_desks.dispatch_desk_view import DispatchDeskWidget
 from ui.widgets.appliance_desks.order_desk_view import OrderDeskWidget
-from ui.widgets.appliance_desks.sav_kanban_view import SAVKanbanWidget
+from ui.widgets.sav.sav_kanban_view import SAVKanbanWidget
 
 logger = logging.getLogger(__name__)
 
@@ -69,69 +69,11 @@ class ApplianceWorkflowTab(QWidget):
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        layout.setContentsMargins(10, 8, 10, 10)
+        layout.setSpacing(6)
 
-        # Top Compact Enterprise Header Bar
-        banner_frame = QFrame()
-        banner_frame.setObjectName("WorkflowBannerFrame")
-        banner_frame.setFixedHeight(46)
-        banner_frame.setStyleSheet("""
-            QFrame#WorkflowBannerFrame {
-                background-color: #FFFFFF;
-                border: 1px solid #DCDFE6;
-                border-radius: 6px;
-            }
-            QLabel {
-                border: none;
-                background: transparent;
-            }
-        """)
-        banner_layout = QHBoxLayout(banner_frame)
-        banner_layout.setContentsMargins(14, 0, 14, 0)
-        banner_layout.setSpacing(10)
-
-        icon_lbl = QLabel()
-        icon_lbl.setPixmap(get_duotone_icon("pos", 20).pixmap(20, 20))
-        banner_layout.addWidget(icon_lbl)
-
-        title_text = "Flux Opérationnel Multi-Bureaux  |  Commandes  •  Caisse  •  Sortie Magasin"
-        if getattr(self, "include_sav", False):
-            title_text += "  •  SAV & Réparation"
-        title_lbl = QLabel(title_text)
-        title_lbl.setStyleSheet("font-size: 13px; font-weight: bold; color: #007572;")
-        banner_layout.addWidget(title_lbl)
-        banner_layout.addStretch()
-
-        self.refresh_all_btn = QPushButton("Actualiser les Bureaux")
-        self.refresh_all_btn.setIcon(get_duotone_icon("refresh", 14))
-        self.refresh_all_btn.setIconSize(QSize(14, 14))
-        self.refresh_all_btn.setCursor(Qt.PointingHandCursor)
-        self.refresh_all_btn.setFixedHeight(32)
-        self.refresh_all_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #007572;
-                color: #FFFFFF;
-                font-weight: bold;
-                border: none;
-                border-radius: 4px;
-                padding: 4px 14px;
-                font-size: 12px;
-                min-height: 28px;
-            }
-            QPushButton:hover {
-                background-color: #005A57;
-            }
-            QPushButton:pressed {
-                background-color: #003D3A;
-            }
-        """)
-        self.refresh_all_btn.clicked.connect(self.refresh_all_desks)
-        banner_layout.addWidget(self.refresh_all_btn)
-        layout.addWidget(banner_frame)
-
-        # Sub-Desk Tabs
-        self.desk_tabs = QTabWidget()
+        # Sub-Desk Tabs (Clean de-containerized header with corner refresh button)
+        self.desk_tabs = QTabWidget(self)
         self.desk_tabs.setIconSize(QSize(16, 16))
         self.desk_tabs.setStyleSheet("""
             QTabWidget::pane {
@@ -146,23 +88,58 @@ class ApplianceWorkflowTab(QWidget):
                 border: 1px solid #CED4DA;
                 border-bottom: none;
                 padding: 7px 14px;
-                margin-right: 3px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
+                margin-right: 4px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
                 font-size: 12px;
                 font-weight: bold;
             }
             QTabBar::tab:selected {
                 background: #FFFFFF;
                 color: #007572;
-                border-top: 3px solid #007572;
+                border-top: 2.5px solid #007572;
             }
             QTabBar::tab:hover:!selected {
-                background: #E9ECEF;
+                background: #EEF2F6;
                 color: #212529;
                 border-color: #ADB5BD;
             }
         """)
+
+        corner_frame = QWidget(self.desk_tabs)
+        corner_frame.setObjectName("WorkflowCornerWidget")
+        corner_frame.setStyleSheet("background: transparent; border: none; border-color: #DCDFE6;")
+        corner_layout = QHBoxLayout(corner_frame)
+        corner_layout.setContentsMargins(0, 0, 2, 4)
+        corner_layout.setSpacing(0)
+
+        self.refresh_all_btn = QPushButton("Actualiser")
+        self.refresh_all_btn.setIcon(get_duotone_icon("refresh_white", 13))
+        self.refresh_all_btn.setIconSize(QSize(13, 13))
+        self.refresh_all_btn.setCursor(Qt.PointingHandCursor)
+        self.refresh_all_btn.setFixedHeight(28)
+        self.refresh_all_btn.setToolTip("Actualiser tous les bureaux")
+        self.refresh_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007572;
+                color: #FFFFFF;
+                font-weight: bold;
+                border: none;
+                border-radius: 4px;
+                padding: 3px 12px;
+                font-size: 11px;
+                min-height: 26px;
+            }
+            QPushButton:hover {
+                background-color: #005A57;
+            }
+            QPushButton:pressed {
+                background-color: #003D3A;
+            }
+        """)
+        self.refresh_all_btn.clicked.connect(self.refresh_all_desks)
+        corner_layout.addWidget(self.refresh_all_btn)
+        self.desk_tabs.setCornerWidget(corner_frame, Qt.TopRightCorner)
 
         self.order_desk = OrderDeskWidget(
             data_manager=self.data_manager,
@@ -183,17 +160,17 @@ class ApplianceWorkflowTab(QWidget):
         self.desk_tabs.addTab(
             self.order_desk,
             get_duotone_icon("pos", 18),
-            "1. Commandes (Order Desk)",
+            "1. Commandes",
         )
         self.desk_tabs.addTab(
             self.cashier_desk,
             get_duotone_icon("payment", 18),
-            "2. Caisse && Règlements",
+            "2. Caisse",
         )
         self.desk_tabs.addTab(
             self.dispatch_desk,
             get_duotone_icon("barcode_scan", 18),
-            "3. Sortie Magasin (Dispatch)",
+            "3. Sortie Magasin",
         )
         if getattr(self, "include_sav", False):
             self.sav_desk = SAVKanbanWidget(

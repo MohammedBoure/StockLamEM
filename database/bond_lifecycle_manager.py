@@ -1273,14 +1273,17 @@ class BondLifecycleManager:
                 raise ValueError("Order not found.")
 
             total_ttc = Decimal(str(order["Total_Amount_TTC"])).quantize(Decimal("0.01"))
-            adv_cash = Decimal(str(advance_cash or "0.00")).quantize(Decimal("0.01"))
-            adv_wallet = Decimal(str(advance_wallet or "0.00")).quantize(Decimal("0.01"))
+            adv_cash_raw = max(Decimal("0.00"), Decimal(str(advance_cash or "0.00")).quantize(Decimal("0.01")))
+            adv_wallet_raw = max(Decimal("0.00"), Decimal(str(advance_wallet or "0.00")).quantize(Decimal("0.01")))
+
+            # Cap wallet deduction at order Total TTC, and compute change due if cash tendered exceeds remaining TTC
+            adv_wallet = min(adv_wallet_raw, total_ttc).quantize(Decimal("0.01"))
+            max_cash_needed = max(Decimal("0.00"), (total_ttc - adv_wallet).quantize(Decimal("0.01")))
+            change_due = max(Decimal("0.00"), (adv_cash_raw - max_cash_needed).quantize(Decimal("0.01")))
+            adv_cash = min(adv_cash_raw, max_cash_needed).quantize(Decimal("0.01"))
             total_advance = (adv_cash + adv_wallet).quantize(Decimal("0.01"))
 
-            if total_advance > total_ttc:
-                raise SplitPaymentMismatchException("Advance payment cannot exceed total order TTC.")
-
-            remaining_cod = (total_ttc - total_advance).quantize(Decimal("0.01"))
+            remaining_cod = max(Decimal("0.00"), (total_ttc - total_advance).quantize(Decimal("0.01")))
             inv_num = f"BL-LIV-{datetime.now().strftime('%Y%m%d')}-{order_id}"
             total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
             total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
@@ -1348,6 +1351,7 @@ class BondLifecycleManager:
                 "invoice_id": invoice_id,
                 "invoice_number": inv_num,
                 "advance_paid": float(total_advance),
+                "change_due": float(change_due),
                 "remaining_on_delivery": float(remaining_cod),
                 "status": "APPROVED_LIVRAISON_PENDING_DISPATCH",
             }
@@ -1418,21 +1422,13 @@ class BondLifecycleManager:
 
             if inv.get("Order_ID"):
                 cursor.execute(
-                    "SELECT Status FROM Sales_Orders_Theoretical WHERE Order_ID = %s FOR UPDATE",
+                    """
+                    UPDATE Sales_Orders_Theoretical
+                    SET Status = 'COMPLETED'
+                    WHERE Order_ID = %s
+                    """,
                     (int(inv["Order_ID"]),),
                 )
-                ord_st_row = cursor.fetchone()
-                curr_ord_st = str((ord_st_row or {}).get("Status") or "")
-                # Close the BL order completely once both payment AND physical dispatch are completed
-                if curr_ord_st in ("DISPATCHED_PENDING_COD", "COMPLETED", ""):
-                    cursor.execute(
-                        """
-                        UPDATE Sales_Orders_Theoretical
-                        SET Status = 'COMPLETED'
-                        WHERE Order_ID = %s
-                        """,
-                        (int(inv["Order_ID"]),),
-                    )
 
             conn.commit()
             return {

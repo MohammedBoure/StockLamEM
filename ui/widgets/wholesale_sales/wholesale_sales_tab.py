@@ -15,7 +15,7 @@ from ui.formatting import format_money
 from branding import get_logo_path
 from ui.icons import get_duotone_icon, get_trash_icon, get_warning_icon, get_edit_lots_icon
 from ui.widgets.sales.dialogs import ClientDialog
-from ui.widgets.master_data.client_statement_dialog import ClientStatementDialog
+from ui.widgets.clients.client_statement_dialog import ClientStatementDialog
 from ui.widgets.sales.touch_keypad import TouchKeypadDialog
 from .pdf_export import export_wholesale_document_pdf
 from .lot_split_dialog import MultiLotSelectionDialog

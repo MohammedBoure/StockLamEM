@@ -24,7 +24,7 @@ from PySide6.QtWidgets import QApplication
 from database.bond_lifecycle_manager import BondLifecycleManager
 from database.sales_manager import SalesManager
 from ui.widgets.appliance_desks.cashier_desk_view import BonRetourDialog, CashierDeskWidget
-from ui.widgets.appliance_desks.sav_kanban_view import SAVReceptionDialog
+from ui.widgets.sav.sav_kanban_view import SAVReceptionDialog
 from ui.widgets.history import MovementHistoryTab
 from ui.widgets.sales_history.sale_details_dialog import SaleDetailsDialog
 

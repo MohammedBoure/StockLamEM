@@ -25,14 +25,14 @@ from .widgets.settings.settings_tab import SettingsTab
 from .widgets.settings.local_settings import LocalSettingsStore
 from .widgets.master_data.product_families_tab import ProductFamiliesTab
 from .widgets.master_data.packaging_units_tab import PackagingUnitsTab
-from .widgets.user_management_tab import UserManagementTab
+from .widgets.users import UserManagementTab
 from .widgets.master_data.external_partners_tab import ExternalPartnersTab
 from .widgets.billing.billing_tab import BillingTab
 from .widgets.history import MovementHistoryTab
 from .widgets.sales.point_of_sale_tab import PointOfSaleTab
 from .widgets.wholesale_sales import WholesaleSalesTab
 from .widgets.sales_history import SalesHistoryTab
-from .widgets.sales.debts_management_tab import DebtsManagementTab
+from .widgets.debts import DebtsManagementTab
 from .widgets.appliance_desks import ApplianceWorkflowTab
 from .hardware.raw_input_filter import MultiScannerHIDManager, WindowsRawInputFilter
 from .navigation_permissions import has_permission as check_permission, has_navigation_permission as check_navigation_permission
@@ -719,7 +719,7 @@ class MainWindow(QMainWindow):
 
         # --- 15. Service Après-Vente (SAV) Dedicated Workspace ---
         elif page_id == 15:
-            from .widgets.appliance_desks.sav_workspace_view import SAVWorkspaceTab
+            from .widgets.sav import SAVWorkspaceTab
             widget = SAVWorkspaceTab(
                 data_manager=self.data_manager,
                 current_user=self.current_user,
@@ -728,7 +728,7 @@ class MainWindow(QMainWindow):
 
         # --- 16. Clients (Espace Dédié avec Lazy Loading) ---
         elif page_id == 16:
-            from .widgets.master_data.clients_tab import ClientsTab
+            from .widgets.clients import ClientsTab
             widget = ClientsTab(self.data_manager)
 
         if widget:

@@ -2,9 +2,10 @@
 
 Composants PySide6 pour le point de vente tactile au détail (POS), les règlements de caisse et les retours d'articles.
 
-> **Note d'architecture :** La Vente en Gros B2B et l'Historique des Ventes disposent désormais de leurs propres dossiers dédiés sous `ui/widgets/` :
+> **Note d'architecture :** La Vente en Gros B2B, l'Historique des Ventes et les Créances Clients disposent chacun de leur propre dossier dédié sous `ui/widgets/` :
 > - `ui/widgets/wholesale_sales/` : Interface B2B, tarification dynamique, gestion BL/BC/Factures et export PDF.
-> - `ui/widgets/sales_history/` : Historique des ventes, suivi des créances (AR Aging), encaissements et détails de factures.
+> - `ui/widgets/sales_history/` : Historique des ventes, encaissements et détails de factures.
+> - `ui/widgets/debts/` : Suivi des créances clients (`DebtsManagementTab`), règlements globaux FIFO et audit comptable.
 
 ## Fichiers et Rôles
 
@@ -18,15 +19,6 @@ Composants PySide6 pour le point de vente tactile au détail (POS), les règleme
   - Grille des résultats complète affichant Produit, Code-barres/SKU, N° Lot, Stock, Péremption, Prix Vente HT/TTC.
   - Configuration du retour : Quantité avec garde-fou, emplacement de destination (priorité automatique à la zone Quarantaine/Retour), motif du retour (liste déroulante normalisée) et mode de remboursement.
   - Traitement transactionnel atomique avec incrémentation du stock, écriture dans l'historique de mouvements et génération d'un Bon de Retour (Avoir) A4 ReportLab.
-- `debts_management_tab.py` : Interface complète de gestion des créances et suivi des dettes clients (`DebtsManagementTab`) alignée à 100% sur le design system de StockLam :
-  - Palette officielle : couleur pétrole de référence `#0E7471`, arrière-plan doux `#F4F6F8`, conteneurs blancs `#FFFFFF` avec bordures soignées `#DDE3EA`, rouge d'alerte `#DC2626` et vert de succès `#16A34A`.
-  - Barre de synthèse compacte (Summary Bar) : bandeau supérieur ultra-fin (hauteur 38px, fond blanc `#FFFFFF`, bordure 1px `#DDE3EA`, rayon 6px) remplaçant les cartes volumineuses pour maximiser l'espace vertical disponible, avec 4 métriques calmes et lisibles en 13px gras enrichies de micro-icônes vectorielles duotone (Total Créances, Échues/En retard, Clients Débiteurs, Encaissé ce Mois).
-  - Barre de filtrage standardisée à une hauteur de 38px : autocomplétion nom/téléphone (`SearchableClientComboBox`), sélecteur de statut de créance, seuil de dette en DA, bouton Actualiser plein pétrole (`#0E7471`), bouton de réinitialisation (`Réinitialiser`) et bouton Exporter CSV parfaitement alignés verticalement.
-  - Table des Débiteurs et Table des Factures au format "Dense Data Table" : en-têtes verticaux numérotés masqués pour éliminer l'espace vide superflu, sélection de lignes préservant un texte ardoise sombre `#0F172A` ultra-lisible sur surbrillance menthe douce `#E6F4F1`, défilement fluide au pixel, colonnes d'actions 200px avec mini-boutons de 28px.
-  - Garde-fous d'état sur les boutons : désactivation automatique du bouton "Solder" et du bouton "Règlement Global" avec curseur interdit et infobulle explicative lorsque le client est soldé (solde <= 0) ou n'a aucune facture impayée.
-  - Panneau de détail inférieur et état vide sans bordures discontinues : conteneur blanc épuré (`1px solid #DDE3EA`, rayon 8px) avec isolation QSS stricte (`QLabel { border: none !important; }`) éliminant toute fuite d'encadrement sur les libellés descriptifs.
-  - Dialogue de règlement global / acompte (`GlobalPaymentDialog`) : fenêtre modale 100% opaque sans couche d'opacité arrière (No Backdrop Overlay), bordure douce `#DDE3EA`, suppression intégrale de tout encadrement parasite autour des libellés (`QLabel { border: none !important; }`), champs de saisie confortables (38px) avec correction de line-height et de padding interne évitant toute troncature des chiffres/textes en haut et en bas, avec ventilation FIFO ou acompte libre.
-  - Dialogue d'audit d'intégrité comptable (`ClientDebtAuditDialog`) : dialogue modal blanc solide avec bannière de statut épurée et réconciliation théorique/réelle détaillée.
 - `searchable_client_combo.py` : Widget de sélection client avec autocomplétion instantanée (`SearchableClientComboBox`) :
   - Recherche bi-mode en temps réel par Nom du Client et par Numéro de Téléphone (`Qt.MatchContains`).
   - Formatage standardisé `Nom Client (Téléphone)` et conformité stylistique pétrole `#0E7471`.

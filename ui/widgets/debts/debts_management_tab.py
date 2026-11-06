@@ -17,7 +17,7 @@ from ui.icons import get_duotone_icon
 from ui.formatting import format_money
 from ui.widgets.sales.searchable_client_combo import SearchableClientComboBox
 from ui.widgets.sales.invoice_payment_dialog import InvoicePaymentDialog
-from ui.widgets.master_data.client_statement_dialog import ClientStatementDialog
+from ui.widgets.clients.client_statement_dialog import ClientStatementDialog
 from ui.widgets.sales_history.pdf_export import export_invoice_to_pdf
 
 
