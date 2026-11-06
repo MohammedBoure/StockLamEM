@@ -881,8 +881,8 @@ class OrderDeskWidget(QWidget):
                 color: #495057;
                 font-weight: bold;
                 font-size: 11px;
-                padding: 2px 10px;
-                margin-right: 3px;
+                padding: 2px 24px 2px 10px;
+                margin-right: 0px;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
                 border: 1px solid #CED4DA;
@@ -2580,25 +2580,29 @@ class OrderDeskWidget(QWidget):
 
             btn = QPushButton("×")
             btn.setObjectName(f"TabCloseBtn_{sid}")
-            btn.setFixedSize(16, 16)
+            btn.setFixedSize(14, 14)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setToolTip("Fermer cette session" if total_tabs > 1 else "Réinitialiser cette session")
 
             close_color = "#FFFFFF" if is_active else "#64748B"
             btn.setStyleSheet(f"""
-                QPushButton {{
+                QPushButton#{btn.objectName()} {{
                     border: none;
                     background-color: transparent;
                     color: {close_color};
-                    font-size: 13px;
-                    font-weight: 800;
-                    line-height: 12px;
-                    border-radius: 3px;
-                    margin-left: 4px;
-                    padding-bottom: 2px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    padding: 0px;
+                    margin: 0px;
+                    border-radius: 7px;
+                    text-align: center;
                 }}
-                QPushButton:hover {{
-                    background-color: #DC2626;
+                QPushButton#{btn.objectName()}:hover {{
+                    background-color: #EF4444;
+                    color: #FFFFFF;
+                }}
+                QPushButton#{btn.objectName()}:pressed {{
+                    background-color: #B91C1C;
                     color: #FFFFFF;
                 }}
             """)
