@@ -18,6 +18,17 @@ This directory contains the PySide6 UI desk modules implementing the 4-desk Elec
   - **Global KPI Summary Bar**: Top live status badges indicating total tickets, intake depot count, repairer workshop count, ready for return count, closed count, and irreparable count.
   - **Instant Multi-Field Search**: Real-time filtering across Ticket number, Bon barcode, Serial number, Product, Client, and Reported defect.
 - **`order_desk_view.py`**: `OrderDeskWidget` featuring:
+  - **Stock Actuel Unified Theme Harmonization (Task #1)**:
+    * **Crisp Pure White Canvas**: Styled root canvas and panels (`OrderDeskContentWidget`, `OrderCatalogPanel`, `OrderCartPanel`) with `#FFFFFF` background and `1px solid #DCDFE6; border-radius: 6px;` matching `BatchesTabRoot` and `QGroupBox` in `Stock & Magasin -> Stock Actuel`.
+    * **Standard Input Controls**: Standardized all inputs (`QLineEdit`, `QComboBox`, `txt_search`, `cbo_mark`, `cbo_category`, `cbo_color`, `cbo_client`, `txt_delivery_addr`) with `border: 1px solid #CED4DA; border-radius: 4px; color: #2C3E50; font-size: 12px;` and high-contrast teal focus state (`border: 1.5px solid #007572; background-color: #FFFFFF;`).
+    * **Stock Actuel Button Hierarchy**:
+      - `Actualiser` (`btn_refresh`): Solid primary teal `#007572` button with white bold text, borderless, 4px border-radius, and tactile hover `#005A57`.
+      - `Réinitialiser` (`btn_reset`): Secondary slate outline button with `#FFFFFF` background, `#495057` text, `1px solid #CED4DA`, and 4px border-radius.
+      - `Émettre Bon Comptant` (`btn_bon_c`): Prominent `#007572` primary CTA with white bold text and 4px border-radius.
+      - `Bon Crédit` & `Bon de Livraison`: Styled outline action buttons (`1px solid #007572`, `#007572` bold text, `#E8F8F5` hover, 4px border-radius).
+      - `Vider` (`btn_clear`): Danger action button (`#C0392B` text, `1px solid #CED4DA; border-radius: 4px;` with `#FDF2F2` hover).
+      - `+ Nouvelle Session` (`btn_new_sess`): Clean session action button with `1px solid #CED4DA; border-radius: 4px; color: #007572; font-weight: bold;`.
+    * **Table & Scrollbar Styling**: Aligned `TABLE_STYLE` with `border: 1px solid #DCDFE6; border-radius: 4px; color: #2C3E50; alternate-background-color: #F8FAFC;`, header sections with `#2C3E50` bold text and `2px solid #007572` bottom accent border, and high-contrast `#007572` scrollbar handles.
   - **Default Available-Only Filter (Task #6)**: Introduced a prominent, ergonomic availability toggle filter (`chk_available_only`, aliased as `btn_available_only`) in `OrderTopFilterBar`:
     * **Active by Default**: Initialized to checked (`isChecked() == True`), strictly displaying items with available theoretical stock (`Available_Theoretical_Qty > 0`) and completely hiding exhausted/out-of-stock products from the catalog table, counter badges, and lazy-loading queues.
     * **Interactive Toggle & Reset**: Users can uncheck the filter to inspect exhausted lines (which display disabled `—` action slots). Resetting filters (`_reset_filters`) automatically restores `chk_available_only` to `True`.

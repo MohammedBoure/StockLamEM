@@ -79,7 +79,7 @@ class ApplianceWorkflowTab(QWidget):
         banner_frame.setStyleSheet("""
             QFrame#WorkflowBannerFrame {
                 background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
+                border: 1px solid #DCDFE6;
                 border-radius: 6px;
             }
             QLabel {
@@ -99,7 +99,7 @@ class ApplianceWorkflowTab(QWidget):
         if getattr(self, "include_sav", False):
             title_text += "  •  SAV & Réparation"
         title_lbl = QLabel(title_text)
-        title_lbl.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        title_lbl.setStyleSheet("font-size: 13px; font-weight: bold; color: #007572;")
         banner_layout.addWidget(title_lbl)
         banner_layout.addStretch()
 
@@ -110,17 +110,20 @@ class ApplianceWorkflowTab(QWidget):
         self.refresh_all_btn.setFixedHeight(32)
         self.refresh_all_btn.setStyleSheet("""
             QPushButton {
-                background-color: #FFFFFF;
-                color: #0E7471;
-                border: 1px solid #B2DFDB;
-                border-radius: 6px;
-                padding: 0 12px;
+                background-color: #007572;
+                color: #FFFFFF;
+                font-weight: bold;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 14px;
                 font-size: 12px;
-                font-weight: 700;
+                min-height: 28px;
             }
             QPushButton:hover {
-                background-color: #E6F4F1;
-                border-color: #0E7471;
+                background-color: #005A57;
+            }
+            QPushButton:pressed {
+                background-color: #003D3A;
             }
         """)
         self.refresh_all_btn.clicked.connect(self.refresh_all_desks)
@@ -132,31 +135,32 @@ class ApplianceWorkflowTab(QWidget):
         self.desk_tabs.setIconSize(QSize(16, 16))
         self.desk_tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #DDE3EA;
-                background: #F4F6F8;
+                border: 1px solid #DCDFE6;
+                background: #FFFFFF;
                 border-radius: 6px;
                 top: -1px;
             }
             QTabBar::tab {
-                background: #ECEFF1;
-                color: #475569;
-                border: 1px solid #DDE3EA;
+                background: #F8FAFC;
+                color: #495057;
+                border: 1px solid #CED4DA;
                 border-bottom: none;
-                padding: 7px 12px;
+                padding: 7px 14px;
                 margin-right: 3px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
                 font-size: 12px;
-                font-weight: 700;
+                font-weight: bold;
             }
             QTabBar::tab:selected {
                 background: #FFFFFF;
-                color: #0E7471;
-                border-top: 3px solid #0E7471;
+                color: #007572;
+                border-top: 3px solid #007572;
             }
             QTabBar::tab:hover:!selected {
-                background: #E2E8F0;
-                color: #1E293B;
+                background: #E9ECEF;
+                color: #212529;
+                border-color: #ADB5BD;
             }
         """)
 

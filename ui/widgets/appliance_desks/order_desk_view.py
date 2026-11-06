@@ -262,19 +262,19 @@ class ProductPriceWidget(QWidget):
         self.btn_price.setFixedHeight(30)
         self.btn_price.setStyleSheet("""
             QPushButton#BtnPriceDropdown {
-                background-color: #F8FAFC;
+                background-color: #FFFFFF;
                 color: #007572;
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 padding: 2px 8px;
                 font-size: 11px;
-                font-weight: 800;
+                font-weight: bold;
                 text-align: center;
             }
             QPushButton#BtnPriceDropdown:hover {
-                background-color: #E6F4F1;
+                background-color: #E8F8F5;
                 border-color: #007572;
-                color: #00504E;
+                color: #005A57;
             }
             QPushButton#BtnPriceDropdown:pressed {
                 background-color: #CCEBE5;
@@ -319,21 +319,21 @@ class ProductPriceWidget(QWidget):
         menu.setStyleSheet("""
             QMenu#PriceTierMenu {
                 background-color: #FFFFFF;
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 padding: 4px;
                 font-size: 11px;
             }
             QMenu#PriceTierMenu::item {
                 padding: 6px 14px;
                 border-radius: 4px;
-                color: #1E293B;
+                color: #2C3E50;
                 font-weight: 600;
             }
             QMenu#PriceTierMenu::item:selected {
                 background-color: #E6F4F1;
                 color: #007572;
-                font-weight: 800;
+                font-weight: bold;
             }
             QMenu#PriceTierMenu::separator {
                 height: 1px;
@@ -406,12 +406,12 @@ class AddActionCellWidget(QWidget):
             self.btn_add.setCursor(Qt.PointingHandCursor)
             self.slot_frame.setStyleSheet("""
                 QFrame#AddActionSlot {
-                    background-color: #F8FAFC;
-                    border: 1.5px solid #CBD5E1;
-                    border-radius: 6px;
+                    background-color: #FFFFFF;
+                    border: 1px solid #CED4DA;
+                    border-radius: 4px;
                 }
                 QFrame#AddActionSlot:hover {
-                    background-color: #E6F4F1;
+                    background-color: #E8F8F5;
                     border-color: #007572;
                 }
             """)
@@ -421,12 +421,12 @@ class AddActionCellWidget(QWidget):
                     border: none;
                     color: #007572;
                     font-size: 19px;
-                    font-weight: 800;
+                    font-weight: bold;
                     padding: 0;
                     margin: 0;
                 }
                 QPushButton#BtnPlusOnly:hover {
-                    color: #0A5C59;
+                    color: #005A57;
                 }
                 QPushButton#BtnPlusOnly:pressed {
                     color: #003D3A;
@@ -442,7 +442,7 @@ class AddActionCellWidget(QWidget):
                 QFrame#AddActionSlot {
                     background-color: #F8FAFC;
                     border: 1px solid #E2E8F0;
-                    border-radius: 6px;
+                    border-radius: 4px;
                 }
             """)
             self.btn_add.setStyleSheet("""
@@ -451,7 +451,7 @@ class AddActionCellWidget(QWidget):
                     border: none;
                     color: #94A3B8;
                     font-size: 14px;
-                    font-weight: 700;
+                    font-weight: bold;
                     padding: 0;
                     margin: 0;
                 }
@@ -499,18 +499,18 @@ class CartRemoveCellWidget(QWidget):
         self.btn_delete.setToolTip("Supprimer cet article de la commande")
         self.btn_delete.setStyleSheet("""
             QPushButton#BtnCartRemove {
-                background-color: #F8FAFC;
-                color: #DC2626;
-                border: 1px solid #E2E8F0;
-                border-radius: 5px;
+                background-color: #FFFFFF;
+                color: #C0392B;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 padding: 0;
             }
             QPushButton#BtnCartRemove:hover {
-                background-color: #FEE2E2;
-                border-color: #FCA5A5;
+                background-color: #FDF2F2;
+                border-color: #C0392B;
             }
             QPushButton#BtnCartRemove:pressed {
-                background-color: #FECACA;
+                background-color: #FCE8E6;
             }
         """)
         self.btn_delete.clicked.connect(self._trigger_remove)
@@ -524,39 +524,42 @@ class CartRemoveCellWidget(QWidget):
 TABLE_STYLE = """
     QTableWidget {
         background-color: #FFFFFF;
-        border: none;
+        border: 1px solid #DCDFE6;
         border-radius: 4px;
         gridline-color: #F1F5F9;
         selection-background-color: #E6F4F1;
         selection-color: #007572;
         alternate-background-color: #F8FAFC;
         font-size: 12px;
-        color: #1E293B;
+        color: #2C3E50;
     }
     QHeaderView::section {
         background-color: #F8FAFC;
-        color: #334155;
-        font-weight: 700;
+        color: #2C3E50;
+        font-weight: bold;
         font-size: 12px;
-        padding: 8px 6px;
+        padding: 5px 8px;
         border: none;
         border-bottom: 2px solid #007572;
         border-right: 1px solid #E2E8F0;
     }
     QScrollBar:horizontal {
-        border: none;
-        background: #F8FAFC;
-        height: 10px;
+        border: 1px solid #CBD5E1;
+        background: #F1F5F9;
+        height: 12px;
         margin: 0px 0px 0px 0px;
-        border-radius: 5px;
+        border-radius: 0px;
     }
     QScrollBar::handle:horizontal {
-        background: #CBD5E1;
-        min-width: 25px;
-        border-radius: 5px;
+        background: #007572;
+        min-width: 35px;
+        border-radius: 0px;
     }
     QScrollBar::handle:horizontal:hover {
-        background: #007572;
+        background: #005A57;
+    }
+    QScrollBar::handle:horizontal:pressed {
+        background: #003D3A;
     }
     QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
         width: 0px;
@@ -565,19 +568,22 @@ TABLE_STYLE = """
         border: none;
     }
     QScrollBar:vertical {
-        border: none;
-        background: #F8FAFC;
-        width: 10px;
+        border: 1px solid #CBD5E1;
+        background: #F1F5F9;
+        width: 12px;
         margin: 0px 0px 0px 0px;
-        border-radius: 5px;
+        border-radius: 0px;
     }
     QScrollBar::handle:vertical {
-        background: #CBD5E1;
-        min-height: 25px;
-        border-radius: 5px;
+        background: #007572;
+        min-height: 35px;
+        border-radius: 0px;
     }
     QScrollBar::handle:vertical:hover {
-        background: #007572;
+        background: #005A57;
+    }
+    QScrollBar::handle:vertical:pressed {
+        background: #003D3A;
     }
     QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
         width: 0px;
@@ -591,9 +597,9 @@ PRIMARY_BTN_STYLE = """
     QPushButton {
         background-color: #007572;
         color: #FFFFFF;
-        font-weight: 700;
-        min-height: 0px;
-        padding: 4px 14px;
+        font-weight: bold;
+        min-height: 28px;
+        padding: 4px 10px;
         border-radius: 4px;
         border: none;
         font-size: 12px;
@@ -607,27 +613,27 @@ OUTLINE_BTN_STYLE = """
     QPushButton {
         background-color: #FFFFFF;
         color: #007572;
-        border: 1.5px solid #007572;
-        font-weight: 700;
-        min-height: 0px;
+        border: 1px solid #007572;
+        font-weight: bold;
+        min-height: 28px;
         padding: 4px 12px;
         border-radius: 4px;
         font-size: 12px;
     }
-    QPushButton:hover { background-color: #E6F4F1; border-color: #005A57; color: #005A57; }
-    QPushButton:pressed { background-color: #CCEBE6; }
-    QPushButton:disabled { background-color: #F8FAFC; color: #94A3B8; border-color: #CBD5E1; }
+    QPushButton:hover { background-color: #E8F8F5; border-color: #005A57; color: #005A57; }
+    QPushButton:pressed { background-color: #CCEBE5; }
+    QPushButton:disabled { background-color: #F8FAFC; color: #94A3B8; border-color: #CED4DA; }
 """
 
 DANGER_BTN_STYLE = """
     QPushButton {
         background-color: #FFFFFF;
         color: #C0392B;
-        border: 1px solid #E74C3C;
+        border: 1px solid #CED4DA;
         border-radius: 4px;
         padding: 2px 10px;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: bold;
         min-height: 28px;
     }
     QPushButton:hover {
@@ -635,20 +641,25 @@ DANGER_BTN_STYLE = """
         border-color: #C0392B;
         color: #962D22;
     }
+    QPushButton:pressed {
+        background-color: #FCE8E6;
+    }
 """
 
 SLATE_OUTLINE_BTN_STYLE = """
     QPushButton {
         background-color: #FFFFFF;
-        color: #334155;
-        border: 1px solid #CBD5E1;
-        font-weight: 600;
-        min-height: 0px;
-        padding: 4px 12px;
+        color: #495057;
+        border: 1px solid #CED4DA;
+        font-weight: bold;
+        min-height: 28px;
+        padding: 4px 10px;
         border-radius: 4px;
         font-size: 12px;
     }
-    QPushButton:hover { background-color: #F8FAFC; border-color: #94A3B8; color: #0F172A; }
+    QPushButton:hover { background-color: #F8FAFC; border-color: #ADB5BD; color: #212529; }
+    QPushButton:pressed { background-color: #E9ECEF; }
+    QPushButton:disabled { background-color: #F8FAFC; color: #94A3B8; border-color: #CED4DA; }
 """
 
 
@@ -673,21 +684,21 @@ class CartQtyStepper(QWidget):
         self.btn_minus.setCursor(Qt.PointingHandCursor)
         self.btn_minus.setStyleSheet("""
             QPushButton {
-                background-color: #F1F5F9;
-                color: #334155;
-                font-weight: 800;
+                background-color: #FFFFFF;
+                color: #495057;
+                font-weight: bold;
                 font-size: 13px;
-                border: 1px solid #CBD5E1;
+                border: 1px solid #CED4DA;
                 border-radius: 4px;
                 padding: 0;
             }
             QPushButton:hover {
-                background-color: #E2E8F0;
-                color: #0F172A;
-                border-color: #94A3B8;
+                background-color: #F8FAFC;
+                color: #212529;
+                border-color: #ADB5BD;
             }
             QPushButton:pressed {
-                background-color: #CBD5E1;
+                background-color: #E9ECEF;
             }
         """)
         self.btn_minus.clicked.connect(self._decrement)
@@ -697,7 +708,7 @@ class CartQtyStepper(QWidget):
         self.lbl_qty.setFixedWidth(24)
         self.lbl_qty.setAlignment(Qt.AlignCenter)
         self.lbl_qty.setStyleSheet(
-            "font-size: 12px; font-weight: 700; color: #0F172A; background: transparent; border: none;"
+            "font-size: 12px; font-weight: bold; color: #2C3E50; background: transparent; border: none;"
         )
         layout.addWidget(self.lbl_qty)
 
@@ -706,17 +717,17 @@ class CartQtyStepper(QWidget):
         self.btn_plus.setCursor(Qt.PointingHandCursor)
         self.btn_plus.setStyleSheet("""
             QPushButton {
-                background-color: #E6F4F1;
-                color: #0E7471;
-                font-weight: 800;
+                background-color: #E8F8F5;
+                color: #007572;
+                font-weight: bold;
                 font-size: 13px;
-                border: 1px solid #BCE3DC;
+                border: 1px solid #A3E4D7;
                 border-radius: 4px;
                 padding: 0;
             }
             QPushButton:hover {
                 background-color: #CCEBE5;
-                border-color: #0E7471;
+                border-color: #007572;
             }
             QPushButton:pressed {
                 background-color: #B2DFDB;
@@ -796,11 +807,11 @@ class OrderDeskWidget(QWidget):
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setStyleSheet("""
             QScrollArea#OrderDeskScrollArea {
-                background: transparent;
+                background: #FFFFFF;
                 border: none;
             }
             QWidget#OrderDeskContentWidget {
-                background-color: #F4F6F8;
+                background-color: #FFFFFF;
             }
         """)
 
@@ -859,18 +870,18 @@ class OrderDeskWidget(QWidget):
                 border: none;
             }
             QTabBar#SessionTabBar {
-                border-bottom: 1.5px solid #CBD5E1;
+                border-bottom: 1.5px solid #DCDFE6;
             }
             QTabBar#SessionTabBar::tab {
-                background-color: #E2E8F0;
-                color: #475569;
-                font-weight: 700;
+                background-color: #F8FAFC;
+                color: #495057;
+                font-weight: bold;
                 font-size: 11px;
-                padding: 2px 8px;
+                padding: 2px 10px;
                 margin-right: 3px;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
-                border: 1px solid #CBD5E1;
+                border: 1px solid #CED4DA;
                 border-bottom: none;
                 height: 22px;
                 min-height: 22px;
@@ -883,8 +894,9 @@ class OrderDeskWidget(QWidget):
                 border-bottom: 2px solid #007572;
             }
             QTabBar#SessionTabBar::tab:hover:!selected {
-                background-color: #CBD5E1;
-                color: #0F172A;
+                background-color: #E9ECEF;
+                color: #212529;
+                border-color: #ADB5BD;
             }
         """)
         sb_layout = QHBoxLayout(session_bar)
@@ -905,7 +917,7 @@ class OrderDeskWidget(QWidget):
         self._sync_session_tabs()
         sb_layout.addWidget(self.session_tab_bar)
 
-        # "+ Nouvelle Session" Button (Ultra-compact)
+        # "+ Nouvelle Session" Button (Ultra-compact, matching Stock Actuel button style)
         btn_new_sess = QPushButton("+ Nouvelle Session")
         if qta:
             btn_new_sess.setIcon(qta.icon("fa5s.plus", color="#007572"))
@@ -916,17 +928,18 @@ class OrderDeskWidget(QWidget):
             QPushButton {
                 background-color: #FFFFFF;
                 color: #007572;
-                font-weight: 700;
-                font-size: 10px;
-                border: 1px dashed #007572;
+                font-weight: bold;
+                font-size: 11px;
+                border: 1px solid #CED4DA;
                 border-radius: 4px;
-                padding: 0 8px;
+                padding: 0 10px;
                 height: 22px;
                 min-height: 22px;
                 max-height: 22px;
             }
             QPushButton:hover {
-                background-color: #E6F4F1;
+                background-color: #E8F8F5;
+                border-color: #007572;
             }
             QPushButton:pressed {
                 background-color: #CCEBE5;
@@ -950,27 +963,28 @@ class OrderDeskWidget(QWidget):
         panel.setFixedHeight(54)
         panel.setStyleSheet("""
             QFrame#OrderTopFilterBar {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #F0FDFA, stop:0.04 #FFFFFF, stop:0.96 #FFFFFF, stop:1 #F8FAFC);
-                border: 1px solid #CBD5E1;
-                border-left: 4px solid #007572;
-                border-radius: 8px;
+                background-color: #FFFFFF;
+                border: 1px solid #DCDFE6;
+                border-radius: 6px;
             }
             QLabel {
                 border: none;
                 background: transparent;
+                font-size: 12px;
+                color: #2C3E50;
             }
             QComboBox {
                 background-color: #FFFFFF;
-                border: 1.5px solid #CBD5E1;
-                border-radius: 6px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 padding: 2px 8px;
+                min-height: 28px;
+                height: 28px;
                 font-size: 12px;
-                font-weight: 600;
-                color: #1E293B;
+                color: #2C3E50;
             }
             QComboBox:hover {
-                border-color: #007572;
-                background-color: #F0FDFA;
+                border-color: #ADB5BD;
             }
             QComboBox:focus {
                 border: 1.5px solid #007572;
@@ -982,23 +996,26 @@ class OrderDeskWidget(QWidget):
             }
             QComboBox QAbstractItemView {
                 background-color: #FFFFFF;
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 selection-background-color: #E6F4F1;
                 selection-color: #007572;
                 padding: 4px;
+                font-size: 12px;
+                color: #2C3E50;
             }
             QLineEdit {
                 background-color: #FFFFFF;
-                border: 1.5px solid #CBD5E1;
-                border-radius: 6px;
-                padding: 2px 10px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
+                padding: 2px 8px;
+                min-height: 28px;
+                height: 28px;
                 font-size: 12px;
-                font-weight: 500;
-                color: #1E293B;
+                color: #2C3E50;
             }
             QLineEdit:hover {
-                border-color: #94A3B8;
+                border-color: #ADB5BD;
             }
             QLineEdit:focus {
                 border: 1.5px solid #007572;
@@ -1009,14 +1026,14 @@ class OrderDeskWidget(QWidget):
         layout.setContentsMargins(12, 6, 12, 6)
         layout.setSpacing(8)
 
-        # 1. Vibrant Filter Title Badge
+        # 1. Filter Title Badge
         filter_badge = QFrame()
         filter_badge.setObjectName("FilterTitleBadge")
         filter_badge.setStyleSheet("""
             QFrame#FilterTitleBadge {
-                background-color: #E6F4F1;
-                border: 1px solid #A7F3D0;
-                border-radius: 6px;
+                background-color: #E8F8F5;
+                border: 1px solid #A3E4D7;
+                border-radius: 4px;
             }
         """)
         fb_layout = QHBoxLayout(filter_badge)
@@ -1031,7 +1048,7 @@ class OrderDeskWidget(QWidget):
         fb_layout.addWidget(f_icon)
 
         title = QLabel("FILTRES")
-        title.setStyleSheet("font-size: 11px; font-weight: 800; color: #007572; letter-spacing: 0.5px;")
+        title.setStyleSheet("font-size: 11px; font-weight: bold; color: #007572; letter-spacing: 0.5px;")
         fb_layout.addWidget(title)
         layout.addWidget(filter_badge)
 
@@ -1047,14 +1064,14 @@ class OrderDeskWidget(QWidget):
                 ico.setPixmap(get_duotone_icon(fallback_icon, 12).pixmap(12, 12))
             w_layout.addWidget(ico)
             lbl = QLabel(txt)
-            lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #334155; background: transparent;")
+            lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #2C3E50; background: transparent;")
             w_layout.addWidget(lbl)
             return w
 
         # 2. Marque Filter
         layout.addWidget(make_filter_lbl("Marque :", "fa5s.tag", "filter"))
         self.cbo_mark = QComboBox()
-        self.cbo_mark.setFixedHeight(34)
+        self.cbo_mark.setFixedHeight(32)
         self.cbo_mark.setMinimumWidth(110)
         self.populate_manufacturers()
         self.cbo_mark.currentIndexChanged.connect(self.refresh_catalog)
@@ -1063,7 +1080,7 @@ class OrderDeskWidget(QWidget):
         # 3. Catégorie Filter
         layout.addWidget(make_filter_lbl("Catégorie :", "fa5s.th-large", "filter"))
         self.cbo_category = QComboBox()
-        self.cbo_category.setFixedHeight(34)
+        self.cbo_category.setFixedHeight(32)
         self.cbo_category.setMinimumWidth(145)
         self.populate_families()
         self.cbo_category.currentIndexChanged.connect(self.refresh_catalog)
@@ -1072,7 +1089,7 @@ class OrderDeskWidget(QWidget):
         # 4. Vibrant Couleur Filter with Swatches & Live Indicator
         layout.addWidget(make_filter_lbl("Couleur :", "fa5s.palette", "filter"))
         self.cbo_color = QComboBox()
-        self.cbo_color.setFixedHeight(34)
+        self.cbo_color.setFixedHeight(32)
         self.cbo_color.setFixedWidth(115)
         self.cbo_color.setIconSize(QSize(14, 14))
         self._load_colors_into_combo()
@@ -1088,40 +1105,40 @@ class OrderDeskWidget(QWidget):
         self.chk_available_only = QCheckBox("Disponibles uniquement")
         self.chk_available_only.setObjectName("ChkAvailableOnly")
         self.chk_available_only.setChecked(True)
-        self.chk_available_only.setFixedHeight(34)
+        self.chk_available_only.setFixedHeight(32)
         self.chk_available_only.setCursor(Qt.PointingHandCursor)
         self.chk_available_only.setToolTip(
             "Afficher uniquement les produits disponibles en stock théorique (Actif par défaut)"
         )
         self.chk_available_only.setStyleSheet("""
             QCheckBox#ChkAvailableOnly {
-                color: #007572;
-                font-size: 11px;
-                font-weight: 700;
+                color: #2C3E50;
+                font-size: 12px;
+                font-weight: bold;
                 spacing: 7px;
-                background-color: #E6F4F1;
-                border: 1.5px solid #007572;
-                border-radius: 6px;
+                background-color: #FFFFFF;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 padding: 0 10px;
             }
             QCheckBox#ChkAvailableOnly:hover {
-                background-color: #CCEBE5;
+                border-color: #ADB5BD;
+                background-color: #F8FAFC;
             }
-            QCheckBox#ChkAvailableOnly:!checked {
-                color: #64748B;
-                background-color: #FFFFFF;
-                border: 1px solid #CBD5E1;
+            QCheckBox#ChkAvailableOnly:checked {
+                color: #007572;
+                background-color: #E8F8F5;
+                border: 1px solid #A3E4D7;
             }
             QCheckBox#ChkAvailableOnly::indicator {
                 width: 15px;
                 height: 15px;
                 border-radius: 3px;
-                border: 1.5px solid #007572;
+                border: 1.5px solid #CED4DA;
                 background-color: #FFFFFF;
             }
-            QCheckBox#ChkAvailableOnly::indicator:!checked {
-                border-color: #94A3B8;
-                background-color: #FFFFFF;
+            QCheckBox#ChkAvailableOnly::indicator:hover {
+                border-color: #007572;
             }
             QCheckBox#ChkAvailableOnly::indicator:checked {
                 background-color: #007572;
@@ -1134,7 +1151,7 @@ class OrderDeskWidget(QWidget):
 
         # 6. Search Bar with Instant Clear
         self.txt_search = QLineEdit()
-        self.txt_search.setFixedHeight(34)
+        self.txt_search.setFixedHeight(32)
         self.txt_search.setMinimumWidth(160)
         self.txt_search.setPlaceholderText("Rechercher désignation, marque, réf, code-barres...")
         self.txt_search.setClearButtonEnabled(True)
@@ -1146,29 +1163,29 @@ class OrderDeskWidget(QWidget):
 
         # 6. Live Catalog Count KPI Badge
         self.lbl_catalog_count_badge = QLabel("0 produit")
-        self.lbl_catalog_count_badge.setFixedHeight(26)
+        self.lbl_catalog_count_badge.setFixedHeight(28)
         self.lbl_catalog_count_badge.setStyleSheet("""
             QLabel {
-                background-color: #E6F4F1;
+                background-color: #E8F8F5;
                 color: #007572;
                 font-size: 11px;
-                font-weight: 800;
-                border: 1px solid #A7F3D0;
-                border-radius: 13px;
+                font-weight: bold;
+                border: 1px solid #A3E4D7;
+                border-radius: 4px;
                 padding: 2px 10px;
             }
         """)
         layout.addWidget(self.lbl_catalog_count_badge)
 
-        # 7. Action Buttons
+        # 7. Action Buttons (Matching Stock & Magasin -> Stock Actuel)
         btn_reset = QPushButton("Réinitialiser")
         if qta:
-            btn_reset.setIcon(qta.icon("fa5s.undo", color="#64748B"))
+            btn_reset.setIcon(qta.icon("fa5s.undo", color="#495057"))
         else:
             btn_reset.setIcon(get_duotone_icon("refresh", 13))
         btn_reset.setIconSize(QSize(13, 13))
         btn_reset.setCursor(Qt.PointingHandCursor)
-        btn_reset.setFixedHeight(34)
+        btn_reset.setFixedHeight(32)
         btn_reset.setFixedWidth(105)
         btn_reset.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         btn_reset.setToolTip("Réinitialiser tous les filtres de recherche")
@@ -1177,14 +1194,17 @@ class OrderDeskWidget(QWidget):
 
         btn_refresh = QPushButton("Actualiser")
         if qta:
-            btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color="#007572"))
+            btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color="#FFFFFF"))
         else:
             btn_refresh.setIcon(get_duotone_icon("refresh", 13))
         btn_refresh.setIconSize(QSize(13, 13))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(34)
+        btn_refresh.setFixedHeight(32)
         btn_refresh.setFixedWidth(95)
-        btn_refresh.setStyleSheet(OUTLINE_BTN_STYLE)
+        btn_refresh.setStyleSheet(PRIMARY_BTN_STYLE)
+        btn_refresh.setToolTip("Recharger le catalogue depuis la base de données")
+        btn_refresh.clicked.connect(self.refresh_catalog)
+        layout.addWidget(btn_refresh)
         btn_refresh.setToolTip("Recharger le catalogue depuis la base de données")
         btn_refresh.clicked.connect(self.refresh_catalog)
         layout.addWidget(btn_refresh)
@@ -1496,12 +1516,13 @@ class OrderDeskWidget(QWidget):
         panel.setStyleSheet("""
             QFrame#OrderCatalogPanel {
                 background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
+                border: 1px solid #DCDFE6;
                 border-radius: 6px;
             }
             QLabel {
                 border: none;
                 background: transparent;
+                color: #2C3E50;
             }
         """)
         layout = QVBoxLayout(panel)
@@ -1517,7 +1538,7 @@ class OrderDeskWidget(QWidget):
             cat_icon.setPixmap(get_duotone_icon("pos", 16).pixmap(16, 16))
         cat_header.addWidget(cat_icon)
         self.lbl_cat_title = QLabel("Catalogue des Produits Disponibles")
-        self.lbl_cat_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        self.lbl_cat_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #007572;")
         cat_header.addWidget(self.lbl_cat_title)
         cat_header.addStretch()
         layout.addLayout(cat_header)
@@ -1842,12 +1863,13 @@ class OrderDeskWidget(QWidget):
         panel.setStyleSheet("""
             QFrame#OrderCartPanel {
                 background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
+                border: 1px solid #DCDFE6;
                 border-radius: 6px;
             }
             QLabel {
                 border: none;
                 background: transparent;
+                color: #2C3E50;
             }
         """)
         layout = QVBoxLayout(panel)
@@ -1862,7 +1884,7 @@ class OrderDeskWidget(QWidget):
         header_row.addWidget(c_icon)
 
         self.lbl_cart_header = QLabel("Panier — Session #1")
-        self.lbl_cart_header.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        self.lbl_cart_header.setStyleSheet("font-size: 13px; font-weight: bold; color: #007572;")
         header_row.addWidget(self.lbl_cart_header)
         header_row.addStretch()
 
@@ -1871,21 +1893,7 @@ class OrderDeskWidget(QWidget):
         btn_clear.setIconSize(QSize(14, 14))
         btn_clear.setCursor(Qt.PointingHandCursor)
         btn_clear.setFixedHeight(28)
-        btn_clear.setStyleSheet("""
-            QPushButton {
-                background-color: #FFFFFF;
-                color: #DC2626;
-                border: 1px solid #FECACA;
-                border-radius: 5px;
-                padding: 0 10px;
-                font-size: 11px;
-                font-weight: 700;
-            }
-            QPushButton:hover {
-                background-color: #FEF2F2;
-                border-color: #DC2626;
-            }
-        """)
+        btn_clear.setStyleSheet(DANGER_BTN_STYLE)
         btn_clear.clicked.connect(self._clear_current_cart)
         header_row.addWidget(btn_clear)
         layout.addLayout(header_row)
@@ -1897,7 +1905,7 @@ class OrderDeskWidget(QWidget):
         cl_icon.setPixmap(get_duotone_icon("users", 14).pixmap(14, 14))
         client_header.addWidget(cl_icon)
         lbl_cl = QLabel("Client associé :")
-        lbl_cl.setStyleSheet("font-size: 12px; font-weight: 700; color: #1E293B;")
+        lbl_cl.setStyleSheet("font-size: 12px; font-weight: bold; color: #2C3E50;")
         client_header.addWidget(lbl_cl)
         client_header.addStretch()
 
@@ -1921,37 +1929,39 @@ class OrderDeskWidget(QWidget):
         self.cbo_client.setStyleSheet("""
             QComboBox#OrderClientCombo {
                 background-color: #FFFFFF;
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 padding: 4px 10px;
                 font-size: 12px;
                 font-weight: 600;
-                color: #1E293B;
-                min-height: 36px;
+                color: #2C3E50;
+                min-height: 28px;
             }
             QComboBox#OrderClientCombo:hover {
-                border-color: #0E7471;
+                border-color: #ADB5BD;
             }
             QComboBox#OrderClientCombo:focus {
-                border-color: #0E7471;
+                border: 1.5px solid #007572;
+                background-color: #FFFFFF;
             }
             QComboBox#OrderClientCombo::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 26px;
-                border-left: 1px solid #E2E8F0;
+                width: 24px;
+                border-left: 1px solid #CED4DA;
                 background-color: #F8FAFC;
-                border-top-right-radius: 6px;
-                border-bottom-right-radius: 6px;
+                border-top-right-radius: 4px;
+                border-bottom-right-radius: 4px;
             }
             QComboBox#OrderClientCombo QAbstractItemView {
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
                 background-color: #FFFFFF;
                 selection-background-color: #E6F4F1;
-                selection-color: #0E7471;
+                selection-color: #007572;
                 font-size: 12px;
                 padding: 4px;
+                color: #2C3E50;
             }
         """)
         if self.cbo_client.lineEdit():
@@ -2005,6 +2015,23 @@ class OrderDeskWidget(QWidget):
         self.txt_delivery_addr = QLineEdit()
         self.txt_delivery_addr.setFixedHeight(34)
         self.txt_delivery_addr.setPlaceholderText("Adresse de livraison & téléphone (pour Bon de Livraison)...")
+        self.txt_delivery_addr.setStyleSheet("""
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
+                padding: 4px 10px;
+                font-size: 12px;
+                color: #2C3E50;
+            }
+            QLineEdit:hover {
+                border-color: #ADB5BD;
+            }
+            QLineEdit:focus {
+                border: 1.5px solid #007572;
+                background-color: #FFFFFF;
+            }
+        """)
         self.txt_delivery_addr.textChanged.connect(self._on_delivery_addr_changed)
         layout.addWidget(self.txt_delivery_addr)
 
@@ -2026,11 +2053,11 @@ class OrderDeskWidget(QWidget):
         tot_layout = QHBoxLayout(total_box)
         tot_layout.setContentsMargins(12, 0, 12, 0)
         lbl_tot_tag = QLabel("TOTAL COMMANDE TTC :")
-        lbl_tot_tag.setStyleSheet("font-size: 11px; font-weight: 700; color: #007572;")
+        lbl_tot_tag.setStyleSheet("font-size: 11px; font-weight: bold; color: #007572;")
         tot_layout.addWidget(lbl_tot_tag)
         tot_layout.addStretch()
         self.lbl_total = QLabel("0.00 DA")
-        self.lbl_total.setStyleSheet("font-size: 16px; font-weight: 800; color: #007572;")
+        self.lbl_total.setStyleSheet("font-size: 16px; font-weight: bold; color: #007572;")
         tot_layout.addWidget(self.lbl_total)
         layout.addWidget(total_box)
 
@@ -2044,15 +2071,14 @@ class OrderDeskWidget(QWidget):
             QPushButton {
                 background-color: #007572;
                 color: #FFFFFF;
-                font-weight: 700;
+                font-weight: bold;
                 font-size: 12px;
-                border: 1px solid #005A57;
-                border-radius: 5px;
+                border: none;
+                border-radius: 4px;
                 padding: 0 12px;
             }
             QPushButton:hover {
                 background-color: #005A57;
-                border-color: #003D3A;
             }
             QPushButton:pressed {
                 background-color: #003D3A;
