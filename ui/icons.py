@@ -305,6 +305,29 @@ DUOTONE_SVGS: Dict[str, str] = {
         <polyline points="9 14 4 9 9 4"/>
         <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
     </svg>''',
+
+    # 16: Clients (Customer Directory)
+    "clients": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+        <circle cx="12" cy="10" r="5" fill="#E6F4F1" stroke="#007572" stroke-width="2"/>
+        <path d="M4 26v-2a6 6 0 0 1 12 0v2" fill="none" stroke="#1E293B" stroke-width="2"/>
+        <circle cx="22" cy="11" r="3.5" fill="#F8FAFC" stroke="#007572" stroke-width="1.8"/>
+        <path d="M19 26v-1.5a4.5 4.5 0 0 1 7 0V26" fill="none" stroke="#007572" stroke-width="1.8"/>
+    </svg>''',
+
+    # Add Client
+    "add_client": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+        <circle cx="12" cy="10" r="5" fill="#E6F4F1" stroke="#007572" stroke-width="2"/>
+        <path d="M4 26v-2a6 6 0 0 1 12 0v2" fill="none" stroke="#1E293B" stroke-width="2"/>
+        <circle cx="23" cy="20" r="6.5" fill="#007572"/>
+        <line x1="23" y1="16.5" x2="23" y2="23.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+        <line x1="19.5" y1="20" x2="26.5" y2="20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    </svg>''',
+
+    # Edit Client
+    "edit": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#007572" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>''',
 }
 
 def get_duotone_icon(

@@ -32,6 +32,12 @@ NAVIGATION_PERMISSION_FALLBACKS = {
         "tab_data_caisses",
         "tab_data_colors",
     ),
+    "nav_clients": (
+        "tab_clients",
+        "act_add_client",
+        "act_edit_client",
+        "act_delete_client",
+    ),
     "nav_procurement": (
         "tab_proc_po",
         "tab_proc_reception",

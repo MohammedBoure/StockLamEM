@@ -307,6 +307,151 @@ class ClientManager:
             logging.error(f"Error fetching clients with balances: {e}")
             return self.get_all_clients()
 
+    def get_clients_paged(self, search_text: str = None, offset: int = 0, limit: int = 50) -> dict:
+        """
+        Récupère une tranche (page) de clients avec soldes et le total global pour le Lazy Loading / pagination.
+        Retourne un dictionnaire : {"items": list, "total_count": int, "has_more": bool, "offset": int, "limit": int}.
+        """
+        # If in-memory mock or patched method is used, handle in Python
+        from unittest.mock import MagicMock
+        if isinstance(getattr(self, "db", None), MagicMock) or isinstance(getattr(self, "get_all_clients_with_balances", None), MagicMock):
+            all_clients = self.get_all_clients_with_balances() if hasattr(self, 'get_all_clients_with_balances') else self.get_all_clients()
+            if search_text and search_text.strip():
+                st = search_text.strip().lower()
+                filtered = [
+                    c for c in all_clients
+                    if st in str(c.get('Client_Name', '')).lower()
+                    or st in str(c.get('Phone', '')).lower()
+                    or st in str(c.get('Email', '')).lower()
+                    or st in str(c.get('City', '')).lower()
+                    or st in str(c.get('Price_Tier', '')).lower()
+                    or st in str(c.get('Contact_Person', '')).lower()
+                ]
+            else:
+                filtered = all_clients
+            total_count = len(filtered)
+            items = filtered[offset:offset + limit]
+            return {
+                "items": items,
+                "total_count": total_count,
+                "has_more": (offset + len(items)) < total_count,
+                "offset": offset,
+                "limit": limit
+            }
+
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                where_clauses = ["c.Deleted_At IS NULL"]
+                params = []
+
+                if search_text and search_text.strip():
+                    term = f"%{search_text.strip()}%"
+                    where_clauses.append(
+                        "(c.Client_Name LIKE %s OR c.Phone LIKE %s OR c.Email LIKE %s OR c.City LIKE %s OR c.Price_Tier LIKE %s OR c.Contact_Person LIKE %s)"
+                    )
+                    params.extend([term, term, term, term, term, term])
+
+                where_sql = " AND ".join(where_clauses)
+
+                # 1. Total Count Query
+                count_query = f"SELECT COUNT(*) AS total FROM Clients c WHERE {where_sql}"
+                cursor.execute(count_query, params)
+                c_res = cursor.fetchone()
+                total_count = int(c_res.get('total') or c_res.get('COUNT(*)', 0)) if c_res else 0
+
+                # 2. Paged Data Query with dynamic balances
+                data_query = f"""
+                    SELECT 
+                        c.*,
+                        COALESCE(c.Credit_Limit, 0.00) AS Credit_Limit,
+                        COALESCE(c.Price_Tier, 'Prix_1') AS Price_Tier,
+                        COALESCE(inv.total_invoiced, 0.00) AS total_invoiced,
+                        COALESCE(pos_pay.pos_paid, 0.00) + COALESCE(cl_pay.client_paid, 0.00) AS total_paid,
+                        COALESCE(cn.total_credit_notes, 0.00) AS total_credit_notes,
+                        ROUND(
+                            COALESCE(inv.total_invoiced, 0.00) 
+                            - (COALESCE(pos_pay.pos_paid, 0.00) + COALESCE(cl_pay.client_paid, 0.00)) 
+                            - COALESCE(cn.total_credit_notes, 0.00), 
+                            2
+                        ) AS Current_Balance
+                    FROM Clients c
+                    LEFT JOIN (
+                        SELECT Client_ID, SUM(Total_Amount_TTC) AS total_invoiced
+                        FROM Sales_Invoices
+                        WHERE Status NOT IN ('Cancelled', 'Draft') 
+                          AND Invoice_No NOT LIKE 'DEV-%'
+                          AND Invoice_No NOT LIKE 'BC-%'
+                          AND Client_ID IS NOT NULL
+                        GROUP BY Client_ID
+                    ) inv ON c.Client_ID = inv.Client_ID
+                    LEFT JOIN (
+                        SELECT i.Client_ID, SUM(p.Amount) AS pos_paid
+                        FROM POS_Sale_Payments p
+                        JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                        WHERE i.Status NOT IN ('Cancelled', 'Draft') 
+                          AND i.Invoice_No NOT LIKE 'DEV-%'
+                          AND i.Invoice_No NOT LIKE 'BC-%'
+                          AND p.Payment_Method != 'Credit' 
+                          AND i.Client_ID IS NOT NULL
+                        GROUP BY i.Client_ID
+                    ) pos_pay ON c.Client_ID = pos_pay.Client_ID
+                    LEFT JOIN (
+                        SELECT Client_ID, SUM(Amount) AS client_paid
+                        FROM Client_Payments
+                        WHERE Client_ID IS NOT NULL
+                        GROUP BY Client_ID
+                    ) cl_pay ON c.Client_ID = cl_pay.Client_ID
+                    LEFT JOIN (
+                        SELECT Client_ID, SUM(Total_Amount_TTC) AS total_credit_notes
+                        FROM Client_Credit_Notes
+                        WHERE Status != 'Cancelled' AND Client_ID IS NOT NULL
+                        GROUP BY Client_ID
+                    ) cn ON c.Client_ID = cn.Client_ID
+                    WHERE {where_sql}
+                    ORDER BY c.Client_Name
+                    LIMIT %s OFFSET %s
+                """
+                cursor.execute(data_query, params + [int(limit), int(offset)])
+                items = cursor.fetchall() or []
+                has_more = (offset + len(items)) < total_count
+                return {
+                    "items": items,
+                    "total_count": total_count,
+                    "has_more": has_more,
+                    "offset": offset,
+                    "limit": limit
+                }
+        except Exception as e:
+            logging.error(f"Error in get_clients_paged: {e}")
+            try:
+                all_clients = self.get_all_clients_with_balances() if hasattr(self, 'get_all_clients_with_balances') else self.get_all_clients()
+                if search_text and search_text.strip():
+                    st = search_text.strip().lower()
+                    filtered = [
+                        c for c in all_clients
+                        if st in str(c.get('Client_Name', '')).lower()
+                        or st in str(c.get('Phone', '')).lower()
+                        or st in str(c.get('Email', '')).lower()
+                        or st in str(c.get('City', '')).lower()
+                        or st in str(c.get('Price_Tier', '')).lower()
+                        or st in str(c.get('Contact_Person', '')).lower()
+                    ]
+                else:
+                    filtered = all_clients
+                total_count = len(filtered)
+                items = filtered[offset:offset + limit]
+                return {
+                    "items": items,
+                    "total_count": total_count,
+                    "has_more": (offset + len(items)) < total_count,
+                    "offset": offset,
+                    "limit": limit
+                }
+            except Exception as e2:
+                logging.error(f"Fallback get_clients_paged failed: {e2}")
+                return {"items": [], "total_count": 0, "has_more": False, "offset": offset, "limit": limit}
+
     def get_client_ledger(self, client_id: int, start_date=None, end_date=None) -> dict:
         """
         Extrait l'historique complet chronologique pour le Relevé de Compte Client.

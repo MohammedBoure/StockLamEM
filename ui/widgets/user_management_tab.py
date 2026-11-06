@@ -40,9 +40,19 @@ SYSTEM_PERMISSIONS = {
             "tab_data_automates": "Automates",
             "tab_data_locations": "Emplacements",
             "tab_data_waste_reasons": "Motifs Rebut",
-            "tab_clients": "Clients",
             "tab_data_caisses": "Caisses & Terminaux POS",
             "tab_data_colors": "Couleurs des Produits"
+        }
+    },
+    "2b. CLIENTS": {
+        "label": "👥 Répertoire des Clients",
+        "icon": "fa5s.user-friends",
+        "perms": {
+            "nav_clients": "Accès au Répertoire des Clients",
+            "tab_clients": "Afficher la liste des Clients",
+            "act_add_client": "Ajouter un nouveau Client",
+            "act_edit_client": "Modifier un Client",
+            "act_delete_client": "Supprimer un Client"
         }
     },
     "3. ACHATS": {
@@ -296,6 +306,7 @@ class UserDialog(BaseDialog):
         else:
             tech_perms = {
                 "nav_pos": True, "nav_sales": True, "act_create_sale": True, "act_validate_sale": True,
+                "nav_clients": True, "tab_clients": True, "act_add_client": True,
                 "nav_inventory": True, "tab_inv_list": True, "tab_inv_dispatch": True,
                 "nav_procurement": True, "tab_proc_reception": True, "tab_proc_credit": True,
                 # Bureaux Opérationnels & SAV pour profil Technicien

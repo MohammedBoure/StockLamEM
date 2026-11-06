@@ -15,10 +15,13 @@ Ce dossier regroupe les interfaces de gestion des référentiels de données du 
 - `packaging_units_tab.py` : Gestion des unités de conditionnement et facteurs de conversion.
 - `waste_reasons_tab.py` : Gestion des motifs de mise au rebut / perte.
 - `external_partners_tab.py` : Gestion des partenaires et sous-traitants externes.
-- `clients_tab.py` : Gestion des clients pour le point de vente et la vente en gros :
+- `clients_tab.py` : Espace de travail dédié au Répertoire des Clients (`ClientsTab`), migré hors des Données de Base vers un bouton dédié dans la barre de navigation (Page 16, permission `nav_clients`, icône `clients`) :
+  - Chargement dynamique par lot (Lazy Loading) à la demande et au défilement vertical (`BATCH_SIZE = 50`), éliminant tout blocage de l'interface lors du traitement de milliers de clients.
+  - Recherche instantanée avec temporisation (Debounce 250ms) et réinitialisation automatique du curseur de pagination.
+  - Badge d'état dynamique de chargement (`X / Y clients`) et bouton manuel "Charger plus..." en bas de tableau.
   - Colonnes "Catégorie" (Prix 1 à 4), "Plafond Crédit" et "Solde Actuel" en temps réel.
   - Badge styling et coloration QBrush : Vert pastel lorsque Solde $\le$ Plafond de Crédit, et Rouge pastel en cas de dépassement (Solde > Plafond).
-  - Bouton d'action et menu contextuel sur clic droit : "📄 Générer Relevé de Compte".
+  - Bouton d'action et menu contextuel sur clic droit : Relevé de Compte, Modifier, Supprimer.
 - `client_statement_dialog.py` : Dialogue interactif de Relevé de Compte Client ("Extrait de Compte") et consultation détaillée modalless :
   - En-tête épuré et libellés textuels ouverts (`<label>`) au-dessus des contrôles sans aucun encadrement parasite ni apparence de faux boutons.
   - Cartes KPI synthétiques planes et contrastées (Solde Antérieur, Total Débit, Total Crédit, Nouveau Solde Dû) avec bordures douces régulières (`#DDE3EA`, rayon 8px) et typographie renforcée de fort contraste.

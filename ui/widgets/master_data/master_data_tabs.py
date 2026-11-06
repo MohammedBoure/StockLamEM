@@ -36,7 +36,7 @@ class MasterDataTabs(QWidget):
         self.tab_automates = AutomatesTab(getattr(dm, "automates", None), getattr(dm, "locations", None))
         self.tab_waste = WasteReasonsTab(getattr(dm, "waste_reasons", None))
         self.tab_partners = ExternalPartnersTab(getattr(dm, "partners", None))
-        self.tab_clients = ClientsTab(self.data_manager)
+        self.tab_clients = None  # Migré vers un espace de travail dédié dans la barre de navigation
         self.tab_caisses = CaissesTab(self.data_manager)
         self.tab_colors = ProductColorsTab(self.data_manager)
 

@@ -112,6 +112,7 @@ class MainWindow(QMainWindow):
             mapping = {
                 0: "nav_dashboard",
                 1: "nav_data",
+                16: "nav_clients",
                 2: "nav_procurement",
                 8: "tab_proc_reclamation",
                 3: "nav_inventory",
@@ -309,6 +310,7 @@ class MainWindow(QMainWindow):
         buttons_info = [
             (0, "Tableau de Bord", "dashboard"),
             (1, "Données de Base", "master_data"),
+            (16, "Clients", "clients"),
             (2, "Achats && Entrées", "procurement"),
             (3, "Stock && Magasin", "inventory"),
             (6, "Sous-Traitants", "services"),
@@ -466,6 +468,7 @@ class MainWindow(QMainWindow):
         mapping = {
             0: "nav_dashboard",
             1: "nav_data",
+            16: "nav_clients",
             2: "nav_procurement",
             8: "tab_proc_reclamation",
             3: "nav_inventory",
@@ -505,7 +508,7 @@ class MainWindow(QMainWindow):
             self.close()
 
     def _init_placeholders(self):
-        for i in range(16):
+        for i in range(20):
             self.content_area.addWidget(QWidget())
 
     def has_permission(self, perm_key):
@@ -560,8 +563,6 @@ class MainWindow(QMainWindow):
                 widget.tabs.addTab(widget.tab_locations, "Emplacements")
             if hasattr(self.data_manager, 'waste_reasons') and self.has_permission("tab_data_waste_reasons"):
                 widget.tabs.addTab(widget.tab_waste, "Motifs Rebut")
-            if hasattr(self.data_manager, 'clients') and self.has_permission("tab_clients"):
-                widget.tabs.addTab(widget.tab_clients, "Clients")
             if hasattr(self.data_manager, 'pos_terminals') and self.has_permission("tab_data_caisses"):
                 widget.tabs.addTab(widget.tab_caisses, "Caisses")
             if hasattr(widget, 'tab_colors') and self.has_permission("tab_data_colors"):
@@ -711,6 +712,11 @@ class MainWindow(QMainWindow):
                 parent=self,
             )
 
+        # --- 16. Clients (Espace Dédié avec Lazy Loading) ---
+        elif page_id == 16:
+            from .widgets.master_data.clients_tab import ClientsTab
+            widget = ClientsTab(self.data_manager)
+
         if widget:
             old_widget = self.content_area.widget(page_id)
             self.content_area.removeWidget(old_widget)
@@ -759,6 +765,7 @@ class MainWindow(QMainWindow):
         mapping = {
             0: "nav_dashboard",
             1: "nav_data",
+            16: "nav_clients",
             2: "nav_procurement",
             8: "tab_proc_reclamation",
             3: "nav_inventory",
