@@ -169,10 +169,15 @@ class SaleDetailsDialog(QDialog):
             btn_del.setStyleSheet("padding: 0; margin: 2px; border-radius: 5px;")
             btn_del.clicked.connect(lambda checked=False, d_id=d['Detail_ID']: self.delete_detail(d_id))
 
-            if self.invoice_data.get('Status') == 'Cancelled':
+            if self.invoice_data.get('Status') == 'Cancelled' or d.get('Is_Theoretical_Order_Line') or not d.get('Detail_ID'):
                 qty_spin.setEnabled(False)
+                qty_container.setEnabled(False)
                 btn_del.setEnabled(False)
-                self.btn_save.setEnabled(False)
+                if d.get('Is_Theoretical_Order_Line') or not d.get('Detail_ID'):
+                    qty_spin.setToolTip("Ligne de commande Bureaux (gérée via Bon de Sortie / Bon de Retour)")
+                    btn_del.setToolTip("Utilisez le Bon de Retour en Caisse pour retourner un article avec N° de Série")
+                if self.invoice_data.get('Status') == 'Cancelled':
+                    self.btn_save.setEnabled(False)
 
             action_container = QWidget()
             action_container.setStyleSheet("background: transparent;")

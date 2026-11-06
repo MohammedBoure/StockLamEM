@@ -49,14 +49,27 @@ class ClientPaymentManager:
         التحقق من إجمالي المدفوعات لفاتورة محددة وتحديث حالتها إلى Paid إذا تم سدادها بالكامل.
         """
         try:
-            # إجمالي الفاتورة
-            cursor.execute("SELECT Total_Amount_TTC, Status FROM Sales_Invoices WHERE Invoice_ID = %s", (invoice_id,))
+            # إجمالي الفاتورة والمدفوعات الأولية على الفاتورة (للمكاتب Bureaux)
+            cursor.execute(
+                """
+                SELECT Total_Amount_TTC, Status,
+                       COALESCE(Amount_Paid_Cash, 0) + COALESCE(Amount_Paid_Card, 0) + COALESCE(Amount_Paid_Wallet, 0) AS Bond_Paid
+                FROM Sales_Invoices
+                WHERE Invoice_ID = %s
+                """,
+                (invoice_id,),
+            )
             invoice_data = cursor.fetchone()
             if not invoice_data:
                 return
             
             total_ttc = float(invoice_data[0] if isinstance(invoice_data, (tuple, list)) else invoice_data.get('Total_Amount_TTC', 0.0))
             current_status = invoice_data[1] if isinstance(invoice_data, (tuple, list)) else invoice_data.get('Status', '')
+            bond_paid = float(
+                (invoice_data[2] if len(invoice_data) > 2 else 0.0)
+                if isinstance(invoice_data, (tuple, list))
+                else (invoice_data.get('Bond_Paid') or 0.0)
+            )
 
             # إجمالي المدفوعات للفاتورة من Client_Payments
             cursor.execute("SELECT COALESCE(SUM(Amount), 0) FROM Client_Payments WHERE Invoice_ID = %s", (invoice_id,))
@@ -68,7 +81,8 @@ class ClientPaymentManager:
             pos_paid_row = cursor.fetchone()
             pos_paid = float(pos_paid_row[0] if isinstance(pos_paid_row, (tuple, list)) else (pos_paid_row.get('COALESCE(SUM(Amount), 0)') or 0.0))
 
-            cumulative_paid = round(cl_paid + pos_paid, 2)
+            upfront_paid = pos_paid if pos_paid > 0 else bond_paid
+            cumulative_paid = round(cl_paid + upfront_paid, 2)
             new_status = 'Paid' if cumulative_paid >= (total_ttc - 0.009) else current_status
 
             if new_status != current_status:
@@ -134,12 +148,22 @@ class ClientPaymentManager:
                             i.Invoice_ID, i.Invoice_No, i.Invoice_Date, i.Status, i.Total_Amount_TTC,
                             ROUND(
                                 COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
+                                + CASE
+                                    WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                    THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                    ELSE 0
+                                  END
                                 + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0),
                                 2
                             ) AS Paid_Amount,
                             ROUND(
                                 i.Total_Amount_TTC - (
                                     COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
+                                    + CASE
+                                        WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                        THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                        ELSE 0
+                                      END
                                     + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0)
                                 ),
                                 2

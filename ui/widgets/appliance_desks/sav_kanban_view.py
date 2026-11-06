@@ -173,7 +173,7 @@ class SAVReceptionDialog(QDialog):
     def __init__(self, data_manager=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Étape 1 : Réception SAV & Émission Bon de Réparation")
-        self.setFixedSize(500, 340)
+        self.setFixedSize(520, 410)
         self.setStyleSheet(
             "QDialog { background-color: #FFFFFF; color: #0F172A; }"
             "QLabel { border: none; background: transparent; color: #334155; font-weight: 600; }"
@@ -186,7 +186,7 @@ class SAVReceptionDialog(QDialog):
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(14)
+        layout.setSpacing(12)
 
         form = QGridLayout()
         form.setVerticalSpacing(10)
@@ -195,19 +195,40 @@ class SAVReceptionDialog(QDialog):
         form.addWidget(QLabel("N° de Série de l'appareil :"), 0, 0)
         self.txt_serial = QLineEdit()
         self.txt_serial.setPlaceholderText("Scanner ou saisir le N° de Série...")
+        self.txt_serial.textChanged.connect(self._on_serial_changed)
         form.addWidget(self.txt_serial, 0, 1)
 
-        form.addWidget(QLabel("Panne / Symptôme déclaré :"), 1, 0)
+        self.lbl_serial_info = QLabel("Scannez un N° de Série pour identifier l'appareil et le client.")
+        self.lbl_serial_info.setWordWrap(True)
+        self.lbl_serial_info.setStyleSheet("font-size: 11px; font-weight: 500; color: #64748B;")
+        form.addWidget(self.lbl_serial_info, 1, 0, 1, 2)
+
+        form.addWidget(QLabel("Client propriétaire :"), 2, 0)
+        self.cbo_client = QComboBox()
+        self.cbo_client.addItem("Auto-détecté depuis N° de Série", None)
+        if self.data_manager and hasattr(self.data_manager, "clients"):
+            try:
+                clients = self.data_manager.clients.get_all_clients() or []
+                for c in clients:
+                    cid = c.get("Client_ID")
+                    cname = c.get("Client_Name") or f"Client #{cid}"
+                    if cid:
+                        self.cbo_client.addItem(f"{cname} (ID: {cid})", int(cid))
+            except Exception:
+                pass
+        form.addWidget(self.cbo_client, 2, 1)
+
+        form.addWidget(QLabel("Panne / Symptôme déclaré :"), 3, 0)
         self.txt_symptom = QLineEdit("Arrêt refroidissement / Défaut carte électronique")
-        form.addWidget(self.txt_symptom, 1, 1)
+        form.addWidget(self.txt_symptom, 3, 1)
 
-        form.addWidget(QLabel("État cosmétique à réception :"), 2, 0)
+        form.addWidget(QLabel("État cosmétique à réception :"), 4, 0)
         self.txt_cosmetic = QLineEdit("Bon état général, aucune rayure externe")
-        form.addWidget(self.txt_cosmetic, 2, 1)
+        form.addWidget(self.txt_cosmetic, 4, 1)
 
-        form.addWidget(QLabel("Accessoires déposés :"), 3, 0)
+        form.addWidget(QLabel("Accessoires déposés :"), 5, 0)
         self.txt_acc = QLineEdit("Câble d'alimentation + Certificat de garantie")
-        form.addWidget(self.txt_acc, 3, 1)
+        form.addWidget(self.txt_acc, 5, 1)
 
         layout.addLayout(form)
         layout.addStretch()
@@ -232,6 +253,28 @@ class SAVReceptionDialog(QDialog):
         btn_row.addWidget(btn_ok)
         layout.addLayout(btn_row)
 
+    def _on_serial_changed(self, text: str) -> None:
+        sn = (text or "").strip()
+        if len(sn) < 3 or not self.data_manager or not hasattr(self.data_manager, "serials"):
+            return
+        try:
+            details = self.data_manager.serials.get_serial_details(sn)
+            if details and isinstance(details, dict):
+                p_name = details.get("Product_Name") or "Appareil"
+                brand = details.get("Brand_Mark") or ""
+                cid = details.get("Resolved_Client_ID") or details.get("Original_Client_ID")
+                c_name = details.get("Original_Client_Name") or (f"Client #{cid}" if cid else "Client Comptoir")
+                self.lbl_serial_info.setText(
+                    f"<span style='color:#0E7471; font-weight:700;'>✔ {brand} {p_name}</span> — "
+                    f"Client détecté : <b>{c_name}</b>"
+                )
+                if cid and hasattr(self, "cbo_client"):
+                    idx = self.cbo_client.findData(int(cid))
+                    if idx >= 0:
+                        self.cbo_client.setCurrentIndex(idx)
+        except Exception:
+            pass
+
     def _submit(self) -> None:
         sn = self.txt_serial.text().strip()
         if not sn:
@@ -240,13 +283,17 @@ class SAVReceptionDialog(QDialog):
         try:
             if self.data_manager and hasattr(self.data_manager, "sav"):
                 uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
-                self.created_ticket = self.data_manager.sav.check_in_reception(
-                    serial_number=sn,
-                    symptom=self.txt_symptom.text().strip(),
-                    cosmetic_condition=self.txt_cosmetic.text().strip(),
-                    accessories=self.txt_acc.text().strip(),
-                    received_by_user_id=uid,
-                )
+                cid_override = self.cbo_client.currentData() if hasattr(self, "cbo_client") else None
+                kwargs = {
+                    "serial_number": sn,
+                    "symptom": self.txt_symptom.text().strip(),
+                    "cosmetic_condition": self.txt_cosmetic.text().strip(),
+                    "accessories": self.txt_acc.text().strip(),
+                    "received_by_user_id": uid,
+                }
+                if cid_override:
+                    kwargs["client_id_override"] = int(cid_override)
+                self.created_ticket = self.data_manager.sav.check_in_reception(**kwargs)
             else:
                 self.created_ticket = {
                     "ticket_id": 899,

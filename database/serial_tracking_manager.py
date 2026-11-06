@@ -482,7 +482,7 @@ class SerialTrackingManager:
         return None
 
     def get_serial_details(self, serial_number: str) -> Optional[Dict[str, Any]]:
-        """Looks up a specific physical serial number along with its product and batch metadata."""
+        """Looks up a specific physical serial number along with its product, batch, client, and invoice metadata."""
         try:
             sn_clean = self.sanitize_serial_number(serial_number)
             with self.db.get_db_connection() as conn:
@@ -497,20 +497,70 @@ class SerialTrackingManager:
                         COALESCE(p.Color_Finish, '') AS Color_Finish,
                         p.Barcode AS Product_Barcode,
                         b.Lot_Number,
-                        b.Unit_Price_Received
+                        b.Unit_Price_Received,
+                        COALESCE(b.Unit_Cost_Landed, b.Unit_Price_Received, 0.0) AS Unit_Cost_Landed,
+                        ROUND(
+                            COALESCE(b.Selling_Price_HT, p.Default_Selling_Price_HT, 0.0)
+                            * (1.0 + COALESCE(b.Selling_TVA_Percent, p.Selling_TVA_Percent, 19.0) / 100.0),
+                            2
+                        ) AS Selling_Price_TTC,
+                        COALESCE(ps.Original_Client_ID, inv.Client_ID) AS Resolved_Client_ID,
+                        COALESCE(c.Client_Name, '') AS Original_Client_Name,
+                        COALESCE(inv.Invoice_No, '') AS Original_Invoice_No
                     FROM Product_Serials ps
                     JOIN Products_Master p ON ps.Product_ID = p.Product_ID
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
                     LEFT JOIN Inventory_Batches b ON ps.Batch_ID = b.Batch_ID
-                    WHERE ps.Serial_Number = %s
+                    LEFT JOIN Sales_Invoices inv ON ps.Original_Sales_Invoice_ID = inv.Invoice_ID
+                    LEFT JOIN Clients c ON COALESCE(ps.Original_Client_ID, inv.Client_ID) = c.Client_ID
+                    WHERE ps.Serial_Number = %s OR ps.Barcode_Serial_Composite = %s
+                    LIMIT 1
                     """,
-                    (sn_clean,),
+                    (sn_clean, sn_clean),
                 )
                 return cursor.fetchone()
         except Exception as err:
             logger.error(f"Error looking up serial '{serial_number}': {err}")
             return None
+
+    def get_serial_history(self, serial_number: str) -> List[Dict[str, Any]]:
+        """Returns the chronological audit trail of a physical serial number across all vouchers and SAV stages."""
+        try:
+            sn_clean = self.sanitize_serial_number(serial_number)
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT
+                        psh.History_ID,
+                        psh.Serial_ID,
+                        ps.Serial_Number,
+                        p.Product_Name,
+                        COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                        COALESCE(p.Color_Finish, '') AS Color_Finish,
+                        b.Lot_Number,
+                        psh.Previous_Status,
+                        psh.New_Status,
+                        psh.Voucher_Type,
+                        psh.Voucher_ID,
+                        psh.Action_Notes,
+                        psh.Changed_At,
+                        COALESCE(NULLIF(u.Full_Name, ''), u.Username, 'Système') AS Operator_Name
+                    FROM Product_Serial_History psh
+                    JOIN Product_Serials ps ON psh.Serial_ID = ps.Serial_ID
+                    JOIN Products_Master p ON ps.Product_ID = p.Product_ID
+                    LEFT JOIN Inventory_Batches b ON ps.Batch_ID = b.Batch_ID
+                    LEFT JOIN Users u ON psh.Changed_By_User_ID = u.User_ID
+                    WHERE ps.Serial_Number = %s OR ps.Barcode_Serial_Composite = %s
+                    ORDER BY psh.Changed_At DESC, psh.History_ID DESC
+                    """,
+                    (sn_clean, sn_clean),
+                )
+                return cursor.fetchall() or []
+        except Exception as err:
+            logger.error(f"Error fetching serial history for '{serial_number}': {err}")
+            return []
 
     def get_all_serials(self, product_id: Optional[int] = None, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """Lists registered serial numbers with optional product and status filters."""

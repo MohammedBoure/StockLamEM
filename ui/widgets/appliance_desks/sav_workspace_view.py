@@ -810,7 +810,12 @@ class SAVWorkspaceTab(QWidget):
             return
 
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
-        price = float(ticket.get("Purchase_Price") or ticket.get("Unit_Price_TTC") or 80000.0)
+        price = float(
+            ticket.get("Purchase_Price")
+            or ticket.get("Unit_Price_TTC")
+            or ticket.get("Selling_Price_TTC")
+            or 80000.0
+        )
 
         dlg = IrreparableDefectModal(
             ticket_id=str(ticket.get("Ticket_Number") or t_id),

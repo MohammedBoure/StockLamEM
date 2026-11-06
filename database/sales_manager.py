@@ -1157,13 +1157,41 @@ class SalesManager:
                         WHERE sd.Invoice_ID = %s
                     """
                     cursor.execute(detail_query, (invoice_id,))
-                    invoice['details'] = cursor.fetchall()
+                    details = cursor.fetchall()
+                    if not details and invoice.get('Order_ID'):
+                        details = self._get_theoretical_order_details_for_invoice(cursor, invoice['Order_ID'], invoice_id)
+                    invoice['details'] = details
                     cursor.execute(
                         "SELECT * FROM POS_Sale_Payments WHERE Invoice_ID = %s ORDER BY Payment_Line_No",
                         (invoice_id,),
                     )
-                    invoice['payments'] = cursor.fetchall()
-                    
+                    payments = cursor.fetchall()
+                    if not payments and (
+                        float(invoice.get('Amount_Paid_Cash') or 0) > 0
+                        or float(invoice.get('Amount_Paid_Card') or 0) > 0
+                        or float(invoice.get('Amount_Paid_Wallet') or 0) > 0
+                    ):
+                        payments = []
+                        if float(invoice.get('Amount_Paid_Cash') or 0) > 0:
+                            payments.append({
+                                'Payment_Method': 'Cash',
+                                'Amount': float(invoice['Amount_Paid_Cash']),
+                                'Payment_Date': invoice.get('Invoice_Date'),
+                            })
+                        if float(invoice.get('Amount_Paid_Card') or 0) > 0:
+                            payments.append({
+                                'Payment_Method': 'Card',
+                                'Amount': float(invoice['Amount_Paid_Card']),
+                                'Payment_Date': invoice.get('Invoice_Date'),
+                            })
+                        if float(invoice.get('Amount_Paid_Wallet') or 0) > 0:
+                            payments.append({
+                                'Payment_Method': 'Versement / Portefeuille',
+                                'Amount': float(invoice['Amount_Paid_Wallet']),
+                                'Payment_Date': invoice.get('Invoice_Date'),
+                            })
+                    invoice['payments'] = payments
+
                 return invoice
         except mysql.connector.Error as e:
             logging.error(f"Error fetching invoice {invoice_id}: {e}")
@@ -1189,6 +1217,91 @@ class SalesManager:
             logging.error(f"Error fetching invoices: {e}")
             raise
 
+    def _get_theoretical_order_details_for_invoice(self, cursor, order_id, invoice_id=None):
+        """
+        جلب تفاصيل الطلبية النظرية والأرقام التسلسليّة الخارجة لفواتير المكاتب (Bon C / Bon Crédit / Bon de Livraison).
+        """
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    l.Line_ID,
+                    l.Order_ID,
+                    l.Product_ID,
+                    l.Requested_Color,
+                    l.Quantity_Ordered AS Qty_Sold,
+                    l.Quantity_Dispatched,
+                    l.Unit_Price_HT,
+                    0.0 AS Discount_Percent,
+                    l.Tax_Rate AS TVA_Percent,
+                    ROUND(l.Quantity_Ordered * l.Unit_Price_HT, 2) AS Line_Total_HT,
+                    l.Line_Total_TTC,
+                    l.Unit_Price_TTC,
+                    p.Product_Name,
+                    COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                    COALESCE(l.Requested_Color, p.Color_Finish, '') AS Color_Finish,
+                    (
+                        SELECT GROUP_CONCAT(ps.Serial_Number SEPARATOR ', ')
+                        FROM Delivery_Exit_Bonds deb
+                        JOIN Delivery_Exit_Serials des ON deb.Exit_Bond_ID = des.Exit_Bond_ID
+                        JOIN Product_Serials ps ON des.Serial_ID = ps.Serial_ID
+                        WHERE deb.Order_ID = l.Order_ID AND ps.Product_ID = l.Product_ID
+                    ) AS Dispatched_Serials,
+                    COALESCE(
+                        (
+                            SELECT AVG(COALESCE(NULLIF(ib.Unit_Cost_Landed, 0), ib.Unit_Price_Received, 0))
+                            FROM Inventory_Batches ib
+                            WHERE ib.Product_ID = l.Product_ID
+                        ),
+                        0.0
+                    ) AS Unit_Price_Received
+                FROM Sales_Order_Lines_Theoretical l
+                JOIN Products_Master p ON l.Product_ID = p.Product_ID
+                WHERE l.Order_ID = %s
+                ORDER BY l.Line_ID ASC
+                """,
+                (int(order_id),),
+            )
+            lines = cursor.fetchall() or []
+            result = []
+            for ln in lines:
+                qty = float(ln.get('Qty_Sold') or 0)
+                line_ht = float(ln.get('Line_Total_HT') or 0.0)
+                unit_cost = float(ln.get('Unit_Price_Received') or 0.0)
+                serials_str = ln.get('Dispatched_Serials')
+                lot_display = f"S/N: {serials_str}" if serials_str else "En attente Bon de Sortie"
+                brand = ln.get('Brand_Mark') or ''
+                color = ln.get('Color_Finish') or ''
+                prod_label = ln.get('Product_Name') or ''
+                if brand and brand.lower() not in prod_label.lower():
+                    prod_label = f"{brand} - {prod_label}"
+                if color and color.lower() not in ("standard", "-"):
+                    prod_label = f"{prod_label} ({color})"
+                result.append({
+                    'Detail_ID': None,
+                    'Line_ID': ln.get('Line_ID'),
+                    'Invoice_ID': invoice_id,
+                    'Order_ID': order_id,
+                    'Batch_ID': None,
+                    'Product_ID': ln.get('Product_ID'),
+                    'Product_Name': prod_label,
+                    'Lot_Number': lot_display,
+                    'Expiry_Date': None,
+                    'Qty_Sold': int(qty),
+                    'Unit_Price_HT': float(ln.get('Unit_Price_HT') or 0.0),
+                    'Discount_Percent': 0.0,
+                    'TVA_Percent': float(ln.get('TVA_Percent') or 19.0),
+                    'Line_Total_HT': line_ht,
+                    'Line_Total_TTC': float(ln.get('Line_Total_TTC') or 0.0),
+                    'Unit_Price_Received': unit_cost,
+                    'Line_Profit': round(line_ht - (qty * unit_cost), 2),
+                    'Is_Theoretical_Order_Line': True,
+                })
+            return result
+        except Exception as err:
+            logging.error(f"Error fetching theoretical order details for Order #{order_id}: {err}")
+            return []
+
     def get_sales_with_profit(self, start_date=None, end_date=None, client_id=None):
         """
         جلب الفواتير مع حساب الفائدة (الربح) لكل فاتورة وللفترة المحددة.
@@ -1202,12 +1315,26 @@ class SalesManager:
                         i.Invoice_ID, i.Invoice_No, i.Invoice_Date, i.Status, i.Total_Amount_HT, i.Total_Amount_TTC,
                         i.Total_Discount, i.Total_TVA, i.Payment_Method, i.Terminal_ID, i.Cash_Session_ID, i.Created_By,
                         i.Client_ID, i.Sale_Type, i.Due_Date,
+                        i.Order_ID, i.Bond_Settlement_Type, i.Delivery_Status,
+                        i.Amount_Paid_Cash, i.Amount_Paid_Card, i.Amount_Paid_Wallet, i.Amount_Remaining_Credit,
                         DATEDIFF(CURRENT_DATE, i.Due_Date) AS Days_Overdue,
+                        COALESCE(NULLIF(u.Full_Name, ''), u.Username, 'Admin') AS User_Name,
                         COALESCE((SELECT GROUP_CONCAT(CONCAT(pp.Payment_Method, ': ', FORMAT(pp.Amount, 2)) SEPARATOR ' | ') FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID), i.Payment_Method) AS Payment_Summary,
                         CASE 
+                            WHEN i.Bond_Settlement_Type IS NOT NULL OR i.Order_ID IS NOT NULL
+                            THEN LEAST(
+                                i.Total_Amount_TTC,
+                                ROUND(
+                                    COALESCE(i.Amount_Paid_Cash, 0.0)
+                                    + COALESCE(i.Amount_Paid_Card, 0.0)
+                                    + COALESCE(i.Amount_Paid_Wallet, 0.0)
+                                    + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0.0),
+                                    2
+                                )
+                            )
                             WHEN EXISTS (SELECT 1 FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID)
                                  OR EXISTS (SELECT 1 FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID)
-                            THEN COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID), 0)
+                            THEN COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
                                + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0)
                             WHEN i.Payment_Method = 'Credit' THEN 0.0
                             ELSE i.Total_Amount_TTC
@@ -1215,7 +1342,24 @@ class SalesManager:
                         COALESCE((SELECT SUM(pp.Change_Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID), 0) AS Change_Amount,
                         t.Terminal_Name, s.Session_No,
                         c.Client_Name,
-                        COALESCE(SUM(sd.Qty_Sold * COALESCE(b.Unit_Price_Received, 0)), 0) AS Total_Cost,
+                        COALESCE(
+                            NULLIF(SUM(sd.Qty_Sold * COALESCE(b.Unit_Price_Received, 0)), 0),
+                            (
+                                SELECT SUM(
+                                    sol.Quantity_Ordered * COALESCE(
+                                        (
+                                            SELECT AVG(COALESCE(NULLIF(ib.Unit_Cost_Landed, 0), ib.Unit_Price_Received, 0))
+                                            FROM Inventory_Batches ib
+                                            WHERE ib.Product_ID = sol.Product_ID
+                                        ),
+                                        0
+                                    )
+                                )
+                                FROM Sales_Order_Lines_Theoretical sol
+                                WHERE sol.Order_ID = i.Order_ID
+                            ),
+                            0
+                        ) AS Total_Cost,
                         COALESCE(SUM(sd.Line_Total_HT - (sd.Qty_Sold * COALESCE(b.Unit_Price_Received, 0))), 0) AS Total_Profit
                     FROM Sales_Invoices i
                     LEFT JOIN Clients c ON i.Client_ID = c.Client_ID
@@ -1244,7 +1388,30 @@ class SalesManager:
                 """
                 
                 cursor.execute(query, tuple(params))
-                return cursor.fetchall()
+                results = cursor.fetchall() or []
+                for r in results:
+                    if r.get('Order_ID') and float(r.get('Total_Profit') or 0.0) == 0.0:
+                        ht_val = float(r.get('Total_Amount_HT') or r.get('Total_Amount_TTC') or 0.0)
+                        cost_val = float(r.get('Total_Cost') or 0.0)
+                        r['Total_Profit'] = round(ht_val - cost_val, 2)
+                    bond_st = str(r.get('Bond_Settlement_Type') or '').upper()
+                    if bond_st:
+                        parts = []
+                        c_paid = float(r.get('Amount_Paid_Cash') or 0.0)
+                        k_paid = float(r.get('Amount_Paid_Card') or 0.0)
+                        w_paid = float(r.get('Amount_Paid_Wallet') or 0.0)
+                        rem_cred = float(r.get('Total_Amount_TTC') or 0.0) - float(r.get('Paid_Amount') or 0.0)
+                        if c_paid > 0:
+                            parts.append(f"Espèces: {format_money(c_paid)}")
+                        if k_paid > 0:
+                            parts.append(f"Carte: {format_money(k_paid)}")
+                        if w_paid > 0:
+                            parts.append(f"Portefeuille: {format_money(w_paid)}")
+                        if rem_cred > 0.009:
+                            parts.append(f"Reste: {format_money(rem_cred)}")
+                        if parts:
+                            r['Payment_Summary'] = " | ".join(parts)
+                return results
         except mysql.connector.Error as e:
             logging.error(f"Error fetching sales with profit: {e}")
             return []
@@ -1256,17 +1423,88 @@ class SalesManager:
             inv['Row_Type'] = 'Sale'
             inv['Event_Date'] = inv.get('Invoice_Date')
             sale_type = inv.get('Sale_Type')
-            if sale_type == 'Wholesale':
+            bond_type = str(inv.get('Bond_Settlement_Type') or '').upper()
+            inv_no = str(inv.get('Invoice_No') or '').upper()
+            if bond_type == 'BON_C_CASH' or inv_no.startswith('FAC-BC-'):
+                inv['Operation_Label'] = 'Bon Comptant'
+            elif bond_type == 'BON_CREDIT' or inv_no.startswith('FAC-BCR-'):
+                inv['Operation_Label'] = 'Bon Crédit'
+            elif bond_type == 'BON_LIVRAISON' or inv_no.startswith('FAC-BL-'):
+                inv['Operation_Label'] = 'Bon de Livraison'
+            elif sale_type == 'Wholesale':
                 inv['Operation_Label'] = 'Vente en Gros'
             elif sale_type == 'Retail_POS':
                 inv['Operation_Label'] = 'Vente Détail (POS)'
             else:
                 inv['Operation_Label'] = 'Vente'
             inv['Amount_Entered'] = None
-            inv['Caisse_Label'] = inv.get('Terminal_Name') or ("Gros B2B" if sale_type == 'Wholesale' else "-")
+            inv['Caisse_Label'] = (
+                inv.get('Terminal_Name')
+                or ("Caisse Bureaux" if bond_type else ("Gros B2B" if sale_type == 'Wholesale' else "-"))
+            )
             rows.append(inv)
 
+        # Include Bon de Retour (Return_Bonds) so returns with Versement Virtuel appear in Sales History
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                ret_query = """
+                    SELECT
+                        rb.Return_Bond_ID,
+                        rb.Return_Bond_Number,
+                        rb.Original_Invoice_ID,
+                        rb.Client_ID,
+                        rb.Return_Reason,
+                        rb.Total_Credit_Issued,
+                        rb.Created_At,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(NULLIF(u.Full_Name, ''), u.Username, 'Caissier') AS User_Name
+                    FROM Return_Bonds rb
+                    LEFT JOIN Clients c ON rb.Client_ID = c.Client_ID
+                    LEFT JOIN Users u ON rb.Received_By_User_ID = u.User_ID
+                    WHERE 1=1
+                """
+                ret_params = []
+                if start_date:
+                    ret_query += " AND rb.Created_At >= %s"
+                    ret_params.append(start_date)
+                if end_date:
+                    ret_query += " AND rb.Created_At <= %s"
+                    ret_params.append(end_date)
+                if client_id:
+                    ret_query += " AND rb.Client_ID = %s"
+                    ret_params.append(client_id)
+                cursor.execute(ret_query, tuple(ret_params))
+                for rb in cursor.fetchall() or []:
+                    amt = float(rb.get('Total_Credit_Issued') or 0.0)
+                    rows.append({
+                        'Row_Type': 'Return',
+                        'Operation_ID': f"RET-{rb['Return_Bond_ID']}",
+                        'Invoice_ID': rb.get('Original_Invoice_ID'),
+                        'Invoice_No': rb.get('Return_Bond_Number'),
+                        'Invoice_Date': rb.get('Created_At'),
+                        'Event_Date': rb.get('Created_At'),
+                        'Operation_Label': 'Bon de Retour (Avoir Virtuel)',
+                        'Client_Name': rb.get('Client_Name') or 'Client Comptoir',
+                        'Status': 'Returned',
+                        'Due_Date': None,
+                        'Days_Overdue': None,
+                        'Terminal_Name': 'Caisse Bureaux',
+                        'Caisse_Label': 'Caisse Bureaux',
+                        'User_Name': rb.get('User_Name') or 'Caissier',
+                        'Payment_Method': 'Versement Virtuel',
+                        'Payment_Summary': f"Versement Virtuel: {format_money(amt)}",
+                        'Paid_Amount': amt,
+                        'Total_Amount_HT': amt,
+                        'Total_Amount_TTC': amt,
+                        'Total_Cost': 0.0,
+                        'Total_Profit': 0.0,
+                    })
+        except Exception as ret_err:
+            logging.debug(f"Return_Bonds lookup skipped in history: {ret_err}")
+
         if client_id:
+            rows.sort(key=lambda row: str(row.get('Event_Date') or row.get('Invoice_Date') or ""), reverse=True)
             return rows
 
         try:
@@ -1404,9 +1642,13 @@ class SalesManager:
                     WHERE sd.Invoice_ID = %s
                 """
                 cursor.execute(query, (invoice_id,))
-                return cursor.fetchall()
+                details = cursor.fetchall() or []
+                if not details:
+                    cursor.execute("SELECT Order_ID FROM Sales_Invoices WHERE Invoice_ID = %s", (invoice_id,))
+                    inv_row = cursor.fetchone()
+                    if inv_row and inv_row.get('Order_ID'):
+                        details = self._get_theoretical_order_details_for_invoice(cursor, inv_row['Order_ID'], invoice_id)
+                return details
         except mysql.connector.Error as e:
             logging.error(f"Error fetching invoice details with profit: {e}")
             return []
-            logging.error(f"Error fetching invoices: {e}")
-            raise

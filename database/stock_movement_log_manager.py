@@ -250,22 +250,28 @@ class StockMovementLogManager:
 
                         p.Product_Name,
                         p.Barcode AS Product_Barcode,
+                        COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                        COALESCE(p.Color_Finish, '') AS Color_Finish,
                         b.Lot_Number,
                         b.Internal_Barcode AS Batch_Barcode,
+                        m.Stock_After,
 
-                        (
-                            SELECT COALESCE(SUM(sub.Qty_Change), 0)
-                            FROM Stock_Movement_Log sub
-                            WHERE sub.Batch_ID = m.Batch_ID
-                              AND (
-                                  sub.Transaction_Date < m.Transaction_Date
-                                  OR (sub.Transaction_Date = m.Transaction_Date AND sub.Movement_ID <= m.Movement_ID)
-                              )
+                        COALESCE(
+                            m.Stock_After,
+                            (
+                                SELECT COALESCE(SUM(sub.Qty_Change), 0)
+                                FROM Stock_Movement_Log sub
+                                WHERE sub.Batch_ID = m.Batch_ID
+                                  AND (
+                                      sub.Transaction_Date < m.Transaction_Date
+                                      OR (sub.Transaction_Date = m.Transaction_Date AND sub.Movement_ID <= m.Movement_ID)
+                                  )
+                            )
                         ) as Batch_Historical_Stock,
 
                         COALESCE(l.Location_Name, '---') as Location_Name,
                         wr.Reason_Name,
-                        COALESCE(u.Full_Name, 'Système') as Operator_Name
+                        COALESCE(NULLIF(u.Full_Name, ''), u.Username, 'Système') as Operator_Name
 
                     FROM Stock_Movement_Log m
                     JOIN Products_Master p ON m.Product_ID = p.Product_ID

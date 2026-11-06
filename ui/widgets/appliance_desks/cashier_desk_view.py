@@ -286,7 +286,13 @@ class BonRetourDialog(QDialog):
         self.txt_serial = QLineEdit()
         self.txt_serial.setFixedHeight(34)
         self.txt_serial.setPlaceholderText("Scanner ou saisir le N° de Série retourné...")
+        self.txt_serial.textChanged.connect(self._on_serial_changed)
         form.addRow(QLabel("N° de Série de l'article :"), self.txt_serial)
+
+        self.lbl_serial_info = QLabel("Scannez le N° de Série pour détecter automatiquement le client et la facture.")
+        self.lbl_serial_info.setWordWrap(True)
+        self.lbl_serial_info.setStyleSheet("font-size: 11px; color: #64748B;")
+        form.addRow(QLabel(""), self.lbl_serial_info)
 
         self.cbo_condition = QComboBox()
         self.cbo_condition.setFixedHeight(34)
@@ -354,6 +360,32 @@ class BonRetourDialog(QDialog):
         btn_ok.clicked.connect(self._process_return)
         btn_row.addWidget(btn_ok)
         layout.addLayout(btn_row)
+
+    def _on_serial_changed(self, text: str) -> None:
+        sn = (text or "").strip()
+        if len(sn) < 3 or not self.data_manager or not hasattr(self.data_manager, "serials"):
+            return
+        try:
+            details = self.data_manager.serials.get_serial_details(sn)
+            if details and isinstance(details, dict):
+                inv_id = details.get("Original_Sales_Invoice_ID")
+                cid = details.get("Resolved_Client_ID") or details.get("Original_Client_ID")
+                price = float(details.get("Selling_Price_TTC") or 0.0)
+                if inv_id:
+                    self.spn_inv.setValue(int(inv_id))
+                if cid:
+                    self.spn_client.setValue(int(cid))
+                if price > 0:
+                    self.spn_val.setValue(price)
+                p_name = details.get("Product_Name") or "Appareil"
+                c_name = details.get("Original_Client_Name") or f"Client #{cid or 1}"
+                inv_no = details.get("Original_Invoice_No") or f"#{inv_id or 1}"
+                self.lbl_serial_info.setText(
+                    f"<span style='color:#007572; font-weight:700;'>✔ {p_name}</span> — "
+                    f"Client : <b>{c_name}</b> | Facture : <b>{inv_no}</b>"
+                )
+        except Exception as err:
+            logger.debug(f"Serial auto-lookup in BonRetourDialog skipped: {err}")
 
     def _process_return(self) -> None:
         sn = self.txt_serial.text().strip()
@@ -1823,7 +1855,7 @@ class CashierDeskWidget(QWidget):
                 logger.error(f"Error fetching caisse queue: {err}")
                 orders = []
 
-        if not orders and os.environ.get("PYTEST_CURRENT_TEST"):
+        if not orders and self.data_manager is None and os.environ.get("PYTEST_CURRENT_TEST"):
             orders = getattr(self, "_pytest_dummy_orders", None)
             if orders is None:
                 orders = [
@@ -1897,10 +1929,11 @@ class CashierDeskWidget(QWidget):
                 "CONFIRMED_PENDING_PAYMENT": "En attente règlement",
                 "PAID_PENDING_DISPATCH": "Payé / Prêt Sortie",
                 "PARTIALLY_PAID": "Acompte versé",
+                "DISPATCHED_PENDING_COD": "Livré / Attente Solde COD",
             }
             it_st = QTableWidgetItem(status_labels.get(raw_status, raw_status))
             it_st.setTextAlignment(Qt.AlignCenter)
-            it_st.setForeground(QColor("#D97706" if "PENDING_PAYMENT" in raw_status else "#0E7471"))
+            it_st.setForeground(QColor("#D97706" if ("PENDING_PAYMENT" in raw_status or "PENDING_COD" in raw_status) else "#0E7471"))
             it_st.setFont(QFont("Segoe UI", 9, QFont.Bold))
             self.queue_table.setItem(row, 4, it_st)
 
@@ -1978,7 +2011,11 @@ class CashierDeskWidget(QWidget):
             f"<span style='font-size:11px; color:#475569;'>Dépôt Espèces : {format_money(self._wallet_info['real_deposit_balance'])} DA  |  "
             f"Avoir Virtuel : {format_money(self._wallet_info['virtual_credit_balance'])} DA</span>"
         )
-        self.txt_cash.setText(str(int(tot)) if ord_item.get("Bond_Type") == "BON_C" else "0")
+        if ord_item.get("Status") == "DISPATCHED_PENDING_COD":
+            rem_cod = float(ord_item.get("Amount_Remaining_Credit") or tot)
+            self.txt_cash.setText(str(int(rem_cod)))
+        else:
+            self.txt_cash.setText(str(int(tot)) if ord_item.get("Bond_Type") == "BON_C" else "0")
         self._recalculate_amounts()
 
     def _on_table_cell_double_clicked(self, row: int, col: int) -> None:
@@ -2150,7 +2187,7 @@ class CashierDeskWidget(QWidget):
                 self.txt_cash.setFocus()
                 self.txt_cash.selectAll()
             elif b_type == "BON_CREDIT":
-                self.btn_auth_credit.setFocus()
+                self.btn_val_credit.setFocus()
             elif b_type == "BON_LIVRAISON":
                 self.btn_val_livraison.setFocus()
         else:

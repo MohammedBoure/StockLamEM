@@ -92,7 +92,19 @@ class SAVWorkflowManager:
                 if isinstance(w_end, date):
                     is_under_warranty = date.today() <= w_end
 
-            client_id = int(client_id_override or s.get("Original_Client_ID") or 1)
+            resolved_cid = client_id_override or s.get("Original_Client_ID")
+            if not resolved_cid and s.get("Original_Sales_Invoice_ID"):
+                try:
+                    cursor.execute(
+                        "SELECT Client_ID FROM Sales_Invoices WHERE Invoice_ID = %s",
+                        (int(s["Original_Sales_Invoice_ID"]),),
+                    )
+                    inv_r = cursor.fetchone()
+                    if inv_r and isinstance(inv_r, dict) and inv_r.get("Client_ID"):
+                        resolved_cid = inv_r["Client_ID"]
+                except Exception:
+                    pass
+            client_id = int(resolved_cid or 1)
             ts_suffix = int(datetime.now().timestamp() * 1000) % 100000
             ticket_num = f"SAV-{datetime.now().strftime('%Y%m%d')}-{ts_suffix:05d}"
             bon_rep_code = f"BREP-{datetime.now().strftime('%Y%m%d')}-{ts_suffix:05d}"
@@ -584,6 +596,12 @@ class SAVWorkflowManager:
                         ps.Serial_Number,
                         p.Product_Name,
                         COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                        COALESCE(p.Color_Finish, '') AS Color_Finish,
+                        ROUND(
+                            COALESCE(p.Default_Selling_Price_HT, 0.0)
+                            * (1.0 + COALESCE(p.Selling_TVA_Percent, 19.0) / 100.0),
+                            2
+                        ) AS Selling_Price_TTC,
                         COALESCE(c.Client_Name, 'Client SAV') AS Client_Name,
                         COALESCE(tech.Full_Name, 'Non assigné') AS Technician_Name
                     FROM SAV_Tickets t

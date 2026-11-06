@@ -19,6 +19,6 @@ Ce dossier regroupe l'ensemble des modules d'interface graphique PySide6 de l'ap
 ## Fichiers Racine
 
 - `analysis_view.py` : Vue d'analyse détaillée de la consommation et des mouvements de stock.
-- `history.py` : Vue de traçabilité complète des mouvements de stock internes et externes.
+- `history.py` : Vue de traçabilité complète des mouvements de stock internes et externes (`MovementHistoryTab`) avec barre d'audit rapide par `N° de Série` (`Product_Serials` / `Product_Serial_History`) et suivi des `Bon de Sortie` et `Bon de Retour`.
 - `user_management_tab.py` : Gestion des comptes utilisateurs, des rôles et de la matrice complète des autorisations (incluant les Bureaux Opérationnels `10. BUREAUX_WORKFLOW` et le Service Après-Vente `11. SAV_WORKSPACE`).
 - `ai_analytics_tab.py` : Module d'analyses prédictives et d'intelligence artificielle.

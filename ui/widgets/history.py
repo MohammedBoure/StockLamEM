@@ -139,6 +139,38 @@ class MovementHistoryTab(QWidget):
         layout.setSpacing(6)
         layout.setContentsMargins(8, 8, 8, 8)
 
+        # Quick Audit Bar for Unique Serial Numbers (N° de Série) & Vouchers
+        serial_bar = QGroupBox("🔎 Audit Instantané par N° de Série (Traçabilité Unitaire : Lot → Bon de Sortie → Retour / SAV)")
+        serial_bar.setStyleSheet(
+            "QGroupBox { font-weight: bold; color: #007572; border: 1px solid #CBD5E1; border-radius: 6px; margin-top: 6px; padding-top: 6px; background: #F8FAFC; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
+        )
+        sb_layout = QHBoxLayout(serial_bar)
+        sb_layout.setContentsMargins(10, 6, 10, 6)
+        sb_layout.setSpacing(8)
+
+        self.serial_audit_input = BarcodeLineEdit()
+        self.serial_audit_input.setPlaceholderText("Scanner ou saisir un N° de Série unique (ex: SN-BOSCH-...)...")
+        self.serial_audit_input.setFixedWidth(280)
+        self.serial_audit_input.returnPressed.connect(self.verify_serial_number)
+        sb_layout.addWidget(self.serial_audit_input)
+
+        self.btn_verify_serial = QPushButton("Vérifier N° Série")
+        self.btn_verify_serial.setCursor(Qt.PointingHandCursor)
+        self.btn_verify_serial.setStyleSheet(
+            "QPushButton { background-color: #007572; color: white; font-weight: bold; padding: 4px 12px; border-radius: 4px; border: none; }"
+            "QPushButton:hover { background-color: #005A57; }"
+        )
+        self.btn_verify_serial.clicked.connect(self.verify_serial_number)
+        sb_layout.addWidget(self.btn_verify_serial)
+
+        self.lbl_serial_audit_result = QLabel("Scannez un N° de Série pour afficher son lot d'origine, son statut actuel, son client et ses bons.")
+        self.lbl_serial_audit_result.setWordWrap(True)
+        self.lbl_serial_audit_result.setStyleSheet("color: #475569; font-size: 12px; font-weight: normal;")
+        sb_layout.addWidget(self.lbl_serial_audit_result, stretch=1)
+
+        layout.addWidget(serial_bar)
+
         filter_layout = QHBoxLayout()
         filter_layout.setSpacing(8)
 
@@ -170,8 +202,8 @@ class MovementHistoryTab(QWidget):
             "💰 Ventes / Transf. Externes",
             "↩️ Retours Sous-traitants (BR)",
             "↩️ Retours Fournisseurs (Avoirs)",
-            "💸 Ventes (POS)",
-            "🔄 Retours Ventes",
+            "💸 Ventes / Sorties (POS & Bon de Sortie)",
+            "🔄 Retours Ventes (Bon de Retour)",
         ])
 
         movement_types = [
@@ -379,11 +411,21 @@ class MovementHistoryTab(QWidget):
             self.table.setItem(row, 3, item(mov.get("Lot_Number") or "-"))
 
             raw_type = mov.get("Movement_Type", "")
-            type_item = item(type_map.get(raw_type, raw_type))
+            notes_str = str(mov.get("Notes", "") or "")
+            display_type = type_map.get(raw_type, raw_type)
+            if raw_type == "Sale" and "Bon de Sortie" in notes_str:
+                display_type = "Sortie Magasin (Bon de Sortie)"
+            elif raw_type == "Sale_Return" and "Bon de Retour" in notes_str:
+                display_type = "Bon de Retour (Avoir Virtuel)"
+            type_item = item(display_type)
             if raw_type == "Purchase_Receive":
                 type_item.setBackground(QBrush(QColor("#e8f5e9")))
             elif raw_type == "Waste":
                 type_item.setBackground(QBrush(QColor("#ffebee")))
+            elif raw_type == "Sale":
+                type_item.setForeground(QBrush(QColor("#007572")))
+            elif raw_type == "Sale_Return":
+                type_item.setForeground(QBrush(QColor("#D97706")))
             elif raw_type in ["Patient_Test", "QC_Run"]:
                 type_item.setForeground(QBrush(QColor("#1976d2")))
             self.table.setItem(row, 4, type_item)
@@ -403,6 +445,8 @@ class MovementHistoryTab(QWidget):
             )
 
             batch_stock = mov.get("Batch_Historical_Stock")
+            if batch_stock is None:
+                batch_stock = mov.get("Stock_After")
             if batch_stock is None:
                 batch_stock = mov.get("Historical_Stock")
             stock_text = format_quantity(batch_stock) if batch_stock is not None else "?"
@@ -455,6 +499,51 @@ class MovementHistoryTab(QWidget):
 
         self.table.setRowCount(0)
         self._append_rows_to_table(filtered)
+
+    def verify_serial_number(self):
+        """Looks up a physical N° de Série in SerialTrackingManager and filters the movement log."""
+        sn = self.serial_audit_input.text().strip()
+        if not sn:
+            self.lbl_serial_audit_result.setText(
+                "<span style='color:#64748B;'>Veuillez scanner ou saisir un N° de Série.</span>"
+            )
+            return
+
+        serial_mgr = getattr(self.manager, "serials", None)
+        if serial_mgr and hasattr(serial_mgr, "get_serial_details"):
+            try:
+                res = serial_mgr.get_serial_details(sn)
+                if res:
+                    st = str(res.get("Status") or "UNKNOWN")
+                    status_labels = {
+                        "IN_STOCK": ("En Stock Magasin", "#16A34A"),
+                        "DISPATCHED": ("Sorti / Vendu (Bon de Sortie)", "#007572"),
+                        "SOLD": ("Sorti / Vendu", "#007572"),
+                        "IN_SAV": ("En Réparation SAV", "#D97706"),
+                        "SCRAPPED": ("Irréparable / Rebut (SAV)", "#DC2626"),
+                    }
+                    st_lbl, st_col = status_labels.get(st, (st, "#334155"))
+                    prod = res.get("Product_Name") or "-"
+                    brand = res.get("Brand_Mark") or ""
+                    color = res.get("Color_Finish") or ""
+                    lot = res.get("Lot_Number") or f"Lot #{res.get('Batch_ID', '-')}"
+                    client = res.get("Original_Client_Name") or "-"
+                    inv_no = res.get("Original_Invoice_No") or "-"
+                    self.lbl_serial_audit_result.setText(
+                        f"<b>Produit :</b> {brand} {prod} ({color}) | "
+                        f"<b>Lot :</b> {lot} | "
+                        f"<b>Statut :</b> <span style='color:{st_col}; font-weight:bold;'>{st_lbl}</span> | "
+                        f"<b>Client :</b> {client} | <b>Facture :</b> {inv_no}"
+                    )
+                else:
+                    self.lbl_serial_audit_result.setText(
+                        f"<span style='color:#DC2626; font-weight:bold;'>⚠️ N° de Série '{sn}' non enregistré dans le référentiel unitaire (filtrage journal activé).</span>"
+                    )
+            except Exception as err:
+                logging.error(f"Error auditing serial {sn}: {err}")
+
+        self.search_input.setText(sn)
+        self.reset_and_reload()
 
     def show_full_details(self):
         row = self.table.currentRow()

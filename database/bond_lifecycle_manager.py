@@ -1541,12 +1541,17 @@ class BondLifecycleManager:
                     )
                     # Record Return in Stock_Movement_Log (Traçabilité)
                     try:
+                        ret_prod_id = int(s_row["Product_ID"])
                         cursor.execute(
                             "SELECT SUM(Quantity_Current) AS Total_Stock FROM Inventory_Batches WHERE Product_ID = %s",
-                            (prod_id,),
+                            (ret_prod_id,),
                         )
                         stk_row = cursor.fetchone()
-                        stk_after = (stk_row.get("Total_Stock") if isinstance(stk_row, dict) else stk_row[0]) if stk_row else 0
+                        stk_after = (
+                            (stk_row.get("Total_Stock") if isinstance(stk_row, dict) else stk_row[0])
+                            if stk_row
+                            else 0
+                        )
                         cursor.execute(
                             """
                             INSERT INTO Stock_Movement_Log (
@@ -1555,13 +1560,13 @@ class BondLifecycleManager:
                             ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s)
                             """,
                             (
-                                prod_id,
+                                ret_prod_id,
                                 s_row["Batch_ID"],
                                 'Sale_Return',
                                 1,
                                 'Pièce',
-                                f"Bon de Retour {br_number} - N° Série: {sn_clean}",
-                                int(storekeeper_user_id),
+                                f"Bon de Retour {ret_num} - N° Série: {sn_clean}",
+                                int(received_by_user_id),
                                 stk_after,
                             ),
                         )
@@ -1694,9 +1699,12 @@ class BondLifecycleManager:
                         COALESCE(c.Current_Debt, 0.00) AS Current_Debt,
                         o.Bond_Type, o.Total_Amount_HT, o.Total_Amount_TTC,
                         o.Status, o.Payment_Method_Requested, o.Order_Date,
-                        o.Delivery_Address, o.Delivery_Phone
+                        o.Delivery_Address, o.Delivery_Phone,
+                        i.Invoice_ID, i.Invoice_No,
+                        COALESCE(i.Amount_Remaining_Credit, o.Total_Amount_TTC) AS Amount_Remaining_Credit
                     FROM Sales_Orders_Theoretical o
                     LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID AND i.Status != 'Cancelled'
                     WHERE o.Status IN ('CONFIRMED_PENDING_PAYMENT', 'DISPATCHED_PENDING_COD')
                     ORDER BY o.Order_Date DESC
                     LIMIT 200

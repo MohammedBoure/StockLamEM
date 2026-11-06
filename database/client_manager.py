@@ -183,24 +183,38 @@ class ClientManager:
                 """, (client_id,))
                 total_invoiced = float(cursor.fetchone()['total_invoiced'] or 0.0)
 
-                # 2. Total Payé au comptant lors des ventes (POS Sale Payments non-crédit)
+                # 2. Total Payé au comptant lors des ventes (POS Sale Payments non-crédit + Bureaux Caisse)
                 cursor.execute("""
-                    SELECT COALESCE(SUM(p.Amount), 0) AS pos_paid
-                    FROM POS_Sale_Payments p
-                    JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
-                    WHERE i.Client_ID = %s 
-                      AND i.Status NOT IN ('Cancelled', 'Draft')
-                      AND i.Invoice_No NOT LIKE 'DEV-%'
-                      AND i.Invoice_No NOT LIKE 'BC-%'
-                      AND p.Payment_Method != 'Credit'
-                """, (client_id,))
+                    SELECT (
+                        COALESCE((
+                            SELECT SUM(p.Amount)
+                            FROM POS_Sale_Payments p
+                            JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                            WHERE i.Client_ID = %s
+                              AND i.Status NOT IN ('Cancelled', 'Draft')
+                              AND i.Invoice_No NOT LIKE 'DEV-%'
+                              AND i.Invoice_No NOT LIKE 'BC-%'
+                              AND p.Payment_Method != 'Credit'
+                        ), 0)
+                        + COALESCE((
+                            SELECT SUM(COALESCE(i2.Amount_Paid_Cash, 0) + COALESCE(i2.Amount_Paid_Card, 0) + COALESCE(i2.Amount_Paid_Wallet, 0))
+                            FROM Sales_Invoices i2
+                            WHERE i2.Client_ID = %s
+                              AND i2.Status NOT IN ('Cancelled', 'Draft')
+                              AND i2.Invoice_No NOT LIKE 'DEV-%'
+                              AND i2.Invoice_No NOT LIKE 'BC-%'
+                              AND NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i2.Invoice_ID)
+                        ), 0)
+                    ) AS pos_paid
+                """, (client_id, client_id))
                 pos_paid = float(cursor.fetchone()['pos_paid'] or 0.0)
 
-                # 3. Total Paiements ultérieurs (Client_Payments)
+                # 3. Total Paiements ultérieurs (Client_Payments hors dépôts portefeuille Versement)
                 cursor.execute("""
                     SELECT COALESCE(SUM(Amount), 0) AS client_paid
                     FROM Client_Payments
                     WHERE Client_ID = %s
+                      AND COALESCE(Payment_Method, '') != 'Versement'
                 """, (client_id,))
                 client_paid = float(cursor.fetchone()['client_paid'] or 0.0)
 
@@ -276,13 +290,20 @@ class ClientManager:
                         GROUP BY Client_ID
                     ) inv ON c.Client_ID = inv.Client_ID
                     LEFT JOIN (
-                        SELECT i.Client_ID, SUM(p.Amount) AS pos_paid
-                        FROM POS_Sale_Payments p
-                        JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                        SELECT
+                            i.Client_ID,
+                            SUM(
+                                COALESCE((SELECT SUM(p.Amount) FROM POS_Sale_Payments p WHERE p.Invoice_ID = i.Invoice_ID AND p.Payment_Method != 'Credit'), 0)
+                                + CASE
+                                    WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                    THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                    ELSE 0
+                                  END
+                            ) AS pos_paid
+                        FROM Sales_Invoices i
                         WHERE i.Status NOT IN ('Cancelled', 'Draft') 
                           AND i.Invoice_No NOT LIKE 'DEV-%'
                           AND i.Invoice_No NOT LIKE 'BC-%'
-                          AND p.Payment_Method != 'Credit' 
                           AND i.Client_ID IS NOT NULL
                         GROUP BY i.Client_ID
                     ) pos_pay ON c.Client_ID = pos_pay.Client_ID
@@ -290,6 +311,7 @@ class ClientManager:
                         SELECT Client_ID, SUM(Amount) AS client_paid
                         FROM Client_Payments
                         WHERE Client_ID IS NOT NULL
+                          AND COALESCE(Payment_Method, '') != 'Versement'
                         GROUP BY Client_ID
                     ) cl_pay ON c.Client_ID = cl_pay.Client_ID
                     LEFT JOIN (
@@ -386,13 +408,20 @@ class ClientManager:
                         GROUP BY Client_ID
                     ) inv ON c.Client_ID = inv.Client_ID
                     LEFT JOIN (
-                        SELECT i.Client_ID, SUM(p.Amount) AS pos_paid
-                        FROM POS_Sale_Payments p
-                        JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                        SELECT
+                            i.Client_ID,
+                            SUM(
+                                COALESCE((SELECT SUM(p.Amount) FROM POS_Sale_Payments p WHERE p.Invoice_ID = i.Invoice_ID AND p.Payment_Method != 'Credit'), 0)
+                                + CASE
+                                    WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                    THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                    ELSE 0
+                                  END
+                            ) AS pos_paid
+                        FROM Sales_Invoices i
                         WHERE i.Status NOT IN ('Cancelled', 'Draft') 
                           AND i.Invoice_No NOT LIKE 'DEV-%'
                           AND i.Invoice_No NOT LIKE 'BC-%'
-                          AND p.Payment_Method != 'Credit' 
                           AND i.Client_ID IS NOT NULL
                         GROUP BY i.Client_ID
                     ) pos_pay ON c.Client_ID = pos_pay.Client_ID
@@ -400,6 +429,7 @@ class ClientManager:
                         SELECT Client_ID, SUM(Amount) AS client_paid
                         FROM Client_Payments
                         WHERE Client_ID IS NOT NULL
+                          AND COALESCE(Payment_Method, '') != 'Versement'
                         GROUP BY Client_ID
                     ) cl_pay ON c.Client_ID = cl_pay.Client_ID
                     LEFT JOIN (
@@ -506,7 +536,8 @@ class ClientManager:
 
                 # 1. Factures dans la période
                 inv_query = """
-                    SELECT Invoice_ID, Invoice_No, Invoice_Date AS op_date, Total_Amount_TTC, Sale_Type, Status
+                    SELECT Invoice_ID, Invoice_No, Invoice_Date AS op_date, Total_Amount_TTC, Sale_Type, Status,
+                           Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Card, Amount_Paid_Wallet
                     FROM Sales_Invoices
                     WHERE Client_ID = %s AND Status != 'Cancelled'
                 """
@@ -522,8 +553,13 @@ class ClientManager:
                     ref = r.get('Invoice_No') or f"FAC-{r['Invoice_ID']}"
                     status_raw = r.get('Status') or 'Validated'
                     is_quote_or_draft = (status_raw == 'Draft') or ref.startswith("DEV-") or ref.startswith("BC-")
+                    bond_st = str(r.get('Bond_Settlement_Type') or '').upper()
 
-                    if ref.startswith("BL-"):
+                    if bond_st == 'BON_C_CASH' or ref.startswith("FAC-BC-"):
+                        label = "Bon Comptant (Bureaux)"
+                    elif bond_st == 'BON_CREDIT' or ref.startswith("FAC-BCR-"):
+                        label = "Bon Crédit (Bureaux)"
+                    elif bond_st == 'BON_LIVRAISON' or ref.startswith("FAC-BL-") or ref.startswith("BL-"):
                         label = "Bon de Livraison (BL)"
                     elif ref.startswith("DEV-"):
                         label = "Devis"
@@ -553,6 +589,26 @@ class ClientManager:
                         'sale_type': r.get('Sale_Type'),
                         'status': status_raw
                     })
+
+                    # Si facture Bureaux avec paiement Caisse / Portefeuille enregistré sur la facture
+                    b_paid = (
+                        float(r.get('Amount_Paid_Cash') or 0.0)
+                        + float(r.get('Amount_Paid_Card') or 0.0)
+                        + float(r.get('Amount_Paid_Wallet') or 0.0)
+                    )
+                    if not is_quote_or_draft and b_paid > 0.009:
+                        transactions.append({
+                            'date': str(r['op_date']),
+                            'type': "Règlement Caisse (Bureaux)",
+                            'reference': ref,
+                            'debit': 0.0,
+                            'credit': round(b_paid, 2),
+                            'notes': f"Encaissement sur {label}",
+                            'doc_id': r.get('Invoice_ID'),
+                            'doc_category': 'pos_payment',
+                            'payment_method': 'Caisse / Portefeuille',
+                            'invoice_no': ref
+                        })
 
                 # 2. Paiements au comptant lors de la vente dans la période
                 pos_pay_query = """
@@ -584,11 +640,11 @@ class ClientManager:
                         'invoice_no': r.get('Invoice_No')
                     })
 
-                # 3. Règlements ultérieurs (Client_Payments)
+                # 3. Règlements ultérieurs (Client_Payments hors dépôts portefeuille Versement)
                 cl_pay_query = """
                     SELECT Payment_ID, Payment_Date AS op_date, Amount, Payment_Method, Reference, Notes
                     FROM Client_Payments
-                    WHERE Client_ID = %s
+                    WHERE Client_ID = %s AND COALESCE(Payment_Method, '') != 'Versement'
                 """
                 cl_pay_params = [client_id]
                 if start_date:
@@ -697,28 +753,51 @@ class ClientManager:
                 total_invoiced = float(inv_res.get('total_invoiced') or 0.0)
                 count_invoices = int(inv_res.get('count_invoices') or 0)
 
-                # 2. Total Règlements Caisse POS
+                # 2. Total Règlements Caisse POS + Bureaux
                 cursor.execute("""
-                    SELECT COALESCE(SUM(p.Amount), 0) AS pos_paid,
-                           COUNT(*) AS count_pos_payments
-                    FROM POS_Sale_Payments p
-                    JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
-                    WHERE i.Client_ID = %s 
-                      AND i.Status NOT IN ('Cancelled', 'Draft')
-                      AND i.Invoice_No NOT LIKE 'DEV-%'
-                      AND i.Invoice_No NOT LIKE 'BC-%'
-                      AND p.Payment_Method != 'Credit'
-                """, (client_id,))
+                    SELECT (
+                        COALESCE((
+                            SELECT SUM(p.Amount)
+                            FROM POS_Sale_Payments p
+                            JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                            WHERE i.Client_ID = %s
+                              AND i.Status NOT IN ('Cancelled', 'Draft')
+                              AND i.Invoice_No NOT LIKE 'DEV-%'
+                              AND i.Invoice_No NOT LIKE 'BC-%'
+                              AND p.Payment_Method != 'Credit'
+                        ), 0)
+                        + COALESCE((
+                            SELECT SUM(COALESCE(i2.Amount_Paid_Cash, 0) + COALESCE(i2.Amount_Paid_Card, 0) + COALESCE(i2.Amount_Paid_Wallet, 0))
+                            FROM Sales_Invoices i2
+                            WHERE i2.Client_ID = %s
+                              AND i2.Status NOT IN ('Cancelled', 'Draft')
+                              AND i2.Invoice_No NOT LIKE 'DEV-%'
+                              AND i2.Invoice_No NOT LIKE 'BC-%'
+                              AND NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i2.Invoice_ID)
+                        ), 0)
+                    ) AS pos_paid,
+                    (
+                        SELECT COUNT(*)
+                        FROM POS_Sale_Payments p
+                        JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                        WHERE i.Client_ID = %s
+                          AND i.Status NOT IN ('Cancelled', 'Draft')
+                          AND i.Invoice_No NOT LIKE 'DEV-%'
+                          AND i.Invoice_No NOT LIKE 'BC-%'
+                          AND p.Payment_Method != 'Credit'
+                    ) AS count_pos_payments
+                """, (client_id, client_id, client_id))
                 pos_res = cursor.fetchone() or {}
                 pos_paid = float(pos_res.get('pos_paid') or 0.0)
                 count_pos = int(pos_res.get('count_pos_payments') or 0)
 
-                # 3. Total Règlements Directs & Acomptes (Client_Payments)
+                # 3. Total Règlements Directs & Acomptes (Client_Payments hors dépôts portefeuille Versement)
                 cursor.execute("""
                     SELECT COALESCE(SUM(Amount), 0) AS client_paid,
                            COUNT(*) AS count_client_payments
                     FROM Client_Payments
                     WHERE Client_ID = %s
+                      AND COALESCE(Payment_Method, '') != 'Versement'
                 """, (client_id,))
                 cl_res = cursor.fetchone() or {}
                 client_paid = float(cl_res.get('client_paid') or 0.0)
@@ -788,12 +867,22 @@ class ClientManager:
                             i.Total_Amount_TTC,
                             ROUND(
                                 COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
+                                + CASE
+                                    WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                    THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                    ELSE 0
+                                  END
                                 + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0),
                                 2
                             ) AS Paid_Amount,
                             ROUND(
                                 i.Total_Amount_TTC - (
                                     COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
+                                    + CASE
+                                        WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                        THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                        ELSE 0
+                                      END
                                     + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0)
                                 ),
                                 2
@@ -858,6 +947,11 @@ class ClientManager:
                         SELECT 
                             i.Total_Amount_TTC - (
                                 COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
+                                + CASE
+                                    WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                    THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                    ELSE 0
+                                  END
                                 + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0)
                             ) AS Remaining_Balance
                         FROM Sales_Invoices i
@@ -877,20 +971,34 @@ class ClientManager:
                     SELECT COALESCE(SUM(Amount), 0) AS month_recovered
                     FROM Client_Payments
                     WHERE Payment_Date >= %s
+                      AND COALESCE(Payment_Method, '') != 'Versement'
                 """, (first_of_month,))
                 month_row = cursor.fetchone() or {}
                 month_recovered_cl = float(month_row.get('month_recovered') or 0.0)
 
                 cursor.execute("""
-                    SELECT COALESCE(SUM(p.Amount), 0) AS month_pos
-                    FROM POS_Sale_Payments p
-                    JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
-                    WHERE i.Invoice_Date >= %s
-                      AND i.Status NOT IN ('Cancelled', 'Draft')
-                      AND i.Invoice_No NOT LIKE 'DEV-%'
-                      AND i.Invoice_No NOT LIKE 'BC-%'
-                      AND p.Payment_Method != 'Credit'
-                """, (first_of_month,))
+                    SELECT (
+                        COALESCE((
+                            SELECT SUM(p.Amount)
+                            FROM POS_Sale_Payments p
+                            JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                            WHERE i.Invoice_Date >= %s
+                              AND i.Status NOT IN ('Cancelled', 'Draft')
+                              AND i.Invoice_No NOT LIKE 'DEV-%'
+                              AND i.Invoice_No NOT LIKE 'BC-%'
+                              AND p.Payment_Method != 'Credit'
+                        ), 0)
+                        + COALESCE((
+                            SELECT SUM(COALESCE(i2.Amount_Paid_Cash, 0) + COALESCE(i2.Amount_Paid_Card, 0) + COALESCE(i2.Amount_Paid_Wallet, 0))
+                            FROM Sales_Invoices i2
+                            WHERE i2.Invoice_Date >= %s
+                              AND i2.Status NOT IN ('Cancelled', 'Draft')
+                              AND i2.Invoice_No NOT LIKE 'DEV-%'
+                              AND i2.Invoice_No NOT LIKE 'BC-%'
+                              AND NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i2.Invoice_ID)
+                        ), 0)
+                    ) AS month_pos
+                """, (first_of_month, first_of_month))
                 pos_row = cursor.fetchone() or {}
                 month_pos = float(pos_row.get('month_pos') or 0.0)
 
@@ -956,13 +1064,20 @@ class ClientManager:
                         GROUP BY Client_ID
                     ) inv ON c.Client_ID = inv.Client_ID
                     LEFT JOIN (
-                        SELECT i.Client_ID, SUM(p.Amount) AS pos_paid
-                        FROM POS_Sale_Payments p
-                        JOIN Sales_Invoices i ON i.Invoice_ID = p.Invoice_ID
+                        SELECT
+                            i.Client_ID,
+                            SUM(
+                                COALESCE((SELECT SUM(p.Amount) FROM POS_Sale_Payments p WHERE p.Invoice_ID = i.Invoice_ID AND p.Payment_Method != 'Credit'), 0)
+                                + CASE
+                                    WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                    THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                    ELSE 0
+                                  END
+                            ) AS pos_paid
+                        FROM Sales_Invoices i
                         WHERE i.Status NOT IN ('Cancelled', 'Draft') 
                           AND i.Invoice_No NOT LIKE 'DEV-%'
                           AND i.Invoice_No NOT LIKE 'BC-%'
-                          AND p.Payment_Method != 'Credit' 
                           AND i.Client_ID IS NOT NULL
                         GROUP BY i.Client_ID
                     ) pos_pay ON c.Client_ID = pos_pay.Client_ID
@@ -970,6 +1085,7 @@ class ClientManager:
                         SELECT Client_ID, SUM(Amount) AS client_paid
                         FROM Client_Payments
                         WHERE Client_ID IS NOT NULL
+                          AND COALESCE(Payment_Method, '') != 'Versement'
                         GROUP BY Client_ID
                     ) cl_pay ON c.Client_ID = cl_pay.Client_ID
                     LEFT JOIN (
@@ -990,6 +1106,11 @@ class ClientManager:
                                 i.Client_ID,
                                 i.Total_Amount_TTC - (
                                     COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
+                                    + CASE
+                                        WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                        THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                        ELSE 0
+                                      END
                                     + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0)
                                 ) AS Remaining_Balance
                             FROM Sales_Invoices i
@@ -1009,6 +1130,11 @@ class ClientManager:
                                 i.Client_ID,
                                 i.Total_Amount_TTC - (
                                     COALESCE((SELECT SUM(pp.Amount) FROM POS_Sale_Payments pp WHERE pp.Invoice_ID = i.Invoice_ID AND pp.Payment_Method != 'Credit'), 0)
+                                    + CASE
+                                        WHEN NOT EXISTS (SELECT 1 FROM POS_Sale_Payments pp2 WHERE pp2.Invoice_ID = i.Invoice_ID)
+                                        THEN COALESCE(i.Amount_Paid_Cash, 0) + COALESCE(i.Amount_Paid_Card, 0) + COALESCE(i.Amount_Paid_Wallet, 0)
+                                        ELSE 0
+                                      END
                                     + COALESCE((SELECT SUM(cp.Amount) FROM Client_Payments cp WHERE cp.Invoice_ID = i.Invoice_ID), 0)
                                 ) AS Remaining_Balance
                             FROM Sales_Invoices i

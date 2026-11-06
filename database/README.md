@@ -47,10 +47,11 @@ Ce dossier regroupe tous les gestionnaires d'accès aux données (Managers), les
   - Support de la Vente en Gros B2B (`create_wholesale_document`) avec statuts Draft (Devis, BC) et déduction atomique (BL, Facture).
   - Génération de numérotation séquentielle par type de document (`DEV`, `BC`, `BL`, `FAC`).
   - Suivi des échéances (`Due_Date`) et calcul du vieillissement des créances (`Days_Overdue`).
-  - Distinction formelle du type de vente (`Sale_Type` : `Retail_POS` vs `Wholesale`).
-  - Extraction de l'historique financier avec calcul dynamique du coût d'achat des sorties (`Total_Cost`) et du bénéfice net (`Total_Profit`).
+  - Distinction formelle du type de vente (`Sale_Type` : `Retail_POS` vs `Wholesale`) et étiquetage complet des opérations `Bureaux` (`Bon Comptant`, `Bon Crédit`, `Bon de Livraison`, `Bon de Retour (Avoir Virtuel)`).
+  - Repli automatique sur les lignes théoriques (`Sales_Order_Lines_Theoretical`) et les `N° de Série` expédiés (`Delivery_Exit_Bonds` / `Delivery_Exit_Serials`) pour l'inspection détaillée et l'impression PDF des factures issues des Bureaux.
+  - Extraction de l'historique financier avec calcul dynamique du coût d'achat des sorties (`Total_Cost`), des règlements Bureaux (`Amount_Paid_Cash`, `Amount_Paid_Card`, `Amount_Paid_Wallet`) et du bénéfice net (`Total_Profit`).
 - **`statistics_manager.py`** : Calculs statistiques avancés, indicateurs clés (KPIs), valorisation de stock, flux réels, tendances d'achats/consommation et analyse détaillée des pertes et rebuts (`get_waste_analysis`, `get_waste_products_detailed`).
-- **`stock_movement_log_manager.py`** : Traçabilité et historique immuable de tous les mouvements de stock (`Stock_Movement_Log`).
+- **`stock_movement_log_manager.py`** : Traçabilité et historique immuable de tous les mouvements de stock (`Stock_Movement_Log`), incluant les sorties `Bon de Sortie` par `N° de Série`, les retours `Bon de Retour (Avoir Virtuel)`, les réceptions de lots et les attributs `Brand_Mark` / `Color_Finish`.
 - **`supplier_manager.py`** : Gestion du référentiel des fournisseurs et historique des relations commerciales.
 - **`system_log_manager.py`** : Enregistrement et consultation des journaux système et d'activité utilisateur.
 - **`system_logger.py`** : Décorateurs et utilitaires de journalisation applicative standardisée.
