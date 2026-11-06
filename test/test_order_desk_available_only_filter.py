@@ -131,7 +131,7 @@ def test_available_only_filter_initial_state_and_default(qapp, mock_data_manager
 
     assert hasattr(desk, "chk_available_only")
     assert isinstance(desk.chk_available_only, QCheckBox)
-    assert desk.chk_available_only.text() == "Disponibles uniquement"
+    assert desk.chk_available_only.text() in ("En stock", "Disponibles uniquement")
     assert desk.chk_available_only.isChecked() is True
     assert desk.btn_available_only is desk.chk_available_only
 

@@ -50,7 +50,7 @@ bon grédit 2
 bon de livraison 3 و هكذا و الرقم الذي يلي هذا الرقم غير ضروري حاليا 
 فقط لتسهيل إيجاده من بين ما هو موجود و أريد ان يكون هناك زر من أجل إزالة ما bon تم تمريره الى caisse & réglements 
 
-# 6 : high
+# 6 [COMPLETED]: high
 في Bureaux Opérationnels 
 commandes (order desk)
 في filters 

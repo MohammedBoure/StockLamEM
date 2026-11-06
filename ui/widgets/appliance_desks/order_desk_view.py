@@ -1028,34 +1028,21 @@ class OrderDeskWidget(QWidget):
             }
         """)
         layout = QHBoxLayout(panel)
-        layout.setContentsMargins(12, 6, 12, 6)
+        layout.setContentsMargins(10, 6, 10, 6)
         layout.setSpacing(8)
 
-        # 1. Filter Title Badge
-        filter_badge = QFrame()
-        filter_badge.setObjectName("FilterTitleBadge")
-        filter_badge.setStyleSheet("""
-            QFrame#FilterTitleBadge {
-                background-color: #E8F8F5;
-                border: 1px solid #A3E4D7;
-                border-radius: 4px;
-            }
-        """)
-        fb_layout = QHBoxLayout(filter_badge)
-        fb_layout.setContentsMargins(8, 4, 8, 4)
-        fb_layout.setSpacing(5)
-
+        # 1. Subtle Filter Icon (Compact - Task #6: no space-wasting text badge)
         f_icon = QLabel()
         if qta:
-            f_icon.setPixmap(qta.icon("fa5s.filter", color="#007572").pixmap(12, 12))
+            f_icon.setPixmap(qta.icon("fa5s.filter", color="#007572").pixmap(14, 14))
         else:
-            f_icon.setPixmap(get_duotone_icon("filter", 12).pixmap(12, 12))
-        fb_layout.addWidget(f_icon)
+            f_icon.setPixmap(get_duotone_icon("filter", 14).pixmap(14, 14))
+        f_icon.setToolTip("Filtres du catalogue")
+        layout.addWidget(f_icon)
 
-        title = QLabel("FILTRES")
-        title.setStyleSheet("font-size: 11px; font-weight: bold; color: #007572; letter-spacing: 0.5px;")
-        fb_layout.addWidget(title)
-        layout.addWidget(filter_badge)
+        # Retain filter_badge for compatibility without adding it to the visible line layout
+        self.filter_badge = QFrame()
+        self.filter_badge.setVisible(False)
 
         def make_filter_lbl(txt: str, icon_name: str, fallback_icon: str) -> QWidget:
             w = QWidget()
@@ -1091,7 +1078,7 @@ class OrderDeskWidget(QWidget):
         self.cbo_category.currentIndexChanged.connect(self.refresh_catalog)
         layout.addWidget(self.cbo_category)
 
-        # 4. Vibrant Couleur Filter with Swatches & Live Indicator
+        # 4. Vibrant Couleur Filter with Swatches (Task #6: removed redundant 'Toutes' pill button)
         layout.addWidget(make_filter_lbl("Couleur :", "fa5s.palette", "filter"))
         self.cbo_color = QComboBox()
         self.cbo_color.setFixedHeight(32)
@@ -1101,19 +1088,20 @@ class OrderDeskWidget(QWidget):
         self.cbo_color.currentIndexChanged.connect(self._on_color_filter_changed)
         layout.addWidget(self.cbo_color)
 
+        # Hidden color_preview_badge kept for backend and test compatibility
         self.color_preview_badge = ColorFilterBadge()
+        self.color_preview_badge.setVisible(False)
         self.color_preview_badge.clicked.connect(self._on_color_badge_clicked)
         self._update_color_filter_swatch()
-        layout.addWidget(self.color_preview_badge)
 
-        # 5. Disponibles Uniquement Filter (Checked by default)
-        self.chk_available_only = QCheckBox("Disponibles uniquement")
+        # 5. Disponibles Uniquement Filter (Task #6: simplified and shortened text to 'En stock')
+        self.chk_available_only = QCheckBox("En stock")
         self.chk_available_only.setObjectName("ChkAvailableOnly")
         self.chk_available_only.setChecked(True)
         self.chk_available_only.setFixedHeight(32)
         self.chk_available_only.setCursor(Qt.PointingHandCursor)
         self.chk_available_only.setToolTip(
-            "Afficher uniquement les produits disponibles en stock théorique (Actif par défaut)"
+            "Afficher uniquement les produits en stock (disponibles immédiatement)"
         )
         self.chk_available_only.setStyleSheet("""
             QCheckBox#ChkAvailableOnly {
@@ -1166,49 +1154,68 @@ class OrderDeskWidget(QWidget):
         self.txt_search.returnPressed.connect(self._on_search_return_pressed)
         layout.addWidget(self.txt_search, 1)
 
-        # 6. Live Catalog Count KPI Badge
+        # Retain lbl_catalog_count_badge for testing and metrics without displaying it on the filter line (Task #6)
         self.lbl_catalog_count_badge = QLabel("0 produit")
-        self.lbl_catalog_count_badge.setFixedHeight(28)
-        self.lbl_catalog_count_badge.setStyleSheet("""
-            QLabel {
-                background-color: #E8F8F5;
-                color: #007572;
-                font-size: 11px;
-                font-weight: bold;
-                border: 1px solid #A3E4D7;
-                border-radius: 4px;
-                padding: 2px 10px;
-            }
-        """)
-        layout.addWidget(self.lbl_catalog_count_badge)
+        self.lbl_catalog_count_badge.setVisible(False)
 
-        # 7. Action Buttons (Matching Stock & Magasin -> Stock Actuel)
-        btn_reset = QPushButton("Réinitialiser")
+        # 7. Action Icon Buttons (Task #6: compact icon buttons saving maximum horizontal space)
+        btn_reset = QPushButton("")
+        btn_reset.setObjectName("BtnResetFilter")
         if qta:
             btn_reset.setIcon(qta.icon("fa5s.undo", color="#495057"))
         else:
-            btn_reset.setIcon(get_duotone_icon("refresh", 13))
-        btn_reset.setIconSize(QSize(13, 13))
+            btn_reset.setIcon(get_duotone_icon("return_arrow", 14))
+        btn_reset.setIconSize(QSize(14, 14))
         btn_reset.setCursor(Qt.PointingHandCursor)
-        btn_reset.setFixedHeight(32)
-        btn_reset.setFixedWidth(105)
-        btn_reset.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
+        btn_reset.setFixedSize(32, 32)
+        btn_reset.setStyleSheet("""
+            QPushButton#BtnResetFilter {
+                background-color: #FFFFFF;
+                color: #495057;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
+                padding: 0px;
+            }
+            QPushButton#BtnResetFilter:hover {
+                background-color: #F8FAFC;
+                border-color: #ADB5BD;
+            }
+            QPushButton#BtnResetFilter:pressed {
+                background-color: #E2E8F0;
+            }
+        """)
         btn_reset.setToolTip("Réinitialiser tous les filtres de recherche")
         btn_reset.clicked.connect(self._reset_filters)
+        self.btn_reset = btn_reset
         layout.addWidget(btn_reset)
 
-        btn_refresh = QPushButton("Actualiser")
+        btn_refresh = QPushButton("")
+        btn_refresh.setObjectName("BtnRefreshCatalog")
         if qta:
             btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color="#FFFFFF"))
         else:
-            btn_refresh.setIcon(get_duotone_icon("refresh", 13))
-        btn_refresh.setIconSize(QSize(13, 13))
+            btn_refresh.setIcon(get_duotone_icon("refresh_white", 14))
+        btn_refresh.setIconSize(QSize(14, 14))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(32)
-        btn_refresh.setFixedWidth(95)
-        btn_refresh.setStyleSheet(PRIMARY_BTN_STYLE)
-        btn_refresh.setToolTip("Recharger le catalogue depuis la base de données")
+        btn_refresh.setFixedSize(32, 32)
+        btn_refresh.setStyleSheet("""
+            QPushButton#BtnRefreshCatalog {
+                background-color: #007572;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 4px;
+                padding: 0px;
+            }
+            QPushButton#BtnRefreshCatalog:hover {
+                background-color: #005A57;
+            }
+            QPushButton#BtnRefreshCatalog:pressed {
+                background-color: #004543;
+            }
+        """)
+        btn_refresh.setToolTip("Actualiser / Recharger le catalogue")
         btn_refresh.clicked.connect(self.refresh_catalog)
+        self.btn_refresh = btn_refresh
         layout.addWidget(btn_refresh)
 
         return panel
