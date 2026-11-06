@@ -35,13 +35,13 @@ Console d'Encaissement & Validation Caisse
 to 
 Validation Caisse
 
-# 4 [COMPLETED]: medium
+# 4 : medium
 
 لا أريد أي TPE في 
 أريد في  Bureaux Opérationnels ثم Caisse & Règlements 
 
 
-# 5 [COMPLETED]: high
+# 5 : high
 أريد في  Bureaux Opérationnels ثم Caisse & Règlements 
 أن يوجد مكان لمسح bar code الخاص ب بأي bon و أريد المعيار التالي كل نوع bon دائما ما يبدأ بنفس الرقم من أجل تمييز النوع مباشرة من قبل واجهة Caisse & Règlements
 
@@ -50,7 +50,7 @@ bon grédit 2
 bon de livraison 3 و هكذا و الرقم الذي يلي هذا الرقم غير ضروري حاليا 
 فقط لتسهيل إيجاده من بين ما هو موجود و أريد ان يكون هناك زر من أجل إزالة ما bon تم تمريره الى caisse & réglements 
 
-# 6 [COMPLETED]: high
+# 6 : high
 في Bureaux Opérationnels 
 commandes (order desk)
 في filters 
@@ -71,6 +71,8 @@ commandes (order desk
 
 
 # 8 : high
+
+1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`lab_inventory_enterprise_db`.`client_payments`, CONSTRAINT `client_payments_ibfk_1` FOREIGN KEY (`Client_ID`) REFERENCES `clients` (`Client_ID`) ON UPDATE CASCADE)
 
 # 9 : high
 

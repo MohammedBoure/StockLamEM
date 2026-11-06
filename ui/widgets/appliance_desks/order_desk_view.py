@@ -1534,23 +1534,14 @@ class OrderDeskWidget(QWidget):
                 color: #2C3E50;
             }
         """)
+        # De-containerize: remove double-box nesting by eliminating outer margins and spacing (Task #7)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        cat_header = QHBoxLayout()
-        cat_header.setSpacing(8)
-        cat_icon = QLabel()
-        if qta:
-            cat_icon.setPixmap(qta.icon("fa5s.th-list", color="#007572").pixmap(15, 15))
-        else:
-            cat_icon.setPixmap(get_duotone_icon("pos", 16).pixmap(16, 16))
-        cat_header.addWidget(cat_icon)
+        # Retain lbl_cat_title for backend metrics and test compatibility without wasting vertical space or clipping (Task #7)
         self.lbl_cat_title = QLabel("Catalogue des Produits Disponibles")
-        self.lbl_cat_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #007572;")
-        cat_header.addWidget(self.lbl_cat_title)
-        cat_header.addStretch()
-        layout.addLayout(cat_header)
+        self.lbl_cat_title.setVisible(False)
 
         self.table = QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels([
@@ -1563,7 +1554,10 @@ class OrderDeskWidget(QWidget):
             "Prix TTC",
             "Ajout",
         ])
-        self.table.setStyleSheet(TABLE_STYLE)
+        self.table.setStyleSheet(
+            TABLE_STYLE
+            + "\nQTableWidget { border: none; border-bottom: 1px solid #E2E8F0; border-radius: 0px; }"
+        )
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(48)
         self.table.horizontalHeader().setFixedHeight(38)
@@ -1622,9 +1616,9 @@ class OrderDeskWidget(QWidget):
 
     def _create_catalog_bottom_bar(self) -> QWidget:
         """
-        Builds the bottom summary information bar matching Stock & Magasin -> Stock Actuel:
-        - Valeur Totale (TTC) of filtered items (teal badge)
-        - Stock disponible affiché (green badge)
+        Builds the bottom summary information bar:
+        - Valeur Totale (TTC) of filtered items (clean typography, no boxed container)
+        - Stock disponible affiché (clean typography, no boxed container)
         - Loaded count vs total filtered items (slate text)
         """
         bottom_frame = QFrame()
@@ -1633,46 +1627,61 @@ class OrderDeskWidget(QWidget):
         bottom_frame.setFixedHeight(38)
         bottom_frame.setStyleSheet("""
             QFrame#CatalogBottomBar {
-                background-color: #F8FAFC;
-                border-top: 1.5px solid #CBD5E1;
-                border-radius: 4px;
+                background-color: #FAFAFA;
+                border-top: 1px solid #E2E8F0;
+                border-bottom: none;
+                border-left: none;
+                border-right: none;
+                border-radius: 0px;
             }
             QLabel {
                 font-size: 11px;
                 font-weight: 700;
+                background: transparent;
+                border: none;
             }
         """)
         bar_layout = QHBoxLayout(bottom_frame)
-        bar_layout.setContentsMargins(8, 4, 8, 4)
-        bar_layout.setSpacing(10)
+        bar_layout.setContentsMargins(12, 4, 12, 4)
+        bar_layout.setSpacing(12)
 
-        # 1. Total Value badge (TTC)
+        # 1. Total Value badge (TTC) - de-containerized clean typography (Task #7)
         self.lbl_total_value = QLabel("Valeur Totale : 0,00 DA")
         self.lbl_total_value.setObjectName("LblCatalogTotalValue")
         self.lbl_total_value.setStyleSheet("""
             QLabel#LblCatalogTotalValue {
                 color: #007572;
-                border: 1px solid #A3E4D7;
-                border-radius: 4px;
-                padding: 4px 10px;
-                background-color: #E8F8F5;
+                font-weight: 800;
+                font-size: 11px;
+                background: transparent;
+                border: none;
+                padding: 0px;
             }
         """)
         bar_layout.addWidget(self.lbl_total_value)
 
-        # 2. Total Quantity available badge
+        sep1 = QLabel("•")
+        sep1.setStyleSheet("color: #CBD5E1; font-weight: bold; font-size: 10px; background: transparent; border: none;")
+        bar_layout.addWidget(sep1)
+
+        # 2. Total Quantity available badge - de-containerized clean typography (Task #7)
         self.lbl_total_quantity = QLabel("Stock disponible affiché : 0")
         self.lbl_total_quantity.setObjectName("LblCatalogTotalQuantity")
         self.lbl_total_quantity.setStyleSheet("""
             QLabel#LblCatalogTotalQuantity {
-                color: #1E8449;
-                border: 1px solid #82E0AA;
-                border-radius: 4px;
-                padding: 4px 10px;
-                background-color: #EAFAF1;
+                color: #166534;
+                font-weight: 800;
+                font-size: 11px;
+                background: transparent;
+                border: none;
+                padding: 0px;
             }
         """)
         bar_layout.addWidget(self.lbl_total_quantity)
+
+        sep2 = QLabel("•")
+        sep2.setStyleSheet("color: #CBD5E1; font-weight: bold; font-size: 10px; background: transparent; border: none;")
+        bar_layout.addWidget(sep2)
 
         # 3. Count Info: Displayed / Total
         self.lbl_count_info = QLabel("Affichage: 0 / 0")
@@ -1681,7 +1690,10 @@ class OrderDeskWidget(QWidget):
             QLabel#LblCatalogCountInfo {
                 color: #64748B;
                 font-weight: 700;
-                margin-left: 5px;
+                font-size: 11px;
+                background: transparent;
+                border: none;
+                padding: 0px;
             }
         """)
         bar_layout.addWidget(self.lbl_count_info)
