@@ -2,7 +2,10 @@
 
 import os
 import logging
-import win32print
+try:
+    import win32print
+except ImportError:
+    win32print = None
 from datetime import datetime
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                                QLineEdit, QPushButton, QGroupBox, QFormLayout,
