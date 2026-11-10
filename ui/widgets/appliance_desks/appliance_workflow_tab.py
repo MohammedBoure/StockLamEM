@@ -229,8 +229,8 @@ class ApplianceWorkflowTab(QWidget):
 
     def apply_rbac_permissions(self, permissions: Optional[Set[str]] = None) -> None:
         """
-        Restrict access to each desk tab according to the user's RBAC permissions
-        (Order Desk, Caisse, Dispatch/Warehouse, SAV/Repair).
+        Restrict access to each desk tab according to the user's tab permissions
+        (tab_desk_order, tab_desk_caisse, tab_desk_dispatch).
         """
         if permissions is None:
             return
@@ -239,31 +239,22 @@ class ApplianceWorkflowTab(QWidget):
         if "admin" in self.user_permissions or "*" in self.user_permissions:
             for idx in range(self.desk_tabs.count()):
                 self.desk_tabs.setTabEnabled(idx, True)
+                self.desk_tabs.setTabVisible(idx, True)
             return
 
         desk_perm_rules = [
-            (0, {"tab_desk_order", "act_order_create", "ORDER_DESK_CREATE", "desk.order.create_bon_c", "desk.order.create_bon_livraison", "desk.order.request_bon_credit", "nav_sales"}),
-            (1, {"tab_desk_caisse", "act_caisse_settle", "act_caisse_bon_credit_auth", "act_caisse_versement", "act_caisse_bon_retour", "CAISSE_SETTLE_CASH", "CREDIT_ADMIN_AUTHORIZE", "RETURN_BOND_PROCESS", "desk.cashier.settle_bon_c", "desk.cashier.record_versement", "desk.cashier.issue_bon_retour", "nav_treasury"}),
-            (2, {"tab_desk_dispatch", "act_dispatch_validate", "DISPATCH_SCAN_SERIAL", "desk.dispatch.scan_serial_out", "desk.dispatch.print_bon_sortie", "nav_inventory"}),
+            (0, {"tab_desk_order"}),
+            (1, {"tab_desk_caisse"}),
+            (2, {"tab_desk_dispatch"}),
         ]
         if getattr(self, "include_sav", False) and getattr(self, "sav_desk", None) is not None:
-            desk_perm_rules.append(
-                (3, {"tab_desk_sav", "act_sav_ticket_create", "act_sav_dispatch_tech", "act_sav_return_tech", "act_sav_deliver_client", "act_sav_declare_irreparable", "SAV_TICKET_CREATE", "SAV_MANAGE_STAGES", "SAV_IRREPARABLE_CREDIT", "desk.sav.receive_item", "desk.sav.send_to_repairer", "desk.sav.return_from_repairer", "desk.sav.deliver_to_client", "nav_sav"})
-            )
-
-        any_specific_perm = any(
-            bool(self.user_permissions & rule_perms) for _, rule_perms in desk_perm_rules
-        )
-        if not any_specific_perm:
-            if len(self.user_permissions) > 0:
-                for idx in range(self.desk_tabs.count()):
-                    self.desk_tabs.setTabEnabled(idx, False)
-            return
+            desk_perm_rules.append((3, {"tab_desk_sav", "nav_sav"}))
 
         first_enabled = None
         for tab_idx, allowed_set in desk_perm_rules:
             allowed = bool(self.user_permissions & allowed_set)
             self.desk_tabs.setTabEnabled(tab_idx, allowed)
+            self.desk_tabs.setTabVisible(tab_idx, allowed)
             if allowed and first_enabled is None:
                 first_enabled = tab_idx
 

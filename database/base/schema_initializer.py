@@ -47,6 +47,8 @@ _ALL_PERMISSIONS = [
     "tab_data_waste_reasons",
     "tab_clients",
     "tab_data_caisses",
+    "tab_data_colors",
+    "nav_clients",
 
     # --- تبويبات المشتريات (Procurement) ---
     "tab_proc_po",
@@ -132,6 +134,13 @@ _ALL_PERMISSIONS = [
     "tab_desk_order",
     "tab_desk_caisse",
     "tab_desk_dispatch",
+    "nav_sav",
+    "tab_sav_all",
+    "tab_sav_received",
+    "tab_sav_atelier",
+    "tab_sav_returned",
+    "tab_sav_closed",
+    "tab_sav_irreparable",
     "tab_desk_sav",
     "tab_serial_registry",
     "CATALOG_VIEW_PRICING",

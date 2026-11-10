@@ -26,7 +26,6 @@ from database.sales_manager import SalesManager
 from ui.widgets.appliance_desks.cashier_desk_view import BonRetourDialog, CashierDeskWidget
 from ui.widgets.sav.sav_kanban_view import SAVReceptionDialog
 from ui.widgets.history import MovementHistoryTab
-from ui.widgets.sales_history.sale_details_dialog import SaleDetailsDialog
 
 
 class TestWorkflowFiveInterfacesIntegration(unittest.TestCase):
@@ -125,19 +124,6 @@ class TestWorkflowFiveInterfacesIntegration(unittest.TestCase):
         self.assertEqual(len(details), 1)
         self.assertIn("SN-BOSCH-9901", details[0]["Lot_Number"])
         self.assertTrue(details[0]["Is_Theoretical_Order_Line"])
-
-        # Verify SaleDetailsDialog renders the theoretical order line as read-only
-        mock_dm = MagicMock()
-        mock_dm.sales.get_invoice_details_with_profit.return_value = details
-        dlg = SaleDetailsDialog(
-            mock_dm,
-            {"Invoice_ID": 11, "Invoice_No": "FAC-BCR-2026-002", "Status": "Validated"},
-        )
-        self.assertEqual(dlg.table.rowCount(), 1)
-        self.assertIn("SN-BOSCH-9901", dlg.table.item(0, 1).text())
-        qty_spin = dlg.table.cellWidget(0, 2)
-        self.assertFalse(qty_spin.isEnabled())
-        dlg.deleteLater()
 
     def test_cashier_desk_bon_retour_auto_serial_lookup_and_cod_queue(self):
         """

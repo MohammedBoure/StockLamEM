@@ -36,23 +36,19 @@ SYSTEM_PERMISSIONS = {
             "tab_data_units": "Unités (Pkg)",
             "tab_data_suppliers": "Fournisseurs",
             "tab_data_manufacturers": "Fabricants",
-            "tab_data_partners": "Partenaires Externes",
+            "tab_data_partners": "Partenaires",
             "tab_data_automates": "Automates",
             "tab_data_locations": "Emplacements",
             "tab_data_waste_reasons": "Motifs Rebut",
-            "tab_data_caisses": "Caisses & Terminaux POS",
-            "tab_data_colors": "Couleurs des Produits"
+            "tab_data_caisses": "Caisses",
+            "tab_data_colors": "Couleurs"
         }
     },
     "2b. CLIENTS": {
-        "label": "👥 Répertoire des Clients",
+        "label": "👥 Clients",
         "icon": "fa5s.user-friends",
         "perms": {
-            "nav_clients": "Accès au Répertoire des Clients",
-            "tab_clients": "Afficher la liste des Clients",
-            "act_add_client": "Ajouter un nouveau Client",
-            "act_edit_client": "Modifier un Client",
-            "act_delete_client": "Supprimer un Client"
+            "nav_clients": "Accès aux Clients"
         }
     },
     "3. ACHATS": {
@@ -66,10 +62,10 @@ SYSTEM_PERMISSIONS = {
         }
     },
     "3a. RECLAMATIONS": {
-        "label": "Réclamations & Anomalies",
+        "label": "⚠️ Réclamations",
         "icon": "fa5s.exclamation-circle",
         "perms": {
-            "tab_proc_reclamation": "Réclamations"
+            "tab_proc_reclamation": "Accès aux Réclamations"
         }
     },
     "4. STOCK": {
@@ -77,111 +73,23 @@ SYSTEM_PERMISSIONS = {
         "icon": "fa5s.boxes",
         "perms": {
             "nav_inventory": "Accès au Stock",
-            "tab_inv_list": "Stock Actuel",
-            "tab_inv_dispatch": "Transfert & Consommation",
+            "tab_inv_list": "1. Stock Actuel",
+            "tab_inv_dispatch": "2. Transfert & Consommation",
             "tab_inv_financials": "Voir les valeurs financières (Prix/Total)" 
-        }
-    },
-    "4a. INVENTAIRE": {
-        "label": "Inventaire",
-        "icon": "fa5s.clipboard-list",
-        "perms": {
-            "nav_inventaire": "Acces a l'inventaire",
-            "act_inventory_create": "Creer une session",
-            "act_inventory_scan": "Scanner les articles",
-            "act_inventory_apply": "Appliquer les ecarts",
-            "act_inventory_cancel": "Annuler une session",
-            "act_inventory_export": "Exporter vers Excel"
-        }
-    },
-    "5. POINT_DE_VENTE": {
-        "label": "🛒 Point de Vente (POS / Caisse)",
-        "icon": "fa5s.cash-register",
-        "perms": {
-            "nav_pos": "Accès Point de Vente (Caisse POS)",
-            "nav_sales": "Accès Global Ventes (Compatibilité)",
-            "act_create_sale": "Créer une vente en caisse",
-            "act_validate_sale": "Valider un ticket / encaissement POS",
-            "act_sale_without_client": "Vente comptoir sans client",
-            "act_pos_open_session": "Ouvrir une session de caisse",
-            "act_pos_close_session": "Clôturer une session de caisse",
-            "act_edit_closed_cash_session": "Modifier une session clôturée",
-            "act_pos_reopen_session": "Réouvrir une session de caisse",
-            "act_pos_cash_movement": "Mouvements de fond (Cash In / Out)",
-            "act_pos_multi_payment": "Autoriser les paiements multiples",
-            "act_pos_credit_sale": "Autoriser la vente à crédit au POS",
-            "act_pos_hold_sale": "Mettre en attente / suspendre un panier",
-            "act_pos_resume_sale": "Reprendre un panier en attente",
-            "act_pos_quote": "Créer un devis de caisse",
-            "act_pos_discount": "Appliquer une remise en caisse",
-            "act_pos_price_override": "Modifier le prix de vente en direct",
-            "act_pos_return": "Effectuer un retour d'article POS",
-            "act_pos_return_without_invoice": "Retour sans facture (Manager)",
-            "act_pos_refund": "Autoriser un remboursement",
-            "act_pos_exchange": "Autoriser un échange d'article",
-            "act_pos_manage_promotions": "Gérer les promotions",
-            "act_pos_manage_loyalty": "Gérer le programme fidélité"
-        }
-    },
-    "5a. VENTE_EN_GROS": {
-        "label": "🏢 Vente en Gros B2B",
-        "icon": "fa5s.truck-loading",
-        "perms": {
-            "nav_wholesale": "Accès Vente en Gros B2B",
-            "tab_wholesale_sales": "Interface commandes & facturation de gros",
-            "act_wholesale_create": "Créer un document de gros (Devis, BC, BL, Facture)",
-            "act_wholesale_validate": "Valider un document de gros avec déduction stock",
-            "act_wholesale_credit_override": "Autoriser le dépassement du plafond de crédit",
-            "act_wholesale_pdf_export": "Exporter les factures & BL en PDF A4"
-        }
-    },
-    "5b. HISTORIQUE_VENTES": {
-        "label": "📊 Historique & Facturation Ventes",
-        "icon": "fa5s.file-invoice-dollar",
-        "perms": {
-            "nav_sales_history": "Accès Historique des Ventes & Factures",
-            "tab_sales_invoices": "Consulter les factures de vente",
-            "tab_sales_returns": "Consulter l'historique des retours & avoirs",
-            "tab_sales_payments": "Consulter les paiements et encaissements",
-            "act_cancel_sale": "Annuler une facture validée",
-            "act_edit_sale": "Modifier les lignes d'une facture existante",
-            "act_pos_view_profit": "Consulter la marge et le bénéfice (Profit / Fayda)",
-            "act_pos_reprint_invoice": "Réimprimer une facture de vente",
-            "act_pos_audit": "Consulter la piste d'audit des ventes"
-        }
-    },
-    "5c. CREANCES_CLIENTS": {
-        "label": "💳 Gestion des Créances & Dettes Clients",
-        "icon": "fa5s.hand-holding-usd",
-        "perms": {
-            "nav_debts": "Accès Gestion des Créances Clients",
-            "debts_management:view": "Consulter les dettes et créances clients",
-            "debts_management:settle": "Encaisser et solder les créances clients"
-        }
-    },
-    "6. SOUS_TRAITANTS": {
-        "label": "🧾 Sous-Traitants",
-        "icon": "fa5s.file-invoice-dollar",
-        "perms": {
-            "nav_services": "Accès Facturation / Sous-traitants",
-            "nav_market": "Accès Marché (Devises / Devis)"
         }
     },
     "7. TRACABILITE": {
         "label": "📜 Traçabilité",
         "icon": "fa5s.history",
         "perms": {
-            "nav_history": "Accès Traçabilité Globale",
-            "tab_inv_history": "Historique des mouvements de stock",
-            "tab_serial_registry": "Référentiel Lots, Produits & N° de Série",
-            "act_serial_audit": "Audit instantané d'un N° de Série"
+            "nav_history": "Accès à la Traçabilité"
         }
     },
     "8. UTILISATEURS": {
         "label": "👥 Utilisateurs",
         "icon": "fa5s.users",
         "perms": {
-            "tab_users": "Gestion des Utilisateurs"
+            "tab_users": "Accès aux Utilisateurs"
         }
     },
     "9. PARAMETRES": {
@@ -195,37 +103,30 @@ SYSTEM_PERMISSIONS = {
             "tab_set_printer": "Imprimante",
             "tab_set_system": "Système",
             "tab_system_logs": "Logs Système",
-            "tab_set_pdf": "Configuration PDF",
-            "act_manage_stamps": "Ajouter et supprimer les cachets locaux"
+            "tab_set_pdf": "Configuration PDF"
         }
     },
     "10. BUREAUX_WORKFLOW": {
-        "label": "🏢 Bureaux & Workflow Magasin",
+        "label": "🏢 Bureaux",
         "icon": "fa5s.cash-register",
         "perms": {
-            "nav_appliance_workflow": "Accès au Workflow Multi-Bureaux",
-            "tab_desk_order": "Bureau des Commandes (Order Desk)",
-            "tab_desk_caisse": "Bureau Caisse (Encaissement & Règlements)",
-            "tab_desk_dispatch": "Bureau Sortie Magasin (Dispatch)",
-            "act_order_create": "Émettre des commandes (Comptant, Crédit, BL)",
-            "act_caisse_settle": "Valider et encaisser les commandes en caisse",
-            "act_caisse_bon_credit_auth": "Autoriser les bons à crédit (Superviseur)",
-            "act_caisse_versement": "Enregistrer des versements clients",
-            "act_caisse_bon_retour": "Émettre des bons de retour (Avoir virtuel)",
-            "act_dispatch_validate": "Valider la sortie physique et scanner les N° de série"
+            "nav_appliance_workflow": "Accès aux Bureaux",
+            "tab_desk_order": "1. Commandes",
+            "tab_desk_caisse": "2. Caisse",
+            "tab_desk_dispatch": "3. Sortie Magasin"
         }
     },
     "11. SAV_WORKSPACE": {
         "label": "🔧 Service Après-Vente (SAV)",
         "icon": "fa5s.wrench",
         "perms": {
-            "nav_sav": "Accès à l'Espace SAV & Réparations",
-            "tab_desk_sav": "Consulter les demandes et tickets SAV",
-            "act_sav_ticket_create": "Réceptionner un appareil et créer un ticket SAV",
-            "act_sav_dispatch_tech": "Envoyer un appareil vers l'atelier / technicien",
-            "act_sav_return_tech": "Enregistrer le retour de réparation",
-            "act_sav_deliver_client": "Restituer l'appareil au client et clôturer",
-            "act_sav_declare_irreparable": "Déclarer un appareil irréparable (Avoir portefeuille)"
+            "nav_sav": "Accès au Service Après-Vente (SAV)",
+            "tab_sav_all": "Toutes les Demandes",
+            "tab_sav_received": "1. Réception (Dépôt)",
+            "tab_sav_atelier": "2. En Atelier",
+            "tab_sav_returned": "3. Prêts Restitution",
+            "tab_sav_closed": "4. Clôturés & Livrés",
+            "tab_sav_irreparable": "5. Irréparables"
         }
     }
 }
@@ -305,22 +206,18 @@ class UserDialog(BaseDialog):
             self.set_permissions({k: (k not in excluded) for k in all_keys})
         else:
             tech_perms = {
-                "nav_pos": True, "nav_sales": True, "act_create_sale": True, "act_validate_sale": True,
-                "nav_clients": True, "tab_clients": True, "act_add_client": True,
+                "nav_clients": True,
                 "nav_inventory": True, "tab_inv_list": True, "tab_inv_dispatch": True,
                 "nav_procurement": True, "tab_proc_reception": True, "tab_proc_credit": True,
-                # Bureaux Opérationnels & SAV pour profil Technicien
+                # Bureaux & SAV pour profil Technicien
                 "nav_appliance_workflow": True,
                 "tab_desk_order": True,
-                "act_order_create": True,
                 "tab_desk_dispatch": True,
-                "act_dispatch_validate": True,
                 "nav_sav": True,
-                "tab_desk_sav": True,
-                "act_sav_ticket_create": True,
-                "act_sav_return_tech": True,
-                "tab_serial_registry": True,
-                "act_serial_audit": True,
+                "tab_sav_all": True,
+                "tab_sav_received": True,
+                "tab_sav_atelier": True,
+                "tab_sav_returned": True,
             }
             self.set_permissions(tech_perms)
 
@@ -386,6 +283,8 @@ class UserDialog(BaseDialog):
         if isinstance(perms_data, str):
             try: perms_data = json.loads(perms_data)
             except: perms_data = {}
+
+        is_admin_user = bool(self.data and str(self.data.get("Role", "")).strip().lower() == "admin")
             
         for i in range(self.tree_perms.topLevelItemCount()):
             group = self.tree_perms.topLevelItem(i)
@@ -396,8 +295,17 @@ class UserDialog(BaseDialog):
                 
                 # فحص ما إذا كان المفتاح مفعلاً
                 is_checked = False
-                if isinstance(perms_data, list): is_checked = key in perms_data
-                elif isinstance(perms_data, dict): is_checked = perms_data.get(key, False)
+                if isinstance(perms_data, list):
+                    is_checked = key in perms_data
+                elif isinstance(perms_data, dict):
+                    if key in perms_data:
+                        val = perms_data.get(key)
+                        if isinstance(val, str):
+                            is_checked = val.strip().lower() not in {"", "0", "false", "no", "none", "null"}
+                        else:
+                            is_checked = bool(val)
+                    else:
+                        is_checked = is_admin_user
                 
                 if is_checked:
                     child.setCheckState(0, Qt.Checked)
@@ -417,9 +325,9 @@ class UserDialog(BaseDialog):
             group = self.tree_perms.topLevelItem(i)
             for j in range(group.childCount()):
                 child = group.child(j)
-                if child.checkState(0) == Qt.Checked:
-                    key = child.data(0, Qt.UserRole)
-                    if key: perms[key] = True
+                key = child.data(0, Qt.UserRole)
+                if key:
+                    perms[key] = (child.checkState(0) == Qt.Checked)
         return perms
 
     def get_data(self):
@@ -561,14 +469,17 @@ class UserManagementTab(QWidget):
             updated_data = dlg.get_data()
             success = self.data_manager.users.update_user(user_data['User_ID'], **updated_data)
             if success:
-                # تحديث صلاحيات المستخدم الحالي فوراً في الذاكرة وإعادة تطبيق القائمة الجانبية
+                # تحديث صلاحيات المستخدم الحالي فوراً في الذاكرة وإعادة تطبيق القائمة الجانبية والتبويبات الداخلية
                 if hasattr(self.data_manager, 'current_user') and self.data_manager.current_user:
                     curr_id = self.data_manager.current_user.get('User_ID') or self.data_manager.current_user.get('id')
                     if curr_id and curr_id == user_data['User_ID']:
-                        self.data_manager.current_user['Permissions'] = updated_data.get('Permissions', {})
+                        new_perms = updated_data.get('Permissions', {})
+                        self.data_manager.current_user['Permissions'] = new_perms
                         main_win = self.window()
+                        if hasattr(main_win, 'current_user') and isinstance(main_win.current_user, dict):
+                            main_win.current_user['Permissions'] = new_perms
                         if hasattr(main_win, 'apply_permissions'):
-                            main_win.apply_permissions()
+                            main_win.apply_permissions(reload_pages=True)
                 self.load_users()
             else:
                 QMessageBox.critical(self, "Erreur", "Échec de la modification.")

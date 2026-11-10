@@ -424,9 +424,36 @@ class CashSessionsAnalysisTab(QWidget):
         item = self.table.item(row, 0)
         if not item: return
         sess_id = item.data(Qt.UserRole)
-        if sess_id:
-            from ui.widgets.sales.dialogs import CashSessionDetailsDialog
-            dlg = CashSessionDetailsDialog(self.data_manager, int(sess_id), parent=self)
+        if sess_id and hasattr(self.data_manager, "cash_sessions"):
+            from PySide6.QtWidgets import QDialog
+            session_data = self.data_manager.cash_sessions.get_session_details_full(int(sess_id)) or {}
+            caisse_name = session_data.get('Terminal_Name') or session_data.get('Terminal_Code') or "Caisse"
+            session_no = session_data.get('Session_No') or f"#{sess_id}"
+            dlg = QDialog(self)
+            dlg.setWindowTitle(f"📋 Détails de la Session : {session_no} - {caisse_name}")
+            dlg.resize(700, 480)
+            lay = QVBoxLayout(dlg)
+            lbl_info = QLabel(
+                f"<b>{caisse_name} — Session {session_no}</b><br>"
+                f"Ouvert par : {session_data.get('Opened_By_Name') or '-'} le {str(session_data.get('Opened_At', '---'))[:19]}<br>"
+                f"Fond initial : {format_money(float(session_data.get('Opening_Amount') or 0.0))} DA"
+            )
+            lay.addWidget(lbl_info)
+            tbl = QTableWidget()
+            cols = ["N° Facture", "Date", "Client", "Statut", "Mode Règlement", "Total TTC"]
+            tbl.setColumnCount(len(cols))
+            tbl.setHorizontalHeaderLabels(cols)
+            tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            invoices = session_data.get('invoices', [])
+            tbl.setRowCount(len(invoices))
+            for r_idx, inv in enumerate(invoices):
+                tbl.setItem(r_idx, 0, QTableWidgetItem(str(inv.get('Invoice_No') or f"#{inv.get('Invoice_ID')}")))
+                tbl.setItem(r_idx, 1, QTableWidgetItem(str(inv.get('Invoice_Date') or '---')))
+                tbl.setItem(r_idx, 2, QTableWidgetItem(str(inv.get('Client_Name') or 'Vente comptoir')))
+                tbl.setItem(r_idx, 3, QTableWidgetItem(str(inv.get('Status') or '-')))
+                tbl.setItem(r_idx, 4, QTableWidgetItem(str(inv.get('Payment_Method') or '-')))
+                tbl.setItem(r_idx, 5, QTableWidgetItem(f"{format_money(float(inv.get('Total_Amount_TTC') or 0.0))} DA"))
+            lay.addWidget(tbl)
             dlg.exec()
 
 # =============================================================================

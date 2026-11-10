@@ -370,12 +370,49 @@ class TransactionDetailsDialog(QDialog):
 
     def _print_invoice(self, inv_data):
         try:
-            from ui.widgets.sales_history.pdf_export import export_invoice_to_pdf
-            import tempfile
-            safe_no = "".join(c for c in str(inv_data.get('Invoice_No') or inv_data.get('Invoice_ID')) if c.isalnum() or c in ('-', '_'))
-            temp_pdf = os.path.join(tempfile.gettempdir(), f"Facture_{safe_no}_{datetime.now().strftime('%H%M%S')}.pdf")
-            if export_invoice_to_pdf(inv_data, temp_pdf, self.data_manager):
-                os.startfile(temp_pdf)
+            if not HAS_REPORTLAB:
+                QMessageBox.warning(self, "Erreur", "La bibliothèque 'reportlab' est manquante.")
+                return
+            invoice_id = inv_data.get('Invoice_ID')
+            details_data = self.data_manager.sales.get_invoice_details_with_profit(invoice_id) if invoice_id else []
+            client_name = inv_data.get('Client_Name') or self.client_info.get('Client_Name') or 'Client'
+            raw_date = str(inv_data.get('Invoice_Date', ''))
+            formatted_ref = inv_data.get('Invoice_No') or f"#{invoice_id}"
+            safe_ref = "".join(c for c in str(formatted_ref) if c.isalnum() or c in ('-', '_'))
+            default_name = f"Facture_{safe_ref}.pdf"
+            path, _ = QFileDialog.getSaveFileName(self, "Enregistrer PDF", default_name, "PDF Files (*.pdf)")
+            if not path:
+                return
+            doc = SimpleDocTemplate(path, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+            styles = getSampleStyleSheet()
+            elements = [
+                Paragraph(f"<b>FACTURE N°: {formatted_ref}</b>", styles["Title"]),
+                Paragraph(f"<b>Client :</b> {client_name} &nbsp;&nbsp;&nbsp; <b>Date :</b> {raw_date}", styles["Normal"]),
+                Spacer(1, 0.5 * cm),
+            ]
+            table_data = [["Désignation", "Qté", "Prix U. HT", "Total TTC"]]
+            for item in details_data:
+                table_data.append([
+                    str(item.get('Product_Name', '-')),
+                    str(item.get('Qty_Sold', 0)),
+                    f"{float(item.get('Unit_Price_HT', 0)):,.2f}",
+                    f"{float(item.get('Line_Total_TTC', 0)):,.2f}",
+                ])
+            t = Table(table_data, colWidths=[9.5 * cm, 2.0 * cm, 3.0 * cm, 3.5 * cm])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0E7471")),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ('PADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(t)
+            elements.append(Spacer(1, 0.4 * cm))
+            tot_ttc = float(inv_data.get('Total_Amount_TTC', 0))
+            elements.append(Paragraph(f"<b>TOTAL TTC : {tot_ttc:,.2f} DA</b>", styles["Heading3"]))
+            doc.build(elements)
+            if os.name == 'nt':
+                os.startfile(path)
         except Exception as e:
             logging.error(f"Error printing invoice from details: {e}")
 

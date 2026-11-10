@@ -280,13 +280,7 @@ class TestBonsCaisseDynamicAndClientsVersement(unittest.TestCase):
             "clients",          # 16: Clients
             "procurement",      # 2: Achats & Entrées
             "inventory",        # 3: Stock & Magasin
-            "billing",          # 6: Sous-Traitants
             "reclamation",      # 8: Réclamations
-            "inventaire",       # 9: Inventaire
-            "sales",            # 10: Point de Vente
-            "wholesale_sales",  # 11: Vente en Gros B2B
-            "sales_history",    # 12: Historique Ventes
-            "debts",            # 13: Créances Clients
             "appliance_desks",  # 14: Bureaux
             "sav",              # 15: SAV
             "history",          # 7: Traçabilité

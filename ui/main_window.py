@@ -16,7 +16,6 @@ from .widgets.master_data.products_tab import ProductsTab
 from .widgets.dashboard.dashboard_view import DashboardTab
 from .widgets.procurement.procurement_tabs import ProcurementTab
 from .widgets.inventory.inventory_tabs import InventoryTab
-from .widgets.inventaire import InventoryCountTab
 from .widgets.master_data.manufacturers_tab import ManufacturersTab
 from .widgets.master_data.locations_tab import LocationsTab
 from .widgets.master_data.automates_tab import AutomatesTab
@@ -27,12 +26,7 @@ from .widgets.master_data.product_families_tab import ProductFamiliesTab
 from .widgets.master_data.packaging_units_tab import PackagingUnitsTab
 from .widgets.users import UserManagementTab
 from .widgets.master_data.external_partners_tab import ExternalPartnersTab
-from .widgets.billing.billing_tab import BillingTab
 from .widgets.history import MovementHistoryTab
-from .widgets.sales.point_of_sale_tab import PointOfSaleTab
-from .widgets.wholesale_sales import WholesaleSalesTab
-from .widgets.sales_history import SalesHistoryTab
-from .widgets.debts import DebtsManagementTab
 from .widgets.appliance_desks import ApplianceWorkflowTab
 from .hardware.raw_input_filter import MultiScannerHIDManager, WindowsRawInputFilter
 from .navigation_permissions import has_permission as check_permission, has_navigation_permission as check_navigation_permission
@@ -120,13 +114,7 @@ class MainWindow(QMainWindow):
                 2: "nav_procurement",
                 8: "tab_proc_reclamation",
                 3: "nav_inventory",
-                9: "nav_inventaire",
-                6: "nav_services",
                 7: "nav_history",
-                10: "nav_pos",
-                11: "nav_wholesale",
-                12: "nav_sales_history",
-                13: "nav_debts",
                 14: "nav_appliance_workflow",
                 15: "nav_sav",
                 5: "tab_users",
@@ -317,13 +305,7 @@ class MainWindow(QMainWindow):
             (16, "Clients", "clients"),
             (2, "Achats && Entrées", "procurement"),
             (3, "Stock && Magasin", "inventory"),
-            (6, "Sous-Traitants", "services"),
             (8, "Réclamations", "reclamations"),
-            (9, "Inventaire", "inventaire"),
-            (10, "Point de Vente", "pos"),
-            (11, "Vente en Gros B2B", "wholesale"),
-            (12, "Historique Ventes", "sales_history"),
-            (13, "Créances Clients", "debts"),
             (14, "Bureaux", "barcode_scan"),
             (15, "SAV", "wrench_sav"),
             (7, "Traçabilité", "history"),
@@ -474,7 +456,7 @@ class MainWindow(QMainWindow):
             # تجاهل حدث الإغلاق (يبقى البرنامج مفتوحاً)
             event.ignore()
 
-    def apply_permissions(self):
+    def apply_permissions(self, reload_pages=False):
         """التحكم في ظهور أزرار القائمة الجانبية بناءً على الصلاحيات"""
         if not self.current_user: return
 
@@ -486,12 +468,6 @@ class MainWindow(QMainWindow):
             2: "nav_procurement",
             8: "tab_proc_reclamation",
             3: "nav_inventory",
-            9: "nav_inventaire",
-            6: "nav_services",
-            10: "nav_pos",
-            11: "nav_wholesale",
-            12: "nav_sales_history",
-            13: "nav_debts",
             14: "nav_appliance_workflow",
             15: "nav_sav",
             7: "nav_history",  # واجهة السجل المستقلة
@@ -502,6 +478,16 @@ class MainWindow(QMainWindow):
             btn = self.nav_group.button(btn_id)
             if btn:
                 btn.setVisible(self.has_navigation_permission(perm))
+
+        if reload_pages:
+            current_idx = self.content_area.currentIndex()
+            for pid in list(self.loaded_pages.keys()):
+                if pid != current_idx:
+                    old_w = self.loaded_pages.pop(pid, None)
+                    if old_w is not None:
+                        self.content_area.removeWidget(old_w)
+                        self.content_area.insertWidget(pid, QWidget())
+                        old_w.deleteLater()
 
     def logout(self):
         """تسجيل الخروج مع طلب التأكيد"""
@@ -610,9 +596,6 @@ class MainWindow(QMainWindow):
             if self.has_permission("tab_inv_dispatch"):
                 widget.tabs.addTab(widget.dispatch_tab, "🚚 2. Transfert & Consommation")
 
-        elif page_id == 9:
-            widget = InventoryCountTab(self.data_manager, self.current_user)
-
         # --- 4. Settings (Paramètres) ---
         elif page_id == 4:
             widget = SettingsTab(self.data_manager)
@@ -648,36 +631,11 @@ class MainWindow(QMainWindow):
         elif page_id == 5:
             widget = UserManagementTab(self.data_manager)
 
-        # --- 6. Services / Sous-Traitants ---
-        elif page_id == 6:
-            try:
-                widget = BillingTab(self.data_manager)
-                widget.list_view.request_view_partner.connect(self.navigate_to_partner_profile)
-            except Exception as e:
-                logging.error(f"Error loading Billing module: {e}")
-                widget = QLabel("Module Facturation non chargé")
-
         elif page_id == 7:
             from .widgets.history import MovementHistoryTab
             widget = MovementHistoryTab(self.data_manager)
             if hasattr(widget, 'load_data'):
                 widget.load_data()
-
-        # --- 10. Point de Vente ---
-        elif page_id == 10:
-            widget = PointOfSaleTab(self.data_manager)
-
-        # --- 11. Vente en Gros B2B ---
-        elif page_id == 11:
-            widget = WholesaleSalesTab(self.data_manager)
-
-        # --- 12. Sales History ---
-        elif page_id == 12:
-            widget = SalesHistoryTab(self.data_manager)
-
-        # --- 13. Debts Management (Créances Clients) ---
-        elif page_id == 13:
-            widget = DebtsManagementTab(self.data_manager)
 
         # --- 14. Multi-Desk Appliance Store Workflow (Bureaux Opérationnels) ---
         elif page_id == 14:
@@ -692,21 +650,10 @@ class MainWindow(QMainWindow):
                         app.installNativeEventFilter(self.raw_input_filter)
                 except Exception as exc:
                     logging.debug(f"RawInput registration skipped: {exc}")
-            # Extract user permissions for ApplianceWorkflowTab RBAC
-            perms = self.current_user.get("Permissions", {}) if isinstance(self.current_user, dict) else {}
-            if isinstance(perms, str):
-                try:
-                    import json
-                    perms = json.loads(perms)
-                except Exception:
-                    perms = {}
             user_perm_set = set()
-            if isinstance(perms, dict):
-                user_perm_set = {k for k, v in perms.items() if v}
-            elif isinstance(perms, list):
-                user_perm_set = set(perms)
-            if self.current_user and str(self.current_user.get('Role', '')).strip().lower() == 'admin':
-                user_perm_set.add("admin")
+            for tab_key in ("tab_desk_order", "tab_desk_caisse", "tab_desk_dispatch"):
+                if self.has_permission(tab_key):
+                    user_perm_set.add(tab_key)
 
             widget = ApplianceWorkflowTab(
                 db_manager=self.data_manager,
@@ -739,36 +686,6 @@ class MainWindow(QMainWindow):
             return widget
         return None
 
-    def navigate_to_partner_profile(self, partner_id):
-        """تستقبل طلب الانتقال من صفحة الفواتير وتفتح ملف المقاول (Sous-traitant)"""
-        # 1. الانتقال لصفحة البيانات الأساسية (رقم 1)
-        self.switch_page(1)
-
-        # 2. تحديث الزر الجانبي ليظهر كمحدد
-        if self.nav_group.button(1):
-            self.nav_group.button(1).setChecked(True)
-
-        # 3. الوصول للكائن الخاص بصفحة (Données de Base)
-        master_data_widget = self.loaded_pages.get(1)
-
-        if master_data_widget and hasattr(master_data_widget, 'tabs'):
-            # 4. فتح التبويب الفرعي الخاص بالشركاء (Partenaires)
-            for i in range(master_data_widget.tabs.count()):
-                if "Partenaires" in master_data_widget.tabs.tabText(i):
-                    master_data_widget.tabs.setCurrentIndex(i)
-                    break
-
-            # 5. التركيز على الشريك المطلوب في الواجهة
-            if hasattr(master_data_widget, 'tab_partners'):
-                partners_tab = master_data_widget.tab_partners
-
-                if hasattr(partners_tab, 'search_input'):
-                    partner_data = self.data_manager.partners.get_partner_by_id(partner_id)
-                    if partner_data:
-                        partners_tab.search_input.setText(partner_data.get('Partner_Name', ''))
-                    else:
-                        partners_tab.search_input.setText(str(partner_id))
-
     def switch_page(self, page_id):
         if self.connection_error and page_id != 4:
             QMessageBox.warning(self, "Erreur Connexion", "Veuillez configurer la base de données.")
@@ -783,12 +700,6 @@ class MainWindow(QMainWindow):
             2: "nav_procurement",
             8: "tab_proc_reclamation",
             3: "nav_inventory",
-            9: "nav_inventaire",
-            6: "nav_services",
-            10: "nav_pos",
-            11: "nav_wholesale",
-            12: "nav_sales_history",
-            13: "nav_debts",
             14: "nav_appliance_workflow",
             15: "nav_sav",
             7: "nav_history",

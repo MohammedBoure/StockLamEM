@@ -344,13 +344,6 @@ class DispatchDeskWidget(QWidget):
         )
 
     def _emit_bon_sortie(self) -> None:
-        user = getattr(self.data_manager, "current_user", None) if self.data_manager else None
-        if user:
-            from ui.navigation_permissions import has_permission
-            if not has_permission(user, "act_dispatch_validate"):
-                QMessageBox.warning(self, "Accès refusé", "Vous n'avez pas l'autorisation de valider la sortie physique magasin.")
-                return
-
         if not self._active_order:
             return
 
