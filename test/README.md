@@ -16,6 +16,8 @@ This test suite enforces strict software quality gatekeeping across:
 ## 2. Itemized Breakdown of Test Files & Harness Modules
 
 ### 2.1. Specialized Appliance Retail, Concurrency & Security Gatekeeping
+- **`test_reception_no_lot_expiry_tva.py`**:
+  - *Scope*: Verifies Task #2 (Achats & Entrées -> Bons de Réceptions): ensures `ReceptionDialog` hides Lot, Expiry Date, and TVA inputs/columns, defaults TVA to 0%, auto-generates `Lot_Number` with `Expiry_Date=None`, and `ReceptionHistoryTab` hides `Total TVA`.
 - **`test_client_unique_code.py`**:
   - *Scope*: Validates Task #1 (Clients): verifies O(1) bijective unique pseudo-random `Client_Code` generation (>= 4 digits, expanding to 5+ digits cleanly with zero collisions across 12,000 IDs), `ClientManager.add_client` persistence, `get_clients_paged` code search, `ClientsTab` `N° Client` column & filtering, and `ClientDialog` badge display.
 - **`test_bons_caisse_dynamic_and_clients_versement.py`**:

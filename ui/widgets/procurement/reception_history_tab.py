@@ -117,6 +117,7 @@ class ReceptionHistoryTab(QWidget):
         columns = ["ID (BR)", "Réf. Facture", "Fournisseur", "Date", "Total HT", "Total TVA", "Remise", "Total TTC", "Origine (PO)"]    
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
+        self.table.setColumnHidden(5, True)  # TVA non requise dans Bons de Réceptions
         
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setSectionsClickable(True)

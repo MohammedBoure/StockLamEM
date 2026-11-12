@@ -219,11 +219,7 @@ def test_reception_dialog_logic_mandatory_complete_data(qapp):
         assert_add_fails("quantité")
         dialog.inp_qty.setValue(10)
 
-        # 4. Lot number is empty or N/A
-        dialog.inp_lot.setText("")
-        assert_add_fails("lot")
-        dialog.inp_lot.setText("N/A")
-        assert_add_fails("lot")
+        # 4. Lot number is optional (empty or N/A auto-generates fallback)
         dialog.inp_lot.setText("LOT-RECEPTION-99")
 
         # 5. Price is 0

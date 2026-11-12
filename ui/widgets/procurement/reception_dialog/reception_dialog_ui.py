@@ -126,8 +126,10 @@ class ReceptionDialogUIMixin:
         self.inp_qty = AutoSelectSpinBox()
         self.inp_qty.setRange(0, 999999)
         self.inp_lot = AutoSelectLineEdit()
-        self.inp_lot.setPlaceholderText("N° de Lot obligatoire *")
+        self.inp_lot.setPlaceholderText("Optionnel")
+        self.inp_lot.setVisible(False)
         self.inp_expiry = QDateEdit(QDate.currentDate().addYears(2))
+        self.inp_expiry.setVisible(False)
         self.cb_location = LocationTreeComboBox(self.location_manager)
 
         self.inp_price = AutoSelectDoubleSpinBox()
@@ -155,9 +157,10 @@ class ReceptionDialogUIMixin:
         self.cb_remise_type.addItems(["%", "DZD"])
 
         self.chk_tva = QCheckBox("TVA 19%")
-        self.chk_tva.setChecked(True)
+        self.chk_tva.setChecked(False)
+        self.chk_tva.setVisible(False)
         self.inp_observation = AutoSelectLineEdit()
-        self.lbl_item_ttc = QLabel("TTC : 0,00 DA")
+        self.lbl_item_ttc = QLabel("Total : 0,00 DA")
         self.lbl_conversion_logic = QLabel("")
 
         self.btn_add    = QPushButton(qta.icon('fa5s.plus',      color='white'), " Ajouter")
@@ -190,11 +193,16 @@ class ReceptionDialogUIMixin:
         h_header.setSectionResizeMode(QHeaderView.ResizeToContents)
         h_header.setSectionResizeMode(0, QHeaderView.Stretch) # تمديد عمود اسم المنتج
         
-        self.table_items.setColumnHidden(14, True) # إخفاء عمود Meta
+        self.table_items.setColumnHidden(5, True)   # Masquer Lot (non requis)
+        self.table_items.setColumnHidden(6, True)   # Masquer Date Exp (non requise)
+        self.table_items.setColumnHidden(11, True)  # Masquer TVA (non requise)
+        self.table_items.setColumnHidden(12, True)  # Masquer P.U TTC redondant
+        self.table_items.setColumnHidden(14, True)  # إخفاء عمود Meta
 
         self.lbl_total_ht     = QLabel("0,00 DA")
         self.lbl_total_remise = QLabel("0,00 DA")
         self.lbl_total_tva    = QLabel("0,00 DA")
+        self.lbl_total_tva.setVisible(False)
         self.lbl_total_ttc    = QLabel("0,00 DA")
         self.lbl_conversion_logic.setStyleSheet(
             "color: #7f8c8d; font-style: italic; font-size: 12px;"
@@ -251,23 +259,16 @@ class ReceptionDialogUIMixin:
         row1.addWidget(self.cb_unit_type, 1)
         row1.addWidget(QLabel("<b>Qté:</b>"))
         row1.addWidget(self.inp_qty, 1)
-        row1.addWidget(QLabel("<b>Lot:</b>"))
-        row1.addWidget(self.inp_lot, 2)
-        row1.addWidget(QLabel("<b>Exp:</b>"))
-        row1.addWidget(self.inp_expiry, 2)
         entry_layout.addLayout(row1)
 
         row2 = QHBoxLayout()
         row2.addWidget(QLabel("<b>Stock:</b>"))
         row2.addWidget(self.cb_location, 2)
-        row2.addWidget(QLabel("<b>Prix U HT:</b>"))
+        row2.addWidget(QLabel("<b>Prix U:</b>"))
         row2.addWidget(self.inp_price, 2)
-        row2.addWidget(QLabel("<b>P.U TTC:</b>"))
-        row2.addWidget(self.inp_price_ttc, 2)
         row2.addWidget(QLabel("<b>Remise:</b>"))
         row2.addWidget(self.inp_remise, 1)
         row2.addWidget(self.cb_remise_type, 1)
-        row2.addWidget(self.chk_tva)
         row2.addWidget(self.lbl_item_ttc)
         row2.addWidget(QLabel("<b>Réclamation:</b>"))
         row2.addWidget(self.inp_observation, 3)
@@ -278,13 +279,11 @@ class ReceptionDialogUIMixin:
 
         ctrl_bar  = QHBoxLayout()
         fin_layout = QHBoxLayout()
-        fin_layout.addWidget(QLabel("<b>HT:</b>"))
+        fin_layout.addWidget(QLabel("<b>Total HT:</b>"))
         fin_layout.addWidget(self.lbl_total_ht)
         fin_layout.addWidget(QLabel("<b>Remise:</b>"))
         fin_layout.addWidget(self.lbl_total_remise)
-        fin_layout.addWidget(QLabel("<b>TVA:</b>"))
-        fin_layout.addWidget(self.lbl_total_tva)
-        fin_layout.addWidget(QLabel("<b style='color: #007572;'>TTC:</b>"))
+        fin_layout.addWidget(QLabel("<b style='color: #007572;'>Total Net:</b>"))
         self.lbl_total_ttc.setStyleSheet("font-weight: bold; color: #007572;")
         fin_layout.addWidget(self.lbl_total_ttc)
         ctrl_bar.addLayout(fin_layout)

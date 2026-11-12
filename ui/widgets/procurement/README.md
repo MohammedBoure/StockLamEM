@@ -8,7 +8,7 @@ Ce dossier contient l ensemble des composants d interface utilisateur pour la ge
 - **`po_list_view.py`** : Tableau d affichage et de suivi des bons de commande (`PurchaseOrderListView`) avec filtrage par statut/fournisseur, tri numérique et montant estimé TTC calculé dynamiquement depuis le stock.
 - **`dialogs.py`** : Fenêtres modales de création/édition de commandes d achat (`PurchaseOrderDialog`) avec calcul en direct des montants estimés TTC (P.U et totaux) et alertes de stock (`StockAlertDialog`).
 - **`reception_tab.py`** : Onglet listant les commandes en attente de réception (`ReceptionTab`) pour initier les bons de réception.
-- **`reception_history_tab.py`** : Historique et consultation des bons de réception enregistrés (`ReceptionHistoryTab`) avec tri numérique rigoureux (`NumericTableWidgetItem`), centrage des données chiffrées et formatage monétaire standardisé.
+- **`reception_history_tab.py`** : Historique et consultation des bons de réception enregistrés (`ReceptionHistoryTab`) avec tri numérique rigoureux (`NumericTableWidgetItem`), centrage des données chiffrées, masquage de la colonne `Total TVA` et formatage monétaire standardisé.
 - **`reception_dialog_parts.py`** : Composants réutilisables d en-tête et de formulaire pour la saisie des réceptions.
 - **`barcode_summary_dialog.py`** : Dialogue récapitulatif des codes-barres générés lors de la réception pour configuration et impression directe des étiquettes.
 - **`bulk_barcode_selection_dialog.py`** : Dialogue de sélection par lot pour l impression groupée d étiquettes de lots reçus.

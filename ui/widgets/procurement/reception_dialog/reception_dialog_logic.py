@@ -11,6 +11,7 @@ Mixin يحتوي على كل المنطق الوظيفي لـ ReceptionDialog:
 """
 import logging
 import random
+from datetime import datetime
 
 from PySide6.QtWidgets import QMessageBox, QInputDialog
 from PySide6.QtCore import Qt, QDate
@@ -224,7 +225,7 @@ class ReceptionDialogLogicMixin:
             tax     = net_ht * 0.19 if self.chk_tva.isChecked() else 0
             ttc     = net_ht + tax
 
-            self.lbl_item_ttc.setText(f"TTC : {format_money(ttc, 'DA')}")
+            self.lbl_item_ttc.setText(f"Total : {format_money(ttc, 'DA')}")
 
             if factor > 1:
                 p_data  = self.cb_product.currentData()
@@ -523,12 +524,8 @@ class ReceptionDialogLogicMixin:
 
             lot_num = self.inp_lot.text().strip()
             if not lot_num or lot_num.upper() in ["N/A", "NONE", "NULL", ""]:
-                QMessageBox.warning(
-                    self, "Données Incomplètes",
-                    "Le numéro de lot (Batch / N° de Lot) est obligatoire pour assurer la traçabilité complète."
-                )
-                self.inp_lot.setFocus()
-                return
+                # Lot optionnel : génération automatique d'un identifiant interne pour respecter la contrainte DB NOT NULL
+                lot_num = f"LOT-{datetime.now().strftime('%y%m%d%H%M%S')}"
 
             buy_price = float(self.inp_price.value())
             if buy_price <= 0:
@@ -569,7 +566,7 @@ class ReceptionDialogLogicMixin:
                 "Tax_Rate_Percent":    19.0 if self.chk_tva.isChecked() else 0.0,
                 "Discount_Percent":    self.inp_remise.value() if self.cb_remise_type.currentText() == "%" else 0,
                 "Lot_Number":          lot_num,
-                "Expiry_Date":         self.inp_expiry.date().toPyDate(),
+                "Expiry_Date":         None,
                 "Batch_Note":          self.inp_observation.text().strip(),
                 "Internal_Barcode":    barcode_to_save,
                 "Created_By":          u_id
@@ -818,6 +815,7 @@ class ReceptionDialogLogicMixin:
         self.inp_remise.setValue(0.0)
         self.inp_observation.clear()
         self.inp_expiry.setDate(QDate.currentDate().addYears(2))
+        self.chk_tva.setChecked(False)
         self.current_editing_row = -1
         self.btn_add.setText(" Ajouter")
         self.btn_add.setStyleSheet("")
