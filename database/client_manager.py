@@ -5,6 +5,36 @@ import logging
 from datetime import datetime
 from .system_logger import log_methods 
 
+
+def generate_unique_client_code(client_id: int) -> str:
+    """
+    Génère un numéro client unique, d'apparence aléatoire, d'au moins 4 chiffres (>= 1000)
+    en temps constant O(1) sans coût de calcul ni balayage proportionnel au nombre de clients.
+
+    Principe mathématique (bijection par paliers décimaux) :
+    - Palier 1 (4 chiffres, 1000..9999, taille 9 000) pour Client_ID 1..9000
+    - Palier 2 (5 chiffres, 10000..99999, taille 90 000) pour Client_ID 9001..99000
+    - Et ainsi de suite pour tout nombre de chiffres >= 4.
+    Le multiplicateur 41957 est premier avec 9 * 10^k (non divisible par 2, 3 ni 5),
+    garantissant mathématiquement zéro collision et une bijection globale stricte.
+    """
+    n = int(client_id)
+    if n < 1:
+        raise ValueError("client_id must be a positive integer >= 1")
+
+    remaining = n - 1
+    base = 1000
+    size = 9000
+
+    while remaining >= size:
+        remaining -= size
+        base *= 10
+        size *= 10
+
+    shuffled = (remaining * 41957 + 5183) % size
+    return str(base + shuffled)
+
+
 @log_methods()
 class ClientManager:
     """إدارة عمليات جدول العملاء (Clients)."""
@@ -12,11 +42,26 @@ class ClientManager:
     def __init__(self, db_instance):
         self.db = db_instance
 
+    @staticmethod
+    def _ensure_code_on_row(row):
+        """Assure la présence d'un Client_Code (>= 4 chiffres) en O(1) sur un enregistrement client."""
+        if isinstance(row, dict) and not row.get("Client_Code"):
+            cid = row.get("Client_ID")
+            if cid is not None and int(cid) >= 1:
+                row["Client_Code"] = generate_unique_client_code(int(cid))
+        return row
+
+    def _ensure_codes_on_rows(self, rows):
+        if isinstance(rows, list):
+            for r in rows:
+                self._ensure_code_on_row(r)
+        return rows
+
     def add_client(self, name, contact_person=None, phone=None, email=None, 
                    address=None, city=None, tax_id=None, commercial_reg=None,
                    price_tier='Prix_1', credit_limit=0.0):
         """
-        إضافة عميل جديد مع تحديد الفئة السعرية وسقف الائتمان.
+        إضافة عميل جديد مع تحديد الفئة السعرية وسقف الائتمان، وتوليد رقم عميل فريد عشوائي (>= 4 أرقام) في O(1).
         """
         try:
             with self.db.get_db_connection() as conn:
@@ -29,6 +74,15 @@ class ClientManager:
                 params = (name, contact_person, phone, email, address, city, tax_id, commercial_reg, price_tier or 'Prix_1', float(credit_limit or 0.0))
                 cursor.execute(query, params)
                 client_id = cursor.lastrowid
+                if client_id and int(client_id) >= 1:
+                    client_code = generate_unique_client_code(int(client_id))
+                    try:
+                        cursor.execute(
+                            "UPDATE Clients SET Client_Code = %s WHERE Client_ID = %s",
+                            (client_code, client_id),
+                        )
+                    except mysql.connector.Error as col_err:
+                        logging.warning(f"Could not persist Client_Code for client {client_id}: {col_err}")
                 logging.info(f"Client '{name}' added with ID {client_id}.")
                 return client_id
         except mysql.connector.Error as err:
@@ -98,7 +152,7 @@ class ClientManager:
                 query += " ORDER BY Client_Name"
                 
                 cursor.execute(query)
-                clients = cursor.fetchall()
+                clients = self._ensure_codes_on_rows(cursor.fetchall())
                 logging.info(f"Fetched {len(clients)} clients.")
                 return clients
         except mysql.connector.Error as e:
@@ -114,7 +168,7 @@ class ClientManager:
                 cursor = conn.cursor(dictionary=True)
                 query = "SELECT * FROM Clients WHERE Client_ID = %s"
                 cursor.execute(query, (client_id,))
-                client = cursor.fetchone()
+                client = self._ensure_code_on_row(cursor.fetchone())
                 return client
         except mysql.connector.Error as e:
             logging.error(f"Error fetching client {client_id}: {e}")
@@ -324,7 +378,7 @@ class ClientManager:
                     ORDER BY c.Client_Name
                 """
                 cursor.execute(query)
-                return cursor.fetchall() or []
+                return self._ensure_codes_on_rows(cursor.fetchall() or [])
         except Exception as e:
             logging.error(f"Error fetching clients with balances: {e}")
             return self.get_all_clients()
@@ -337,12 +391,15 @@ class ClientManager:
         # If in-memory mock or patched method is used, handle in Python
         from unittest.mock import MagicMock
         if isinstance(getattr(self, "db", None), MagicMock) or isinstance(getattr(self, "get_all_clients_with_balances", None), MagicMock):
-            all_clients = self.get_all_clients_with_balances() if hasattr(self, 'get_all_clients_with_balances') else self.get_all_clients()
+            all_clients = self._ensure_codes_on_rows(
+                self.get_all_clients_with_balances() if hasattr(self, 'get_all_clients_with_balances') else self.get_all_clients()
+            )
             if search_text and search_text.strip():
                 st = search_text.strip().lower()
                 filtered = [
                     c for c in all_clients
-                    if st in str(c.get('Client_Name', '')).lower()
+                    if st in str(c.get('Client_Code', '')).lower()
+                    or st in str(c.get('Client_Name', '')).lower()
                     or st in str(c.get('Phone', '')).lower()
                     or st in str(c.get('Email', '')).lower()
                     or st in str(c.get('City', '')).lower()
@@ -370,9 +427,9 @@ class ClientManager:
                 if search_text and search_text.strip():
                     term = f"%{search_text.strip()}%"
                     where_clauses.append(
-                        "(c.Client_Name LIKE %s OR c.Phone LIKE %s OR c.Email LIKE %s OR c.City LIKE %s OR c.Price_Tier LIKE %s OR c.Contact_Person LIKE %s)"
+                        "(c.Client_Code LIKE %s OR c.Client_Name LIKE %s OR c.Phone LIKE %s OR c.Email LIKE %s OR c.City LIKE %s OR c.Price_Tier LIKE %s OR c.Contact_Person LIKE %s)"
                     )
-                    params.extend([term, term, term, term, term, term])
+                    params.extend([term, term, term, term, term, term, term])
 
                 where_sql = " AND ".join(where_clauses)
 
@@ -443,7 +500,7 @@ class ClientManager:
                     LIMIT %s OFFSET %s
                 """
                 cursor.execute(data_query, params + [int(limit), int(offset)])
-                items = cursor.fetchall() or []
+                items = self._ensure_codes_on_rows(cursor.fetchall() or [])
                 has_more = (offset + len(items)) < total_count
                 return {
                     "items": items,
@@ -455,12 +512,15 @@ class ClientManager:
         except Exception as e:
             logging.error(f"Error in get_clients_paged: {e}")
             try:
-                all_clients = self.get_all_clients_with_balances() if hasattr(self, 'get_all_clients_with_balances') else self.get_all_clients()
+                all_clients = self._ensure_codes_on_rows(
+                    self.get_all_clients_with_balances() if hasattr(self, 'get_all_clients_with_balances') else self.get_all_clients()
+                )
                 if search_text and search_text.strip():
                     st = search_text.strip().lower()
                     filtered = [
                         c for c in all_clients
-                        if st in str(c.get('Client_Name', '')).lower()
+                        if st in str(c.get('Client_Code', '')).lower()
+                        or st in str(c.get('Client_Name', '')).lower()
                         or st in str(c.get('Phone', '')).lower()
                         or st in str(c.get('Email', '')).lower()
                         or st in str(c.get('City', '')).lower()

@@ -15,6 +15,7 @@ from .client_statement_dialog import ClientStatementDialog
 from .client_versements_dialog import ClientVersementsDialog
 from ui.formatting import format_money
 from ui.icons import get_duotone_icon
+from database.client_manager import generate_unique_client_code
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class ClientsTab(QWidget):
 
         # Search Bar with Debounce
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Rechercher par nom, téléphone, email, ville...")
+        self.search_input.setPlaceholderText("Rechercher par N° Client, nom, téléphone, email, ville...")
         self.search_input.setFixedHeight(36)
         self.search_input.setStyleSheet("""
             QLineEdit {
@@ -203,7 +204,7 @@ class ClientsTab(QWidget):
         # --- Table Widget with Dense Data & Lazy Loading on Scroll ---
         self.clients_table = QTableWidget()
         columns = [
-            "ID", "Nom du Client", "Contact", "Téléphone", "Email",
+            "ID", "Nom du Client", "N° Client", "Contact", "Téléphone", "Email",
             "Ville", "Catégorie", "Plafond Crédit", "Solde Actuel", "NIF", "RC"
         ]
         self.clients_table.setColumnCount(len(columns))
@@ -439,7 +440,8 @@ class ClientsTab(QWidget):
                     st = search_text.lower()
                     filtered = [
                         c for c in all_c
-                        if st in str(c.get('Client_Name', '')).lower()
+                        if st in str(c.get('Client_Code', '')).lower()
+                        or st in str(c.get('Client_Name', '')).lower()
                         or (c.get('Email') and st in str(c.get('Email', '')).lower())
                         or (c.get('City') and st in str(c.get('City', '')).lower())
                         or (c.get('Phone') and st in str(c.get('Phone', '')).lower())
@@ -520,31 +522,42 @@ class ClientsTab(QWidget):
             it_name.setFont(QFont("Segoe UI", 9, QFont.Bold))
             self.clients_table.setItem(row_idx, 1, it_name)
 
-            # 2. Contact
-            self.clients_table.setItem(row_idx, 2, self._create_centered_item(c.get('Contact_Person', '')))
+            # 2. N° Client (Unique >= 4 chiffres, O(1))
+            code_val = c.get('Client_Code')
+            if not code_val and cid is not None and int(cid) >= 1:
+                code_val = generate_unique_client_code(int(cid))
+            it_code = QTableWidgetItem(str(code_val or ''))
+            it_code.setTextAlignment(Qt.AlignCenter)
+            it_code.setFont(QFont("Consolas", 10, QFont.Bold))
+            it_code.setForeground(QBrush(QColor("#007572")))
+            it_code.setBackground(QBrush(QColor("#E6F4F1")))
+            self.clients_table.setItem(row_idx, 2, it_code)
 
-            # 3. Téléphone
-            self.clients_table.setItem(row_idx, 3, self._create_centered_item(c.get('Phone', '')))
+            # 3. Contact
+            self.clients_table.setItem(row_idx, 3, self._create_centered_item(c.get('Contact_Person', '')))
 
-            # 4. Email
-            self.clients_table.setItem(row_idx, 4, self._create_centered_item(c.get('Email', '')))
+            # 4. Téléphone
+            self.clients_table.setItem(row_idx, 4, self._create_centered_item(c.get('Phone', '')))
 
-            # 5. Ville
-            self.clients_table.setItem(row_idx, 5, self._create_centered_item(c.get('City', '')))
+            # 5. Email
+            self.clients_table.setItem(row_idx, 5, self._create_centered_item(c.get('Email', '')))
 
-            # 6. Catégorie (Price_Tier)
+            # 6. Ville
+            self.clients_table.setItem(row_idx, 6, self._create_centered_item(c.get('City', '')))
+
+            # 7. Catégorie (Price_Tier)
             raw_tier = str(c.get('Price_Tier') or 'Prix_1')
             item_tier = self._create_centered_item(tier_map.get(raw_tier, raw_tier))
-            self.clients_table.setItem(row_idx, 6, item_tier)
+            self.clients_table.setItem(row_idx, 7, item_tier)
 
-            # 7. Plafond Crédit
+            # 8. Plafond Crédit
             limit_val = float(c.get('Credit_Limit') or 0.0)
             item_limit = QTableWidgetItem(f"{format_money(limit_val)} DA" if limit_val > 0 else "Illimité")
             item_limit.setData(Qt.EditRole, limit_val)
             item_limit.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.clients_table.setItem(row_idx, 7, item_limit)
+            self.clients_table.setItem(row_idx, 8, item_limit)
 
-            # 8. Solde Actuel avec Badge Pastel
+            # 9. Solde Actuel avec Badge Pastel
             bal_val = float(c.get('Current_Balance') or 0.0)
             item_bal = QTableWidgetItem(f"{format_money(bal_val)} DA")
             item_bal.setData(Qt.EditRole, bal_val)
@@ -562,11 +575,11 @@ class ClientsTab(QWidget):
                 item_bal.setBackground(QBrush(QColor("#DCFCE7")))
                 item_bal.setForeground(QBrush(QColor("#16A34A")))
 
-            self.clients_table.setItem(row_idx, 8, item_bal)
+            self.clients_table.setItem(row_idx, 9, item_bal)
 
-            # 9. NIF & 10. RC
-            self.clients_table.setItem(row_idx, 9, self._create_centered_item(c.get('Tax_ID_Number', '')))
-            self.clients_table.setItem(row_idx, 10, self._create_centered_item(c.get('Commercial_Reg_No', '')))
+            # 10. NIF & 11. RC
+            self.clients_table.setItem(row_idx, 10, self._create_centered_item(c.get('Tax_ID_Number', '')))
+            self.clients_table.setItem(row_idx, 11, self._create_centered_item(c.get('Commercial_Reg_No', '')))
 
         self.clients_table.setSortingEnabled(True)
 

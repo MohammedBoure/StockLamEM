@@ -16,6 +16,8 @@ This test suite enforces strict software quality gatekeeping across:
 ## 2. Itemized Breakdown of Test Files & Harness Modules
 
 ### 2.1. Specialized Appliance Retail, Concurrency & Security Gatekeeping
+- **`test_client_unique_code.py`**:
+  - *Scope*: Validates Task #1 (Clients): verifies O(1) bijective unique pseudo-random `Client_Code` generation (>= 4 digits, expanding to 5+ digits cleanly with zero collisions across 12,000 IDs), `ClientManager.add_client` persistence, `get_clients_paged` code search, `ClientsTab` `N° Client` column & filtering, and `ClientDialog` badge display.
 - **`test_bons_caisse_dynamic_and_clients_versement.py`**:
   - *Scope*: Validates SQL column alignment (`Unit_Price_Received`, `Total_Return_Value`, `Return_Date`, `Clients.Phone`), dynamic Cashier Desk (`Caisse`) action button switching by bon type (`BC`, `BCréde`, and `BL` advance vs 0 DA COD options), graceful `BL` advance overpayment capping with `change_due` calculation (`validate_bon_livraison_advance`), Order Desk `Bons du Jour` editing and A4 PDF export (`bon_pdf_export.py`, `order_bons_dialog.py`), strict visibility persistence of unclosed `Bon de Livraison` across Order Desk and Caisse queues, minimalist `Versements` dialog (`ClientVersementsDialog`) in `ClientsTab`, `QFrame#objectName` border scoping in `ClientWalletDialog`, unclipped `OrderDeskWidget` columns/buttons, and strict 1-to-1 navbar dedicated directory structure under `ui/widgets/`.
 - **[`docs/analysis_testing_and_validation_matrix.md`](file:///home/pluto/projects/StockLamPlus/docs/analysis_testing_and_validation_matrix.md)**:

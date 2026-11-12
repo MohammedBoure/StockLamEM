@@ -603,6 +603,7 @@ SCHEMA_QUERIES = [
     # --- 6. Sales & Clients ---
     """CREATE TABLE IF NOT EXISTS Clients (
         Client_ID INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        Client_Code VARCHAR(32) NULL UNIQUE,
         Client_Name VARCHAR(255) NOT NULL UNIQUE,
         Contact_Person VARCHAR(150) NULL,
         Phone VARCHAR(50) NULL,
@@ -863,6 +864,7 @@ SCHEMA_QUERIES = [
     """ALTER TABLE Clients ADD COLUMN Price_Tier ENUM('Prix_1', 'Prix_2', 'Prix_3', 'Prix_4') NOT NULL DEFAULT 'Prix_1';""",
     """ALTER TABLE Clients ADD COLUMN Credit_Limit DECIMAL(15, 2) NOT NULL DEFAULT 0.00;""",
     """ALTER TABLE Clients ADD COLUMN Current_Debt DECIMAL(15, 2) NOT NULL DEFAULT 0.00;""",
+    """ALTER TABLE Clients ADD COLUMN Client_Code VARCHAR(32) NULL UNIQUE;""",
     """ALTER TABLE Products_Master ADD COLUMN Brand_Mark VARCHAR(100) NULL;""",
     """ALTER TABLE Products_Master ADD COLUMN Category_Name VARCHAR(100) NULL;""",
     """ALTER TABLE Products_Master ADD COLUMN Color_Finish VARCHAR(64) NULL;""",

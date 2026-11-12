@@ -2,11 +2,12 @@
 
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QGroupBox, QScrollArea,QLabel,QHBoxLayout,
                                QLineEdit, QComboBox, QDialogButtonBox, QDateEdit, QMessageBox, QGridLayout,
-                               QTabWidget, QWidget, QCheckBox, QSpinBox, QDoubleSpinBox, QFrame)
+                               QTabWidget, QWidget, QCheckBox, QSpinBox, QDoubleSpinBox, QFrame, QPushButton)
 from PySide6.QtCore import QDate, Qt, QEvent, QTimer
 from PySide6.QtGui import QGuiApplication
 import logging
 from ui.formatting import format_money
+from database.client_manager import generate_unique_client_code
 
 class BaseDialog(QDialog):
     """Fenêtre de dialogue de base unifiée avec thème blanc épuré"""
@@ -1220,13 +1221,78 @@ class ClientDialog(BaseDialog):
     def __init__(self, parent=None, data=None):
         title = "Modifier le Client" if data else "Ajouter un Client"
         super().__init__(title, parent)
-        self.resize(500, 450)
+        self.resize(500, 480)
         self.data = data
         self.init_ui()
 
     def init_ui(self):
         layout = QFormLayout(self.form_widget)
-        
+
+        # Badge / affichage du N° Client unique (>= 4 chiffres)
+        code_row_widget = QWidget()
+        code_row_layout = QHBoxLayout(code_row_widget)
+        code_row_layout.setContentsMargins(0, 0, 0, 0)
+        code_row_layout.setSpacing(8)
+
+        self.lbl_client_code = QLabel()
+        self.lbl_client_code.setFixedHeight(30)
+        if self.data:
+            cid_val = self.data.get('Client_ID')
+            c_code = self.data.get('Client_Code') or (
+                generate_unique_client_code(int(cid_val)) if cid_val and int(cid_val) >= 1 else "—"
+            )
+            self.lbl_client_code.setText(str(c_code))
+            self.lbl_client_code.setStyleSheet("""
+                QLabel {
+                    background-color: #E6F4F1;
+                    color: #007572;
+                    border: 1px solid #BCE3DC;
+                    border-radius: 5px;
+                    padding: 0 12px;
+                    font-family: 'Consolas', monospace;
+                    font-size: 13px;
+                    font-weight: 800;
+                }
+            """)
+            code_row_layout.addWidget(self.lbl_client_code)
+
+            btn_copy_code = QPushButton("Copier")
+            btn_copy_code.setFixedHeight(30)
+            btn_copy_code.setCursor(Qt.PointingHandCursor)
+            btn_copy_code.setStyleSheet("""
+                QPushButton {
+                    background-color: #F8FAFC;
+                    color: #334155;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 4px;
+                    padding: 0 10px;
+                    font-size: 11px;
+                    font-weight: 700;
+                }
+                QPushButton:hover { background-color: #E2E8F0; }
+            """)
+            btn_copy_code.clicked.connect(
+                lambda: QGuiApplication.clipboard().setText(self.lbl_client_code.text())
+            )
+            code_row_layout.addWidget(btn_copy_code)
+            code_row_layout.addStretch()
+        else:
+            self.lbl_client_code.setText("Généré automatiquement (≥ 4 chiffres, unique)")
+            self.lbl_client_code.setStyleSheet("""
+                QLabel {
+                    background-color: #F8FAFC;
+                    color: #64748B;
+                    border: 1px dashed #CBD5E1;
+                    border-radius: 5px;
+                    padding: 0 10px;
+                    font-size: 11px;
+                    font-weight: 600;
+                }
+            """)
+            code_row_layout.addWidget(self.lbl_client_code, 1)
+
+        layout.addRow("N° Client :", code_row_widget)
+
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Nom de l'entreprise ou du client *")
         
