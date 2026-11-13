@@ -45,3 +45,8 @@ Le serveur API s'exécute sur le réseau local (LAN/WiFi).
 | `POST` | `/api/inventory-sessions/<id>/apply` | Application des écarts constatés sur le stock réel |
 | `POST` | `/api/inventory-sessions/<id>/cancel` | Annulation de la session sans appliquer les écarts |
 | `DELETE` / `POST` | `/api/inventory-sessions/<id>` (`/delete`) | Suppression complète d'une session d'inventaire |
+| `GET` | `/api/order-sessions` | Liste des sessions `Bureaux -> Commandes` actives sur le poste serveur |
+| `POST` | `/api/order-sessions` | Création d'une nouvelle session `Commandes` associée à un client |
+| `GET` | `/api/order-sessions/clients` | Liste filtrée des clients pour attribution de session |
+| `GET` | `/api/order-sessions/catalog` | Recherche de produits disponibles en stock (nom, `Réf`, code-barres) |
+| `POST` | `/api/order-sessions/<id>/items` | Ajout d'un produit (par `product_id` ou `barcode`) au panier d'une session |

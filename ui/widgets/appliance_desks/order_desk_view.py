@@ -2932,7 +2932,14 @@ class OrderDeskWidget(QWidget):
         self._sessions[sid]["scanner_id"] = None
         self._update_tab_label(sid)
 
-    def _create_new_session(self, scanner_id: Optional[str] = None) -> str:
+    def _create_new_session(
+        self,
+        scanner_id: Optional[str] = None,
+        switch_to_tab: bool = True,
+        custom_label: Optional[str] = None,
+        client_id: Optional[int] = None,
+        created_by: Optional[str] = None,
+    ) -> str:
         clean_sc = str(scanner_id).strip() if scanner_id else None
         if clean_sc:
             bound = self.get_bound_scanners()
@@ -2945,15 +2952,17 @@ class OrderDeskWidget(QWidget):
             self._session_counter += 1
             sid = f"SESSION_{self._session_counter}"
 
-        label = f"Session #{self._session_counter}"
+        clean_label = str(custom_label or "").strip()
+        label = clean_label or f"Session #{self._session_counter}"
         self._sessions[sid] = {
             "label": label,
             "scanner_id": clean_sc,
-            "client_id": 1,
+            "client_id": int(client_id) if client_id else 1,
             "cart": [],
             "delivery_address": "",
             "has_event": False,
             "edit_order": None,
+            "created_by": str(created_by or "").strip(),
         }
         if clean_sc:
             self.hid_manager.bind_scanner_to_session(clean_sc, sid)
@@ -2965,7 +2974,7 @@ class OrderDeskWidget(QWidget):
             )
             self.session_tab_bar.setTabData(tab_idx, sid)
             self._apply_session_tab_visuals(tab_idx, sid)
-            if clean_sc is None:
+            if clean_sc is None and switch_to_tab:
                 self.session_tab_bar.setCurrentIndex(tab_idx)
             self._update_tab_close_buttons()
 
@@ -3207,6 +3216,178 @@ class OrderDeskWidget(QWidget):
         if session_id == self._active_session_id:
             self._refresh_cart_ui()
         self._update_tab_label(session_id)
+
+    def _resolve_session_client_name(self, client_id: Optional[int]) -> str:
+        cid = int(client_id or 1)
+        if hasattr(self, "cbo_client"):
+            idx = self.cbo_client.findData(cid)
+            if idx >= 0:
+                return str(self.cbo_client.itemText(idx) or f"Client #{cid}")
+        if self.data_manager and hasattr(self.data_manager, "clients"):
+            try:
+                for c in self.data_manager.clients.get_all_clients() or []:
+                    if int(c.get("Client_ID") or 0) == cid:
+                        return str(c.get("Full_Name") or f"Client #{cid}")
+            except Exception:
+                pass
+        return "Client Divers" if cid == 1 else f"Client #{cid}"
+
+    def _serialize_session_snapshot(self, sid: str) -> Dict[str, Any]:
+        sdata = self._sessions[sid]
+        cart = sdata.get("cart", [])
+        items = []
+        total_ttc = 0.0
+        item_count = 0
+        for it in cart:
+            qty = int(it.get("quantity") or 0)
+            unit_p = float(it.get("unit_price_ttc") or 0.0)
+            line_total = round(qty * unit_p, 2)
+            total_ttc += line_total
+            item_count += qty
+            items.append({
+                "product_id": int(it.get("product_id") or 0),
+                "name": str(it.get("name") or ""),
+                "ref": str(it.get("ref") or "---"),
+                "quantity": qty,
+                "unit_price_ttc": unit_p,
+                "line_total": line_total,
+            })
+        cid = int(sdata.get("client_id") or 1)
+        return {
+            "session_id": sid,
+            "label": str(sdata.get("label") or sid),
+            "client_id": cid,
+            "client_name": self._resolve_session_client_name(cid),
+            "item_count": item_count,
+            "total_ttc": round(total_ttc, 2),
+            "is_active": sid == getattr(self, "_active_session_id", None),
+            "created_by": str(sdata.get("created_by") or ""),
+            "items": items,
+        }
+
+    def get_mobile_sessions_snapshot(self) -> List[Dict[str, Any]]:
+        """Retourne l'état courant de toutes les sessions Commandes pour l'app mobile."""
+        return [self._serialize_session_snapshot(sid) for sid in list(self._sessions.keys())]
+
+    def create_mobile_session(
+        self,
+        client_id: Optional[int] = None,
+        label: Optional[str] = None,
+        created_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Crée une nouvelle session Commandes depuis l'app mobile sans perturber la session active."""
+        sid = self._create_new_session(
+            scanner_id=None,
+            switch_to_tab=False,
+            custom_label=label,
+            client_id=client_id,
+            created_by=created_by,
+        )
+        if sid != getattr(self, "_active_session_id", None):
+            self._mark_session_event(sid)
+        self._update_tab_label(sid)
+        return self._serialize_session_snapshot(sid)
+
+    def add_mobile_item_to_session(
+        self,
+        session_id: str,
+        product_id: Optional[int] = None,
+        barcode: Optional[str] = None,
+        quantity: int = 1,
+        price_tier: Optional[str] = None,
+        added_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Ajoute un produit (par ID ou code-barres) à une session Commandes sans bloquer l'UI."""
+        if session_id not in self._sessions:
+            return {"success": False, "message": f"Session '{session_id}' introuvable."}
+
+        try:
+            qty_to_add = max(1, int(quantity or 1))
+        except (TypeError, ValueError):
+            qty_to_add = 1
+
+        prod = None
+        if product_id is not None:
+            pid_target = int(product_id)
+            for p in getattr(self, "_catalog_cache", []):
+                if int(p.get("Product_ID") or 0) == pid_target:
+                    prod = p
+                    break
+            if prod is None and self.data_manager and hasattr(self.data_manager, "serials"):
+                for p in self.data_manager.serials.get_catalog_with_theoretical_stock(only_available=True) or []:
+                    if int(p.get("Product_ID") or 0) == pid_target:
+                        prod = p
+                        break
+        elif barcode:
+            prod = self._find_product_by_barcode(str(barcode).strip())
+
+        if not prod:
+            return {"success": False, "message": "Produit introuvable ou hors stock."}
+
+        pid = int(prod["Product_ID"])
+        avail = int(prod.get("Available_Theoretical_Qty") or 0)
+        if avail <= 0:
+            return {"success": False, "message": f"Rupture de stock pour {prod.get('Product_Name')}."}
+
+        cart = self._sessions[session_id]["cart"]
+        existing_item = next((it for it in cart if it["product_id"] == pid), None)
+        if existing_item:
+            if existing_item["quantity"] + qty_to_add > avail:
+                return {
+                    "success": False,
+                    "message": f"Stock théorique insuffisant ({avail} disponible(s)).",
+                }
+            existing_item["quantity"] += qty_to_add
+        else:
+            if qty_to_add > avail:
+                return {
+                    "success": False,
+                    "message": f"Stock théorique insuffisant ({avail} disponible(s)).",
+                }
+            if price_tier == "Prix_3":
+                unit_price = float(prod.get("Price_3_TTC") or prod.get("Price_1_TTC") or prod.get("Unit_Price_TTC") or 0)
+            elif price_tier == "Prix_2":
+                unit_price = float(prod.get("Price_2_TTC") or prod.get("Price_1_TTC") or prod.get("Unit_Price_TTC") or 0)
+            elif price_tier == "Prix_1":
+                unit_price = float(prod.get("Price_1_TTC") or prod.get("Unit_Price_TTC") or 0)
+            else:
+                unit_price = self._get_client_tiered_price(session_id, prod)
+
+            cart.append({
+                "product_id": pid,
+                "mark": str(prod.get("Brand_Mark") or ""),
+                "name": str(prod.get("Product_Name") or ""),
+                "ref": str(
+                    prod.get("Primary_Ref")
+                    or prod.get("Manuf_Cat_No")
+                    or prod.get("Reference")
+                    or prod.get("Product_Code")
+                    or prod.get("Barcode")
+                    or "---"
+                ),
+                "coloure": str(prod.get("Color_Finish") or "Standard"),
+                "unit_price_ttc": unit_price,
+                "quantity": qty_to_add,
+                "max_avail": avail,
+            })
+
+        if session_id == getattr(self, "_active_session_id", None):
+            self._refresh_cart_ui()
+        else:
+            self._mark_session_event(session_id)
+        self._update_tab_label(session_id)
+
+        if hasattr(self, "lbl_scanner_status"):
+            actor = f" ({added_by})" if added_by else ""
+            self.lbl_scanner_status.setText(
+                f"Mobile{actor} -> {self._sessions[session_id]['label']} : {prod.get('Product_Name')} (+{qty_to_add})"
+            )
+
+        return {
+            "success": True,
+            "message": f"{prod.get('Product_Name')} ajouté (+{qty_to_add}).",
+            "session": self._serialize_session_snapshot(session_id),
+        }
 
     def _refresh_cart_ui(self) -> None:
         cart = self._sessions[self._active_session_id]["cart"]

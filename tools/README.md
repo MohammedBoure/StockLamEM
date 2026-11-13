@@ -9,6 +9,7 @@ Ce répertoire contient des scripts utilitaires pour la maintenance, l'audit de 
 - **`inventory_mobile_api.py`** : Point d'entrée CLI pour démarrer le serveur API externe en mode autonome (`--host`, `--port`).
 - **`migrate_wholesale_retail_schema.py`** : Script d'exécution de migration de schéma idempotent pour la prise en charge du commerce de gros et détail (Locations, Batches, Invoices, Clients).
 - **`mobile_barcode_bridge.py`** : Pont de communication entre les scans distants (via API) et les champs de saisie actifs de l'interface graphique PyQt.
+- **`mobile_order_session_bridge.py`** : Pont thread-safe (`BlockingQueuedConnection`) permettant aux clients mobiles via l'API HTTP de lister, créer des sessions `Bureaux -> Commandes` pour un client donné et y ajouter des produits sans bloquer le poste serveur.
 - **`repair_legacy_reception_splits.py`** : Script de réparation pour les historiques de réceptions fractionnées.
 - **`repair_reception_stock_consistency.py`** : Script de correction de la cohérence comptable et physique des réceptions.
 - **`start_inventory_mobile_api.ps1`** : Script PowerShell pour le lancement automatisé du serveur API avec gestion de l'environnement virtuel.

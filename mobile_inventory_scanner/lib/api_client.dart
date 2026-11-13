@@ -369,6 +369,103 @@ class ApiClient {
     return _decode(response);
   }
 
+  // ---------------------------------------------------------------------------
+  // Sessions Commandes (Bureaux -> Commandes)
+  // ---------------------------------------------------------------------------
+  Future<List<OrderSession>> fetchOrderSessions() async {
+    final response = await http
+        .get(uri('/api/order-sessions'), headers: headers)
+        .timeout(const Duration(seconds: 6));
+    final data = _decode(response);
+    final raw = data['sessions'] as List<dynamic>? ?? [];
+    return raw
+        .map((e) => OrderSession.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<OrderClient>> fetchOrderClients({String search = ''}) async {
+    final target = uri('/api/order-sessions/clients').replace(
+      queryParameters: {
+        if (search.trim().isNotEmpty) 'search': search.trim(),
+        'limit': '50',
+      },
+    );
+    final response = await http
+        .get(target, headers: headers)
+        .timeout(const Duration(seconds: 6));
+    final data = _decode(response);
+    final raw = data['clients'] as List<dynamic>? ?? [];
+    return raw
+        .map((e) => OrderClient.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<OrderCatalogProduct>> searchOrderCatalog({
+    String search = '',
+    int limit = 25,
+  }) async {
+    final target = uri('/api/order-sessions/catalog').replace(
+      queryParameters: {
+        if (search.trim().isNotEmpty) 'search': search.trim(),
+        'limit': '$limit',
+      },
+    );
+    final response = await http
+        .get(target, headers: headers)
+        .timeout(const Duration(seconds: 6));
+    final data = _decode(response);
+    final raw = data['products'] as List<dynamic>? ?? [];
+    return raw
+        .map((e) => OrderCatalogProduct.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<OrderSession> createOrderSession({
+    int? clientId,
+    String? label,
+    String? createdBy,
+  }) async {
+    final response = await http
+        .post(
+          uri('/api/order-sessions'),
+          headers: headers,
+          body: jsonEncode({
+            if (clientId != null) 'client_id': clientId,
+            if (label != null && label.trim().isNotEmpty) 'label': label.trim(),
+            if (createdBy != null && createdBy.trim().isNotEmpty)
+              'created_by': createdBy.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 6));
+    final data = _decode(response);
+    return OrderSession.fromJson(data['session'] as Map<String, dynamic>);
+  }
+
+  Future<OrderSession> addOrderSessionItem(
+    String sessionId, {
+    int? productId,
+    String? barcode,
+    int quantity = 1,
+    String? addedBy,
+  }) async {
+    final response = await http
+        .post(
+          uri('/api/order-sessions/$sessionId/items'),
+          headers: headers,
+          body: jsonEncode({
+            if (productId != null) 'product_id': productId,
+            if (barcode != null && barcode.trim().isNotEmpty)
+              'barcode': barcode.trim(),
+            'quantity': quantity,
+            if (addedBy != null && addedBy.trim().isNotEmpty)
+              'added_by': addedBy.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 6));
+    final data = _decode(response);
+    return OrderSession.fromJson(data['session'] as Map<String, dynamic>);
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     final decoded =
         jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;

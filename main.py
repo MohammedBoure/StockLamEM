@@ -45,6 +45,7 @@ from ui.login_dialog import LoginDialog
 from api import build_server as build_inventory_mobile_server
 from api import build_discovery_server as build_inventory_discovery_server
 from tools.mobile_barcode_bridge import MobileBarcodeBridge
+from tools.mobile_order_session_bridge import MobileOrderSessionBridge
 
 # =========================================================================
 # 1. إعدادات التسجيل (Logging) المتقدمة
@@ -85,6 +86,7 @@ _mobile_api_thread = None
 _mobile_discovery_server = None
 _mobile_discovery_thread = None
 _mobile_barcode_bridge = None
+_mobile_order_session_bridge = None
 
 # =========================================================================
 # 2. صائد الأخطاء المفاجئة (Global Crash Handler)
@@ -195,7 +197,7 @@ def connect_to_database_with_retry(app):
 
 def start_inventory_mobile_api(data_manager, window):
     global _mobile_api_server, _mobile_api_thread
-    global _mobile_discovery_server, _mobile_discovery_thread, _mobile_barcode_bridge
+    global _mobile_discovery_server, _mobile_discovery_thread, _mobile_barcode_bridge, _mobile_order_session_bridge
 
     if not data_manager:
         return
@@ -205,8 +207,14 @@ def start_inventory_mobile_api(data_manager, window):
     else:
         _mobile_barcode_bridge.set_window(window)
 
+    if _mobile_order_session_bridge is None:
+        _mobile_order_session_bridge = MobileOrderSessionBridge(window)
+    else:
+        _mobile_order_session_bridge.set_window(window)
+
     if _mobile_api_server is not None:
         _mobile_api_server.data_manager = data_manager
+        _mobile_api_server.order_session_bridge = _mobile_order_session_bridge
         return
 
     host = os.getenv("INVENTORY_MOBILE_API_HOST", "0.0.0.0")
@@ -219,6 +227,7 @@ def start_inventory_mobile_api(data_manager, window):
             port,
             data_manager=data_manager,
             remote_scan_callback=_mobile_barcode_bridge.submit,
+            order_session_bridge=_mobile_order_session_bridge,
         )
         _mobile_api_thread = threading.Thread(
             target=_serve_mobile_api,
@@ -287,6 +296,7 @@ def stop_inventory_mobile_api():
         _mobile_discovery_server = None
         _mobile_discovery_thread = None
         _mobile_barcode_bridge = None
+_mobile_order_session_bridge = None
 
 
 # =========================================================================

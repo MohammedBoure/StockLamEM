@@ -35,6 +35,7 @@ from .services.inventory_count_service import (
     update_session_line_quantity,
 )
 from .services.location_service import get_locations
+from .services.order_session_service import list_clients as list_order_clients, search_catalog as search_order_catalog
 
 
 class ReusableThreadingHTTPServer(ThreadingHTTPServer):
@@ -196,6 +197,31 @@ class StockLamApiHandler(BaseHTTPRequestHandler):
                 })
                 return
 
+            # 4b. Sessions de Commandes (Bureaux -> Commandes)
+            if path == "/api/order-sessions":
+                bridge = getattr(self.server, "order_session_bridge", None)
+                if bridge is None:
+                    self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Pont de sessions Commandes indisponible.")
+                    return
+                res = bridge.list_sessions()
+                http_status = HTTPStatus.OK if res.get("success") else HTTPStatus.SERVICE_UNAVAILABLE
+                self._send_json(http_status, res)
+                return
+
+            if path == "/api/order-sessions/clients":
+                search = (query.get("search", [""])[0] or "").strip()
+                limit = int(query.get("limit", ["50"])[0] or 50)
+                clients = list_order_clients(self.data_manager, search=search, limit=limit)
+                self._send_json(HTTPStatus.OK, {"success": True, "clients": clients})
+                return
+
+            if path == "/api/order-sessions/catalog":
+                search = (query.get("search", [""])[0] or "").strip()
+                limit = int(query.get("limit", ["30"])[0] or 30)
+                products = search_order_catalog(self.data_manager, search=search, limit=limit)
+                self._send_json(HTTPStatus.OK, {"success": True, "products": products})
+                return
+
             # 5. Storage Locations List
             if path == "/api/locations":
                 locations = get_locations(self.data_manager)
@@ -324,6 +350,55 @@ class StockLamApiHandler(BaseHTTPRequestHandler):
                 logging.exception("Erreur lors de la transmission du scan distant")
                 self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
             return
+
+        # 2b. Sessions de Commandes (Créer une session / Ajouter un produit à une session)
+        if path == "/api/order-sessions":
+            bridge = getattr(self.server, "order_session_bridge", None)
+            if bridge is None:
+                self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Pont de sessions Commandes indisponible.")
+                return
+            try:
+                data = self._read_body()
+                result = bridge.create_session(
+                    client_id=data.get("client_id"),
+                    label=data.get("label"),
+                    created_by=data.get("created_by"),
+                )
+                http_status = HTTPStatus.CREATED if result.get("success") else HTTPStatus.BAD_REQUEST
+                self._send_json(http_status, result)
+            except json.JSONDecodeError:
+                self._send_error(HTTPStatus.BAD_REQUEST, "Corps JSON invalide.")
+            except Exception as exc:
+                logging.exception("Erreur création session Commandes API")
+                self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+            return
+
+        if path.startswith("/api/order-sessions/") and path.endswith("/items"):
+            bridge = getattr(self.server, "order_session_bridge", None)
+            if bridge is None:
+                self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Pont de sessions Commandes indisponible.")
+                return
+            parts = [p for p in path.split("/") if p]
+            if len(parts) == 4 and parts[1] == "order-sessions" and parts[3] == "items":
+                target_sid = parts[2]
+                try:
+                    data = self._read_body()
+                    result = bridge.add_item(
+                        session_id=target_sid,
+                        product_id=data.get("product_id"),
+                        barcode=data.get("barcode"),
+                        quantity=data.get("quantity", 1),
+                        price_tier=data.get("price_tier"),
+                        added_by=data.get("added_by"),
+                    )
+                    http_status = HTTPStatus.OK if result.get("success") else HTTPStatus.BAD_REQUEST
+                    self._send_json(http_status, result)
+                except json.JSONDecodeError:
+                    self._send_error(HTTPStatus.BAD_REQUEST, "Corps JSON invalide.")
+                except Exception as exc:
+                    logging.exception("Erreur ajout produit session Commandes API")
+                    self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+                return
 
         # 3. Consommation directe sécurisée avec vérification FEFO
         if path == "/api/stock/consume":
@@ -636,6 +711,7 @@ class StockLamApiServer(ReusableThreadingHTTPServer):
         RequestHandlerClass: type[BaseHTTPRequestHandler],
         data_manager: Any = None,
         remote_scan_callback: Optional[Callable[[str], bool]] = None,
+        order_session_bridge: Optional[Any] = None,
         device_name: Optional[str] = None,
         device_id: Optional[str] = None,
     ):
@@ -643,6 +719,7 @@ class StockLamApiServer(ReusableThreadingHTTPServer):
         default_name, default_id = _device_identity()
         self.data_manager = data_manager
         self.remote_scan_callback = remote_scan_callback
+        self.order_session_bridge = order_session_bridge
         self.device_name = device_name or default_name
         self.device_id = device_id or default_id
 
@@ -652,6 +729,7 @@ def build_server(
     port: int,
     data_manager: Any = None,
     remote_scan_callback: Optional[Callable[[str], bool]] = None,
+    order_session_bridge: Optional[Any] = None,
     device_name: Optional[str] = None,
     device_id: Optional[str] = None,
 ) -> StockLamApiServer:
@@ -661,6 +739,7 @@ def build_server(
         StockLamApiHandler,
         data_manager=data_manager,
         remote_scan_callback=remote_scan_callback,
+        order_session_bridge=order_session_bridge,
         device_name=device_name,
         device_id=device_id,
     )

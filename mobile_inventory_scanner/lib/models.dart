@@ -521,3 +521,137 @@ class InventoryScopeData {
   final List<Map<String, dynamic>> families;
 }
 
+class OrderSessionItem {
+  const OrderSessionItem({
+    required this.productId,
+    required this.name,
+    required this.ref,
+    required this.quantity,
+    required this.unitPriceTtc,
+    required this.lineTotal,
+  });
+
+  factory OrderSessionItem.fromJson(Map<String, dynamic> json) {
+    return OrderSessionItem(
+      productId: (json['product_id'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String? ?? '',
+      ref: json['ref'] as String? ?? '---',
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      unitPriceTtc: (json['unit_price_ttc'] as num?)?.toDouble() ?? 0.0,
+      lineTotal: (json['line_total'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  final int productId;
+  final String name;
+  final String ref;
+  final int quantity;
+  final double unitPriceTtc;
+  final double lineTotal;
+}
+
+class OrderSession {
+  const OrderSession({
+    required this.sessionId,
+    required this.label,
+    required this.clientId,
+    required this.clientName,
+    required this.itemCount,
+    required this.totalTtc,
+    required this.isActive,
+    required this.createdBy,
+    required this.items,
+  });
+
+  factory OrderSession.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'] as List<dynamic>? ?? [];
+    return OrderSession(
+      sessionId: json['session_id'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      clientId: (json['client_id'] as num?)?.toInt() ?? 1,
+      clientName: json['client_name'] as String? ?? 'Client Divers',
+      itemCount: (json['item_count'] as num?)?.toInt() ?? 0,
+      totalTtc: (json['total_ttc'] as num?)?.toDouble() ?? 0.0,
+      isActive: json['is_active'] as bool? ?? false,
+      createdBy: json['created_by'] as String? ?? '',
+      items: rawItems
+          .map((e) => OrderSessionItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  final String sessionId;
+  final String label;
+  final int clientId;
+  final String clientName;
+  final int itemCount;
+  final double totalTtc;
+  final bool isActive;
+  final String createdBy;
+  final List<OrderSessionItem> items;
+}
+
+class OrderClient {
+  const OrderClient({
+    required this.clientId,
+    required this.fullName,
+    required this.phone,
+    required this.priceTier,
+  });
+
+  factory OrderClient.fromJson(Map<String, dynamic> json) {
+    return OrderClient(
+      clientId: (json['client_id'] as num?)?.toInt() ?? 1,
+      fullName: json['full_name'] as String? ?? 'Client Divers',
+      phone: json['phone'] as String? ?? '',
+      priceTier: json['price_tier'] as String? ?? 'Prix_1',
+    );
+  }
+
+  final int clientId;
+  final String fullName;
+  final String phone;
+  final String priceTier;
+}
+
+class OrderCatalogProduct {
+  const OrderCatalogProduct({
+    required this.productId,
+    required this.productName,
+    required this.brandMark,
+    required this.ref,
+    required this.colorFinish,
+    required this.availableQty,
+    required this.price1,
+    required this.price2,
+    required this.price3,
+    required this.barcode,
+  });
+
+  factory OrderCatalogProduct.fromJson(Map<String, dynamic> json) {
+    return OrderCatalogProduct(
+      productId: (json['product_id'] as num?)?.toInt() ?? 0,
+      productName: json['product_name'] as String? ?? '',
+      brandMark: json['brand_mark'] as String? ?? '',
+      ref: json['ref'] as String? ?? '---',
+      colorFinish: json['color_finish'] as String? ?? 'Standard',
+      availableQty: (json['available_qty'] as num?)?.toInt() ?? 0,
+      price1: (json['price_1'] as num?)?.toDouble() ?? 0.0,
+      price2: (json['price_2'] as num?)?.toDouble() ?? 0.0,
+      price3: (json['price_3'] as num?)?.toDouble() ?? 0.0,
+      barcode: json['barcode'] as String? ?? '',
+    );
+  }
+
+  final int productId;
+  final String productName;
+  final String brandMark;
+  final String ref;
+  final String colorFinish;
+  final int availableQty;
+  final double price1;
+  final double price2;
+  final double price3;
+  final String barcode;
+}
+

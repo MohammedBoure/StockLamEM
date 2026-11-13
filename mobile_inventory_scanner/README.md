@@ -23,6 +23,9 @@ Application mobile Flutter compagne pour StockLam / MODERNSTOCK permettant d'eff
 ### 4. 📱 Mode Pont Bureau (Scanner sans fil)
 - Scannez les codes-barres avec la caméra du téléphone pour les transmettre instantanément dans le champ actif du logiciel bureau.
 
+### 5. 🛒 Mode Commandes (Sessions Clients sur Serveur PC)
+- Consultez les sessions ouvertes dans `Bureaux -> Commandes` sur le PC serveur, créez une nouvelle session pour un client donné, et ajoutez des produits au panier de la session par scan code-barres (caméra/saisie) ou recherche catalogue (`order_sessions_view.dart`).
+
 ## Connexion Réseau et Découverte
 
 - **Découverte automatique (UDP)** : L'application détecte automatiquement les ordinateurs StockLam sur le réseau local (WiFi).
