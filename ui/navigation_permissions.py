@@ -141,6 +141,14 @@ NAVIGATION_PERMISSION_FALLBACKS = {
         "tab_sav_irreparable",
         "tab_desk_sav",
     ),
+    "nav_versement": (
+        "tab_clients",
+        "tab_desk_caisse",
+    ),
+    "nav_paiement_livraison": (
+        "tab_desk_caisse",
+        "tab_desk_dispatch",
+    ),
 }
 
 

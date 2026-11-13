@@ -73,6 +73,8 @@ class MainWindow(QMainWindow):
         self.button_tooltips = {
             14: "Bureaux Opérationnels (Commandes, Caisse, Sortie)",
             15: "Service Après-Vente (SAV) & Réparations",
+            17: "Gestion des Versements",
+            18: "Suivi Paiement à la Livraison",
         }
 
         full_name = self.current_user.get('Full_Name', 'Utilisateur') if self.current_user else 'Invité'
@@ -116,6 +118,8 @@ class MainWindow(QMainWindow):
                 3: "nav_inventory",
                 7: "nav_history",
                 14: "nav_appliance_workflow",
+                17: "nav_versement",
+                18: "nav_paiement_livraison",
                 15: "nav_sav",
                 5: "tab_users",
                 4: "nav_settings"
@@ -307,6 +311,8 @@ class MainWindow(QMainWindow):
             (3, "Stock && Magasin", "inventory"),
             (8, "Réclamations", "reclamations"),
             (14, "Bureaux", "barcode_scan"),
+            (17, "Versement", "kpi_wallet"),
+            (18, "Paiement Livraison", "truck_delivery"),
             (15, "SAV", "wrench_sav"),
             (7, "Traçabilité", "history"),
             (5, "Utilisateurs", "users"),
@@ -469,6 +475,8 @@ class MainWindow(QMainWindow):
             8: "tab_proc_reclamation",
             3: "nav_inventory",
             14: "nav_appliance_workflow",
+            17: "nav_versement",
+            18: "nav_paiement_livraison",
             15: "nav_sav",
             7: "nav_history",  # واجهة السجل المستقلة
             5: "tab_users",
@@ -680,6 +688,16 @@ class MainWindow(QMainWindow):
             from .widgets.clients import ClientsTab
             widget = ClientsTab(self.data_manager)
 
+        # --- 17. Versement (Placeholder dédié) ---
+        elif page_id == 17:
+            from .widgets.versement import VersementTab
+            widget = VersementTab(self.data_manager)
+
+        # --- 18. Paiement Livraison (Placeholder dédié) ---
+        elif page_id == 18:
+            from .widgets.paiement_livraison import PaiementLivraisonTab
+            widget = PaiementLivraisonTab(self.data_manager)
+
         if widget:
             old_widget = self.content_area.widget(page_id)
             self.content_area.removeWidget(old_widget)
@@ -703,6 +721,8 @@ class MainWindow(QMainWindow):
             8: "tab_proc_reclamation",
             3: "nav_inventory",
             14: "nav_appliance_workflow",
+            17: "nav_versement",
+            18: "nav_paiement_livraison",
             15: "nav_sav",
             7: "nav_history",
             5: "tab_users",

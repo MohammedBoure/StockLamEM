@@ -129,6 +129,20 @@ SYSTEM_PERMISSIONS = {
             "tab_sav_closed": "4. Clôturés & Livrés",
             "tab_sav_irreparable": "5. Irréparables"
         }
+    },
+    "12. VERSEMENT": {
+        "label": "Versement",
+        "icon": "fa5s.wallet",
+        "perms": {
+            "nav_versement": "Accès aux Versements"
+        }
+    },
+    "13. PAIEMENT_LIVRAISON": {
+        "label": "Paiement Livraison",
+        "icon": "fa5s.truck",
+        "perms": {
+            "nav_paiement_livraison": "Accès au Paiement Livraison"
+        }
     }
 }
 # =================================================================================

@@ -275,17 +275,19 @@ class TestBonsCaisseDynamicAndClientsVersement(unittest.TestCase):
         """Verifies every navbar workspace has its own folder under ui/widgets/ and zero loose .py files remain."""
         widgets_dir = pathlib.Path(__file__).resolve().parent.parent / "ui" / "widgets"
         expected_navbar_folders = {
-            "dashboard",        # 0: Tableau de Bord
-            "master_data",      # 1: Données de Base
-            "clients",          # 16: Clients
-            "procurement",      # 2: Achats & Entrées
-            "inventory",        # 3: Stock & Magasin
-            "reclamation",      # 8: Réclamations
-            "appliance_desks",  # 14: Bureaux
-            "sav",              # 15: SAV
-            "history",          # 7: Traçabilité
-            "users",            # 5: Utilisateurs
-            "settings",         # 4: Paramètres
+            "dashboard",            # 0: Tableau de Bord
+            "master_data",          # 1: Données de Base
+            "clients",              # 16: Clients
+            "procurement",          # 2: Achats & Entrées
+            "inventory",            # 3: Stock & Magasin
+            "reclamation",          # 8: Réclamations
+            "appliance_desks",      # 14: Bureaux
+            "versement",            # 17: Versement
+            "paiement_livraison",   # 18: Paiement Livraison
+            "sav",                  # 15: SAV
+            "history",              # 7: Traçabilité
+            "users",                # 5: Utilisateurs
+            "settings",             # 4: Paramètres
         }
         actual_dirs = {p.name for p in widgets_dir.iterdir() if p.is_dir() and not p.name.startswith("__")}
         self.assertEqual(actual_dirs, expected_navbar_folders)

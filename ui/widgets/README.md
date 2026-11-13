@@ -12,6 +12,8 @@ Conformément à l'architecture modulaire 1-pour-1 de la barre de navigation lat
 - `inventory/` (`Page 3 : Stock & Magasin`) : Gestion des stocks, mouvements, transferts internes et gestion avancée des lots (`tabs_batches`).
 - `reclamation/` (`Page 8 : Réclamations`) : Suivi et gestion des retours/réclamations fournisseurs (`ReclamationTab`).
 - `appliance_desks/` (`Page 14 : Bureaux`) : Flux opérationnel multi-bureaux épuré (`ApplianceWorkflowTab`, `OrderDeskWidget`, `CashierDeskWidget`, `DispatchDeskWidget`, `SerialBatchRegistryWidget`) gérant la séparation vente théorique / sortie physique par `N° de Série`, le cycle des Bons (`Bon Comptant`, `Bon Crédit`, `Bon de Livraison`, `Versement`, `Bon de Sortie`, `Bon de Retour`) et le routage multi-scanner HID.
+- `versement/` (`Page 17 : Versement`) : Espace dédié à la gestion des versements (`VersementTab`, interface d'attente dans la barre de navigation).
+- `paiement_livraison/` (`Page 18 : Paiement Livraison`) : Espace dédié au suivi des paiements à la livraison (`PaiementLivraisonTab`, interface d'attente dans la barre de navigation).
 - `sav/` (`Page 15 : SAV`) : Espace de travail dédié au Service Après-Vente et Réparations (`SAVWorkspaceTab`, `SAVKanbanWidget`) en 4 étapes avec compensation par `Versement Virtuel` pour appareils irréparables.
 - `history/` (`Page 7 : Traçabilité`) : Vue de traçabilité complète des mouvements de stock internes et externes (`MovementHistoryTab`) avec audit rapide par `N° de Série` et suivi des `Bon de Sortie` et `Bon de Retour`.
 - `users/` (`Page 5 : Utilisateurs`) : Gestion des comptes utilisateurs (`UserManagementTab`, `UserDialog`), des rôles et de la matrice complète des autorisations RBAC.
