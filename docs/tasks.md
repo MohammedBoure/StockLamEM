@@ -56,7 +56,7 @@ sortie يحتاج إلى acc admin وأيضاً ajustement.
 
 في حال ذلك يجب أن يتم إنشاء bon de retour أو avoir في الواجهة التالية # Achats & Entrées ثم ### Avoirs / Retours وتكون متصلة وبشكل صحيح مع bon de réception.
 
-# 9 : medium
+# 9 [COMPLETED]: medium
 المرور عبر الزر الأول # Bureaux للوصول إلى ### 1. Commandes:
 
 لا يحتاج مستخدم الواجهة إلى ميزة عرض المنتوجات غير الموجودة فعلاً في المخزون سواء فيزيائياً أو متوفرة.

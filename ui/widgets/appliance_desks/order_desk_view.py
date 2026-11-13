@@ -1128,6 +1128,7 @@ class OrderDeskWidget(QWidget):
         """)
         self.chk_available_only.toggled.connect(self._on_available_only_toggled)
         self.btn_available_only = self.chk_available_only  # Convenient alias
+        self.chk_available_only.setVisible(False)
         layout.addWidget(self.chk_available_only)
 
         # 6. Search Bar with Instant Clear
@@ -1532,7 +1533,7 @@ class OrderDeskWidget(QWidget):
             "Marque",
             "Désignation Produit",
             "Catégorie",
-            "Couleur",
+            "Réf",
             "Phys.",
             "Dispo.",
             "Prix TTC",
@@ -1643,9 +1644,11 @@ class OrderDeskWidget(QWidget):
             }
         """)
         bar_layout.addWidget(self.lbl_total_value)
+        self.lbl_total_value.setVisible(False)
 
         sep1 = QLabel("•")
         sep1.setStyleSheet("color: #CBD5E1; font-weight: bold; font-size: 10px; background: transparent; border: none;")
+        sep1.setVisible(False)
         bar_layout.addWidget(sep1)
 
         # 2. Total Quantity available badge - de-containerized clean typography (Task #7)
@@ -1985,7 +1988,7 @@ class OrderDeskWidget(QWidget):
 
         # Cart Items Table (5 columns: Désignation, Couleur, Qté, Total TTC, Suppr.)
         self.cart_table = QTableWidget(0, 5)
-        self.cart_table.setHorizontalHeaderLabels(["Désignation", "Couleur", "Qté", "Total TTC", "Suppr."])
+        self.cart_table.setHorizontalHeaderLabels(["Désignation", "Réf", "Qté", "Total TTC", "Suppr."])
         self.cart_table.setStyleSheet(TABLE_STYLE)
         self.cart_table.verticalHeader().setVisible(False)
         self.cart_table.verticalHeader().setDefaultSectionSize(40)
@@ -2266,8 +2269,6 @@ class OrderDeskWidget(QWidget):
             col_txt = "Tous"
 
         only_avail = True
-        if hasattr(self, "chk_available_only") and self.chk_available_only is not None:
-            only_avail = self.chk_available_only.isChecked()
 
         items: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "serials"):
@@ -2294,10 +2295,11 @@ class OrderDeskWidget(QWidget):
 
             filtered_db_items = []
             for it in items:
-                if only_avail:
-                    avail_qty = int(it.get("Available_Theoretical_Qty") or 0)
-                    if avail_qty <= 0:
-                        continue
+                avail_qty = int(it.get("Available_Theoretical_Qty") or 0)
+                if avail_qty <= 0:
+                    continue
+                if "Physical_Stock_Qty" in it and int(it.get("Physical_Stock_Qty") or 0) <= 0:
+                    continue
                 if s_low:
                     name_match = s_low in str(it.get("Product_Name", "")).lower()
                     mark_match = s_low in str(it.get("Brand_Mark", "")).lower()
@@ -2475,13 +2477,18 @@ class OrderDeskWidget(QWidget):
         it_cat.setToolTip(f"Catégorie : {cat}")
         self.table.setItem(row, 2, it_cat)
 
-        # Fix: do NOT set color text on QTableWidgetItem to prevent double overlapping text
-        it_col = QTableWidgetItem("")
-        it_col.setData(Qt.UserRole, color)
-        it_col.setTextAlignment(Qt.AlignCenter)
-        it_col.setToolTip(f"Couleur / Finition : {color}\nCode Hex : {get_color_hex(color)}")
-        self.table.setItem(row, 3, it_col)
-        self.table.setCellWidget(row, 3, ColorBadgeWidget(color))
+        ref_val = str(
+            prod.get("Barcode")
+            or prod.get("Manuf_Cat_No")
+            or prod.get("Reference")
+            or prod.get("Product_Code")
+            or "---"
+        )
+        it_ref = QTableWidgetItem(ref_val)
+        it_ref.setData(Qt.UserRole, ref_val)
+        it_ref.setTextAlignment(Qt.AlignCenter)
+        it_ref.setToolTip(f"Réf : {ref_val}")
+        self.table.setItem(row, 3, it_ref)
 
         it_phys = QTableWidgetItem(str(phys))
         it_phys.setTextAlignment(Qt.AlignCenter)
@@ -3033,6 +3040,7 @@ class OrderDeskWidget(QWidget):
             "product_id": pid,
             "mark": str(prod.get("Brand_Mark") or ""),
             "name": str(prod.get("Product_Name") or ""),
+            "ref": str(prod.get("Barcode") or prod.get("Manuf_Cat_No") or prod.get("Reference") or prod.get("Product_Code") or "---"),
             "coloure": str(prod.get("Color_Finish") or "Standard"),
             "unit_price_ttc": unit_price,
             "quantity": 1,
@@ -3059,13 +3067,12 @@ class OrderDeskWidget(QWidget):
             it_name.setToolTip(prod_title)
             self.cart_table.setItem(row, 0, it_name)
 
-            # Col 1: Couleur (Visual circular swatch with border + color name + rich tooltip)
-            color_val = str(item.get("coloure") or item.get("color") or "Standard")
-            it_col = QTableWidgetItem("")
-            it_col.setTextAlignment(Qt.AlignCenter)
-            it_col.setToolTip(f"Couleur / Finition : {color_val}\nCode Hex : {get_color_hex(color_val)}")
-            self.cart_table.setItem(row, 1, it_col)
-            self.cart_table.setCellWidget(row, 1, ColorBadgeWidget(color_val))
+            # Col 1: Réf du produit
+            ref_val = str(item.get("ref") or item.get("Barcode") or item.get("Manuf_Cat_No") or "---")
+            it_ref = QTableWidgetItem(ref_val)
+            it_ref.setTextAlignment(Qt.AlignCenter)
+            it_ref.setToolTip(f"Réf : {ref_val}")
+            self.cart_table.setItem(row, 1, it_ref)
 
             # Col 2: Quantité (Stepper with - / qty / +)
             stepper = CartQtyStepper(
