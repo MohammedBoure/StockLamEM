@@ -1950,6 +1950,13 @@ class CashierDeskWidget(QWidget):
         status = str(self._selected_order.get("Status") or "").upper()
 
         if b_type == "BON_C":
+            self.btn_val_bon_c.setText("Valider Bon Comptant (Encaisser)")
+            self.btn_val_bon_c.setVisible(True)
+            self.btn_val_credit.setVisible(False)
+            self.btn_val_livraison.setVisible(False)
+            self.btn_val_livraison_cod_later.setVisible(False)
+        elif b_type == "BON_VERSEMENT":
+            self.btn_val_bon_c.setText("Valider Versement (Caisse)")
             self.btn_val_bon_c.setVisible(True)
             self.btn_val_credit.setVisible(False)
             self.btn_val_livraison.setVisible(False)
@@ -2179,6 +2186,8 @@ class CashierDeskWidget(QWidget):
                 show = b_type == "BON_CREDIT" or ord_num.startswith("2") or ord_num.startswith("BCR-")
             elif q == "3":
                 show = b_type == "BON_LIVRAISON" or ord_num.startswith("3") or ord_num.startswith("BLV-")
+            elif q == "4":
+                show = b_type == "BON_VERSEMENT" or ord_num.startswith("4") or ord_num.startswith("VRS-")
             else:
                 show = (q in ord_num) or (q in client_name) or (ord_num.replace("-", "") in q.replace("-", "")) or (q in ord_num.replace("-", ""))
 
@@ -2349,6 +2358,7 @@ class CashierDeskWidget(QWidget):
 
         order_id = int(self._selected_order["Order_ID"])
         order_num = str(self._selected_order["Order_Number"])
+        b_type = str(self._selected_order.get("Bond_Type") or "BON_C").upper()
         tot = float(self._selected_order["Total_Amount_TTC"])
         w_ded = self._get_wallet_deduction()
 
@@ -2356,6 +2366,35 @@ class CashierDeskWidget(QWidget):
             cash_val = float(self.txt_cash.text().strip() or "0")
         except ValueError:
             QMessageBox.warning(self, "Montant invalide", "Veuillez saisir un montant numérique valide.")
+            return
+
+        if b_type == "BON_VERSEMENT":
+            if cash_val + w_ded <= 0:
+                QMessageBox.warning(
+                    self,
+                    "Montant Requis",
+                    "Veuillez saisir le montant du versement dans la Caisse avant de valider.",
+                )
+                return
+            try:
+                if self.data_manager and hasattr(self.data_manager, "bonds"):
+                    uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
+                    self.data_manager.bonds.validate_bon_versement(
+                        order_id=order_id,
+                        cashier_user_id=uid,
+                        cash_session_id=1,
+                        amount_paid_cash=Decimal(str(cash_val)),
+                        amount_paid_wallet=Decimal(str(w_ded)),
+                    )
+                self.orderSettled.emit(order_num, "BON_VERSEMENT_PAID")
+                QMessageBox.information(
+                    self,
+                    "Bon Versement Validé",
+                    f"Le Versement ({order_num}) de {format_money(cash_val + w_ded)} DA a été enregistré en Caisse.\nTransmis au Bureau de Sortie.",
+                )
+                self.refresh_queue()
+            except Exception as err:
+                QMessageBox.critical(self, "Erreur Validation Versement", str(err))
             return
 
         if cash_val + w_ded < tot:

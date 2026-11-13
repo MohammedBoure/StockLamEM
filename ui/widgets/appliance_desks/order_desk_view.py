@@ -2149,6 +2149,19 @@ class OrderDeskWidget(QWidget):
         sec_row.addWidget(self.btn_livraison)
 
         layout.addLayout(sec_row)
+
+        # Versement Row: Client records products as Versement; amount is set strictly at Caisse
+        self.btn_versement = QPushButton("Versement")
+        self.btn_versement.setIcon(get_duotone_icon("kpi_wallet", 15))
+        self.btn_versement.setIconSize(QSize(15, 15))
+        self.btn_versement.setCursor(Qt.PointingHandCursor)
+        self.btn_versement.setFixedHeight(40)
+        self.btn_versement.setToolTip(
+            "Enregistrer les produits comme Versement — le montant versé est saisi uniquement au Bureau Caisse"
+        )
+        self.btn_versement.setStyleSheet(OUTLINE_BTN_STYLE)
+        self.btn_versement.clicked.connect(lambda: self._submit_order("BON_VERSEMENT"))
+        layout.addWidget(self.btn_versement)
         return panel
 
     def _open_quick_client_dialog(self) -> None:
@@ -3291,6 +3304,7 @@ class OrderDeskWidget(QWidget):
             "BON_C": "CASH",
             "BON_CREDIT": "CREDIT_APPROVAL_REQUIRED",
             "BON_LIVRAISON": "LIVRAISON_COD",
+            "BON_VERSEMENT": "VERSEMENT",
         }
         deliv_addr = sdata.get("delivery_address") or self.txt_delivery_addr.text().strip() or None
 
@@ -3333,6 +3347,7 @@ class OrderDeskWidget(QWidget):
                     "BON_C": "1-BC",
                     "BON_CREDIT": "2-BCR",
                     "BON_LIVRAISON": "3-BLV",
+                    "BON_VERSEMENT": "4-VRS",
                 }
                 pfx = sim_prefixes.get(bond_type, "1-BC")
                 res = {
@@ -3386,6 +3401,14 @@ class OrderDeskWidget(QWidget):
                     f"Bon ({order_num}) mis à jour — {format_money(total_ttc)} DA."
                     if edit_meta
                     else f"Bon Crédit ({order_num}) transmis en Caisse — {format_money(total_ttc)} DA."
+                )
+            elif bond_type == "BON_VERSEMENT":
+                self.bonCGenerated.emit(res)
+                title_txt = "Bon Modifié" if edit_meta else "Bon Versement Créé"
+                msg_txt = (
+                    f"Bon ({order_num}) mis à jour — {format_money(total_ttc)} DA."
+                    if edit_meta
+                    else f"Bon Versement ({order_num}) enregistré — {format_money(total_ttc)} DA.\nLe montant du versement sera défini au Bureau Caisse."
                 )
             else:
                 self.bonLivraisonGenerated.emit(res)

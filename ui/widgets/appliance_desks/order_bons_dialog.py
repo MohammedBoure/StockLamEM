@@ -38,6 +38,7 @@ BOND_TYPE_LABELS = {
     "BON_C": "Bon Comptant",
     "BON_CREDIT": "Bon Crédit",
     "BON_LIVRAISON": "Bon de Livraison",
+    "BON_VERSEMENT": "Bon Versement",
 }
 
 STATUS_LABELS = {

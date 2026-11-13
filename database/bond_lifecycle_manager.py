@@ -109,13 +109,14 @@ class BondLifecycleManager:
                 conn.start_transaction()
 
             normalized_bond = (bond_type or "BON_C").strip().upper()
-            if normalized_bond not in ("BON_C", "BON_CREDIT", "BON_LIVRAISON"):
+            if normalized_bond not in ("BON_C", "BON_CREDIT", "BON_LIVRAISON", "BON_VERSEMENT"):
                 normalized_bond = "BON_C"
 
             prefix_map = {
                 "BON_C": "1-BC",
                 "BON_CREDIT": "2-BCR",
                 "BON_LIVRAISON": "3-BLV",
+                "BON_VERSEMENT": "4-VRS",
             }
             prefix = prefix_map.get(normalized_bond, "1-BC")
             order_num = f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{int(datetime.now().timestamp() * 1000) % 100000:05d}"
@@ -432,7 +433,7 @@ class BondLifecycleManager:
 
             # 2. Reserve new theoretical lines
             normalized_bond = (bond_type or order.get("Bond_Type") or "BON_C").strip().upper()
-            if normalized_bond not in ("BON_C", "BON_CREDIT", "BON_LIVRAISON"):
+            if normalized_bond not in ("BON_C", "BON_CREDIT", "BON_LIVRAISON", "BON_VERSEMENT"):
                 normalized_bond = "BON_C"
             if existing_inv and normalized_bond != order.get("Bond_Type"):
                 normalized_bond = str(order.get("Bond_Type"))
@@ -506,6 +507,7 @@ class BondLifecycleManager:
                 "BON_C": "CASH",
                 "BON_CREDIT": "CREDIT",
                 "BON_LIVRAISON": "LIVRAISON_COD",
+                "BON_VERSEMENT": "VERSEMENT",
             }
             cursor.execute(
                 """
@@ -1002,6 +1004,144 @@ class BondLifecycleManager:
         except Exception as err:
             conn.rollback()
             logger.error(f"Error validating Bon C: {err}")
+            raise
+        finally:
+            cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
+    def validate_bon_versement(
+        self,
+        order_id: int,
+        cashier_user_id: int,
+        cash_session_id: int,
+        amount_paid_cash: Decimal,
+        amount_paid_wallet: Decimal = Decimal("0.00"),
+    ) -> Dict[str, Any]:
+        """
+        Validates a Bon Versement created at Order Desk by recording the versement
+        amount strictly entered at Caisse. Updates client debt if a remainder exists
+        and transitions the order to PAID_PENDING_DISPATCH.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            if hasattr(conn, "start_transaction"):
+                conn.start_transaction()
+
+            cursor.execute(
+                """
+                SELECT Order_ID, Client_ID, Total_Amount_TTC, Status
+                FROM Sales_Orders_Theoretical
+                WHERE Order_ID = %s
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            order = cursor.fetchone()
+            if not order:
+                raise ValueError("Order not found.")
+            if order["Status"] != "CONFIRMED_PENDING_PAYMENT":
+                raise ValueError(f"Order cannot be settled in current status: {order['Status']}")
+
+            total_ttc = Decimal(str(order["Total_Amount_TTC"])).quantize(Decimal("0.01"))
+            cash_dec = Decimal(str(amount_paid_cash or "0.00")).quantize(Decimal("0.01"))
+            wallet_dec = Decimal(str(amount_paid_wallet or "0.00")).quantize(Decimal("0.01"))
+
+            total_tendered = (cash_dec + wallet_dec).quantize(Decimal("0.01"))
+            if total_tendered <= Decimal("0.00"):
+                raise ValueError("Le montant du versement saisi en caisse doit être supérieur à 0 DA.")
+
+            change_due = max(Decimal("0.00"), (total_tendered - total_ttc).quantize(Decimal("0.01")))
+            net_cash_retained = max(Decimal("0.00"), (cash_dec - change_due).quantize(Decimal("0.01")))
+            applied_total = min(total_ttc, total_tendered)
+            remaining_credit = max(Decimal("0.00"), (total_ttc - applied_total).quantize(Decimal("0.01")))
+
+            inv_status = "Paid" if remaining_credit <= Decimal("0.00") else "Partial"
+            invoice_num = f"FAC-VRS-{datetime.now().strftime('%Y%m%d')}-{order_id}"
+            total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
+            total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
+
+            cursor.execute(
+                """
+                INSERT INTO Sales_Invoices (
+                    Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
+                    Total_Amount_HT, Total_TVA, Total_Amount_TTC,
+                    Created_By, Cash_Session_ID, Payment_Method,
+                    Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Card,
+                    Amount_Paid_Wallet, Amount_Remaining_Credit
+                ) VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, %s, %s, %s, 'Cash', 'BON_VERSEMENT', %s, 0.00, %s, %s)
+                """,
+                (
+                    invoice_num,
+                    int(order_id),
+                    int(order["Client_ID"]),
+                    inv_status,
+                    total_ht,
+                    total_tva,
+                    total_ttc,
+                    int(cashier_user_id),
+                    int(cash_session_id) if cash_session_id else None,
+                    net_cash_retained,
+                    wallet_dec,
+                    remaining_credit,
+                ),
+            )
+            invoice_id = cursor.lastrowid
+
+            if wallet_dec > Decimal("0.00"):
+                self._debit_client_wallet_locked(
+                    cursor,
+                    int(order["Client_ID"]),
+                    wallet_dec,
+                    invoice_id,
+                    int(cashier_user_id),
+                    f"Déduction portefeuille sur Bon Versement #{invoice_num}",
+                )
+
+            if cash_session_id and net_cash_retained > Decimal("0.00"):
+                cursor.execute(
+                    """
+                    UPDATE POS_Cash_Sessions
+                    SET Expected_Cash = COALESCE(Expected_Cash, 0.00) + %s
+                    WHERE Cash_Session_ID = %s
+                    """,
+                    (net_cash_retained, int(cash_session_id)),
+                )
+
+            if remaining_credit > Decimal("0.00"):
+                cursor.execute(
+                    """
+                    UPDATE Clients
+                    SET Current_Debt = COALESCE(Current_Debt, 0.00) + %s
+                    WHERE Client_ID = %s
+                    """,
+                    (remaining_credit, int(order["Client_ID"])),
+                )
+
+            cursor.execute(
+                """
+                UPDATE Sales_Orders_Theoretical
+                SET Status = 'PAID_PENDING_DISPATCH', Updated_At = NOW()
+                WHERE Order_ID = %s
+                """,
+                (int(order_id),),
+            )
+
+            conn.commit()
+            return {
+                "success": True,
+                "invoice_id": invoice_id,
+                "invoice_number": invoice_num,
+                "net_cash_retained": float(net_cash_retained),
+                "wallet_debited": float(wallet_dec),
+                "remaining_credit": float(remaining_credit),
+                "change_due": float(change_due),
+                "status": "PAID_PENDING_DISPATCH",
+            }
+        except Exception as err:
+            conn.rollback()
+            logger.error(f"Error validating Bon Versement: {err}")
             raise
         finally:
             cursor.close()
