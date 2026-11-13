@@ -803,6 +803,144 @@ class SAVWorkflowManager:
             logger.error(f"Error fetching SAV tickets: {err}")
             return []
 
+    def _hydrate_bon_physical_items(self, cursor, order_row: Dict[str, Any]) -> Dict[str, Any]:
+        """Fetches physical serials and theoretical lines associated with an order/invoice."""
+        oid = int(order_row.get("Order_ID") or 0)
+        inv_id = order_row.get("Invoice_ID")
+        items: List[Dict[str, Any]] = []
+
+        # 1. Prefer physical serials linked to the invoice or dispatched for this order
+        if inv_id:
+            cursor.execute(
+                """
+                SELECT ps.Serial_ID, ps.Serial_Number, ps.Status AS Serial_Status,
+                       ps.Product_ID, p.Product_Name, COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                       COALESCE(p.Barcode, '') AS Barcode,
+                       COALESCE(l.Unit_Price_TTC, 0.0) AS Unit_Price_TTC
+                FROM Product_Serials ps
+                JOIN Products_Master p ON ps.Product_ID = p.Product_ID
+                LEFT JOIN Sales_Order_Lines_Theoretical l
+                       ON l.Order_ID = %s AND l.Product_ID = ps.Product_ID
+                WHERE ps.Original_Sales_Invoice_ID = %s
+                ORDER BY ps.Serial_ID DESC
+                """,
+                (oid, int(inv_id)),
+            )
+            items = cursor.fetchall() or []
+
+        # 2. Fallback to Product_Serial_History DISPATCH_VOUCHER or theoretical order lines
+        if not items and oid:
+            cursor.execute(
+                """
+                SELECT l.Product_ID, p.Product_Name, COALESCE(p.Brand_Mark, '') AS Brand_Mark,
+                       COALESCE(p.Barcode, '') AS Barcode, l.Unit_Price_TTC,
+                       ps.Serial_ID, COALESCE(ps.Serial_Number, '') AS Serial_Number,
+                       COALESCE(ps.Status, '') AS Serial_Status
+                FROM Sales_Order_Lines_Theoretical l
+                JOIN Products_Master p ON l.Product_ID = p.Product_ID
+                LEFT JOIN Product_Serials ps
+                       ON ps.Product_ID = l.Product_ID
+                      AND ps.Original_Client_ID = %s
+                WHERE l.Order_ID = %s
+                ORDER BY l.Line_ID ASC
+                """,
+                (int(order_row.get("Client_ID") or 0), oid),
+            )
+            items = cursor.fetchall() or []
+
+        order_row["items"] = items
+        return order_row
+
+    def find_bon_by_bon_rouge(self, code: str) -> Optional[Dict[str, Any]]:
+        """
+        Option 1 (Bon Rouge): Looks up a customer's Bon directly by Bon Rouge / Order_Number / Invoice_No / Serial_Number
+        and returns full bon details + physical products taken.
+        """
+        raw = (code or "").strip()
+        if not raw:
+            return None
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                like_q = f"%{raw}%"
+                cursor.execute(
+                    """
+                    SELECT
+                        o.Order_ID, o.Order_Number, o.Client_ID, o.Bond_Type,
+                        o.Total_Amount_TTC, o.Order_Date, o.Status,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
+                        i.Invoice_ID, COALESCE(i.Invoice_No, '') AS Invoice_No
+                    FROM Sales_Orders_Theoretical o
+                    LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID
+                    LEFT JOIN Product_Serials ps ON ps.Original_Sales_Invoice_ID = i.Invoice_ID
+                    WHERE o.Order_Number = %s
+                       OR i.Invoice_No = %s
+                       OR ps.Serial_Number = %s
+                       OR o.Order_Number LIKE %s
+                       OR i.Invoice_No LIKE %s
+                    ORDER BY
+                        CASE WHEN o.Order_Number = %s OR i.Invoice_No = %s THEN 0 ELSE 1 END,
+                        o.Order_Date DESC
+                    LIMIT 1
+                    """,
+                    (raw, raw, raw, like_q, like_q, raw, raw),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return None
+                return self._hydrate_bon_physical_items(cursor, row)
+        except Exception as err:
+            logger.error(f"Error looking up Bon Rouge '{raw}': {err}")
+            return None
+
+    def search_client_bons(self, query: str) -> List[Dict[str, Any]]:
+        """
+        Option 2 (Without Bon Rouge): Searches customer bons using phone, first name, or last name
+        (multi-token matching across Client_Name and Phone) and hydrates physical products in each bon.
+        """
+        raw = (query or "").strip()
+        if not raw:
+            return []
+        tokens = [t for t in raw.split() if t]
+        if not tokens:
+            return []
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                conds = []
+                params: List[Any] = []
+                for tok in tokens:
+                    like_tok = f"%{tok}%"
+                    conds.append("(c.Client_Name LIKE %s OR COALESCE(c.Phone, '') LIKE %s)")
+                    params.extend([like_tok, like_tok])
+
+                where_sql = " AND ".join(conds)
+                cursor.execute(
+                    f"""
+                    SELECT
+                        o.Order_ID, o.Order_Number, o.Client_ID, o.Bond_Type,
+                        o.Total_Amount_TTC, o.Order_Date, o.Status,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
+                        i.Invoice_ID, COALESCE(i.Invoice_No, '') AS Invoice_No
+                    FROM Sales_Orders_Theoretical o
+                    JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID
+                    WHERE ({where_sql})
+                      AND o.Status != 'CANCELLED'
+                    ORDER BY o.Order_Date DESC
+                    LIMIT 50
+                    """,
+                    params,
+                )
+                rows = cursor.fetchall() or []
+                return [self._hydrate_bon_physical_items(cursor, r) for r in rows]
+        except Exception as err:
+            logger.error(f"Error searching client bons for '{raw}': {err}")
+            return []
+
 
 # Alias matching docs service layer name
 SAVWorkflowService = SAVWorkflowManager
