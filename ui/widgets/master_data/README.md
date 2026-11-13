@@ -16,6 +16,7 @@ Ce dossier regroupe les interfaces de gestion des référentiels de données du 
 - `waste_reasons_tab.py` : Gestion des motifs de mise au rebut / perte.
 - `external_partners_tab.py` : Gestion des partenaires et sous-traitants externes.
 - `caisses_tab.py` : Gestion et contrôle des caisses (Terminaux POS), statut actif/inactif et suivi du nombre de sessions.
+- `product_references_tab.py` : Gestion des codes `Réf` multiples par produit (`ProductReferencesTab`, `ReferenceDialog`), distincts du code-barres (`Barcode`), avec unicité globale, sélection du produit, définition de la `Réf` principale et contrôle d'accès via la permission `tab_data_references` dans Utilisateurs.
 - `product_colors_tab.py` : Gestion et référencement des couleurs/finitions des appareils électroménagers (`ProductColorsTab`) :
   - Visualisation des échantillons de couleur avec pastilles chromatiques (`ColorPreviewWidget`), nom, code Hexadécimal et statut.
   - Filtrage en temps réel par désignation ou code hexadécimal.

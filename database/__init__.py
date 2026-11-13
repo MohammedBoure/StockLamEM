@@ -46,6 +46,7 @@ from .bond_lifecycle_manager import (
 )
 from .sav_workflow_manager import SAVWorkflowManager, SAVWorkflowService
 from .product_color_manager import ProductColorManager
+from .product_reference_manager import ProductReferenceManager
 class LabDataManager:
 
     def __init__(self, db_instance: Database):
@@ -60,6 +61,8 @@ class LabDataManager:
         self.families = ProductFamilyManager(db_instance)
         self.packaging_units = PackagingUnitManager(db_instance)
         self.colors = ProductColorManager(db_instance)
+        # Réf registry (several Réf codes per product) - must exist before product/catalog queries
+        self.product_refs = ProductReferenceManager(db_instance)
 
         # 2. Product/Document Managers
         self.products = ProductManager(db_instance)

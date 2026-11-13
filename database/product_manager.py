@@ -5,6 +5,12 @@ import logging
 from typing import List, Dict, Optional, Tuple
 from decimal import Decimal
 from .system_logger import log_methods 
+from .product_reference_manager import (
+    ALL_REFS_SQL,
+    PRIMARY_REF_SQL,
+    REF_SEARCH_EXISTS_SQL,
+    ProductReferenceManager,
+)
 
 @log_methods()
 class ProductManager:
@@ -16,6 +22,8 @@ class ProductManager:
 
     def __init__(self, db_instance):
         self.db = db_instance
+        # Guarantees Product_References exists before Réf sub-queries are executed
+        ProductReferenceManager(db_instance)
 
     def add_product(self, product_data: Dict) -> bool:
         """
@@ -252,8 +260,9 @@ class ProductManager:
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                query = """
-                    SELECT p.*, m.Manuf_Name, pf.Family_Name, a.Automate_Name
+                query = f"""
+                    SELECT p.*, m.Manuf_Name, pf.Family_Name, a.Automate_Name,
+                           {PRIMARY_REF_SQL}, {ALL_REFS_SQL}
                     FROM Products_Master p
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
@@ -271,8 +280,9 @@ class ProductManager:
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                query = """
-                    SELECT p.*, pf.Family_Name, m.Manuf_Name, a.Automate_Name
+                query = f"""
+                    SELECT p.*, pf.Family_Name, m.Manuf_Name, a.Automate_Name,
+                           {PRIMARY_REF_SQL}, {ALL_REFS_SQL}
                     FROM Products_Master p
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
@@ -313,8 +323,9 @@ class ProductManager:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
                 params = []
-                query = """
-                    SELECT p.*, m.Manuf_Name, pf.Family_Name, a.Automate_Name
+                query = f"""
+                    SELECT p.*, m.Manuf_Name, pf.Family_Name, a.Automate_Name,
+                           {PRIMARY_REF_SQL}, {ALL_REFS_SQL}
                     FROM Products_Master p
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
@@ -325,12 +336,13 @@ class ProductManager:
                         p.Barcode LIKE %s OR 
                         p.Manuf_Cat_No LIKE %s OR
                         pf.Family_Name LIKE %s OR
-                        a.Automate_Name LIKE %s
+                        a.Automate_Name LIKE %s OR
+                        {REF_SEARCH_EXISTS_SQL}
                     )
                     ORDER BY p.Product_Name
                 """
                 term = f"%{search_term}%"
-                params.extend([term, term, term, term, term])
+                params.extend([term, term, term, term, term, term])
                 if limit:
                     try:
                         limit_value = max(1, min(int(limit), 500))

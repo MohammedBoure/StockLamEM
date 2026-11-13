@@ -13,6 +13,7 @@ from .packaging_units_tab import PackagingUnitsTab
 from .external_partners_tab import ExternalPartnersTab 
 from .caisses_tab import CaissesTab
 from .product_colors_tab import ProductColorsTab
+from .product_references_tab import ProductReferencesTab
 
 class MasterDataTabs(QWidget):
     def __init__(self, data_manager):
@@ -38,6 +39,7 @@ class MasterDataTabs(QWidget):
         self.tab_clients = None  # Migré vers un espace de travail dédié dans la barre de navigation
         self.tab_caisses = CaissesTab(self.data_manager)
         self.tab_colors = ProductColorsTab(self.data_manager)
+        self.tab_references = ProductReferencesTab(self.data_manager)
 
 
         layout.addWidget(self.tabs)

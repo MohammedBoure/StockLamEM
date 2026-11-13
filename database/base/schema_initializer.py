@@ -48,6 +48,7 @@ _ALL_PERMISSIONS = [
     "tab_clients",
     "tab_data_caisses",
     "tab_data_colors",
+    "tab_data_references",
     "nav_clients",
 
     # --- تبويبات المشتريات (Procurement) ---

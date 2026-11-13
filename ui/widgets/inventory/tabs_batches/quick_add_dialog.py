@@ -379,7 +379,7 @@ class QuickAddDialog(QDialog):
         self.cb_product.addItem("--- Sélectionnez un produit ---", None)
         for p in all_products:
             brand = p.get('Manuf_Name') or "---"
-            ref = p.get('Barcode') or p.get('Manuf_Cat_No') or p.get('Reference') or p.get('Product_Code') or "---"
+            ref = p.get('All_Refs') or p.get('Primary_Ref') or p.get('Manuf_Cat_No') or p.get('Reference') or p.get('Product_Code') or p.get('Barcode') or "---"
             self.cb_product.addItem(f"{p['Product_Name']}  |  Réf: {ref}  ({brand})", p)
 
         # Load Suppliers

@@ -14,6 +14,7 @@ import re
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
+from .product_reference_manager import ALL_REFS_SQL, PRIMARY_REF_SQL
 
 import mysql.connector
 
@@ -317,6 +318,8 @@ class SerialTrackingManager:
                         COALESCE(p.Category_Name, pf.Family_Name, 'Électroménager') AS Category_Name,
                         COALESCE(p.Color_Finish, 'Standard') AS Color_Finish,
                         p.Barcode,
+                        {PRIMARY_REF_SQL},
+                        {ALL_REFS_SQL},
                         p.Warranty_Months,
                         p.Requires_Serial_Tracking,
                         COALESCE(p.Default_Selling_Price_HT, 0.00) AS Default_Selling_Price_HT,
@@ -350,10 +353,11 @@ class SerialTrackingManager:
                     col_val = str(r.get("Color_Finish") or "")
                     name_val = str(r.get("Product_Name") or "")
                     bc_val = str(r.get("Barcode") or "")
+                    refs_val = str(r.get("All_Refs") or "")
 
                     if s_term and not any(
                         s_term in field.lower()
-                        for field in (name_val, mark_val, cat_val, col_val, bc_val)
+                        for field in (name_val, mark_val, cat_val, col_val, bc_val, refs_val)
                     ):
                         continue
                     if b_term and b_term not in WILDCARD_TERMS and b_term not in mark_val.lower() and mark_val.lower() not in b_term:

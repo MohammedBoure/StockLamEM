@@ -2517,16 +2517,18 @@ class OrderDeskWidget(QWidget):
         self.table.setItem(row, 2, it_cat)
 
         ref_val = str(
-            prod.get("Barcode")
+            prod.get("Primary_Ref")
             or prod.get("Manuf_Cat_No")
             or prod.get("Reference")
             or prod.get("Product_Code")
+            or prod.get("Barcode")
             or "---"
         )
+        all_refs = str(prod.get("All_Refs") or ref_val)
         it_ref = QTableWidgetItem(ref_val)
         it_ref.setData(Qt.UserRole, ref_val)
         it_ref.setTextAlignment(Qt.AlignCenter)
-        it_ref.setToolTip(f"Réf : {ref_val}")
+        it_ref.setToolTip(f"Réf : {all_refs}")
         self.table.setItem(row, 3, it_ref)
 
         it_phys = QTableWidgetItem(str(phys))
@@ -3189,7 +3191,14 @@ class OrderDeskWidget(QWidget):
             "product_id": pid,
             "mark": str(prod.get("Brand_Mark") or ""),
             "name": str(prod.get("Product_Name") or ""),
-            "ref": str(prod.get("Barcode") or prod.get("Manuf_Cat_No") or prod.get("Reference") or prod.get("Product_Code") or "---"),
+            "ref": str(
+                prod.get("Primary_Ref")
+                or prod.get("Manuf_Cat_No")
+                or prod.get("Reference")
+                or prod.get("Product_Code")
+                or prod.get("Barcode")
+                or "---"
+            ),
             "coloure": str(prod.get("Color_Finish") or "Standard"),
             "unit_price_ttc": unit_price,
             "quantity": 1,
@@ -3217,7 +3226,13 @@ class OrderDeskWidget(QWidget):
             self.cart_table.setItem(row, 0, it_name)
 
             # Col 1: Réf du produit
-            ref_val = str(item.get("ref") or item.get("Barcode") or item.get("Manuf_Cat_No") or "---")
+            ref_val = str(
+                item.get("ref")
+                or item.get("Primary_Ref")
+                or item.get("Manuf_Cat_No")
+                or item.get("Barcode")
+                or "---"
+            )
             it_ref = QTableWidgetItem(ref_val)
             it_ref.setTextAlignment(Qt.AlignCenter)
             it_ref.setToolTip(f"Réf : {ref_val}")
@@ -3483,11 +3498,13 @@ class OrderDeskWidget(QWidget):
             cat_prod = catalog_by_id.get(pid, {})
             avail = int(cat_prod.get("Available_Theoretical_Qty") or 0) + qty
             ref_val = str(
-                ln.get("Barcode")
+                ln.get("Primary_Ref")
                 or ln.get("ref")
-                or cat_prod.get("Barcode")
+                or cat_prod.get("Primary_Ref")
                 or cat_prod.get("Manuf_Cat_No")
                 or cat_prod.get("Reference")
+                or ln.get("Barcode")
+                or cat_prod.get("Barcode")
                 or "---"
             )
             cart_items.append({

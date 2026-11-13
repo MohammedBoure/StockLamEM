@@ -41,7 +41,8 @@ SYSTEM_PERMISSIONS = {
             "tab_data_locations": "Emplacements",
             "tab_data_waste_reasons": "Motifs Rebut",
             "tab_data_caisses": "Caisses",
-            "tab_data_colors": "Couleurs"
+            "tab_data_colors": "Couleurs",
+            "tab_data_references": "Références (Réf)"
         }
     },
     "2b. CLIENTS": {
