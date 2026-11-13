@@ -82,7 +82,7 @@ sortie يحتاج إلى acc admin وأيضاً ajustement.
 خيارات الدفع: Payment complet , Payment a livraison , payment Payment Crédit.
 صحح التسمية 
 
-# 12 : medium
+# 12 [COMPLETED]: medium
 المرور عبر الزر الأول # Bureaux للوصول إلى ### 1. Commandes:
 
 يمكن من هذه الواجهة الوصول إلى bon الموجودة من قبل والتعديل عليها.

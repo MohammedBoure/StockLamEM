@@ -7,7 +7,7 @@ Minimal, clean dialogs for viewing, editing, and exporting Order Desk Bons
 import logging
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -373,17 +373,21 @@ class OrderDeskBonsDialog(QDialog):
     Bon de Livraison (BL) vouchers, with instant Edit and PDF Export actions.
     """
 
+    editBonRequested = Signal(dict)
+
     def __init__(
         self,
         data_manager: Any,
         catalog_items: Optional[List[Dict[str, Any]]] = None,
         clients_list: Optional[List[Dict[str, Any]]] = None,
+        inline_edit: bool = False,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self.data_manager = data_manager
         self.catalog_items = catalog_items or []
         self.clients_list = clients_list or []
+        self._inline_edit = bool(inline_edit)
         self._bons: List[Dict[str, Any]] = []
         self.was_modified = False
 
@@ -652,6 +656,10 @@ class OrderDeskBonsDialog(QDialog):
                 "Modification non disponible",
                 "Ce bon a déjà été expédié ou clôturé. Vous pouvez toujours l'exporter en PDF.",
             )
+            return
+        if self._inline_edit:
+            self.editBonRequested.emit(bon)
+            self.accept()
             return
         dlg = OrderBonEditDialog(
             data_manager=self.data_manager,

@@ -2569,6 +2569,8 @@ class OrderDeskWidget(QWidget):
             return sid
         cart_count = len(sdata.get("cart", []))
         count_tag = f" ({cart_count})" if cart_count > 0 else ""
+        if sdata.get("edit_order"):
+            return f"✏️ {sdata['label']}{count_tag}"
         if sdata.get("scanner_id"):
             return f"📷 Scanner [{sdata['scanner_id']}] • {sdata['label']}{count_tag}"
         return f"🔍 Recherche • {sdata['label']}{count_tag}"
@@ -2576,6 +2578,11 @@ class OrderDeskWidget(QWidget):
     def _get_session_tab_icon(self, sid: str):
         sdata = self._sessions.get(sid, {})
         has_event = bool(sdata.get("has_event"))
+        if sdata.get("edit_order"):
+            color = "#D97706" if has_event else "#007572"
+            if qta:
+                return qta.icon("fa5s.edit", color=color)
+            return get_duotone_icon("edit", 14)
         color = "#D97706" if has_event else ("#007572" if sdata.get("scanner_id") else "#64748B")
         if qta:
             icon_name = "fa5s.barcode" if sdata.get("scanner_id") else "fa5s.search"
@@ -2768,8 +2775,12 @@ class OrderDeskWidget(QWidget):
         if not sid or sid not in self._sessions:
             return
 
-        # Save previous session's delivery address
-        if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
+        # Save previous session's delivery address only when switching from a different session
+        if (
+            hasattr(self, "_active_session_id")
+            and self._active_session_id in self._sessions
+            and self._active_session_id != sid
+        ):
             if hasattr(self, "txt_delivery_addr"):
                 self._sessions[self._active_session_id]["delivery_address"] = self.txt_delivery_addr.text().strip()
 
@@ -2778,6 +2789,14 @@ class OrderDeskWidget(QWidget):
         sdata["has_event"] = False
         self._apply_session_tab_visuals(idx, sid)
         self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
+        if hasattr(self, "lbl_scanner_status"):
+            edit_meta = sdata.get("edit_order")
+            if edit_meta:
+                self.lbl_scanner_status.setText(f"Mode Modification — {edit_meta.get('order_number') or 'Bon'}")
+            elif sdata.get("scanner_id"):
+                self.lbl_scanner_status.setText(f"Scanner [{sdata['scanner_id']}] actif")
+            else:
+                self.lbl_scanner_status.setText("Prêt • Recherche directe / Scan")
 
         # Restore client selection
         if hasattr(self, "cbo_client"):
@@ -2919,6 +2938,7 @@ class OrderDeskWidget(QWidget):
             "cart": [],
             "delivery_address": "",
             "has_event": False,
+            "edit_order": None,
         }
         if clean_sc:
             self.hid_manager.bind_scanner_to_session(clean_sc, sid)
@@ -3275,7 +3295,29 @@ class OrderDeskWidget(QWidget):
         deliv_addr = sdata.get("delivery_address") or self.txt_delivery_addr.text().strip() or None
 
         try:
-            if self.data_manager and hasattr(self.data_manager, "bonds"):
+            edit_meta = sdata.get("edit_order")
+            if edit_meta:
+                oid = int(edit_meta["order_id"])
+                if self.data_manager and hasattr(self.data_manager, "bonds"):
+                    res = self.data_manager.bonds.update_sales_order_draft(
+                        order_id=oid,
+                        client_id=client_id,
+                        bond_type=bond_type,
+                        items=cart,
+                        delivery_address=deliv_addr,
+                        user_id=user_id,
+                    )
+                else:
+                    total_val = sum(Decimal(str(i["unit_price_ttc"])) * int(i["quantity"]) for i in cart)
+                    res = {
+                        "success": True,
+                        "order_id": oid,
+                        "order_number": edit_meta.get("order_number") or f"BON-{oid}",
+                        "bond_type": bond_type,
+                        "total_ttc": float(total_val),
+                        "scanner_session_id": self._active_session_id,
+                    }
+            elif self.data_manager and hasattr(self.data_manager, "bonds"):
                 res = self.data_manager.bonds.create_sales_order_draft(
                     client_id=client_id,
                     order_desk_user_id=user_id,
@@ -3331,16 +3373,28 @@ class OrderDeskWidget(QWidget):
 
             if bond_type == "BON_C":
                 self.bonCGenerated.emit(res)
-                title_txt = "Bon Comptant Créé"
-                msg_txt = f"Bon Comptant ({order_num}) enregistré — {format_money(total_ttc)} DA."
+                title_txt = "Bon Modifié" if edit_meta else "Bon Comptant Créé"
+                msg_txt = (
+                    f"Bon ({order_num}) mis à jour — {format_money(total_ttc)} DA."
+                    if edit_meta
+                    else f"Bon Comptant ({order_num}) enregistré — {format_money(total_ttc)} DA."
+                )
             elif bond_type == "BON_CREDIT":
                 self.bonCreditRequested.emit(res)
-                title_txt = "Bon Crédit Créé"
-                msg_txt = f"Bon Crédit ({order_num}) transmis en Caisse — {format_money(total_ttc)} DA."
+                title_txt = "Bon Modifié" if edit_meta else "Bon Crédit Créé"
+                msg_txt = (
+                    f"Bon ({order_num}) mis à jour — {format_money(total_ttc)} DA."
+                    if edit_meta
+                    else f"Bon Crédit ({order_num}) transmis en Caisse — {format_money(total_ttc)} DA."
+                )
             else:
                 self.bonLivraisonGenerated.emit(res)
-                title_txt = "Bon de Livraison Créé"
-                msg_txt = f"Bon de Livraison ({order_num}) enregistré — {format_money(total_ttc)} DA."
+                title_txt = "Bon Modifié" if edit_meta else "Bon de Livraison Créé"
+                msg_txt = (
+                    f"Bon ({order_num}) mis à jour — {format_money(total_ttc)} DA."
+                    if edit_meta
+                    else f"Bon de Livraison ({order_num}) enregistré — {format_money(total_ttc)} DA."
+                )
 
             if os.environ.get("PYTEST_CURRENT_TEST"):
                 QMessageBox.information(self, title_txt, msg_txt)
@@ -3355,20 +3409,108 @@ class OrderDeskWidget(QWidget):
                 if box.clickedButton() == btn_pdf:
                     export_order_bon_to_pdf(self.data_manager, bon_snapshot, parent_widget=self)
 
-            self._clear_current_cart()
-            self.txt_delivery_addr.clear()
+            if edit_meta:
+                if len(self._sessions) > 1:
+                    self._close_session_by_id(self._active_session_id)
+                else:
+                    sdata["edit_order"] = None
+                    sdata["label"] = "Session #1"
+                    self._clear_current_cart()
+                    self.txt_delivery_addr.clear()
+                    self._update_tab_label(self._active_session_id)
+            else:
+                self._clear_current_cart()
+                self.txt_delivery_addr.clear()
             self.refresh_catalog()
         except Exception as err:
             QMessageBox.critical(self, "Erreur Création Bon", f"Impossible de créer le bon :\n{err}")
 
+    def open_bon_in_edit_session(self, bon: Dict[str, Any]) -> str:
+        """Opens an existing editable Bon inside a dedicated 'تعديل' session in the main Order Desk."""
+        oid = int(bon["Order_ID"])
+        order_num = str(bon.get("Order_Number") or f"#{oid}")
+
+        # Reuse existing edit session if the same bon is already open
+        for existing_sid, existing_data in self._sessions.items():
+            meta = existing_data.get("edit_order")
+            if meta and int(meta.get("order_id", -1)) == oid:
+                if hasattr(self, "session_tab_bar"):
+                    for i in range(self.session_tab_bar.count()):
+                        if self.session_tab_bar.tabData(i) == existing_sid:
+                            self.session_tab_bar.setCurrentIndex(i)
+                            break
+                return existing_sid
+
+        raw_lines = bon.get("lines") or []
+        if not raw_lines and self.data_manager and hasattr(self.data_manager, "bonds"):
+            try:
+                raw_lines = self.data_manager.bonds.get_order_lines(oid) or []
+            except Exception:
+                raw_lines = []
+
+        catalog_by_id = {
+            int(p["Product_ID"]): p
+            for p in getattr(self, "_catalog_cache", [])
+            if p.get("Product_ID") is not None
+        }
+        cart_items = []
+        for ln in raw_lines:
+            pid = int(ln.get("Product_ID") or ln.get("product_id") or 0)
+            qty = int(ln.get("Quantity_Ordered") or ln.get("quantity") or 1)
+            cat_prod = catalog_by_id.get(pid, {})
+            avail = int(cat_prod.get("Available_Theoretical_Qty") or 0) + qty
+            ref_val = str(
+                ln.get("Barcode")
+                or ln.get("ref")
+                or cat_prod.get("Barcode")
+                or cat_prod.get("Manuf_Cat_No")
+                or cat_prod.get("Reference")
+                or "---"
+            )
+            cart_items.append({
+                "product_id": pid,
+                "mark": str(ln.get("Brand_Mark") or ln.get("mark") or cat_prod.get("Brand_Mark") or ""),
+                "name": str(ln.get("Product_Name") or ln.get("name") or cat_prod.get("Product_Name") or ""),
+                "ref": ref_val,
+                "coloure": str(ln.get("Color_Finish") or ln.get("coloure") or cat_prod.get("Color_Finish") or "Standard"),
+                "unit_price_ttc": float(ln.get("Unit_Price_TTC") or ln.get("unit_price_ttc") or 0.0),
+                "quantity": qty,
+                "max_avail": max(avail, qty),
+            })
+
+        sid = self._create_new_session()
+        sdata = self._sessions[sid]
+        sdata["edit_order"] = {
+            "order_id": oid,
+            "order_number": order_num,
+            "bond_type": str(bon.get("Bond_Type") or "BON_C"),
+        }
+        sdata["label"] = f"تعديل • {order_num}"
+        sdata["client_id"] = int(bon.get("Client_ID") or 1)
+        sdata["delivery_address"] = str(bon.get("Delivery_Address") or "")
+        sdata["cart"] = cart_items
+
+        if hasattr(self, "session_tab_bar"):
+            for i in range(self.session_tab_bar.count()):
+                if self.session_tab_bar.tabData(i) == sid:
+                    self._apply_session_tab_visuals(i, sid)
+                    self.session_tab_bar.setCurrentIndex(i)
+                    break
+
+        # Explicitly sync active UI widgets in case currentIndex was already sid
+        self._on_session_tab_switched(self.session_tab_bar.currentIndex() if hasattr(self, "session_tab_bar") else -1)
+        return sid
+
     def _open_daily_bons_dialog(self) -> None:
-        """Opens the minimalist dialog listing today's Bons and all unclosed BL vouchers."""
+        """Opens the dialog listing today's Bons and unclosed BLs; editing opens an inline 'تعديل' session."""
         dlg = OrderDeskBonsDialog(
             data_manager=self.data_manager,
             catalog_items=getattr(self, "_catalog_cache", None),
             clients_list=getattr(self, "_clients_cache", None),
+            inline_edit=True,
             parent=self,
         )
+        dlg.editBonRequested.connect(self.open_bon_in_edit_session)
         dlg.exec()
         if dlg.was_modified:
             self.refresh_catalog()

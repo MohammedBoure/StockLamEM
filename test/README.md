@@ -79,6 +79,8 @@ This test suite enforces strict software quality gatekeeping across:
 ### 2.2. Core Financial, Billing & Debt Management
 - **`test_quick_add_color_assignment.py`**:
   - *Scope*: Verifies Task #4 deliverables: in Stock & Magasin -> Stock Actuel -> Ajout Rapide (`QuickAddDialog`), dynamic color swatch badge preview (`lbl_color_swatch`), color combobox populated with active finishes (`ProductColorManager` / `Product_Colors`), automatic pre-selection from product Master Data (`Color_Finish`) or existing batch data, custom color input support, and persistence of `Color_Finish` on `Products_Master` and `Product_Colors` via `InventoryBatchManager` (`add_direct_batch` and `update_direct_batch`).
+- **`test_order_desk_inline_edit_session.py`**:
+  - *Scope*: Verifies Task #12 deliverables in `OrderDeskBonsDialog` and `OrderDeskWidget`: emitting `editBonRequested` without launching `OrderBonEditDialog` when `inline_edit=True`, opening an editable bon inside a dedicated `"تعديل"` session tab with pre-filled client/address/cart lines, and submitting updates via `update_sales_order_draft`.
 - **`test_order_desk_payment_labels.py`**:
   - *Scope*: Verifies Task #11 deliverables in `OrderDeskWidget`: checks corrected French payment option labels (`Paiement complet`, `Paiement à la livraison`, `Paiement à crédit`) and verifies each button dispatches the expected underlying bond type (`BON_C`, `BON_LIVRAISON`, `BON_CREDIT`).
 - **`test_order_desk_scanner_sessions.py`**:
