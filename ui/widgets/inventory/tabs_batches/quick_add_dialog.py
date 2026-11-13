@@ -98,6 +98,8 @@ class QuickAddDialog(QDialog):
 
         self.inp_observation.setText(d.get('Reception_Note') or d.get('Batch_Note') or '')
         self.inp_barcode.setText(d.get('External_Barcode') or '')
+        if hasattr(self, 'inp_bl_number'):
+            self.inp_bl_number.setText(d.get('BL_Number') or d.get('Supplier_BL_Ref') or '')
 
         self.calculate_live_item_ttc()
         self.calculate_live_sell_ttc()
@@ -122,8 +124,13 @@ class QuickAddDialog(QDialog):
 
         self.cb_product = QComboBox()
         self.cb_product.setEditable(True)
-        self.cb_product.completer().setFilterMode(Qt.MatchContains)
-        self.cb_product.completer().setCompletionMode(QCompleter.PopupCompletion)
+        self.cb_product.setInsertPolicy(QComboBox.NoInsert)
+        self.cb_product.setLineEdit(AutoSelectLineEdit())
+        prod_completer = self.cb_product.completer()
+        prod_completer.setFilterMode(Qt.MatchContains)
+        prod_completer.setCaseSensitivity(Qt.CaseInsensitive)
+        prod_completer.setCompletionMode(QCompleter.PopupCompletion)
+        prod_completer.popup().setMinimumWidth(450)
 
         self.cb_unit_type = QComboBox()
         self.cb_unit_type.setMinimumWidth(100)
@@ -133,8 +140,6 @@ class QuickAddDialog(QDialog):
         self.cb_supplier.setEditable(True)
         self.cb_supplier.completer().setFilterMode(Qt.MatchContains)
         self.cb_supplier.setLineEdit(AutoSelectLineEdit())
-
-        self.cb_product.setLineEdit(AutoSelectLineEdit())
 
         lay_prod.addWidget(QLabel("Produit * :"), 0, 0)
         lay_prod.addWidget(self.cb_product, 0, 1, 1, 3)
@@ -310,10 +315,14 @@ class QuickAddDialog(QDialog):
         # Observation & Actions
         # ---------------------------------------------------------
         lay_obs = QHBoxLayout()
+        self.inp_bl_number = AutoSelectLineEdit()
+        self.inp_bl_number.setPlaceholderText("N° Bon de Livraison (Optionnel)")
         self.inp_observation = AutoSelectLineEdit()
         self.inp_observation.setPlaceholderText("Observation (Optionnel)")
+        lay_obs.addWidget(QLabel("N° BL (Opt.):"))
+        lay_obs.addWidget(self.inp_bl_number, 1)
         lay_obs.addWidget(QLabel("Observation:"))
-        lay_obs.addWidget(self.inp_observation)
+        lay_obs.addWidget(self.inp_observation, 2)
         main_layout.addLayout(lay_obs)
 
         self.chk_print = QCheckBox("Imprimer l'étiquette après l'ajout")
@@ -370,8 +379,8 @@ class QuickAddDialog(QDialog):
         self.cb_product.addItem("--- Sélectionnez un produit ---", None)
         for p in all_products:
             brand = p.get('Manuf_Name') or "---"
-            ref = p.get('Manuf_Cat_No') or "---"
-            self.cb_product.addItem(f"{p['Product_Name']} | Réf: {ref} | {brand}", p)
+            ref = p.get('Barcode') or p.get('Manuf_Cat_No') or p.get('Reference') or p.get('Product_Code') or "---"
+            self.cb_product.addItem(f"{p['Product_Name']}  |  Réf: {ref}  ({brand})", p)
 
         # Load Suppliers
         self.cb_supplier.addItem("--- Sans Fournisseur ---", None)
@@ -640,6 +649,7 @@ class QuickAddDialog(QDialog):
             'Selling_TVA_Percent': 0.0,
 
             'Batch_Note': self.inp_observation.text().strip(),
+            'BL_Number': self.inp_bl_number.text().strip(),
             'External_Barcode': self.inp_barcode.text().strip(),
 
             'Supplier_ID': self.cb_supplier.currentData(),

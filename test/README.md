@@ -79,6 +79,8 @@ This test suite enforces strict software quality gatekeeping across:
 ### 2.2. Core Financial, Billing & Debt Management
 - **`test_quick_add_color_assignment.py`**:
   - *Scope*: Verifies Task #4 deliverables: in Stock & Magasin -> Stock Actuel -> Ajout Rapide (`QuickAddDialog`), dynamic color swatch badge preview (`lbl_color_swatch`), color combobox populated with active finishes (`ProductColorManager` / `Product_Colors`), automatic pre-selection from product Master Data (`Color_Finish`) or existing batch data, custom color input support, and persistence of `Color_Finish` on `Products_Master` and `Product_Colors` via `InventoryBatchManager` (`add_direct_batch` and `update_direct_batch`).
+- **`test_quick_add_ref_and_optional_bl.py`**:
+  - *Scope*: Verifies Task #6 deliverables: `QuickAddDialog` product selector displays `Réf` alongside product name with case-insensitive `MatchContains` filtering, provides optional `N° BL` (`inp_bl_number`) input with edit pre-fill, and `InventoryBatchManager.add_direct_batch` persists `BL_Number`.
 - **`test_stock_actuel_simplified.py`**:
   - *Scope*: Verifies Task #5 deliverables: `BatchesTab` (`Stock Actuel`) hides `Prix U. HT`, `Date Exp.`, and `Automate` columns/filters while renaming `Prix U. TTC` to `Prix d'Achat` (preserved across `apply_role_permissions`), `QuickAddDialog` hides Expiry Date and TVA fields (defaulting to `None` / `0%`), and `ModifySalesPricesDialog` hides `TVA Vente`.
 - **`test_reception_direct_bl.py`**:

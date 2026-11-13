@@ -923,6 +923,16 @@ class InventoryBatchManager:
         check_digit = (10 - (total % 10)) % 10
         return base + str(check_digit)
 
+    def _ensure_bl_number_column(self, cursor) -> bool:
+        """التأكد من وجود عمود رقم وصل التسليم (BL_Number) في جدول Inventory_Batches."""
+        try:
+            cursor.execute("SHOW COLUMNS FROM Inventory_Batches LIKE 'BL_Number'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE Inventory_Batches ADD COLUMN BL_Number VARCHAR(100) NULL")
+            return True
+        except Exception:
+            return False
+
     def add_direct_batch(self, data: dict, user_id: int = None) -> bool:
         """
         Adds a batch directly to inventory without a Reception (BR) or Purchase Order (PO).
@@ -970,6 +980,10 @@ class InventoryBatchManager:
 
             final_barcode = self.generate_ean13_for_batch(batch_id)
             cursor.execute("UPDATE Inventory_Batches SET Internal_Barcode = %s WHERE Batch_ID = %s", (final_barcode, batch_id))
+
+            bl_number = str(data.get('BL_Number') or '').strip()
+            if bl_number and self._ensure_bl_number_column(cursor):
+                cursor.execute("UPDATE Inventory_Batches SET BL_Number = %s WHERE Batch_ID = %s", (bl_number, batch_id))
 
             cursor.execute("""
                 INSERT INTO Stock_Movement_Log
@@ -1055,6 +1069,13 @@ class InventoryBatchManager:
             )
 
             cursor.execute(query, params)
+
+            bl_number = str(data.get('BL_Number') or '').strip()
+            if 'BL_Number' in data and self._ensure_bl_number_column(cursor):
+                cursor.execute(
+                    "UPDATE Inventory_Batches SET BL_Number = %s WHERE Batch_ID = %s",
+                    (bl_number or None, batch_id)
+                )
 
             cursor.execute("""
                 INSERT INTO Stock_Movement_Log
