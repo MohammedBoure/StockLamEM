@@ -14,7 +14,7 @@
 
 لا داعي للـ TVA.
 
-# 3 : medium
+# 3 [COMPLETED]: medium
 المرور عبر الزر الأول # Achats & Entrées للوصول إلى ### Bons de Réceptions:
 
 remis يجب أن تكون من أجل كل منتوج ومن أجل bon بالكامل.

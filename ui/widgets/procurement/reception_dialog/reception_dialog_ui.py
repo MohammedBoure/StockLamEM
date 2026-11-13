@@ -71,8 +71,12 @@ class ReceptionDialogUIMixin:
 
         self.cb_product = QComboBox()
         self.cb_product.setEditable(True)
-        self.cb_product.completer().setFilterMode(Qt.MatchContains)
-        self.cb_product.completer().setCompletionMode(QCompleter.PopupCompletion)
+        self.cb_product.setInsertPolicy(QComboBox.NoInsert)
+        completer = self.cb_product.completer()
+        completer.setFilterMode(Qt.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setCompletionMode(QCompleter.PopupCompletion)
+        completer.popup().setMinimumWidth(420)
 
         all_products = []
         if hasattr(self, 'manager') and hasattr(self.manager, 'products'):
@@ -101,7 +105,8 @@ class ReceptionDialogUIMixin:
         self.cb_product.addItem("", None)
         for p in all_products:
             brand = p.get('Manuf_Name') or "---"
-            self.cb_product.addItem(f"{p['Product_Name']} ({brand})", p)
+            ref = p.get('Barcode') or p.get('Reference') or p.get('Product_Code') or "---"
+            self.cb_product.addItem(f"{p['Product_Name']}  |  Réf: {ref}  ({brand})", p)
 
         # Product Color / Finish
         self.cb_color = QComboBox()
@@ -155,6 +160,15 @@ class ReceptionDialogUIMixin:
 
         self.cb_remise_type = QComboBox()
         self.cb_remise_type.addItems(["%", "DZD"])
+
+        self.inp_bon_remise = QDoubleSpinBox()
+        self.inp_bon_remise.setRange(0, 999999999)
+        self.inp_bon_remise.setDecimals(2)
+        self.inp_bon_remise.setMinimumWidth(95)
+        self.inp_bon_remise.setToolTip("Remise globale appliquée sur l'ensemble du bon")
+        self.cb_bon_remise_type = QComboBox()
+        self.cb_bon_remise_type.addItems(["%", "DZD"])
+        self.cb_bon_remise_type.setFixedWidth(60)
 
         self.chk_tva = QCheckBox("TVA 19%")
         self.chk_tva.setChecked(False)
@@ -281,7 +295,10 @@ class ReceptionDialogUIMixin:
         fin_layout = QHBoxLayout()
         fin_layout.addWidget(QLabel("<b>Total HT:</b>"))
         fin_layout.addWidget(self.lbl_total_ht)
-        fin_layout.addWidget(QLabel("<b>Remise:</b>"))
+        fin_layout.addWidget(QLabel("<b>Remise Bon:</b>"))
+        fin_layout.addWidget(self.inp_bon_remise)
+        fin_layout.addWidget(self.cb_bon_remise_type)
+        fin_layout.addWidget(QLabel("<b>Remise Totale:</b>"))
         fin_layout.addWidget(self.lbl_total_remise)
         fin_layout.addWidget(QLabel("<b style='color: #007572;'>Total Net:</b>"))
         self.lbl_total_ttc.setStyleSheet("font-weight: bold; color: #007572;")

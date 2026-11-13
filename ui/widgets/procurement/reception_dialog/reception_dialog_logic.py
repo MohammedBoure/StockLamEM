@@ -36,6 +36,11 @@ class ReceptionDialogLogicMixin:
         for w in [self.inp_qty, self.inp_remise]:
             w.valueChanged.connect(self.calculate_live_item_ttc)
         self.cb_remise_type.currentIndexChanged.connect(self.calculate_live_item_ttc)
+
+        if hasattr(self, 'inp_bon_remise'):
+            self.inp_bon_remise.valueChanged.connect(self.on_bon_remise_changed)
+        if hasattr(self, 'cb_bon_remise_type'):
+            self.cb_bon_remise_type.currentIndexChanged.connect(self.on_bon_remise_changed)
         
         self.inp_price.valueChanged.connect(self.on_ht_changed)
         self.inp_price_ttc.valueChanged.connect(self.on_ttc_changed)
@@ -341,12 +346,23 @@ class ReceptionDialogLogicMixin:
     # ------------------------------------------------------------------ #
     #  المجاميع                                                            #
     # ------------------------------------------------------------------ #
+    def on_bon_remise_changed(self):
+        self.update_totals()
+        if getattr(self, 'br_id', None):
+            mgr = self.manager.reception if hasattr(self.manager, 'reception') else self.manager
+            if hasattr(mgr, 'update_bon_discount'):
+                val = self.inp_bon_remise.value() if hasattr(self, 'inp_bon_remise') else 0.0
+                d_type = self.cb_bon_remise_type.currentText() if hasattr(self, 'cb_bon_remise_type') else '%'
+                mgr.update_bon_discount(self.br_id, val, d_type)
+
     def update_totals(self):
         self.total_ht_val    = 0.0
         self.total_tva_val   = 0.0
         self.total_remise_val= 0.0
+        self.bon_remise_amt  = 0.0
         self.total_ttc_val   = 0.0
 
+        items_disc = 0.0
         for r in range(self.table_items.rowCount()):
             item = self.table_items.item(r, 0)
             if not item:
@@ -363,12 +379,22 @@ class ReceptionDialogLogicMixin:
             line_ht     = qty * price
             line_net_ht = line_ht - disc_amt
             line_tva    = line_net_ht * tax_rate
-            line_ttc    = line_net_ht + line_tva
 
-            self.total_ht_val     += line_ht
-            self.total_remise_val += disc_amt
-            self.total_tva_val    += line_tva
-            self.total_ttc_val    += line_ttc
+            self.total_ht_val  += line_ht
+            items_disc         += disc_amt
+            self.total_tva_val += line_tva
+
+        items_net_ht = max(0.0, self.total_ht_val - items_disc)
+        bon_val = float(self.inp_bon_remise.value()) if hasattr(self, 'inp_bon_remise') else 0.0
+        bon_type = self.cb_bon_remise_type.currentText() if hasattr(self, 'cb_bon_remise_type') else "%"
+        if bon_type == "%":
+            bon_disc_amt = items_net_ht * (bon_val / 100.0)
+        else:
+            bon_disc_amt = min(bon_val, items_net_ht)
+
+        self.bon_remise_amt   = max(0.0, bon_disc_amt)
+        self.total_remise_val = items_disc + self.bon_remise_amt
+        self.total_ttc_val    = max(0.0, (self.total_ht_val - self.total_remise_val) + self.total_tva_val)
 
         self.lbl_total_ht.setText(format_money(self.total_ht_val, 'DA'))
         self.lbl_total_remise.setText(format_money(self.total_remise_val, 'DA'))
@@ -413,6 +439,18 @@ class ReceptionDialogLogicMixin:
                     self.reception_date.setDate(QDate(r_date.year, r_date.month, r_date.day))
             except Exception:
                 pass
+
+        if hasattr(self, 'inp_bon_remise') and hasattr(self, 'cb_bon_remise_type'):
+            bon_val = float(header.get('Bon_Discount_Value') or 0.0)
+            bon_type = header.get('Bon_Discount_Type') or '%'
+            self.inp_bon_remise.blockSignals(True)
+            self.cb_bon_remise_type.blockSignals(True)
+            self.inp_bon_remise.setValue(bon_val)
+            idx_bon_type = self.cb_bon_remise_type.findText(bon_type)
+            if idx_bon_type >= 0:
+                self.cb_bon_remise_type.setCurrentIndex(idx_bon_type)
+            self.inp_bon_remise.blockSignals(False)
+            self.cb_bon_remise_type.blockSignals(False)
 
         self.table_items.setRowCount(0)
 
@@ -554,6 +592,13 @@ class ReceptionDialogLogicMixin:
             if chosen_color.startswith("---"):
                 chosen_color = ""
 
+            base_line_ht = effective_qty * buy_price
+            rem_input = float(self.inp_remise.value())
+            if self.cb_remise_type.currentText() == "%":
+                disc_pct = rem_input
+            else:
+                disc_pct = min(100.0, (rem_input / base_line_ht) * 100.0) if base_line_ht > 0 else 0.0
+
             line_data = {
                 "BR_ID":               self.br_id,
                 "PO_ID":               current_po_id,
@@ -564,7 +609,7 @@ class ReceptionDialogLogicMixin:
                 "Quantity_Current":    effective_qty,
                 "Unit_Price_Received": buy_price,
                 "Tax_Rate_Percent":    19.0 if self.chk_tva.isChecked() else 0.0,
-                "Discount_Percent":    self.inp_remise.value() if self.cb_remise_type.currentText() == "%" else 0,
+                "Discount_Percent":    disc_pct,
                 "Lot_Number":          lot_num,
                 "Expiry_Date":         None,
                 "Batch_Note":          self.inp_observation.text().strip(),

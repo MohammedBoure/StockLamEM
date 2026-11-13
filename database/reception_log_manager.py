@@ -195,6 +195,39 @@ class ReceptionLogManager:
             logging.error(f"Error updating header info: {e}")
             return False
 
+    def _ensure_bon_discount_columns(self, cursor) -> bool:
+        """التأكد من وجود أعمدة الخصم الإجمالي للبون في جدول Reception_Log."""
+        try:
+            cursor.execute("SHOW COLUMNS FROM Reception_Log LIKE 'Bon_Discount_Value'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE Reception_Log ADD COLUMN Bon_Discount_Value DECIMAL(15, 2) DEFAULT 0.00")
+            cursor.execute("SHOW COLUMNS FROM Reception_Log LIKE 'Bon_Discount_Type'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE Reception_Log ADD COLUMN Bon_Discount_Type VARCHAR(10) DEFAULT '%'")
+            return True
+        except Exception as e:
+            logging.debug(f"Could not ensure bon discount columns: {e}")
+            return False
+
+    def update_bon_discount(self, br_id: int, discount_value: float, discount_type: str = '%') -> bool:
+        """حفظ خصم البون الإجمالي وإعادة حساب المجاميع."""
+        try:
+            clean_type = '%' if str(discount_type).strip() == '%' else 'DZD'
+            clean_val = max(0.0, float(discount_value or 0.0))
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                self._ensure_bon_discount_columns(cursor)
+                cursor.execute(
+                    "UPDATE Reception_Log SET Bon_Discount_Value = %s, Bon_Discount_Type = %s WHERE BR_ID = %s",
+                    (clean_val, clean_type, br_id)
+                )
+                conn.commit()
+            self._recalculate_reception_totals(br_id)
+            return True
+        except Exception as e:
+            logging.error(f"Error updating bon discount for BR {br_id}: {e}")
+            return False
+
     def _recalculate_reception_totals(self, br_id: int):
         """
         إعادة حساب المجاميع المالية للفاتورة وتحديث حالة أمر الشراء (PO) المرتبط.
@@ -203,11 +236,22 @@ class ReceptionLogManager:
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
+                self._ensure_bon_discount_columns(cursor)
                 
-                # 1. جلب PO_ID المرتبط بهذا الاستلام
-                cursor.execute("SELECT PO_ID FROM Reception_Log WHERE BR_ID = %s", (br_id,))
-                res = cursor.fetchone()
+                # 1. جلب PO_ID وخصم البون المرتبط بهذا الاستلام
+                try:
+                    cursor.execute(
+                        "SELECT PO_ID, Bon_Discount_Value, Bon_Discount_Type FROM Reception_Log WHERE BR_ID = %s",
+                        (br_id,)
+                    )
+                    res = cursor.fetchone()
+                except Exception:
+                    cursor.execute("SELECT PO_ID FROM Reception_Log WHERE BR_ID = %s", (br_id,))
+                    res = cursor.fetchone()
+
                 po_id = res['PO_ID'] if res else None
+                bon_disc_val = float(res.get('Bon_Discount_Value') or 0.0) if res else 0.0
+                bon_disc_type = (res.get('Bon_Discount_Type') or '%') if res else '%'
 
                 # 2. حساب مجاميع الفاتورة (BR)
                 query = """
@@ -218,7 +262,7 @@ class ReceptionLogManager:
                 cursor.execute(query, (br_id,))
                 batches = cursor.fetchall()
 
-                t_ht, t_tva, t_disc = 0.0, 0.0, 0.0
+                t_ht, t_tva, items_disc = 0.0, 0.0, 0.0
                 
                 for b in batches:
                     qty = float(b['Quantity_Initial'] or 0)
@@ -232,10 +276,17 @@ class ReceptionLogManager:
                     line_tva = line_net_ht * tax_rate
                     
                     t_ht += line_ht
-                    t_disc += line_disc
+                    items_disc += line_disc
                     t_tva += line_tva
 
-                t_ttc = (t_ht - t_disc) + t_tva
+                items_net_ht = max(0.0, t_ht - items_disc)
+                if bon_disc_type == '%':
+                    bon_disc_amt = items_net_ht * (bon_disc_val / 100.0)
+                else:
+                    bon_disc_amt = min(bon_disc_val, items_net_ht)
+
+                t_disc = items_disc + max(0.0, bon_disc_amt)
+                t_ttc = max(0.0, (t_ht - t_disc) + t_tva)
                 reception_status = 'Completed' if batches else 'Pending Audit'
 
                 # 3. تحديث رأس الفاتورة (BR)
