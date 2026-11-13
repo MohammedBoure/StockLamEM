@@ -54,6 +54,7 @@ EXPORT_COLUMN_KEYS = {
     21: 'Selling_Price_HT_4',
     22: 'Reception_Note',
     23: 'POS_Priority_Group',
+    24: 'Primary_Ref',
 }
 
 

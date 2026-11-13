@@ -933,6 +933,16 @@ class InventoryBatchManager:
         except Exception:
             return False
 
+    def _ensure_ref_code_column(self, cursor) -> bool:
+        """التأكد من وجود عمود المرجع المختار (Ref_Code) في جدول Inventory_Batches."""
+        try:
+            cursor.execute("SHOW COLUMNS FROM Inventory_Batches LIKE 'Ref_Code'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE Inventory_Batches ADD COLUMN Ref_Code VARCHAR(100) NULL")
+            return True
+        except Exception:
+            return False
+
     def add_direct_batch(self, data: dict, user_id: int = None) -> bool:
         """
         Adds a batch directly to inventory without a Reception (BR) or Purchase Order (PO).
@@ -984,6 +994,10 @@ class InventoryBatchManager:
             bl_number = str(data.get('BL_Number') or '').strip()
             if bl_number and self._ensure_bl_number_column(cursor):
                 cursor.execute("UPDATE Inventory_Batches SET BL_Number = %s WHERE Batch_ID = %s", (bl_number, batch_id))
+
+            ref_code = str(data.get('Ref_Code') or '').strip()
+            if ref_code and self._ensure_ref_code_column(cursor):
+                cursor.execute("UPDATE Inventory_Batches SET Ref_Code = %s WHERE Batch_ID = %s", (ref_code, batch_id))
 
             cursor.execute("""
                 INSERT INTO Stock_Movement_Log
@@ -1077,6 +1091,13 @@ class InventoryBatchManager:
                     (bl_number or None, batch_id)
                 )
 
+            ref_code = str(data.get('Ref_Code') or '').strip()
+            if 'Ref_Code' in data and self._ensure_ref_code_column(cursor):
+                cursor.execute(
+                    "UPDATE Inventory_Batches SET Ref_Code = %s WHERE Batch_ID = %s",
+                    (ref_code or None, batch_id)
+                )
+
             cursor.execute("""
                 INSERT INTO Stock_Movement_Log
                 (Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used, User_ID, Notes)
@@ -1156,6 +1177,16 @@ class InventoryBatchManager:
                     conn.commit()
 
                 cursor = conn.cursor(dictionary=True)
+                has_ref_col = self._ensure_ref_code_column(cursor)
+                ref_select = "B.Ref_Code" if has_ref_col else "NULL AS Ref_Code"
+                primary_ref_expr = (
+                    "COALESCE(NULLIF(B.Ref_Code, ''), "
+                    "(SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = P.Product_ID "
+                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), P.Manuf_Cat_No)"
+                    if has_ref_col else
+                    "COALESCE((SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = P.Product_ID "
+                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), P.Manuf_Cat_No)"
+                )
 
                 # شرط استبعاد المنتجات المحذوفة
                 where_clauses = ["P.Deleted_At IS NULL"]
@@ -1177,6 +1208,13 @@ class InventoryBatchManager:
                         B.External_Barcode,
                         P.Product_Name,
                         P.Manuf_Cat_No,
+                        {ref_select},
+                        {primary_ref_expr} AS Primary_Ref,
+                        (
+                            SELECT GROUP_CONCAT(pr.Ref_Code ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC SEPARATOR ' | ')
+                            FROM Product_References pr
+                            WHERE pr.Product_ID = P.Product_ID
+                        ) AS All_Refs,
                         F.Family_Name,
                         P.Family_ID,
                         P.Color_Finish,

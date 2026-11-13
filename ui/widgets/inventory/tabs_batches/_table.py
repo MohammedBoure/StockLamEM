@@ -374,6 +374,20 @@ def _fill_row(table, r, b, hide_fin):
         grp_item.setFont(QFont("", -1, QFont.Bold))
     table.setItem(r, 23, grp_item)
 
+    # 24. Réf (Référence Produit / Lot)
+    ref_display = (
+        b.get('Ref_Code')
+        or b.get('Primary_Ref')
+        or b.get('Manuf_Cat_No')
+        or b.get('Barcode')
+        or '---'
+    )
+    ref_item = _make_item(str(ref_display), align=Qt.AlignCenter, bg_color=bg_color)
+    all_refs = b.get('All_Refs')
+    if all_refs:
+        ref_item.setToolTip(f"Références : {all_refs}")
+    table.setItem(r, 24, ref_item)
+
     # تعيين الهيدر العمودي (رقم الصف وأيقونة الشكوى إذا وجدت)
     v_header_item = QTableWidgetItem(str(r + 1))
     v_header_item.setTextAlignment(Qt.AlignCenter)

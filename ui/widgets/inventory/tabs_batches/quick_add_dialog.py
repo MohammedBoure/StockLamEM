@@ -3,7 +3,7 @@ import qtawesome as qta
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDateEdit,
     QPushButton, QFrame, QDoubleSpinBox, QCompleter, QCheckBox, QMessageBox, QLineEdit,
-    QGridLayout, QGroupBox
+    QGridLayout, QGroupBox, QInputDialog
 )
 from PySide6.QtCore import Qt, QDate, QLocale
 from PySide6.QtGui import QFont, QPixmap, QPainter, QBrush, QPen, QColor, QIcon
@@ -96,6 +96,11 @@ class QuickAddDialog(QDialog):
         if col:
             self.set_selected_color(col)
 
+        # Pre-select Réf
+        existing_ref = d.get('Ref_Code') or d.get('Primary_Ref') or ''
+        if self.cb_product.currentData():
+            self._load_product_references(self.cb_product.currentData(), selected_ref=existing_ref)
+
         self.inp_observation.setText(d.get('Reception_Note') or d.get('Batch_Note') or '')
         self.inp_barcode.setText(d.get('External_Barcode') or '')
         if hasattr(self, 'inp_bl_number'):
@@ -177,6 +182,31 @@ class QuickAddDialog(QDialog):
 
         lay_prod.addWidget(QLabel("Couleur / Finition :"), 2, 0)
         lay_prod.addLayout(lay_color, 2, 1, 1, 2)
+
+        # Row 2 (right): Réf du produit + bouton '+'
+        self.cb_ref = QComboBox()
+        self.cb_ref.setEnabled(False)
+        self.cb_ref.addItem("--- Sélectionnez un produit ---", "")
+
+        self.btn_add_ref = QPushButton("+")
+        self.btn_add_ref.setFixedSize(28, 26)
+        self.btn_add_ref.setEnabled(False)
+        self.btn_add_ref.setToolTip("Ajouter une nouvelle Réf pour le produit sélectionné")
+        self.btn_add_ref.setStyleSheet(
+            "QPushButton { background-color: #e6f4f1; color: #007572; border: 1px solid #007572; "
+            "border-radius: 4px; font-weight: bold; font-size: 14px; }"
+            "QPushButton:hover { background-color: #007572; color: white; }"
+            "QPushButton:disabled { background-color: #f1f5f9; color: #94a3b8; border-color: #cbd5e1; }"
+        )
+
+        lay_ref = QHBoxLayout()
+        lay_ref.setSpacing(6)
+        lay_ref.setContentsMargins(0, 0, 0, 0)
+        lay_ref.addWidget(self.cb_ref, 1)
+        lay_ref.addWidget(self.btn_add_ref, 0)
+
+        lay_prod.addWidget(QLabel("Réf :"), 2, 3)
+        lay_prod.addLayout(lay_ref, 2, 4, 1, 2)
 
         lbl_color_hint = QLabel("Finition électroménager (Inox, Blanc, Noir, Silver...)")
         lbl_color_hint.setStyleSheet("color: #7f8c8d; font-size: 11px; font-style: italic;")
@@ -357,6 +387,7 @@ class QuickAddDialog(QDialog):
 
     def _setup_connections(self):
         self.cb_product.currentIndexChanged.connect(self.on_product_selected)
+        self.btn_add_ref.clicked.connect(self.on_add_ref_clicked)
         self.cb_color.currentIndexChanged.connect(self._update_color_swatch)
         self.cb_color.editTextChanged.connect(self._update_color_swatch)
 
@@ -494,6 +525,105 @@ class QuickAddDialog(QDialog):
             self.cb_color.setCurrentText(c_clean)
         self._update_color_swatch()
 
+    def _load_product_references(self, product_data, selected_ref=None):
+        """Charge les références (Réf) disponibles pour le produit sélectionné."""
+        self.cb_ref.blockSignals(True)
+        self.cb_ref.clear()
+
+        if not product_data:
+            self.cb_ref.addItem("--- Sélectionnez un produit ---", "")
+            self.cb_ref.setEnabled(False)
+            self.btn_add_ref.setEnabled(False)
+            self.cb_ref.blockSignals(False)
+            return
+
+        self.cb_ref.setEnabled(True)
+        self.btn_add_ref.setEnabled(True)
+
+        pid = product_data.get('Product_ID')
+        refs = []
+        ref_mgr = getattr(self.manager, 'product_refs', None)
+        if ref_mgr and hasattr(ref_mgr, 'get_references_for_product') and pid:
+            try:
+                refs = ref_mgr.get_references_for_product(pid) or []
+            except Exception as e:
+                logging.debug(f"Could not load product references: {e}")
+
+        seen = set()
+        for r in refs:
+            code = str(r.get('Ref_Code') or '').strip()
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            label = f"{code} (Principale)" if r.get('Is_Primary') else code
+            self.cb_ref.addItem(label, code)
+
+        if not seen:
+            raw_all = str(product_data.get('All_Refs') or '').strip()
+            if raw_all:
+                for part in raw_all.split('|'):
+                    code = part.strip()
+                    if code and code not in seen:
+                        seen.add(code)
+                        self.cb_ref.addItem(code, code)
+            else:
+                fallback_code = str(
+                    product_data.get('Primary_Ref')
+                    or product_data.get('Manuf_Cat_No')
+                    or ''
+                ).strip()
+                if fallback_code:
+                    seen.add(fallback_code)
+                    self.cb_ref.addItem(fallback_code, fallback_code)
+
+        if not seen:
+            self.cb_ref.addItem("--- Aucune Réf ---", "")
+
+        if selected_ref:
+            target = str(selected_ref).strip()
+            idx = self.cb_ref.findData(target)
+            if idx < 0 and target:
+                if self.cb_ref.count() == 1 and self.cb_ref.itemData(0) == "":
+                    self.cb_ref.clear()
+                self.cb_ref.addItem(target, target)
+                idx = self.cb_ref.findData(target)
+            if idx >= 0:
+                self.cb_ref.setCurrentIndex(idx)
+
+        self.cb_ref.blockSignals(False)
+
+    def on_add_ref_clicked(self):
+        """Ajoute une nouvelle Réf directement au produit actuellement sélectionné."""
+        p = self.cb_product.currentData()
+        if not p:
+            QMessageBox.warning(self, "Produit requis", "Veuillez d'abord sélectionner un produit.")
+            return
+
+        new_ref, ok = QInputDialog.getText(
+            self,
+            "Nouvelle Référence (Réf)",
+            f"Ajouter une nouvelle Réf pour « {p.get('Product_Name', '')} » :"
+        )
+        if not ok:
+            return
+
+        new_ref = str(new_ref or '').strip()
+        if not new_ref:
+            return
+
+        ref_mgr = getattr(self.manager, 'product_refs', None)
+        if not ref_mgr or not hasattr(ref_mgr, 'add_reference'):
+            QMessageBox.warning(self, "Indisponible", "Le gestionnaire de références n'est pas disponible.")
+            return
+
+        try:
+            ref_mgr.add_reference(p['Product_ID'], new_ref)
+        except Exception as exc:
+            QMessageBox.warning(self, "Erreur Réf", str(exc))
+            return
+
+        self._load_product_references(p, selected_ref=new_ref)
+
     def on_product_selected(self):
         p = self.cb_product.currentData()
         self.cb_unit_type.clear()
@@ -502,11 +632,13 @@ class QuickAddDialog(QDialog):
             self.inp_price.setValue(0)
             self.inp_sell_price.setValue(0)
             self.set_selected_color("")
+            self._load_product_references(None)
             return
 
         # Pre-select product color finish if present
         color = p.get('Color_Finish') or ''
         self.set_selected_color(color)
+        self._load_product_references(p)
 
         # Units
         self.cb_unit_type.addItem(p.get('Base_Unit_Name', 'Unité'), 1)
@@ -634,6 +766,7 @@ class QuickAddDialog(QDialog):
             'Product_ID': p_data['Product_ID'],
             'Product_Name': p_data['Product_Name'],
             'Location_ID': self.cb_location.get_current_location_id(),
+            'Ref_Code': (self.cb_ref.currentData() or '').strip(),
             'Color_Finish': chosen_color,
             'Quantity': effective_qty,
             'Lot_Number': self.inp_lot.text().strip(),

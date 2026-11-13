@@ -99,10 +99,15 @@ def apply_filters_local(self):
                 bc_int = str(row.get('Internal_Barcode', '')).lower()
                 bc_man = str(row.get('Barcode', '')).lower()
                 bc_ext = str(row.get('External_Barcode', '')).lower()
+                ref_code = str(row.get('Ref_Code', '') or '').lower()
+                prim_ref = str(row.get('Primary_Ref', '') or '').lower()
+                all_refs = str(row.get('All_Refs', '') or '').lower()
+                cat_no = str(row.get('Manuf_Cat_No', '') or '').lower()
                 full   = (
                     f"{row.get('Product_Name', '')} "
                     f"{row.get('Lot_Number', '')} "
                     f"{bc_int} {bc_man} {bc_ext} "
+                    f"{ref_code} {prim_ref} {all_refs} {cat_no} "
                     f"{row.get('PO_ID', '')}"
                 ).lower()
                 if search_txt not in full:

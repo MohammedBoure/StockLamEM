@@ -26,9 +26,9 @@ Ce dossier regroupe tous les gestionnaires d'accès aux données (Managers), les
 - **`external_transfer_manager.py`** : Gestion des bons de livraison (BL) et bons de retour (BR), unifié directement avec le répertoire central des Clients (`Clients`) avec repli transparent vers `External_Partners`, incluant la récupération des prix d'acquisition TTC, remises et TVA des lots retournables.
 - **`inventory_batch_manager.py`** : Gestion des lots en inventaire :
   - Traçabilité et lignage des lots (`Parent_Batch_ID`, `Batch_Type` : Standard Bulk vs Extracted Retail).
-  - Validation et enregistrement direct des lots (`add_direct_batch`) avec vérification stricte de l'intégralité des données (Produit, Emplacement, Fournisseur, N° de Lot valide, Quantité > 0, Prix d'achat HT > 0), mise à jour et synchronisation de la couleur / finition (`Color_Finish`) sur `Products_Master` et référencement automatique dans `Product_Colors`.
-  - Modification complète des lots directs (`update_direct_batch`) incluant la mise à jour de la couleur/finition (`Color_Finish`).
-  - Requête d'inventaire détaillée (`get_all_batches_with_details`) intégrant l'attribut `Color_Finish`.
+  - Validation et enregistrement direct des lots (`add_direct_batch`) avec vérification stricte de l'intégralité des données (Produit, Emplacement, Fournisseur, N° de Lot valide, Quantité > 0, Prix d'achat HT > 0), persistance de `Ref_Code` (`_ensure_ref_code_column`), mise à jour et synchronisation de la couleur / finition (`Color_Finish`) sur `Products_Master` et référencement automatique dans `Product_Colors`.
+  - Modification complète des lots directs (`update_direct_batch`) incluant la mise à jour de la couleur/finition (`Color_Finish`) et de `Ref_Code`.
+  - Requête d'inventaire détaillée (`get_all_batches_with_details`) intégrant l'attribut `Color_Finish` ainsi que `Ref_Code`, `Primary_Ref` et `All_Refs`.
   - Extraction atomique de lots de détail (`extract_retail_batch`) avec déduction du lot parent et écriture de log `BULK_EXTRACTION`.
   - Déconditionnement (`unpack_and_transfer_batch`), génération EAN-13 unique et vérification de collision code-barres.
 - **`inventory_count_manager.py`** : Gestion des sessions de comptage d'inventaire physique, réconciliation d'écarts, détection des conflits de snapshot (`get_session_conflicts`), résolutions d'arbitrage paramétrables (`force_counted`, `apply_delta`, `skip` via `conflict_resolutions`), suppression de sessions et recherche multi-code-barres (`FIND_IN_SET`).

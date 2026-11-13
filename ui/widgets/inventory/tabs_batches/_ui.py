@@ -304,7 +304,7 @@ def _build_table(self):
         "Code-Barres", "Code Ext", "Emplacement", "Famille", "Marque",
         "Automate", "Fournisseur", "Ref PO", "Date Entrée",
         "Prix Vente 2", "Prix Vente 3", "Prix Vente 4", "Réclamation",
-        "Groupe Vente"
+        "Groupe Vente", "Réf"
     ]
     self.table.setColumnCount(len(cols))
     self.table.setHorizontalHeaderLabels(cols)
