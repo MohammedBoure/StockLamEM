@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -119,6 +120,78 @@ class DispatchDeskWidget(QWidget):
         h_layout.addWidget(self.lbl_status)
         layout.addWidget(header)
 
+        # 1b. Filter & Search Bar (PC / PL / CR + Search by Bon Barcode, Client Name, Phone)
+        filter_bar = QFrame()
+        filter_bar.setObjectName("DispatchFilterCard")
+        filter_bar.setFixedHeight(48)
+        filter_bar.setStyleSheet("""
+            QFrame#DispatchFilterCard {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+            }
+        """)
+        f_layout = QHBoxLayout(filter_bar)
+        f_layout.setContentsMargins(14, 6, 14, 6)
+        f_layout.setSpacing(8)
+
+        chip_style = """
+            QPushButton {
+                background-color: #F8FAFC;
+                color: #334155;
+                border: 1px solid #CBD5E1;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                border-color: #007572;
+                color: #007572;
+            }
+            QPushButton:checked {
+                background-color: #007572;
+                color: #FFFFFF;
+                border-color: #007572;
+            }
+        """
+        self._type_filter_group = QButtonGroup(self)
+        self._type_filter_group.setExclusive(True)
+
+        self.btn_filter_all = QPushButton("Tous (0)")
+        self.btn_filter_pc = QPushButton("PC (0)")
+        self.btn_filter_pl = QPushButton("PL (0)")
+        self.btn_filter_cr = QPushButton("CR (0)")
+
+        for btn, code, tip in [
+            (self.btn_filter_all, "ALL", "Afficher tous les bons en attente de sortie"),
+            (self.btn_filter_pc, "PC", "Paiement Complet / Versement (PC)"),
+            (self.btn_filter_pl, "PL", "Paiement à la Livraison (PL)"),
+            (self.btn_filter_cr, "CR", "Paiement à Crédit (CR)"),
+        ]:
+            btn.setCheckable(True)
+            btn.setFixedHeight(32)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setStyleSheet(chip_style)
+            btn.setToolTip(tip)
+            btn.setProperty("filter_code", code)
+            self._type_filter_group.addButton(btn)
+            f_layout.addWidget(btn)
+
+        self.btn_filter_all.setChecked(True)
+        self._type_filter_group.buttonClicked.connect(lambda _b: self._apply_order_filters())
+
+        self.txt_order_search = QLineEdit()
+        self.txt_order_search.setFixedHeight(32)
+        self.txt_order_search.setClearButtonEnabled(True)
+        self.txt_order_search.setPlaceholderText(
+            "Rechercher par Code-barres Bon, Nom du Client ou Téléphone..."
+        )
+        self.txt_order_search.textChanged.connect(self._apply_order_filters)
+        self.txt_order_search.returnPressed.connect(self._apply_order_filters)
+        f_layout.addWidget(self.txt_order_search, stretch=1)
+        layout.addWidget(filter_bar)
+
         # 2. Expected Items Table Requiring Physical Serial Scan
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([
@@ -203,15 +276,71 @@ class DispatchDeskWidget(QWidget):
                 logger.error(f"Error fetching dispatch queue: {err}")
                 orders = []
 
-        self._dispatch_orders = orders
+        self._all_dispatch_orders = orders
+        self._update_type_filter_counts()
+        self._apply_order_filters()
+
+    @staticmethod
+    def _order_short_type(order: Dict[str, Any]) -> str:
+        b_type = str(order.get("Bond_Type") or "BON_C").upper()
+        if b_type == "BON_LIVRAISON":
+            return "PL"
+        if b_type == "BON_CREDIT":
+            return "CR"
+        return "PC"
+
+    def _update_type_filter_counts(self) -> None:
+        orders = getattr(self, "_all_dispatch_orders", [])
+        pc_cnt = sum(1 for o in orders if self._order_short_type(o) == "PC")
+        pl_cnt = sum(1 for o in orders if self._order_short_type(o) == "PL")
+        cr_cnt = sum(1 for o in orders if self._order_short_type(o) == "CR")
+        if hasattr(self, "btn_filter_all"):
+            self.btn_filter_all.setText(f"Tous ({len(orders)})")
+            self.btn_filter_pc.setText(f"PC ({pc_cnt})")
+            self.btn_filter_pl.setText(f"PL ({pl_cnt})")
+            self.btn_filter_cr.setText(f"CR ({cr_cnt})")
+
+    def _apply_order_filters(self) -> None:
+        orders = getattr(self, "_all_dispatch_orders", [])
+        active_code = "ALL"
+        if hasattr(self, "_type_filter_group") and self._type_filter_group.checkedButton():
+            active_code = str(self._type_filter_group.checkedButton().property("filter_code") or "ALL")
+        q = self.txt_order_search.text().strip().lower() if hasattr(self, "txt_order_search") else ""
+        q_norm = q.replace("-", "").replace(" ", "")
+
+        filtered: List[Dict[str, Any]] = []
+        for o in orders:
+            short_t = self._order_short_type(o)
+            if active_code != "ALL" and short_t != active_code:
+                continue
+            if q:
+                ord_num = str(o.get("Order_Number") or "").lower()
+                ord_norm = ord_num.replace("-", "").replace(" ", "")
+                client_name = str(o.get("Client_Name") or "").lower()
+                phone = str(o.get("Client_Phone") or o.get("Phone") or "").lower()
+                phone_norm = phone.replace("-", "").replace(" ", "")
+                if not (
+                    q in ord_num
+                    or (q_norm and q_norm in ord_norm)
+                    or q in client_name
+                    or q in phone
+                    or (q_norm and q_norm in phone_norm)
+                ):
+                    continue
+            filtered.append(o)
+
+        self._dispatch_orders = filtered
         self.cbo_orders.blockSignals(True)
         self.cbo_orders.clear()
-        for o in orders:
-            label = f"{o.get('Order_Number')} — {o.get('Client_Name')} ({o.get('Bond_Type')})"
+        for o in filtered:
+            short_t = self._order_short_type(o)
+            phone_str = str(o.get("Client_Phone") or o.get("Phone") or "").strip()
+            phone_suffix = f" • {phone_str}" if phone_str else ""
+            label = f"[{short_t}] {o.get('Order_Number')} — {o.get('Client_Name')}{phone_suffix}"
             self.cbo_orders.addItem(label, o.get("Order_ID"))
         self.cbo_orders.blockSignals(False)
 
-        if orders:
+        if filtered:
             self._on_order_changed(0)
         else:
             self._active_order = None

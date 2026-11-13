@@ -105,7 +105,7 @@ sortie يحتاج إلى acc admin وأيضاً ajustement.
 
 باريدي موب، TPE، CCP، cash.
 
-# 15 : medium
+# 15 [COMPLETED]: medium
 المرور عبر الزر الأول # Bureaux للوصول إلى ### 3. Sortie Magasin:
 
 يظهر له في الواجهة PC و PL و CR ويمكن أن يبحث عنهم بـ code barre في bon أو باسم العميل أو رقم الهاتف.

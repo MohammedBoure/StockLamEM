@@ -2278,6 +2278,7 @@ class BondLifecycleManager:
                     SELECT
                         o.Order_ID, o.Order_Number, o.Client_ID,
                         COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
                         o.Bond_Type, o.Total_Amount_TTC, o.Status, o.Order_Date,
                         i.Invoice_ID, i.Invoice_No
                     FROM Sales_Orders_Theoretical o
