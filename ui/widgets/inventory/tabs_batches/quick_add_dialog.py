@@ -190,11 +190,12 @@ class QuickAddDialog(QDialog):
 
         self.btn_add_ref = QPushButton("+")
         self.btn_add_ref.setFixedSize(28, 26)
+        self.btn_add_ref.setCursor(Qt.PointingHandCursor)
         self.btn_add_ref.setEnabled(False)
         self.btn_add_ref.setToolTip("Ajouter une nouvelle Réf pour le produit sélectionné")
         self.btn_add_ref.setStyleSheet(
             "QPushButton { background-color: #e6f4f1; color: #007572; border: 1px solid #007572; "
-            "border-radius: 4px; font-weight: bold; font-size: 14px; }"
+            "border-radius: 4px; font-weight: bold; font-size: 14px; padding: 0px; margin: 0px; }"
             "QPushButton:hover { background-color: #007572; color: white; }"
             "QPushButton:disabled { background-color: #f1f5f9; color: #94a3b8; border-color: #cbd5e1; }"
         )
@@ -210,7 +211,7 @@ class QuickAddDialog(QDialog):
 
         lbl_color_hint = QLabel("Finition électroménager (Inox, Blanc, Noir, Silver...)")
         lbl_color_hint.setStyleSheet("color: #7f8c8d; font-size: 11px; font-style: italic;")
-        lay_prod.addWidget(lbl_color_hint, 2, 3, 1, 3)
+        lay_prod.addWidget(lbl_color_hint, 3, 1, 1, 5)
 
         main_layout.addWidget(grp_prod)
 
@@ -543,6 +544,12 @@ class QuickAddDialog(QDialog):
         pid = product_data.get('Product_ID')
         refs = []
         ref_mgr = getattr(self.manager, 'product_refs', None)
+        if not ref_mgr and hasattr(self.manager, 'db') and self.manager.db:
+            try:
+                from database.product_reference_manager import ProductReferenceManager
+                ref_mgr = ProductReferenceManager(self.manager.db)
+            except Exception:
+                ref_mgr = None
         if ref_mgr and hasattr(ref_mgr, 'get_references_for_product') and pid:
             try:
                 refs = ref_mgr.get_references_for_product(pid) or []
@@ -612,6 +619,12 @@ class QuickAddDialog(QDialog):
             return
 
         ref_mgr = getattr(self.manager, 'product_refs', None)
+        if not ref_mgr and hasattr(self.manager, 'db') and self.manager.db:
+            try:
+                from database.product_reference_manager import ProductReferenceManager
+                ref_mgr = ProductReferenceManager(self.manager.db)
+            except Exception:
+                ref_mgr = None
         if not ref_mgr or not hasattr(ref_mgr, 'add_reference'):
             QMessageBox.warning(self, "Indisponible", "Le gestionnaire de références n'est pas disponible.")
             return
