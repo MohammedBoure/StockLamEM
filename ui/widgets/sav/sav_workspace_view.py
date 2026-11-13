@@ -304,12 +304,12 @@ class SAVWorkspaceTab(QWidget):
         self.tab_closed = self._create_stage_tab_widget("SAV_CLOSED_DELIVERED", "4. Clôturés & Livrés")
         self.tab_irreparable = self._create_stage_tab_widget("IRREPARABLE", "5. Appareils Irréparables")
 
-        self.tabs.addTab(self.tab_all, get_duotone_icon("wrench_sav", 16), "📋 Toutes les Demandes")
-        self.tabs.addTab(self.tab_received, get_duotone_icon("barcode_scan", 16), "📥 1. Réception (Dépôt)")
-        self.tabs.addTab(self.tab_sent_to_tech, get_duotone_icon("services", 16), "🔧 2. En Atelier")
-        self.tabs.addTab(self.tab_returned, get_duotone_icon("check_circle", 16), "✅ 3. Prêts Restitution")
-        self.tabs.addTab(self.tab_closed, get_duotone_icon("truck_delivery", 16), "📦 4. Clôturés & Livrés")
-        self.tabs.addTab(self.tab_irreparable, get_duotone_icon("alert_warning", 16), "⚠️ 5. Irréparables")
+        self.tabs.addTab(self.tab_all, get_duotone_icon("wrench_sav", 16), "Toutes les Demandes")
+        self.tabs.addTab(self.tab_received, get_duotone_icon("barcode_scan", 16), "1. Réception")
+        self.tabs.addTab(self.tab_sent_to_tech, get_duotone_icon("services", 16), "2. En Atelier")
+        self.tabs.addTab(self.tab_returned, get_duotone_icon("check_circle", 16), "3. Prêts Restitution")
+        self.tabs.addTab(self.tab_closed, get_duotone_icon("truck_delivery", 16), "4. Clôturés & Livrés")
+        self.tabs.addTab(self.tab_irreparable, get_duotone_icon("alert_warning", 16), "5. Irréparables")
 
         sav_tab_perms = [
             (0, "tab_sav_all"),
@@ -335,12 +335,11 @@ class SAVWorkspaceTab(QWidget):
     def _create_top_header(self) -> QWidget:
         header_card = QFrame()
         header_card.setObjectName("SAVHeaderCard")
-        header_card.setFixedHeight(56)
+        header_card.setFixedHeight(52)
         header_card.setStyleSheet("""
             QFrame#SAVHeaderCard {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #F0FDFA, stop:0.04 #FFFFFF, stop:0.96 #FFFFFF, stop:1 #F8FAFC);
-                border: 1px solid #CBD5E1;
-                border-left: 5px solid #007572;
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
                 border-radius: 8px;
             }
             QLabel {
@@ -353,19 +352,12 @@ class SAVWorkspaceTab(QWidget):
         h_layout.setSpacing(10)
 
         ico = QLabel()
-        ico.setPixmap(get_duotone_icon("wrench_sav", 24).pixmap(24, 24))
+        ico.setPixmap(get_duotone_icon("wrench_sav", 22).pixmap(22, 22))
         h_layout.addWidget(ico)
 
-        title_col = QVBoxLayout()
-        title_col.setSpacing(1)
-        title_col.setAlignment(Qt.AlignVCenter)
-        lbl_title = QLabel("Service Après-Vente (SAV) & Réparations")
-        lbl_title.setStyleSheet("font-size: 13.5px; font-weight: 800; color: #007572;")
-        lbl_sub = QLabel("Suivi rigoureux du cycle de vie des pannes, réparations et garanties par état de demande")
-        lbl_sub.setStyleSheet("font-size: 10.5px; font-weight: 600; color: #64748B;")
-        title_col.addWidget(lbl_title)
-        title_col.addWidget(lbl_sub)
-        h_layout.addLayout(title_col)
+        lbl_title = QLabel("Service Après-Vente (SAV)")
+        lbl_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #0F172A;")
+        h_layout.addWidget(lbl_title)
 
         h_layout.addStretch()
 
@@ -473,11 +465,11 @@ class SAVWorkspaceTab(QWidget):
             return lbl
 
         self.lbl_kpi_total = make_badge("Total Demandes", "#1E293B", "#FFFFFF", "#CBD5E1")
-        self.lbl_kpi_received = make_badge("📥 En Dépôt", "#007572", "#E6F4F1", "#A7F3D0")
-        self.lbl_kpi_sent = make_badge("🔧 En Atelier", "#D97706", "#FFFBEB", "#FDE68A")
-        self.lbl_kpi_returned = make_badge("✅ Prêts Restitution", "#0284C7", "#F0F9FF", "#BAE6FD")
-        self.lbl_kpi_closed = make_badge("📦 Clôturés", "#16A34A", "#F0FDF4", "#BBF7D0")
-        self.lbl_kpi_irreparable = make_badge("⚠️ Irréparables (Avoir)", "#DC2626", "#FEF2F2", "#FECACA")
+        self.lbl_kpi_received = make_badge("En Dépôt", "#007572", "#E6F4F1", "#A7F3D0")
+        self.lbl_kpi_sent = make_badge("En Atelier", "#D97706", "#FFFBEB", "#FDE68A")
+        self.lbl_kpi_returned = make_badge("Prêts Restitution", "#0284C7", "#F0F9FF", "#BAE6FD")
+        self.lbl_kpi_closed = make_badge("Clôturés", "#16A34A", "#F0FDF4", "#BBF7D0")
+        self.lbl_kpi_irreparable = make_badge("Irréparables", "#DC2626", "#FEF2F2", "#FECACA")
 
         layout.addWidget(self.lbl_kpi_total)
         layout.addWidget(self.lbl_kpi_received)
@@ -616,20 +608,20 @@ class SAVWorkspaceTab(QWidget):
 
         # Update KPI Header Badges
         self.lbl_kpi_total.setText(f"Total Demandes : {len(self._all_tickets)}")
-        self.lbl_kpi_received.setText(f"📥 En Dépôt : {counts.get('SAV_RECEIVED', 0)}")
-        self.lbl_kpi_sent.setText(f"🔧 En Atelier : {counts.get('SAV_SENT_TO_TECH', 0)}")
-        self.lbl_kpi_returned.setText(f"✅ Prêts Restitution : {counts.get('SAV_RETURNED_FROM_TECH', 0)}")
-        self.lbl_kpi_closed.setText(f"📦 Clôturés : {counts.get('SAV_CLOSED_DELIVERED', 0)}")
-        self.lbl_kpi_irreparable.setText(f"⚠️ Irréparables (Avoir) : {counts.get('IRREPARABLE', 0)}")
+        self.lbl_kpi_received.setText(f"En Dépôt : {counts.get('SAV_RECEIVED', 0)}")
+        self.lbl_kpi_sent.setText(f"En Atelier : {counts.get('SAV_SENT_TO_TECH', 0)}")
+        self.lbl_kpi_returned.setText(f"Prêts Restitution : {counts.get('SAV_RETURNED_FROM_TECH', 0)}")
+        self.lbl_kpi_closed.setText(f"Clôturés : {counts.get('SAV_CLOSED_DELIVERED', 0)}")
+        self.lbl_kpi_irreparable.setText(f"Irréparables : {counts.get('IRREPARABLE', 0)}")
 
         # Update Tab Titles with Live Badges
         if hasattr(self, "tabs"):
-            self.tabs.setTabText(0, f"📋 Toutes les Demandes ({counts.get('ALL', 0)})")
-            self.tabs.setTabText(1, f"📥 1. Réception ({counts.get('SAV_RECEIVED', 0)})")
-            self.tabs.setTabText(2, f"🔧 2. En Atelier ({counts.get('SAV_SENT_TO_TECH', 0)})")
-            self.tabs.setTabText(3, f"✅ 3. Prêts Restitution ({counts.get('SAV_RETURNED_FROM_TECH', 0)})")
-            self.tabs.setTabText(4, f"📦 4. Clôturés ({counts.get('SAV_CLOSED_DELIVERED', 0)})")
-            self.tabs.setTabText(5, f"⚠️ 5. Irréparables ({counts.get('IRREPARABLE', 0)})")
+            self.tabs.setTabText(0, f"Toutes les Demandes ({counts.get('ALL', 0)})")
+            self.tabs.setTabText(1, f"1. Réception ({counts.get('SAV_RECEIVED', 0)})")
+            self.tabs.setTabText(2, f"2. En Atelier ({counts.get('SAV_SENT_TO_TECH', 0)})")
+            self.tabs.setTabText(3, f"3. Prêts Restitution ({counts.get('SAV_RETURNED_FROM_TECH', 0)})")
+            self.tabs.setTabText(4, f"4. Clôturés ({counts.get('SAV_CLOSED_DELIVERED', 0)})")
+            self.tabs.setTabText(5, f"5. Irréparables ({counts.get('IRREPARABLE', 0)})")
 
     def _populate_table(self, table: QTableWidget, tickets: List[Dict[str, Any]], stage_context: str) -> None:
         table.setRowCount(0)
@@ -705,59 +697,59 @@ class SAVWorkspaceTab(QWidget):
 
             if is_irrep:
                 act_widget.add_action_button(
-                    "💰 Avoir Portefeuille",
+                    "Avoir Portefeuille",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._show_ticket_details(t_copy),
                     "Afficher les détails de la compensation portefeuille",
                 )
             elif stage == "SAV_RECEIVED":
                 act_widget.add_action_button(
-                    "🔄 Reprise / Remb.",
+                    "Reprise / Remb.",
                     "#007572",
                     lambda checked=False, t_copy=t: self._open_reception_resolution_dialog(t_copy),
                     "Bon état (retour stock + caisse négative) ou endommagé (caisse négative / versement virtuel)",
                 )
                 act_widget.add_action_button(
-                    "📤 Envoi Atelier",
+                    "Envoi Atelier",
                     "#D97706",
                     lambda checked=False, t_copy=t: self._open_dispatch_dialog(t_copy),
                     "Affecter et envoyer l'appareil au technicien ou atelier",
                 )
                 act_widget.add_action_button(
-                    "⚠️ Irréparable",
+                    "Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
                     "Constater l'irréparabilité et émettre un avoir portefeuille",
                 )
             elif stage == "SAV_SENT_TO_TECH":
                 act_widget.add_action_button(
-                    "📥 Retour Réparation",
+                    "Retour Réparation",
                     "#0284C7",
                     lambda checked=False, t_copy=t: self._open_return_dialog(t_copy),
                     "Enregistrer le retour de l'appareil réparé",
                 )
                 act_widget.add_action_button(
-                    "⚠️ Irréparable",
+                    "Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
                     "Appareil non réparable",
                 )
             elif stage == "SAV_RETURNED_FROM_TECH":
                 act_widget.add_action_button(
-                    "📦 Remise au Client",
+                    "Remise au Client",
                     "#16A34A",
                     lambda checked=False, t_copy=t: self._deliver_to_client(t_copy),
                     "Restituer l'appareil réparé au client et clôturer le ticket",
                 )
                 act_widget.add_action_button(
-                    "⚠️ Irréparable",
+                    "Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
                     "Constat irréparable avant remise",
                 )
             elif stage == "SAV_CLOSED_DELIVERED":
                 act_widget.add_action_button(
-                    "📄 Fiche Clôture",
+                    "Fiche Clôture",
                     "#16A34A",
                     lambda checked=False, t_copy=t: self._show_ticket_details(t_copy),
                     "Consulter l'historique de clôture du ticket",
@@ -765,7 +757,7 @@ class SAVWorkspaceTab(QWidget):
 
             # Global "Bon" receipt print button available on all active cards
             act_widget.add_action_button(
-                "🖨️ Bon",
+                "Bon",
                 "#64748B",
                 lambda checked=False, t_copy=t: self._print_bon_reparation(t_copy),
                 "Imprimer / Afficher le Bon de Réparation SAV",

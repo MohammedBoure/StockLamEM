@@ -175,27 +175,52 @@ class IrreparableDefectModal(QDialog):
 
 class SAVReceptionDialog(QDialog):
     """
-    Stage 1 Intake Dialog (Screen-sized):
-    Provides two clear lookup options:
-    - Option 1: Direct Bon Rouge barcode/number lookup to inspect client & taken products.
-    - Option 2: Multi-field client search (Phone, First Name, Last Name) -> client Bons -> physical products,
-      allowing direct selection and addition into SAV Réception.
+    Stage 1 Intake Dialog:
+    Minimal, distraction-free reception workflow with instant Bon Rouge / serial lookup
+    or client search, synced directly into a flat 2-column intake form.
     """
 
     def __init__(self, data_manager=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Étape 1 : Réception SAV — Bon Rouge & Recherche Client")
+        self.setObjectName("SAVReceptionDialog")
+        self.setWindowTitle("Réception SAV")
         self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
-        screen = QGuiApplication.primaryScreen()
-        if screen:
-            geo = screen.availableGeometry()
-            self.resize(max(1024, int(geo.width() * 0.90)), max(680, int(geo.height() * 0.88)))
-        else:
-            self.resize(1180, 740)
-        self.setMinimumSize(960, 620)
+        self.resize(940, 620)
+        self.setMinimumSize(780, 540)
         self.setStyleSheet(
-            "QDialog { background-color: #F8FAFC; color: #0F172A; }"
-            "QLabel { border: none; background: transparent; color: #334155; font-weight: 600; }"
+            """
+            QDialog#SAVReceptionDialog {
+                background-color: #FFFFFF;
+                color: #0F172A;
+            }
+            QDialog#SAVReceptionDialog QLabel {
+                border: none;
+                background: transparent;
+                color: #334155;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 0px;
+            }
+            QTableWidget {
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                gridline-color: #F1F5F9;
+                font-size: 12px;
+                color: #0F172A;
+                selection-background-color: #E6F4F1;
+                selection-color: #0E7471;
+            }
+            QHeaderView::section {
+                background-color: #F8FAFC;
+                color: #475569;
+                font-size: 11px;
+                font-weight: 700;
+                border: none;
+                border-bottom: 1px solid #CBD5E1;
+                padding: 6px 10px;
+            }
+            """
             + INPUT_STYLE
         )
         self.data_manager = data_manager
@@ -204,194 +229,238 @@ class SAVReceptionDialog(QDialog):
         self._br_client_id: Optional[int] = None
         self._client_bons: List[Dict[str, Any]] = []
         self._selected_bon_items: List[Dict[str, Any]] = []
+        self._filtered_bon_items: List[Dict[str, Any]] = []
         self._init_ui()
+
+    @staticmethod
+    def _configure_lookup_table(
+        table: QTableWidget,
+        headers: List[str],
+        stretch_col: int,
+    ) -> None:
+        """Apply consistent flat table geometry with non-clipping headers."""
+        table.setHorizontalHeaderLabels(headers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.verticalHeader().setDefaultSectionSize(36)
+        header = table.horizontalHeader()
+        header.setFixedHeight(36)
+        header.setMinimumSectionSize(95)
+        for col in range(len(headers)):
+            mode = QHeaderView.Stretch if col == stretch_col else QHeaderView.ResizeToContents
+            header.setSectionResizeMode(col, mode)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 14, 16, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # Two-Option Lookup Tabs
-        self.lookup_tabs = QTabWidget()
+        # Top Lookup Area (flat underline tabs, zero nested containers)
+        lookup_wrap = QWidget(self)
+        lookup_v = QVBoxLayout(lookup_wrap)
+        lookup_v.setContentsMargins(20, 14, 20, 12)
+        lookup_v.setSpacing(10)
+
+        self.lookup_tabs = QTabWidget(lookup_wrap)
+        self.lookup_tabs.setObjectName("SAVLookupTabs")
+        self.lookup_tabs.setDocumentMode(True)
         self.lookup_tabs.setStyleSheet("""
-            QTabWidget::pane {
+            QTabWidget#SAVLookupTabs::pane {
+                border: none;
+                border-top: 1px solid #E2E8F0;
                 background-color: #FFFFFF;
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
+                padding-top: 10px;
             }
             QTabBar::tab {
-                background-color: #F1F5F9;
-                color: #475569;
-                padding: 8px 18px;
+                background: transparent;
+                color: #64748B;
+                padding: 8px 16px;
+                font-size: 12.5px;
                 font-weight: 700;
-                border: 1px solid #CBD5E1;
-                border-bottom: none;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                margin-right: 4px;
+                border: none;
+                border-bottom: 2px solid transparent;
+                margin-right: 8px;
             }
             QTabBar::tab:selected {
-                background-color: #0E7471;
-                color: #FFFFFF;
-                border-color: #0E7471;
+                color: #0E7471;
+                border-bottom: 2px solid #0E7471;
+            }
+            QTabBar::tab:hover:!selected {
+                color: #0F172A;
             }
         """)
 
-        # --- Option 1: Bon Rouge Direct Lookup ---
+        primary_btn_qss = (
+            "QPushButton { background: #0E7471; color: #FFFFFF; font-weight: 700; "
+            "padding: 0 16px; border: none; border-radius: 6px; }"
+            "QPushButton:hover { background: #0A5C59; }"
+        )
+
+        # --- Tab 1: Bon Rouge / Direct Lookup ---
         tab_br = QWidget()
         br_layout = QVBoxLayout(tab_br)
-        br_layout.setContentsMargins(14, 14, 14, 14)
-        br_layout.setSpacing(10)
+        br_layout.setContentsMargins(0, 4, 0, 0)
+        br_layout.setSpacing(8)
 
         br_bar = QHBoxLayout()
         br_bar.setSpacing(8)
         self.txt_bon_rouge = QLineEdit()
-        self.txt_bon_rouge.setPlaceholderText("Scanner ou saisir le Code-barres / N° Bon Rouge (ou Facture / N° Série)...")
+        self.txt_bon_rouge.setFixedHeight(36)
+        self.txt_bon_rouge.setClearButtonEnabled(True)
+        self.txt_bon_rouge.setPlaceholderText("Scanner Bon Rouge, Facture ou N° Série...")
         self.txt_bon_rouge.returnPressed.connect(self._lookup_bon_rouge)
         br_bar.addWidget(self.txt_bon_rouge, 1)
 
-        btn_br_search = QPushButton("Rechercher Bon Rouge")
+        btn_br_search = QPushButton("Rechercher")
+        btn_br_search.setFixedHeight(36)
         btn_br_search.setCursor(Qt.PointingHandCursor)
-        btn_br_search.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 7px 16px; border: none; border-radius: 6px; }"
-            "QPushButton:hover { background: #0A5E5C; }"
-        )
+        btn_br_search.setStyleSheet(primary_btn_qss)
         btn_br_search.clicked.connect(self._lookup_bon_rouge)
         br_bar.addWidget(btn_br_search)
         br_layout.addLayout(br_bar)
 
-        self.lbl_br_summary = QLabel("Saisissez ou scannez un Bon Rouge pour afficher le client et les produits pris.")
+        self.lbl_br_summary = QLabel("Scannez un Bon Rouge ou sélectionnez un appareil ci-dessous.")
         self.lbl_br_summary.setStyleSheet(
-            "background-color: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 8px 12px; color: #0F766E;"
+            "color: #64748B; font-size: 11.5px; font-weight: 500; border: none; background: transparent;"
         )
         br_layout.addWidget(self.lbl_br_summary)
 
         self.tbl_br_items = QTableWidget(0, 5)
-        self.tbl_br_items.setHorizontalHeaderLabels(["Marque", "Produit", "Réf / Code-barres", "N° de Série", "Statut"])
-        self.tbl_br_items.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.tbl_br_items.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tbl_br_items.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tbl_br_items.verticalHeader().setVisible(False)
-        self.tbl_br_items.cellDoubleClicked.connect(lambda _r, _c: self._select_br_item())
+        self._configure_lookup_table(
+            self.tbl_br_items,
+            ["Marque", "Produit", "Référence", "N° de Série", "Statut"],
+            stretch_col=1,
+        )
+        self.tbl_br_items.cellClicked.connect(lambda r, _c: self._select_br_item(silent=True, row_idx=r))
+        self.tbl_br_items.cellDoubleClicked.connect(lambda r, _c: self._select_br_item(silent=False, row_idx=r))
         br_layout.addWidget(self.tbl_br_items, 1)
 
-        br_actions = QHBoxLayout()
-        br_actions.addStretch()
-        btn_br_pick = QPushButton("Ajouter le Produit Sélectionné à la Réception")
-        btn_br_pick.setCursor(Qt.PointingHandCursor)
-        btn_br_pick.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 7px 16px; border: none; border-radius: 6px; }"
-        )
-        btn_br_pick.clicked.connect(self._select_br_item)
-        br_actions.addWidget(btn_br_pick)
-        br_layout.addLayout(br_actions)
+        self.lookup_tabs.addTab(tab_br, "Bon Rouge")
 
-        self.lookup_tabs.addTab(tab_br, "1. Bon Rouge (Accès Direct)")
-
-        # --- Option 2: Client Search (Phone / First Name / Last Name) -> Bons -> Physical Product ---
+        # --- Tab 2: Client Search ---
         tab_cl = QWidget()
         cl_layout = QVBoxLayout(tab_cl)
-        cl_layout.setContentsMargins(14, 14, 14, 14)
-        cl_layout.setSpacing(10)
+        cl_layout.setContentsMargins(0, 4, 0, 0)
+        cl_layout.setSpacing(8)
 
         cl_search_row = QHBoxLayout()
         cl_search_row.setSpacing(8)
         self.txt_client_phone = QLineEdit()
-        self.txt_client_phone.setPlaceholderText("Téléphone client...")
+        self.txt_client_phone.setFixedHeight(36)
+        self.txt_client_phone.setClearButtonEnabled(True)
+        self.txt_client_phone.setPlaceholderText("Téléphone...")
         self.txt_client_phone.returnPressed.connect(self._search_client_bons)
         cl_search_row.addWidget(self.txt_client_phone, 1)
 
         self.txt_client_fname = QLineEdit()
+        self.txt_client_fname.setFixedHeight(36)
+        self.txt_client_fname.setClearButtonEnabled(True)
         self.txt_client_fname.setPlaceholderText("Nom...")
         self.txt_client_fname.returnPressed.connect(self._search_client_bons)
         cl_search_row.addWidget(self.txt_client_fname, 1)
 
         self.txt_client_lname = QLineEdit()
+        self.txt_client_lname.setFixedHeight(36)
+        self.txt_client_lname.setClearButtonEnabled(True)
         self.txt_client_lname.setPlaceholderText("Prénom...")
         self.txt_client_lname.returnPressed.connect(self._search_client_bons)
         cl_search_row.addWidget(self.txt_client_lname, 1)
 
-        btn_cl_search = QPushButton("Rechercher Bons Client")
+        btn_cl_search = QPushButton("Rechercher")
+        btn_cl_search.setFixedHeight(36)
         btn_cl_search.setCursor(Qt.PointingHandCursor)
-        btn_cl_search.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 7px 16px; border: none; border-radius: 6px; }"
-            "QPushButton:hover { background: #0A5E5C; }"
-        )
+        btn_cl_search.setStyleSheet(primary_btn_qss)
         btn_cl_search.clicked.connect(self._search_client_bons)
         cl_search_row.addWidget(btn_cl_search)
         cl_layout.addLayout(cl_search_row)
 
         splitter = QSplitter(Qt.Horizontal)
+        splitter.setHandleWidth(8)
 
-        left_box = QWidget()
-        left_v = QVBoxLayout(left_box)
-        left_v.setContentsMargins(0, 0, 0, 0)
-        left_v.addWidget(QLabel("Bons trouvés pour ce client :"))
         self.tbl_client_bons = QTableWidget(0, 5)
-        self.tbl_client_bons.setHorizontalHeaderLabels(["N° Bon", "Facture", "Client", "Téléphone", "Date"])
-        self.tbl_client_bons.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.tbl_client_bons.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tbl_client_bons.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tbl_client_bons.verticalHeader().setVisible(False)
+        self._configure_lookup_table(
+            self.tbl_client_bons,
+            ["N° Bon", "Facture", "Client", "Téléphone", "Date"],
+            stretch_col=2,
+        )
         self.tbl_client_bons.itemSelectionChanged.connect(self._on_client_bon_selected)
-        left_v.addWidget(self.tbl_client_bons, 1)
-        splitter.addWidget(left_box)
+        splitter.addWidget(self.tbl_client_bons)
 
         right_box = QWidget()
         right_v = QVBoxLayout(right_box)
         right_v.setContentsMargins(0, 0, 0, 0)
-        prod_hdr = QHBoxLayout()
-        prod_hdr.addWidget(QLabel("Produits physiques du bon :"))
+        right_v.setSpacing(6)
+
         self.txt_bon_item_filter = QLineEdit()
-        self.txt_bon_item_filter.setPlaceholderText("Filtrer produit / N° Série dans ce bon...")
+        self.txt_bon_item_filter.setFixedHeight(32)
+        self.txt_bon_item_filter.setClearButtonEnabled(True)
+        self.txt_bon_item_filter.setPlaceholderText("Filtrer produit ou N° de Série...")
         self.txt_bon_item_filter.textChanged.connect(self._filter_client_bon_items)
-        prod_hdr.addWidget(self.txt_bon_item_filter, 1)
-        right_v.addLayout(prod_hdr)
+        right_v.addWidget(self.txt_bon_item_filter)
 
         self.tbl_client_bon_items = QTableWidget(0, 5)
-        self.tbl_client_bon_items.setHorizontalHeaderLabels(["Marque", "Produit", "Réf", "N° de Série", "Statut"])
-        self.tbl_client_bon_items.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.tbl_client_bon_items.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tbl_client_bon_items.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tbl_client_bon_items.verticalHeader().setVisible(False)
-        self.tbl_client_bon_items.cellDoubleClicked.connect(lambda _r, _c: self._select_client_bon_item())
+        self._configure_lookup_table(
+            self.tbl_client_bon_items,
+            ["Marque", "Produit", "Référence", "N° de Série", "Statut"],
+            stretch_col=1,
+        )
+        self.tbl_client_bon_items.cellClicked.connect(
+            lambda r, _c: self._select_client_bon_item(silent=True, row_idx=r)
+        )
+        self.tbl_client_bon_items.cellDoubleClicked.connect(
+            lambda r, _c: self._select_client_bon_item(silent=False, row_idx=r)
+        )
         right_v.addWidget(self.tbl_client_bon_items, 1)
 
-        btn_cl_pick = QPushButton("Ajouter ce Produit à la Réception")
-        btn_cl_pick.setCursor(Qt.PointingHandCursor)
-        btn_cl_pick.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; padding: 7px 16px; border: none; border-radius: 6px; }"
-        )
-        btn_cl_pick.clicked.connect(self._select_client_bon_item)
-        right_v.addWidget(btn_cl_pick, alignment=Qt.AlignRight)
         splitter.addWidget(right_box)
-        splitter.setSizes([480, 520])
+        splitter.setSizes([410, 470])
         cl_layout.addWidget(splitter, 1)
 
-        self.lookup_tabs.addTab(tab_cl, "2. Sans Bon Rouge (Recherche Client & Bons)")
-        layout.addWidget(self.lookup_tabs, 1)
+        self.lookup_tabs.addTab(tab_cl, "Recherche Client")
+        lookup_v.addWidget(self.lookup_tabs, 1)
+        layout.addWidget(lookup_wrap, 1)
 
-        # --- Bottom: Direct Reception Intake Form ---
-        intake_card = QFrame()
-        intake_card.setStyleSheet(
-            "QFrame { background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; }"
-        )
-        intake_v = QVBoxLayout(intake_card)
-        intake_v.setContentsMargins(14, 12, 14, 12)
-        intake_v.setSpacing(8)
+        # Bottom Intake Form (Flat band with crisp 1px top divider, ZERO label borders)
+        intake_section = QFrame(self)
+        intake_section.setObjectName("SAVIntakeSection")
+        intake_section.setStyleSheet("""
+            QFrame#SAVIntakeSection {
+                background-color: #F8FAFC;
+                border: none;
+                border-top: 1px solid #E2E8F0;
+            }
+            QFrame#SAVIntakeSection QLabel {
+                border: none;
+                background: transparent;
+                color: #334155;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 0px;
+            }
+        """)
+        intake_v = QVBoxLayout(intake_section)
+        intake_v.setContentsMargins(20, 14, 20, 16)
+        intake_v.setSpacing(10)
 
         form = QGridLayout()
         form.setVerticalSpacing(8)
-        form.setHorizontalSpacing(10)
+        form.setHorizontalSpacing(12)
+        form.setColumnStretch(1, 1)
+        form.setColumnStretch(3, 1)
 
-        form.addWidget(QLabel("N° de Série de l'appareil :"), 0, 0)
+        form.addWidget(QLabel("N° de Série *"), 0, 0)
         self.txt_serial = QLineEdit()
-        self.txt_serial.setPlaceholderText("Scanner ou saisir le N° de Série (ou sélectionner ci-dessus)...")
+        self.txt_serial.setFixedHeight(36)
+        self.txt_serial.setClearButtonEnabled(True)
+        self.txt_serial.setPlaceholderText("Scanner ou saisir le N° de Série...")
         self.txt_serial.textChanged.connect(self._on_serial_changed)
         form.addWidget(self.txt_serial, 0, 1)
 
-        form.addWidget(QLabel("Client propriétaire :"), 0, 2)
+        form.addWidget(QLabel("Client"), 0, 2)
         self.cbo_client = QComboBox()
+        self.cbo_client.setFixedHeight(36)
         self.cbo_client.addItem("Auto-détecté depuis N° de Série", None)
         if self.data_manager and hasattr(self.data_manager, "clients"):
             try:
@@ -405,46 +474,63 @@ class SAVReceptionDialog(QDialog):
                 pass
         form.addWidget(self.cbo_client, 0, 3)
 
-        self.lbl_serial_info = QLabel("Sélectionnez un produit depuis Bon Rouge / Recherche Client, ou scannez le N° de Série.")
+        self.lbl_serial_info = QLabel("Sélectionnez une ligne ci-dessus ou scannez un N° de Série.")
         self.lbl_serial_info.setWordWrap(True)
-        self.lbl_serial_info.setStyleSheet("font-size: 11px; font-weight: 500; color: #64748B;")
-        form.addWidget(self.lbl_serial_info, 1, 0, 1, 4)
+        self.lbl_serial_info.setStyleSheet(
+            "font-size: 11.5px; font-weight: 500; color: #64748B; border: none; background: transparent;"
+        )
+        form.addWidget(self.lbl_serial_info, 1, 1, 1, 3)
 
-        form.addWidget(QLabel("Panne / Symptôme déclaré :"), 2, 0)
-        self.txt_symptom = QLineEdit("Arrêt refroidissement / Défaut carte électronique")
+        form.addWidget(QLabel("Panne déclarée"), 2, 0)
+        self.txt_symptom = QLineEdit()
+        self.txt_symptom.setFixedHeight(36)
+        self.txt_symptom.setPlaceholderText("Ex : Ne démarre pas, défaut refroidissement...")
         form.addWidget(self.txt_symptom, 2, 1)
 
-        form.addWidget(QLabel("État cosmétique à réception :"), 2, 2)
-        self.txt_cosmetic = QLineEdit("Bon état général, aucune rayure externe")
+        form.addWidget(QLabel("État cosmétique"), 2, 2)
+        self.txt_cosmetic = QLineEdit()
+        self.txt_cosmetic.setFixedHeight(36)
+        self.txt_cosmetic.setPlaceholderText("Ex : Bon état, rayure latérale...")
         form.addWidget(self.txt_cosmetic, 2, 3)
 
-        form.addWidget(QLabel("Accessoires déposés :"), 3, 0)
-        self.txt_acc = QLineEdit("Câble d'alimentation + Certificat de garantie")
+        form.addWidget(QLabel("Accessoires"), 3, 0)
+        self.txt_acc = QLineEdit()
+        self.txt_acc.setFixedHeight(36)
+        self.txt_acc.setPlaceholderText("Ex : Câble d'alimentation, télécommande, garantie...")
         form.addWidget(self.txt_acc, 3, 1, 1, 3)
 
         intake_v.addLayout(form)
-        layout.addWidget(intake_card)
 
         btn_row = QHBoxLayout()
+        btn_row.setContentsMargins(0, 4, 0, 0)
+        btn_row.setSpacing(8)
         btn_row.addStretch()
+
         btn_cancel = QPushButton("Annuler")
+        btn_cancel.setFixedHeight(36)
         btn_cancel.setCursor(Qt.PointingHandCursor)
         btn_cancel.setStyleSheet(
-            "QPushButton { background: #F1F5F9; color: #334155; font-weight: bold; min-height: 0px; padding: 8px 16px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton { background: #FFFFFF; color: #334155; font-weight: 600; "
+            "padding: 0 18px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton:hover { background: #F1F5F9; }"
         )
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
-        btn_ok = QPushButton("Émettre Bon de Réparation && Réceptionner")
+        btn_ok = QPushButton("Confirmer Réception")
+        btn_ok.setFixedHeight(36)
         btn_ok.setIcon(get_duotone_icon("wrench_sav", 16))
         btn_ok.setCursor(Qt.PointingHandCursor)
         btn_ok.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; min-height: 0px; padding: 8px 16px; border: none; border-radius: 6px; }"
-            "QPushButton:hover { background: #0A5E5C; }"
+            "QPushButton { background: #0E7471; color: #FFFFFF; font-weight: 700; "
+            "padding: 0 18px; border: none; border-radius: 6px; }"
+            "QPushButton:hover { background: #0A5C59; }"
         )
         btn_ok.clicked.connect(self._submit)
         btn_row.addWidget(btn_ok)
-        layout.addLayout(btn_row)
+        intake_v.addLayout(btn_row)
+
+        layout.addWidget(intake_section)
 
     def _populate_items_table(self, table: QTableWidget, items: List[Dict[str, Any]]) -> None:
         table.setRowCount(0)
@@ -457,14 +543,20 @@ class SAVReceptionDialog(QDialog):
             table.setItem(row, 3, QTableWidgetItem(str(it.get("Serial_Number") or "")))
             table.setItem(row, 4, QTableWidgetItem(str(it.get("Serial_Status") or "")))
 
-    def _apply_selected_product_to_intake(self, item: Dict[str, Any], client_id: Optional[int]) -> None:
+    def _apply_selected_product_to_intake(
+        self,
+        item: Dict[str, Any],
+        client_id: Optional[int],
+        silent: bool = False,
+    ) -> None:
         sn = str(item.get("Serial_Number") or "").strip()
         if not sn:
-            QMessageBox.warning(
-                self,
-                "N° de Série Manquant",
-                "Ce produit ne possède pas de N° de Série physique enregistré.",
-            )
+            if not silent:
+                QMessageBox.warning(
+                    self,
+                    "N° de Série Manquant",
+                    "Ce produit ne possède pas de N° de Série physique enregistré.",
+                )
             return
         if client_id and hasattr(self, "cbo_client"):
             idx = self.cbo_client.findData(int(client_id))
@@ -472,8 +564,8 @@ class SAVReceptionDialog(QDialog):
                 self.cbo_client.setCurrentIndex(idx)
         self.txt_serial.setText(sn)
         self.lbl_serial_info.setText(
-            f"<span style='color:#0E7471; font-weight:700;'>✔ {item.get('Brand_Mark', '')} {item.get('Product_Name', '')}</span> "
-            f"(N° Série : <b>{sn}</b>) ajouté à la réception."
+            f"<span style='color:#0E7471; font-weight:700;'>{item.get('Brand_Mark', '')} {item.get('Product_Name', '')}</span> "
+            f"(N° Série : <b>{sn}</b>) prêt pour réception."
         )
 
     def _lookup_bon_rouge(self) -> None:
@@ -485,24 +577,34 @@ class SAVReceptionDialog(QDialog):
             self._br_items = []
             self._br_client_id = None
             self.tbl_br_items.setRowCount(0)
+            self.lbl_br_summary.setStyleSheet(
+                "color: #DC2626; font-size: 11.5px; font-weight: 600; border: none; background: transparent;"
+            )
             self.lbl_br_summary.setText(f"Aucun Bon Rouge trouvé pour « {code} ».")
             return
         self._br_items = bon.get("items") or []
         self._br_client_id = bon.get("Client_ID")
+        self.lbl_br_summary.setStyleSheet(
+            "color: #0E7471; font-size: 12px; font-weight: 600; border: none; background: transparent;"
+        )
         self.lbl_br_summary.setText(
-            f"<b>Bon :</b> {bon.get('Order_Number') or bon.get('Invoice_No')}  |  "
-            f"<b>Client :</b> {bon.get('Client_Name', 'Client')}  |  "
-            f"<b>Tél :</b> {bon.get('Client_Phone', '-')}  |  "
-            f"<b>Date :</b> {str(bon.get('Order_Date') or '')[:10]}"
+            f"Bon {bon.get('Order_Number') or bon.get('Invoice_No')}  |  "
+            f"Client : {bon.get('Client_Name', 'Client')}  |  "
+            f"Tél : {bon.get('Client_Phone', '-')}  |  "
+            f"Date : {str(bon.get('Order_Date') or '')[:10]}"
         )
         self._populate_items_table(self.tbl_br_items, self._br_items)
+        if len(self._br_items) == 1:
+            self.tbl_br_items.selectRow(0)
+            self._apply_selected_product_to_intake(self._br_items[0], self._br_client_id, silent=True)
 
-    def _select_br_item(self) -> None:
-        row = self.tbl_br_items.currentRow()
+    def _select_br_item(self, silent: bool = False, row_idx: Optional[int] = None) -> None:
+        row = self.tbl_br_items.currentRow() if row_idx is None else row_idx
         if row < 0 or row >= len(self._br_items):
-            QMessageBox.information(self, "Sélection requise", "Veuillez sélectionner un produit dans le tableau.")
+            if not silent:
+                QMessageBox.information(self, "Sélection requise", "Veuillez sélectionner un produit dans le tableau.")
             return
-        self._apply_selected_product_to_intake(self._br_items[row], self._br_client_id)
+        self._apply_selected_product_to_intake(self._br_items[row], self._br_client_id, silent=silent)
 
     def _search_client_bons(self) -> None:
         parts = [
@@ -549,15 +651,16 @@ class SAVReceptionDialog(QDialog):
         self._filtered_bon_items = filtered
         self._populate_items_table(self.tbl_client_bon_items, filtered)
 
-    def _select_client_bon_item(self) -> None:
-        row = self.tbl_client_bon_items.currentRow()
+    def _select_client_bon_item(self, silent: bool = False, row_idx: Optional[int] = None) -> None:
+        row = self.tbl_client_bon_items.currentRow() if row_idx is None else row_idx
         items = getattr(self, "_filtered_bon_items", self._selected_bon_items)
         if row < 0 or row >= len(items):
-            QMessageBox.information(self, "Sélection requise", "Veuillez sélectionner un produit physique.")
+            if not silent:
+                QMessageBox.information(self, "Sélection requise", "Veuillez sélectionner un produit physique.")
             return
         bon_row = self.tbl_client_bons.currentRow()
         cid = self._client_bons[bon_row].get("Client_ID") if 0 <= bon_row < len(self._client_bons) else None
-        self._apply_selected_product_to_intake(items[row], cid)
+        self._apply_selected_product_to_intake(items[row], cid, silent=silent)
 
     def _on_serial_changed(self, text: str) -> None:
         sn = (text or "").strip()
