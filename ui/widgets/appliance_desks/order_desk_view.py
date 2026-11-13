@@ -949,8 +949,34 @@ class OrderDeskWidget(QWidget):
                 background-color: #CCEBE5;
             }
         """)
-        btn_new_sess.clicked.connect(self._create_new_session)
+        btn_new_sess.clicked.connect(lambda: self._create_new_session())
         sb_layout.addWidget(btn_new_sess)
+
+        self.btn_bind_scanner = QPushButton("🔗 Scanner")
+        self.btn_bind_scanner.setCursor(Qt.PointingHandCursor)
+        self.btn_bind_scanner.setFixedHeight(22)
+        self.btn_bind_scanner.setToolTip("Associer un lecteur code-barres libre à la session active")
+        self.btn_bind_scanner.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #475569;
+                font-weight: bold;
+                font-size: 11px;
+                border: 1px solid #CED4DA;
+                border-radius: 4px;
+                padding: 0 8px;
+                height: 22px;
+                min-height: 22px;
+                max-height: 22px;
+            }
+            QPushButton:hover {
+                background-color: #E8F8F5;
+                color: #007572;
+                border-color: #007572;
+            }
+        """)
+        self.btn_bind_scanner.clicked.connect(lambda: self._prompt_scanner_binding())
+        sb_layout.addWidget(self.btn_bind_scanner)
 
         sb_layout.addStretch()
 
@@ -2537,20 +2563,57 @@ class OrderDeskWidget(QWidget):
         if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
             self._sessions[self._active_session_id]["delivery_address"] = text.strip()
 
+    def _format_session_tab_text(self, sid: str) -> str:
+        sdata = self._sessions.get(sid)
+        if not sdata:
+            return sid
+        cart_count = len(sdata.get("cart", []))
+        count_tag = f" ({cart_count})" if cart_count > 0 else ""
+        if sdata.get("scanner_id"):
+            return f"📷 Scanner [{sdata['scanner_id']}] • {sdata['label']}{count_tag}"
+        return f"🔍 Recherche • {sdata['label']}{count_tag}"
+
+    def _get_session_tab_icon(self, sid: str):
+        sdata = self._sessions.get(sid, {})
+        has_event = bool(sdata.get("has_event"))
+        color = "#D97706" if has_event else ("#007572" if sdata.get("scanner_id") else "#64748B")
+        if qta:
+            icon_name = "fa5s.barcode" if sdata.get("scanner_id") else "fa5s.search"
+            return qta.icon(icon_name, color=color)
+        return get_duotone_icon("barcode_scan" if sdata.get("scanner_id") else "pos", 14)
+
+    def _apply_session_tab_visuals(self, idx: int, sid: str) -> None:
+        if not hasattr(self, "session_tab_bar") or idx < 0:
+            return
+        sdata = self._sessions.get(sid, {})
+        has_event = bool(sdata.get("has_event"))
+        self.session_tab_bar.setTabText(idx, self._format_session_tab_text(sid))
+        self.session_tab_bar.setTabIcon(idx, self._get_session_tab_icon(sid))
+        if has_event:
+            self.session_tab_bar.setTabTextColor(idx, QColor("#D97706"))
+        else:
+            self.session_tab_bar.setTabTextColor(idx, QColor("#495057"))
+
+    def _mark_session_event(self, sid: str) -> None:
+        """Highlights the session tab button color when an event occurs in that session."""
+        if sid not in self._sessions:
+            return
+        self._sessions[sid]["has_event"] = True
+        if hasattr(self, "session_tab_bar"):
+            for idx in range(self.session_tab_bar.count()):
+                if self.session_tab_bar.tabData(idx) == sid:
+                    self._apply_session_tab_visuals(idx, sid)
+                    break
+
     def _update_tab_label(self, sid: str) -> None:
         if not hasattr(self, "session_tab_bar"):
             return
-        sdata = self._sessions.get(sid)
-        if not sdata:
+        if sid not in self._sessions:
             return
-        scanner_tag = f" [{sdata['scanner_id']}]" if sdata.get("scanner_id") else ""
-        cart_count = len(sdata.get("cart", []))
-        count_tag = f" ({cart_count})" if cart_count > 0 else ""
-        tab_text = f"{sdata['label']}{scanner_tag}{count_tag}"
 
         for idx in range(self.session_tab_bar.count()):
             if self.session_tab_bar.tabData(idx) == sid:
-                self.session_tab_bar.setTabText(idx, tab_text)
+                self._apply_session_tab_visuals(idx, sid)
                 break
         self._update_tab_close_buttons()
 
@@ -2659,6 +2722,15 @@ class OrderDeskWidget(QWidget):
         sdata = self._sessions.get(sid, {})
         menu = QMenu(self)
 
+        act_bind = menu.addAction("🔗 Associer un Lecteur Code-Barres...")
+        act_bind.triggered.connect(lambda: self._prompt_scanner_binding(sid))
+
+        if sdata.get("scanner_id"):
+            act_unbind = menu.addAction("🔓 Dissocier le Lecteur (Mode Recherche)")
+            act_unbind.triggered.connect(lambda: self.unbind_scanner_from_session(sid))
+
+        menu.addSeparator()
+
         act_clear = menu.addAction(f"Vider le panier ({len(sdata.get('cart', []))} articles)")
         act_clear.triggered.connect(lambda: self._clear_session_cart(sid))
 
@@ -2677,18 +2749,12 @@ class OrderDeskWidget(QWidget):
             self.session_tab_bar.removeTab(0)
         target_idx = 0
         for idx, (sid, sdata) in enumerate(self._sessions.items()):
-            scanner_tag = f" [{sdata['scanner_id']}]" if sdata.get("scanner_id") else ""
-            cart_count = len(sdata.get("cart", []))
-            count_tag = f" ({cart_count})" if cart_count > 0 else ""
-            if qta:
-                tab_icon = qta.icon("fa5s.cash-register", color="#007572")
-            else:
-                tab_icon = get_duotone_icon("pos", 14)
             tab_pos = self.session_tab_bar.addTab(
-                tab_icon,
-                f"{sdata['label']}{scanner_tag}{count_tag}",
+                self._get_session_tab_icon(sid),
+                self._format_session_tab_text(sid),
             )
             self.session_tab_bar.setTabData(tab_pos, sid)
+            self._apply_session_tab_visuals(tab_pos, sid)
             if sid == self._active_session_id:
                 target_idx = tab_pos
         self.session_tab_bar.setCurrentIndex(target_idx)
@@ -2709,6 +2775,8 @@ class OrderDeskWidget(QWidget):
 
         self._active_session_id = sid
         sdata = self._sessions[sid]
+        sdata["has_event"] = False
+        self._apply_session_tab_visuals(idx, sid)
         self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
 
         # Restore client selection
@@ -2784,43 +2852,95 @@ class OrderDeskWidget(QWidget):
         self._on_session_tab_switched(new_idx)
         self._update_tab_close_buttons()
 
+    def get_bound_scanners(self, exclude_sid: Optional[str] = None) -> Dict[str, str]:
+        """Returns a mapping of scanner_id -> session_id for all scanners already assigned on this device."""
+        bound: Dict[str, str] = {}
+        for s_id, sdata in self._sessions.items():
+            if exclude_sid and s_id == exclude_sid:
+                continue
+            sc_id = sdata.get("scanner_id")
+            if sc_id:
+                bound[str(sc_id).strip()] = s_id
+        return bound
+
+    def bind_scanner_to_session(self, sid: str, scanner_id: str) -> Tuple[bool, str]:
+        """Binds a barcode scanner to a session if not already bound to another session on the same device."""
+        if sid not in self._sessions:
+            return False, "Session introuvable."
+        clean_dev = str(scanner_id or "").strip()
+        if not clean_dev:
+            return False, "Identifiant du scanner invalide."
+
+        bound = self.get_bound_scanners(exclude_sid=sid)
+        if clean_dev in bound:
+            other_sid = bound[clean_dev]
+            other_label = self._sessions.get(other_sid, {}).get("label", other_sid)
+            return False, f"Le lecteur '{clean_dev}' est déjà assigné à '{other_label}'."
+
+        old_dev = self._sessions[sid].get("scanner_id")
+        if old_dev and old_dev != clean_dev:
+            self.hid_manager.unbind_scanner(old_dev)
+
+        self._sessions[sid]["scanner_id"] = clean_dev
+        self.hid_manager.bind_scanner_to_session(clean_dev, sid)
+        self._update_tab_label(sid)
+        if hasattr(self, "lbl_scanner_status"):
+            self.lbl_scanner_status.setText(f"Scanner [{clean_dev}] associé à {self._sessions[sid]['label']}")
+        return True, "OK"
+
+    def unbind_scanner_from_session(self, sid: str) -> None:
+        """Unbinds any scanner from the given session, returning it to direct search mode."""
+        if sid not in self._sessions:
+            return
+        old_dev = self._sessions[sid].get("scanner_id")
+        if old_dev:
+            self.hid_manager.unbind_scanner(old_dev)
+        self._sessions[sid]["scanner_id"] = None
+        self._update_tab_label(sid)
+
     def _create_new_session(self, scanner_id: Optional[str] = None) -> str:
+        clean_sc = str(scanner_id).strip() if scanner_id else None
+        if clean_sc:
+            bound = self.get_bound_scanners()
+            if clean_sc in bound:
+                return bound[clean_sc]
+
         self._session_counter += 1
         sid = f"SESSION_{self._session_counter}"
         while sid in self._sessions:
             self._session_counter += 1
             sid = f"SESSION_{self._session_counter}"
 
-        label = f"Session Vente #{self._session_counter}"
+        label = f"Session #{self._session_counter}"
         self._sessions[sid] = {
             "label": label,
-            "scanner_id": scanner_id,
+            "scanner_id": clean_sc,
             "client_id": 1,
             "cart": [],
             "delivery_address": "",
+            "has_event": False,
         }
-        if scanner_id:
-            self.hid_manager.bind_scanner_to_session(scanner_id, sid)
+        if clean_sc:
+            self.hid_manager.bind_scanner_to_session(clean_sc, sid)
 
-        scanner_tag = f" [{scanner_id}]" if scanner_id else ""
         if hasattr(self, "session_tab_bar"):
-            if qta:
-                tab_icon = qta.icon("fa5s.cash-register", color="#007572")
-            else:
-                tab_icon = get_duotone_icon("pos", 12)
             tab_idx = self.session_tab_bar.addTab(
-                tab_icon,
-                f"{label}{scanner_tag}",
+                self._get_session_tab_icon(sid),
+                self._format_session_tab_text(sid),
             )
             self.session_tab_bar.setTabData(tab_idx, sid)
-            if scanner_id is None:
+            self._apply_session_tab_visuals(tab_idx, sid)
+            if clean_sc is None:
                 self.session_tab_bar.setCurrentIndex(tab_idx)
             self._update_tab_close_buttons()
 
         return sid
 
-    def _prompt_scanner_binding(self) -> None:
-        sdata = self._sessions[self._active_session_id]
+    def _prompt_scanner_binding(self, target_sid: Optional[str] = None) -> None:
+        sid = target_sid or self._active_session_id
+        sdata = self._sessions.get(sid)
+        if not sdata:
+            return
         curr_dev = sdata.get("scanner_id") or ""
         text, ok = QInputDialog.getText(
             self,
@@ -2829,13 +2949,9 @@ class OrderDeskWidget(QWidget):
             text=curr_dev,
         )
         if ok and text.strip():
-            new_dev = text.strip()
-            if curr_dev:
-                self.hid_manager.unbind_scanner(curr_dev)
-            sdata["scanner_id"] = new_dev
-            self.hid_manager.bind_scanner_to_session(new_dev, self._active_session_id)
-            self._update_tab_label(self._active_session_id)
-            self.lbl_scanner_status.setText(f"Scanner [{new_dev}] associé à {sdata['label']}")
+            success, msg = self.bind_scanner_to_session(sid, text.strip())
+            if not success:
+                QMessageBox.warning(self, "Scanner Déjà Assigné", msg)
 
     @property
     def cbo_session(self):
@@ -2881,14 +2997,12 @@ class OrderDeskWidget(QWidget):
                 self.hid_manager.bind_scanner_to_session(clean_dev, sid)
                 return sid
 
-        # 3. Check if there is an unassigned session (e.g. initial SESSION_1 waiting for its first device)
-        for sid, sdata in self._sessions.items():
-            if not sdata.get("scanner_id"):
-                sdata["scanner_id"] = clean_dev
-                self.hid_manager.bind_scanner_to_session(clean_dev, sid)
-                self._update_tab_label(sid)
-                self.lbl_scanner_status.setText(f"Scanner [{clean_dev}] associé à {sdata['label']}")
-                return sid
+        # 3. Only auto-bind the initial empty SESSION_1 if it is the sole session and has no cart items
+        if len(self._sessions) == 1:
+            sole_sid, sole_data = next(iter(self._sessions.items()))
+            if not sole_data.get("scanner_id") and not sole_data.get("cart"):
+                self.bind_scanner_to_session(sole_sid, clean_dev)
+                return sole_sid
 
         # 4. Brand new device (different from first device): automatically create new session (unlimited)
         new_sid = self._create_new_session(scanner_id=clean_dev)
@@ -2973,11 +3087,13 @@ class OrderDeskWidget(QWidget):
 
         if matched_prod:
             self._add_product_to_session(session_id, matched_prod)
+            self._mark_session_event(session_id)
             s_label = self._sessions.get(session_id, {}).get("label", session_id)
             self.lbl_scanner_status.setText(
                 f"Scan [{device_id}] -> {s_label} : {matched_prod.get('Product_Name')} (Ajouté)"
             )
         else:
+            self._mark_session_event(session_id)
             self.lbl_scanner_status.setText(
                 f"Scan [{device_id}] ({clean_bc}) : Référence introuvable dans le stock"
             )

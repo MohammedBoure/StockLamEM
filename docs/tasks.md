@@ -65,7 +65,7 @@ sortie يحتاج إلى acc admin وأيضاً ajustement.
 
 في مكان column couleur يجب أن يكون Réf of produit في كلا الجدولين.
 
-# 10 : medium
+# 10 [COMPLETED]: medium
 المرور عبر الزر الأول # Bureaux للوصول إلى ### 1. Commandes:
 
 كل session يمكن ضبطها مع قارئ كود بار معين ويكون اسمها مميزاً يدل على أنها تابعة لقارئ كود بار.

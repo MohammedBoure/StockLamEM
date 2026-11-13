@@ -79,6 +79,8 @@ This test suite enforces strict software quality gatekeeping across:
 ### 2.2. Core Financial, Billing & Debt Management
 - **`test_quick_add_color_assignment.py`**:
   - *Scope*: Verifies Task #4 deliverables: in Stock & Magasin -> Stock Actuel -> Ajout Rapide (`QuickAddDialog`), dynamic color swatch badge preview (`lbl_color_swatch`), color combobox populated with active finishes (`ProductColorManager` / `Product_Colors`), automatic pre-selection from product Master Data (`Color_Finish`) or existing batch data, custom color input support, and persistence of `Color_Finish` on `Products_Master` and `Product_Colors` via `InventoryBatchManager` (`add_direct_batch` and `update_direct_batch`).
+- **`test_order_desk_scanner_sessions.py`**:
+  - *Scope*: Verifies Task #10 deliverables in `OrderDeskWidget`: creating and closing direct-search sessions (`🔍 Recherche`), binding a barcode scanner with a distinctive tab name (`📷 Scanner [<id>]`), enforcing scanner uniqueness across sessions on the same device, unbinding scanners back to search mode, and highlighting inactive session tab colors (`#D97706`) on events until focused.
 - **`test_order_desk_ref_and_stock_only.py`**:
   - *Scope*: Verifies Task #9 deliverables in `OrderDeskWidget`: hides `chk_available_only` and `lbl_total_value` (`Valeur Totale`), strictly excludes products with zero physical or available stock, and replaces `Couleur` with `Réf` in both the catalog table and cart table.
 - **`test_stock_direct_bon_retour.py`**:
