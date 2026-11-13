@@ -10,7 +10,10 @@ from decimal import Decimal
 from PySide6.QtWidgets import QMessageBox, QInputDialog, QDialog
 from PySide6.QtCore import Qt
 
-from ..dialogs import AdjustmentDialog, WasteDialog, BatchDetailsDialog, UnpackTransferDialog, AdminStockAuthDialog
+from ..dialogs import (
+    AdjustmentDialog, WasteDialog, BatchDetailsDialog,
+    UnpackTransferDialog, AdminStockAuthDialog, DirectBonRetourDialog
+)
 from ui.widgets.procurement.reception_dialog import ReceptionDialog
 from ..quick_actions import QuickTransferDialog, QuickConsumeDialog
 from ui.formatting import format_quantity, quantity_to_int, format_money
@@ -202,6 +205,68 @@ def adjust_stock(self):
         ):
             self.load_data()
             self.data_changed.emit()
+
+
+def create_direct_bon_retour(self, batch_data: dict):
+    """إنشاء Bon de Retour / Avoir مباشرة من المخزون الحالي وربطه بـ Bon de Réception."""
+    if not batch_data:
+        return
+    if not batch_data.get('Supplier_ID'):
+        QMessageBox.warning(self, "Fournisseur Manquant", "Ce lot n'est associé à aucun fournisseur.")
+        return
+
+    max_qty = quantity_to_int(batch_data.get('Quantity_Current', 0))
+    if max_qty <= 0:
+        QMessageBox.warning(self, "Stock Insuffisant", "La quantité disponible de ce lot est nulle.")
+        return
+
+    dlg = DirectBonRetourDialog(batch_data, parent=self)
+    if dlg.exec() != QDialog.Accepted:
+        return
+
+    qty_ret = dlg.get_qty()
+    base_price = float(batch_data.get('Unit_Price_Received') or 0.0)
+    disc_pct = float(batch_data.get('Discount_Percent') or 0.0)
+    unit_price = base_price * (1.0 - disc_pct / 100.0)
+    total_amount = round(unit_price * qty_ret, 2)
+
+    cn_ref = f"AV-DIR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    header_data = {
+        "Supplier_ID": batch_data["Supplier_ID"],
+        "Credit_Note_Ref": cn_ref,
+        "Credit_Date": date.today().strftime("%Y-%m-%d"),
+        "Type": "Return_Goods",
+        "Total_Amount_HT": total_amount,
+        "Total_TVA": 0.0,
+        "Total_Amount_TTC": total_amount,
+        "Notes": f"Bon de Retour direct depuis Stock Actuel (Lot: {batch_data.get('Lot_Number', '---')})",
+        "BR_ID": batch_data.get("BR_ID"),
+    }
+    items = [{
+        "Product_ID": batch_data["Product_ID"],
+        "Batch_ID": batch_data["Batch_ID"],
+        "Lot_Number": batch_data.get("Lot_Number"),
+        "Expiry_Date": batch_data.get("Expiry_Date"),
+        "Qty_Returned": qty_ret,
+        "Unit_Price": unit_price,
+    }]
+
+    credit_mgr = getattr(self.manager, "credit_notes", None)
+    if not credit_mgr:
+        QMessageBox.critical(self, "Erreur", "Gestionnaire des Avoirs (credit_notes) introuvable.")
+        return
+
+    success, msg = credit_mgr.create_credit_note(header_data, items, user_id=get_current_user_id(self))
+    if success:
+        QMessageBox.information(
+            self,
+            "Bon de Retour Créé",
+            f"Le Bon de Retour / Avoir ({cn_ref}) a été créé avec succès.",
+        )
+        self.load_data()
+        self.data_changed.emit()
+    else:
+        QMessageBox.warning(self, "Erreur", f"Impossible de créer le Bon de Retour :\n{msg}")
 
 
 def waste_batch(self):

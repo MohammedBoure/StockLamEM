@@ -1222,6 +1222,8 @@ class InventoryBatchManager:
                         B.Batch_Type,
                         B.PO_ID,
                         B.BR_ID,
+                        RL.Supplier_BL_Ref,
+                        RL.Supplier_Invoice_Ref,
                         B.Status,
                         (
                             SELECT COALESCE(SUM(ABS(SML.Qty_Change)), 0)

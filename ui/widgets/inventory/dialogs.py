@@ -1641,3 +1641,86 @@ class AdminStockAuthDialog(QDialog):
         )
         self.txt_password.clear()
         self.txt_password.setFocus()
+
+
+class DirectBonRetourDialog(QDialog):
+    """نافذة مبسطة لإنشاء Bon de Retour / Avoir مباشرة من المخزون الحالي بخانة إدخال واحدة للكمية."""
+
+    def __init__(self, batch_data: dict, parent=None):
+        super().__init__(parent)
+        self.batch_data = batch_data or {}
+        self.setWindowTitle("Créer un Bon de Retour / Avoir")
+        self.setFixedSize(430, 260)
+        self.setStyleSheet("""
+            QDialog { background-color: #FFFFFF; color: #1E293B; }
+            QLabel { border: none; background: transparent; }
+        """)
+        self._init_ui()
+
+    def _init_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+
+        lbl_title = QLabel("Bon de Retour Fournisseur (Avoir)")
+        lbl_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #007572;")
+        layout.addWidget(lbl_title)
+
+        card = QFrame()
+        card.setStyleSheet(
+            "QFrame { background-color: #F8FAFC; border: 1px solid #DDE3EA; border-radius: 6px; }"
+        )
+        form = QFormLayout(card)
+        form.setContentsMargins(12, 10, 12, 10)
+        form.setSpacing(6)
+
+        prod_name = self.batch_data.get("Product_Name") or "---"
+        sup_name = self.batch_data.get("Supplier_Name") or "---"
+        br_id = self.batch_data.get("BR_ID")
+        bl_ref = (
+            self.batch_data.get("Supplier_BL_Ref")
+            or self.batch_data.get("BL_Number")
+            or self.batch_data.get("Supplier_Invoice_Ref")
+            or (f"BR #{br_id}" if br_id else "---")
+        )
+        max_qty = max(1, quantity_to_int(self.batch_data.get("Quantity_Current", 1)))
+
+        form.addRow(QLabel("Produit :"), QLabel(f"<b>{prod_name}</b>"))
+        form.addRow(QLabel("Fournisseur :"), QLabel(f"<b>{sup_name}</b>"))
+        form.addRow(QLabel("BL / Réception :"), QLabel(f"<b>{bl_ref}</b>"))
+        layout.addWidget(card)
+
+        qty_row = QHBoxLayout()
+        qty_row.addWidget(QLabel(f"<b>Quantité à retourner (Max: {max_qty}) :</b>"))
+        self.spin_qty_return = QSpinBox()
+        self.spin_qty_return.setRange(1, max_qty)
+        self.spin_qty_return.setValue(1)
+        self.spin_qty_return.setFixedHeight(34)
+        self.spin_qty_return.setMinimumWidth(110)
+        qty_row.addWidget(self.spin_qty_return)
+        layout.addLayout(qty_row)
+
+        layout.addStretch()
+
+        btn_box = QHBoxLayout()
+        btn_box.addStretch()
+        btn_cancel = QPushButton("Annuler")
+        btn_cancel.setFixedHeight(36)
+        btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.clicked.connect(self.reject)
+        btn_box.addWidget(btn_cancel)
+
+        btn_confirm = QPushButton("Confirmer le Retour")
+        btn_confirm.setFixedHeight(36)
+        btn_confirm.setCursor(Qt.PointingHandCursor)
+        btn_confirm.setStyleSheet(
+            "QPushButton { background-color: #007572; color: white; font-weight: bold; "
+            "padding: 0 16px; border-radius: 5px; border: none; }"
+            "QPushButton:hover { background-color: #005A57; }"
+        )
+        btn_confirm.clicked.connect(self.accept)
+        btn_box.addWidget(btn_confirm)
+        layout.addLayout(btn_box)
+
+    def get_qty(self) -> int:
+        return int(self.spin_qty_return.value())

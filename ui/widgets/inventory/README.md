@@ -5,7 +5,7 @@ This directory contains the widgets, tabs, and dialogs related to inventory and 
 ## Files and Purpose
 
 - **`inventory_tabs.py`**: Main container widget (`InventoryTab`) hosting the Batches and Dispatch tabs.
-- **`dialogs.py`**: Dialogs for batch creation, manual stock adjustments, details inspection, batch unpack & retail transfer (`UnpackTransferDialog`), sales price modification (`ModifySalesPricesDialog`), sales price adjustment audit history (`PriceHistoryDialog`), admin authorization (`AdminStockAuthDialog` for Sortie & Ajustement), and batch expiration alerts.
+- **`dialogs.py`**: Dialogs for batch creation, manual stock adjustments, details inspection, batch unpack & retail transfer (`UnpackTransferDialog`), sales price modification (`ModifySalesPricesDialog`), sales price adjustment audit history (`PriceHistoryDialog`), admin authorization (`AdminStockAuthDialog` for Sortie & Ajustement), direct supplier return (`DirectBonRetourDialog`), and batch expiration alerts.
 - **`location_picker_dialog.py`**: Modal dialog for selecting storage locations hierarchically.
 - **`location_tree_combo.py`**: Custom hierarchical tree combo box for storage location selection.
 - **`quick_actions.py`**: Quick action buttons and shortcut controls for fast stock operations.

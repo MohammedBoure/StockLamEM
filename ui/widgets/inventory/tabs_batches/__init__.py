@@ -35,7 +35,7 @@ from ._table        import (
 )
 from ._actions      import (
     get_current_user_id, check_fefo_compliance,
-    direct_use_process, adjust_stock, waste_batch,
+    direct_use_process, adjust_stock, waste_batch, create_direct_bon_retour,
     show_batch_details, open_quick_transfer, open_quick_consume, unpack_and_transfer_batch,
     go_to_history, open_history_via_barcode, go_to_reception,
     handle_barcode_scan, open_quick_add, open_quick_edit,
@@ -125,6 +125,7 @@ class BatchesTab(QWidget):
     direct_use_process      = direct_use_process
     adjust_stock            = adjust_stock
     waste_batch             = waste_batch
+    create_direct_bon_retour = create_direct_bon_retour
     show_batch_details      = show_batch_details
     open_quick_transfer     = open_quick_transfer
     open_quick_consume      = open_quick_consume

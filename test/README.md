@@ -79,6 +79,8 @@ This test suite enforces strict software quality gatekeeping across:
 ### 2.2. Core Financial, Billing & Debt Management
 - **`test_quick_add_color_assignment.py`**:
   - *Scope*: Verifies Task #4 deliverables: in Stock & Magasin -> Stock Actuel -> Ajout Rapide (`QuickAddDialog`), dynamic color swatch badge preview (`lbl_color_swatch`), color combobox populated with active finishes (`ProductColorManager` / `Product_Colors`), automatic pre-selection from product Master Data (`Color_Finish`) or existing batch data, custom color input support, and persistence of `Color_Finish` on `Products_Master` and `Product_Colors` via `InventoryBatchManager` (`add_direct_batch` and `update_direct_batch`).
+- **`test_stock_direct_bon_retour.py`**:
+  - *Scope*: Verifies Task #8 deliverables: `DirectBonRetourDialog` shows Fournisseur & BL info with a single quantity input (`spin_qty_return`), `BatchesTab` context menu exposes `Créer Bon de Retour / Avoir`, and `create_direct_bon_retour` creates a linked supplier credit note (`BR_ID` + `Supplier_ID` + `Batch_ID`) via `CreditNoteManager.create_credit_note`.
 - **`test_stock_sortie_ajustement_admin_auth.py`**:
   - *Scope*: Verifies Task #7 deliverables: `AdminStockAuthDialog` validates Admin credentials and rejects non-admin roles, and `BatchesTab.direct_use_process` (`Sortie`) and `BatchesTab.adjust_stock` (`Ajustement`) block execution unless authorized by an Admin account.
 - **`test_quick_add_ref_and_optional_bl.py`**:
