@@ -29,6 +29,8 @@ class ReceptionDialogLogicMixin:
     # ------------------------------------------------------------------ #
     def setup_connections(self):
         self.cb_product.currentIndexChanged.connect(self.on_product_selected)
+        if hasattr(self, 'btn_add_ref'):
+            self.btn_add_ref.clicked.connect(self.on_add_ref_clicked)
         if hasattr(self, 'cb_color'):
             self.cb_color.currentIndexChanged.connect(self._update_color_swatch)
             self.cb_color.editTextChanged.connect(self._update_color_swatch)
@@ -179,14 +181,134 @@ class ReceptionDialogLogicMixin:
             self.cb_color.setCurrentText(c_clean)
         self._update_color_swatch()
 
+    def _load_product_references(self, product_data, selected_ref=None):
+        """Charge les références (Réf) disponibles pour le produit sélectionné."""
+        if not hasattr(self, 'cb_ref'):
+            return
+        self.cb_ref.blockSignals(True)
+        self.cb_ref.clear()
+
+        if not product_data:
+            self.cb_ref.addItem("--- Réf ---", "")
+            self.cb_ref.setEnabled(False)
+            if hasattr(self, 'btn_add_ref'):
+                self.btn_add_ref.setEnabled(False)
+            self.cb_ref.blockSignals(False)
+            return
+
+        inputs_unlocked = self.cb_product.isEnabled()
+        self.cb_ref.setEnabled(inputs_unlocked)
+        if hasattr(self, 'btn_add_ref'):
+            self.btn_add_ref.setEnabled(inputs_unlocked)
+
+        pid = product_data.get('Product_ID')
+        refs = []
+        ref_mgr = getattr(self.manager, 'product_refs', None)
+        if not ref_mgr and hasattr(self.manager, 'db') and self.manager.db:
+            try:
+                from database.product_reference_manager import ProductReferenceManager
+                ref_mgr = ProductReferenceManager(self.manager.db)
+            except Exception:
+                ref_mgr = None
+
+        if ref_mgr and hasattr(ref_mgr, 'get_references_for_product') and pid:
+            try:
+                refs = ref_mgr.get_references_for_product(pid) or []
+            except Exception as e:
+                logging.debug(f"Could not load product references: {e}")
+
+        seen = set()
+        for r in refs:
+            code = str(r.get('Ref_Code') or '').strip()
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            label = f"{code} (Principale)" if r.get('Is_Primary') else code
+            self.cb_ref.addItem(label, code)
+
+        if not seen:
+            raw_all = str(product_data.get('All_Refs') or '').strip()
+            if raw_all:
+                for part in raw_all.split('|'):
+                    code = part.strip()
+                    if code and code not in seen:
+                        seen.add(code)
+                        self.cb_ref.addItem(code, code)
+            else:
+                fallback_code = str(
+                    product_data.get('Primary_Ref')
+                    or product_data.get('Manuf_Cat_No')
+                    or ''
+                ).strip()
+                if fallback_code:
+                    seen.add(fallback_code)
+                    self.cb_ref.addItem(fallback_code, fallback_code)
+
+        if not seen:
+            self.cb_ref.addItem("--- Aucune Réf ---", "")
+
+        if selected_ref:
+            target = str(selected_ref).strip()
+            idx = self.cb_ref.findData(target)
+            if idx < 0 and target:
+                if self.cb_ref.count() == 1 and self.cb_ref.itemData(0) == "":
+                    self.cb_ref.clear()
+                self.cb_ref.addItem(target, target)
+                idx = self.cb_ref.findData(target)
+            if idx >= 0:
+                self.cb_ref.setCurrentIndex(idx)
+
+        self.cb_ref.blockSignals(False)
+
+    def on_add_ref_clicked(self):
+        """Ajoute une nouvelle Réf directement au produit actuellement sélectionné."""
+        p = self.cb_product.currentData()
+        if not p:
+            QMessageBox.warning(self, "Produit requis", "Veuillez d'abord sélectionner un produit.")
+            return
+
+        new_ref, ok = QInputDialog.getText(
+            self,
+            "Nouvelle Référence (Réf)",
+            f"Ajouter une nouvelle Réf pour « {p.get('Product_Name', '')} » :"
+        )
+        if not ok:
+            return
+
+        new_ref = str(new_ref or '').strip()
+        if not new_ref:
+            return
+
+        ref_mgr = getattr(self.manager, 'product_refs', None)
+        if not ref_mgr and hasattr(self.manager, 'db') and self.manager.db:
+            try:
+                from database.product_reference_manager import ProductReferenceManager
+                ref_mgr = ProductReferenceManager(self.manager.db)
+            except Exception:
+                ref_mgr = None
+
+        if not ref_mgr or not hasattr(ref_mgr, 'add_reference'):
+            QMessageBox.warning(self, "Indisponible", "Le gestionnaire de références n'est pas disponible.")
+            return
+
+        try:
+            ref_mgr.add_reference(p['Product_ID'], new_ref)
+        except Exception as exc:
+            QMessageBox.warning(self, "Erreur Réf", str(exc))
+            return
+
+        self._load_product_references(p, selected_ref=new_ref)
+
     def on_product_selected(self):
         p = self.cb_product.currentData()
         self.cb_unit_type.clear()
         if not p:
             self.set_selected_color("")
+            self._load_product_references(None)
             return
         col = p.get('Color_Finish') or ''
         self.set_selected_color(col)
+        self._load_product_references(p)
         self.cb_unit_type.addItem(p.get('Stock_Unit', 'U'), 1.0)
         if p.get('Ordering_Unit') and p['Ordering_Unit'] != p.get('Stock_Unit'):
             self.cb_unit_type.addItem(p['Ordering_Unit'], float(p.get('Stock_Qty_Per_Order_Unit', 1.0)))
@@ -359,6 +481,11 @@ class ReceptionDialogLogicMixin:
             self.table_items,
         ]:
             w.setEnabled(enabled)
+        has_prod = bool(self.cb_product.currentData())
+        if hasattr(self, 'cb_ref'):
+            self.cb_ref.setEnabled(enabled and has_prod)
+        if hasattr(self, 'btn_add_ref'):
+            self.btn_add_ref.setEnabled(enabled and has_prod)
 
     # ------------------------------------------------------------------ #
     #  المجاميع                                                            #
@@ -504,6 +631,7 @@ class ReceptionDialogLogicMixin:
                 'Location_Name':        batch.get('Location_Name', '---'),
                 'Lot_Number':           batch.get('Lot_Number', 'N/A'),
                 'Expiry_Date':          str(batch.get('Expiry_Date', '')),
+                'Ref_Code':             batch.get('Ref_Code') or batch.get('Primary_Ref') or '',
                 'Color_Finish':         batch.get('Color_Finish', ''),
                 'Qty_Received':         qty,
                 'Unit_Price_Received':  price,
@@ -626,11 +754,14 @@ class ReceptionDialogLogicMixin:
             else:
                 disc_pct = min(100.0, (rem_input / base_line_ht) * 100.0) if base_line_ht > 0 else 0.0
 
+            chosen_ref = (self.cb_ref.currentData() or '').strip() if hasattr(self, 'cb_ref') else ""
+
             line_data = {
                 "BR_ID":               self.br_id,
                 "PO_ID":               current_po_id,
                 "Product_ID":          p_data['Product_ID'],
                 "Location_ID":         loc_id,
+                "Ref_Code":            chosen_ref,
                 "Color_Finish":        chosen_color,
                 "Quantity_Initial":    effective_qty,
                 "Quantity_Current":    effective_qty,
@@ -694,6 +825,7 @@ class ReceptionDialogLogicMixin:
             if not col and p_curr:
                 col = p_curr.get('Color_Finish')
             self.set_selected_color(col or "")
+            self._load_product_references(p_curr, selected_ref=meta.get('Ref_Code') or '')
 
             self.chk_tva.setChecked(float(meta.get('Tax_Rate_Percent', 0)) > 0)
             self.inp_price.setValue(float(meta.get('Unit_Price_Received', 0.0)))
@@ -878,6 +1010,7 @@ class ReceptionDialogLogicMixin:
 
     def clear_inputs(self):
         self.cb_product.setCurrentIndex(0)
+        self._load_product_references(None)
         self.cb_unit_type.clear()
         self.cb_location.setCurrentIndex(0)
         self.inp_lot.clear()

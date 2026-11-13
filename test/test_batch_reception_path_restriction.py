@@ -133,13 +133,17 @@ def test_quick_add_dialog_mandatory_complete_data_validation(qapp):
         dialog.cb_supplier.addItem("Fournisseur Brandt Algérie", 5)
         dialog.cb_supplier.setCurrentIndex(1)
 
-        # 4. Rejects when lot number is empty or "N/A"
+        # 4. Empty or N/A lot number is optional (does not block validation)
         dialog.inp_lot.setText("")
-        assert_validation_fails("lot")
-        dialog.inp_lot.setText("N/A")
-        assert_validation_fails("lot")
+        dialog.inp_qty.setValue(5)
+        dialog.inp_price.setValue(45000.0)
+        dialog.inp_sell_price.setValue(58000.0)
+        with patch.object(dialog, "accept") as mock_accept:
+            dialog.validate_and_accept()
+            assert mock_accept.called
+        assert dialog.get_data()["Lot_Number"].startswith("LOT-")
 
-        # Set valid lot number
+        # Set explicit lot number
         dialog.inp_lot.setText("LOT-2026-BOSCH-01")
 
         # 5. Rejects when quantity is 0
@@ -251,10 +255,6 @@ def test_inventory_batch_manager_backend_data_completeness(mock_db):
     # Missing Location_ID
     with pytest.raises(ValueError, match="Location_ID est obligatoire"):
         mgr.add_direct_batch({"Product_ID": 1, "Lot_Number": "LOT1", "Quantity": 1, "Unit_Price_HT": 100})
-
-    # Missing or N/A Lot_Number
-    with pytest.raises(ValueError, match="Lot_Number valide est obligatoire"):
-        mgr.add_direct_batch({"Product_ID": 1, "Location_ID": 1, "Lot_Number": "N/A", "Quantity": 1, "Unit_Price_HT": 100})
 
     # Zero or negative quantity
     with pytest.raises(ValueError, match="quantité doit être strictement positive"):

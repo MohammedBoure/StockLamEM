@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import qtawesome as qta
 from PySide6.QtWidgets import (
@@ -218,7 +219,7 @@ class QuickAddDialog(QDialog):
         # ---------------------------------------------------------
         # Quantities & Dates Group
         # ---------------------------------------------------------
-        grp_qty = QGroupBox("Quantité, Lot et Validité (Champs Obligatoires)")
+        grp_qty = QGroupBox("Quantité, Lot et Validité")
         grp_qty.setStyleSheet(grp_prod.styleSheet())
         lay_qty = QHBoxLayout(grp_qty)
         lay_qty.setSpacing(15)
@@ -228,7 +229,7 @@ class QuickAddDialog(QDialog):
         self.inp_qty.setValue(1)
 
         self.inp_lot = AutoSelectLineEdit()
-        self.inp_lot.setPlaceholderText("N° de lot obligatoire *")
+        self.inp_lot.setPlaceholderText("N° de lot (optionnel)")
 
         self.inp_expiry = QDateEdit(QDate.currentDate().addYears(2))
         self.inp_expiry.setCalendarPopup(True)
@@ -736,11 +737,6 @@ class QuickAddDialog(QDialog):
             self.cb_supplier.setFocus()
             return
 
-        if not lot_number or lot_number.upper() in ["N/A", "NONE", "NULL", ""]:
-            QMessageBox.warning(self, "Données Incomplètes", "Le numéro de lot (Batch Number) est obligatoire pour assurer la traçabilité.")
-            self.inp_lot.setFocus()
-            return
-
         if qty <= 0:
             QMessageBox.warning(self, "Données Incomplètes", "La quantité doit être strictement supérieure à zéro.")
             self.inp_qty.setFocus()
@@ -775,6 +771,10 @@ class QuickAddDialog(QDialog):
         if chosen_color.startswith("---"):
             chosen_color = ""
 
+        raw_lot = self.inp_lot.text().strip()
+        if not raw_lot or raw_lot.upper() in ("N/A", "NONE", "NULL"):
+            raw_lot = f"LOT-{datetime.now().strftime('%y%m%d%H%M%S')}"
+
         return {
             'Product_ID': p_data['Product_ID'],
             'Product_Name': p_data['Product_Name'],
@@ -782,7 +782,7 @@ class QuickAddDialog(QDialog):
             'Ref_Code': (self.cb_ref.currentData() or '').strip(),
             'Color_Finish': chosen_color,
             'Quantity': effective_qty,
-            'Lot_Number': self.inp_lot.text().strip(),
+            'Lot_Number': raw_lot,
             'Expiry_Date': None,
             'Unit_Price_HT': self.inp_price.value(),
             'Discount_Percent': discount_pct,

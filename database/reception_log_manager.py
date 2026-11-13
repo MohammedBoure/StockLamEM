@@ -419,6 +419,10 @@ class ReceptionLogManager:
             if batch_id is None:
                 raise RuntimeError("Impossible de générer un code-barres unique pour cette ligne.")
 
+            ref_code = str(line_data.get('Ref_Code') or '').strip()
+            if ref_code and self._ensure_ref_code_column(cursor):
+                cursor.execute("UPDATE Inventory_Batches SET Ref_Code = %s WHERE Batch_ID = %s", (ref_code, batch_id))
+
             color_finish = str(line_data.get('Color_Finish') or '').strip()
             if color_finish:
                 cursor.execute(
@@ -516,6 +520,13 @@ class ReceptionLogManager:
             )
             cursor.execute(query, params)
             line_data['Internal_Barcode'] = barcode_to_save
+
+            ref_code = str(line_data.get('Ref_Code') or '').strip()
+            if 'Ref_Code' in line_data and self._ensure_ref_code_column(cursor):
+                cursor.execute(
+                    "UPDATE Inventory_Batches SET Ref_Code = %s WHERE Batch_ID = %s",
+                    (ref_code or None, batch_id)
+                )
 
             color_finish = str(line_data.get('Color_Finish') or '').strip()
             if color_finish:
@@ -832,21 +843,42 @@ class ReceptionLogManager:
             logging.error(f"Error fetching reception logs: {e}")
             return []
 
+    def _ensure_ref_code_column(self, cursor) -> bool:
+        """التأكد من وجود عمود المرجع المختار (Ref_Code) في جدول Inventory_Batches."""
+        try:
+            cursor.execute("SHOW COLUMNS FROM Inventory_Batches LIKE 'Ref_Code'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE Inventory_Batches ADD COLUMN Ref_Code VARCHAR(100) NULL")
+            return True
+        except Exception:
+            return False
+
     def get_reception_full_details(self, br_id: int) -> Dict:
         # نفس الكود الموجود في رسالتك السابقة (هو صحيح)
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
+                has_ref_col = self._ensure_ref_code_column(cursor)
+                ref_select = "b.Ref_Code" if has_ref_col else "NULL AS Ref_Code"
+                primary_ref_expr = (
+                    "COALESCE(NULLIF(b.Ref_Code, ''), "
+                    "(SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = p.Product_ID "
+                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), p.Manuf_Cat_No)"
+                    if has_ref_col else
+                    "COALESCE((SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = p.Product_ID "
+                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), p.Manuf_Cat_No)"
+                )
                 query_header = "SELECT rl.*, s.Supplier_Name FROM Reception_Log rl LEFT JOIN Suppliers s ON rl.Supplier_ID = s.Supplier_ID WHERE rl.BR_ID = %s"
                 cursor.execute(query_header, (br_id,))
                 header = cursor.fetchone()
                 if not header: return None
                 
-                query_batches = """
+                query_batches = f"""
                     SELECT b.Batch_ID, b.Product_ID, b.Location_ID, b.Lot_Number, b.Expiry_Date, 
                            b.Quantity_Initial, b.Internal_Barcode, b.External_Barcode, b.Unit_Price_Received, b.Tax_Rate_Percent, 
                            b.Discount_Percent, b.Reception_Note, 
                            b.Selling_Price_HT, b.Selling_Price_HT_2, b.Selling_Price_HT_3, b.Selling_Price_HT_4, b.Selling_TVA_Percent,
+                           {ref_select}, {primary_ref_expr} AS Primary_Ref,
                            p.Product_Name, p.Stock_Unit, p.Color_Finish, l.Location_Name
                     FROM Inventory_Batches b
                     JOIN Products_Master p ON b.Product_ID = p.Product_ID

@@ -93,6 +93,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Verifies Task #8 deliverables: `DirectBonRetourDialog` shows Fournisseur & BL info with a single quantity input (`spin_qty_return`), `BatchesTab` context menu exposes `Créer Bon de Retour / Avoir`, and `create_direct_bon_retour` creates a linked supplier credit note (`BR_ID` + `Supplier_ID` + `Batch_ID`) via `CreditNoteManager.create_credit_note`.
 - **`test_stock_sortie_ajustement_admin_auth.py`**:
   - *Scope*: Verifies Task #7 deliverables: `AdminStockAuthDialog` validates Admin credentials and rejects non-admin roles, and `BatchesTab.direct_use_process` (`Sortie`) and `BatchesTab.adjust_stock` (`Ajustement`) block execution unless authorized by an Admin account.
+- **`test_reception_ref_and_optional_lot.py`**:
+  - *Scope*: Verifies that `ReceptionDialog` (`Bon de Réception`) provides the product-linked `Réf` selector (`cb_ref`) + `+` button (`btn_add_ref`) and persists `Ref_Code`, and that `Lot_Number` is optional (auto-generated when blank) in `ReceptionDialog`, `QuickAddDialog`, and `InventoryBatchManager.add_direct_batch`.
 - **`test_mobile_order_sessions_api.py`**:
   - *Scope*: Verifies end-to-end mobile Order Desk session creation and item addition via `StockLamApiServer` (`/api/order-sessions`, `/api/order-sessions/clients`, `/api/order-sessions/catalog`, `/api/order-sessions/<sid>/items`), `MobileOrderSessionBridge`, and `OrderDeskWidget` without stealing the desktop operator's active tab.
 - **`test_stock_actuel_ref_and_quick_add.py`**:

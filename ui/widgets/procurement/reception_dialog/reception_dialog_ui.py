@@ -141,6 +141,22 @@ class ReceptionDialogUIMixin:
             ref = p.get('All_Refs') or p.get('Primary_Ref') or p.get('Manuf_Cat_No') or p.get('Reference') or p.get('Product_Code') or p.get('Barcode') or "---"
             self.cb_product.addItem(f"{p['Product_Name']}  |  Réf: {ref}  ({brand})", p)
 
+        self.cb_ref = QComboBox()
+        self.cb_ref.setEnabled(False)
+        self.cb_ref.addItem("--- Réf ---", "")
+
+        self.btn_add_ref = QPushButton("+")
+        self.btn_add_ref.setFixedSize(28, 26)
+        self.btn_add_ref.setCursor(Qt.PointingHandCursor)
+        self.btn_add_ref.setEnabled(False)
+        self.btn_add_ref.setToolTip("Ajouter une nouvelle Réf pour le produit sélectionné")
+        self.btn_add_ref.setStyleSheet(
+            "QPushButton { background-color: #e6f4f1; color: #007572; border: 1px solid #007572; "
+            "border-radius: 4px; font-weight: bold; font-size: 14px; padding: 0px; margin: 0px; }"
+            "QPushButton:hover { background-color: #007572; color: white; }"
+            "QPushButton:disabled { background-color: #f1f5f9; color: #94a3b8; border-color: #cbd5e1; }"
+        )
+
         # Product Color / Finish
         self.cb_color = QComboBox()
         self.cb_color.setEditable(True)
@@ -303,6 +319,12 @@ class ReceptionDialogUIMixin:
         entry_layout = QVBoxLayout()
         entry_layout.setSpacing(5)
 
+        lay_ref = QHBoxLayout()
+        lay_ref.setSpacing(6)
+        lay_ref.setContentsMargins(0, 0, 0, 0)
+        lay_ref.addWidget(self.cb_ref, 1)
+        lay_ref.addWidget(self.btn_add_ref, 0)
+
         lay_col = QHBoxLayout()
         lay_col.setSpacing(6)
         lay_col.setContentsMargins(0, 0, 0, 0)
@@ -312,6 +334,8 @@ class ReceptionDialogUIMixin:
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("<b>Produit:</b>"))
         row1.addWidget(self.cb_product, 3)
+        row1.addWidget(QLabel("<b>Réf:</b>"))
+        row1.addLayout(lay_ref, 2)
         row1.addWidget(QLabel("<b>Couleur:</b>"))
         row1.addLayout(lay_col, 2)
         row1.addWidget(QLabel("<b>Unité:</b>"))

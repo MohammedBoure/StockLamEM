@@ -952,8 +952,10 @@ class InventoryBatchManager:
             raise ValueError("Product_ID est obligatoire pour enregistrer un lot.")
         if not data.get('Location_ID'):
             raise ValueError("Location_ID est obligatoire pour enregistrer un lot.")
-        if not data.get('Lot_Number') or str(data.get('Lot_Number')).strip().upper() in ['N/A', 'NONE', 'NULL', '']:
-            raise ValueError("Lot_Number valide est obligatoire pour assurer la traçabilité.")
+        raw_lot = str(data.get('Lot_Number') or '').strip()
+        if not raw_lot or raw_lot.upper() in ['N/A', 'NONE', 'NULL', '']:
+            raw_lot = f"LOT-{datetime.now().strftime('%y%m%d%H%M%S')}"
+        data['Lot_Number'] = raw_lot
         if float(data.get('Quantity', 0)) <= 0:
             raise ValueError("La quantité doit être strictement positive.")
         if float(data.get('Unit_Price_HT', 0)) <= 0:
