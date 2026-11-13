@@ -69,6 +69,39 @@ class ReceptionDialogUIMixin:
         self.reception_date = QDateEdit(QDate.currentDate())
         self.reception_date.setCalendarPopup(True)
 
+        self.cb_supplier = QComboBox()
+        self.cb_supplier.setEditable(True)
+        self.cb_supplier.setInsertPolicy(QComboBox.NoInsert)
+        self.cb_supplier.setMinimumWidth(220)
+        sup_completer = self.cb_supplier.completer()
+        sup_completer.setFilterMode(Qt.MatchContains)
+        sup_completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.cb_supplier.addItem("--- Choisir un Fournisseur ---", None)
+        suppliers_list = []
+        sup_mgr = getattr(self.manager, 'suppliers', None)
+        if not sup_mgr and self.parent() and hasattr(self.parent(), 'manager'):
+            sup_mgr = getattr(self.parent().manager, 'suppliers', None)
+        if sup_mgr and hasattr(sup_mgr, 'get_all_suppliers'):
+            try:
+                suppliers_list = sup_mgr.get_all_suppliers() or []
+            except Exception:
+                suppliers_list = []
+        for s in suppliers_list:
+            s_id = s.get('Supplier_ID')
+            s_name = s.get('Supplier_Name')
+            if s_id is not None and s_name:
+                self.cb_supplier.addItem(s_name, s_id)
+        init_sup_id = self.po_data.get('Supplier_ID')
+        init_sup_name = self.po_data.get('Supplier_Name')
+        if init_sup_id is not None:
+            idx_sup = self.cb_supplier.findData(init_sup_id)
+            if idx_sup < 0 and init_sup_name:
+                self.cb_supplier.addItem(init_sup_name, init_sup_id)
+                idx_sup = self.cb_supplier.findData(init_sup_id)
+            if idx_sup >= 0:
+                self.cb_supplier.setCurrentIndex(idx_sup)
+        self.cb_supplier.setVisible(not bool(self.po_data.get('PO_ID')))
+
         self.cb_product = QComboBox()
         self.cb_product.setEditable(True)
         self.cb_product.setInsertPolicy(QComboBox.NoInsert)
@@ -227,17 +260,29 @@ class ReceptionDialogUIMixin:
         main_layout.setContentsMargins(10, 5, 10, 5)
         main_layout.setSpacing(8)
 
-        header_info = QLabel(
-            f"<b>Fournisseur:</b> {self.po_data.get('Supplier_Name', 'N/A')} "
-            f"| <b>N°BC:</b> #{self.po_data.get('PO_ID', 'N/A')}"
-        )
+        is_direct_bl = not bool(self.po_data.get('PO_ID'))
+        if is_direct_bl:
+            header_text = "<b>Mode:</b> Bon de Livraison Direct (Sans Bon de Commande)"
+            border_color = "#27ae60"
+        else:
+            header_text = (
+                f"<b>Fournisseur:</b> {self.po_data.get('Supplier_Name', 'N/A')} "
+                f"| <b>N°BC:</b> #{self.po_data.get('PO_ID', 'N/A')}"
+            )
+            border_color = "#3498db"
+
+        header_info = QLabel(header_text)
         header_info.setStyleSheet(
-            "font-size: 14px; color: #2c3e50; background: #ecf0f1; "
-            "padding: 8px; border-radius: 4px; border-left: 4px solid #3498db;"
+            f"font-size: 14px; color: #2c3e50; background: #ecf0f1; "
+            f"padding: 8px; border-radius: 4px; border-left: 4px solid {border_color};"
         )
         main_layout.addWidget(header_info)
 
         top_layout = QHBoxLayout()
+        if is_direct_bl:
+            top_layout.addWidget(QLabel("<b>Fournisseur:</b>"))
+            top_layout.addWidget(self.cb_supplier)
+            top_layout.addSpacing(10)
         top_layout.addWidget(QLabel("<b>Date:</b>"))
         top_layout.addWidget(self.reception_date)
         top_layout.addSpacing(15)

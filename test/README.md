@@ -79,6 +79,8 @@ This test suite enforces strict software quality gatekeeping across:
 ### 2.2. Core Financial, Billing & Debt Management
 - **`test_quick_add_color_assignment.py`**:
   - *Scope*: Verifies Task #4 deliverables: in Stock & Magasin -> Stock Actuel -> Ajout Rapide (`QuickAddDialog`), dynamic color swatch badge preview (`lbl_color_swatch`), color combobox populated with active finishes (`ProductColorManager` / `Product_Colors`), automatic pre-selection from product Master Data (`Color_Finish`) or existing batch data, custom color input support, and persistence of `Color_Finish` on `Products_Master` and `Product_Colors` via `InventoryBatchManager` (`add_direct_batch` and `update_direct_batch`).
+- **`test_reception_direct_bl.py`**:
+  - *Scope*: Verifies Task #4 deliverables: `ReceptionHistoryTab` provides `+ Nouveau BL Direct` to open `ReceptionDialog` without a purchase order (`PO_ID=None`), displays `Direct (Sans BC)` for direct receptions, and `ReceptionDialog` validates/persists direct supplier selection (`cb_supplier`) and generates barcodes cleanly with `PO_ID=None`.
 - **`test_reception_bon_remise_and_product_ref.py`**:
   - *Scope*: Verifies Task #3 deliverables: product selector displays `Réf` alongside product name with case-insensitive `MatchContains` filtering, per-item `Remise` (`%` and `DZD`), bon-level `Remise Bon` (`%` and `DZD`) live recalculation and persistence via `ReceptionLogManager.update_bon_discount` and `_recalculate_reception_totals`.
 - **`test_reception_dialog_color_support.py`**:

@@ -172,6 +172,10 @@ class ReceptionLogManager:
                 updates = []
                 params = []
                 
+                if 'Supplier_ID' in data and data['Supplier_ID'] is not None:
+                    updates.append("Supplier_ID = %s")
+                    params.append(data['Supplier_ID'])
+
                 if 'Supplier_Invoice_Ref' in data:
                     updates.append("Supplier_Invoice_Ref = %s")
                     params.append(data['Supplier_Invoice_Ref'])

@@ -89,6 +89,11 @@ class ReceptionHistoryTab(QWidget):
         
         btn_refresh = QPushButton("🔄 Actualiser")
         btn_refresh.clicked.connect(self.load_data)
+
+        self.btn_new_direct_bl = QPushButton("➕ Nouveau BL Direct")
+        self.btn_new_direct_bl.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        self.btn_new_direct_bl.setToolTip("Créer un Bon de Livraison directement lié à un fournisseur sans Bon de Commande")
+        self.btn_new_direct_bl.clicked.connect(self.create_direct_reception)
         
         btn_edit = QPushButton("✏️ Modifier")
         btn_edit.setStyleSheet("background-color: #f39c12; color: white; font-weight: bold;")
@@ -107,6 +112,7 @@ class ReceptionHistoryTab(QWidget):
         toolbar.addWidget(self.supplier_filter) # إضافة الفلتر هنا
         toolbar.addWidget(self.status_filter)
         toolbar.addWidget(btn_refresh)
+        toolbar.addWidget(self.btn_new_direct_bl)
         toolbar.addWidget(btn_edit)
         toolbar.addWidget(btn_pdf)
         
@@ -366,7 +372,7 @@ class ReceptionHistoryTab(QWidget):
                 self.table.setItem(row, 5, self._create_centered_item(format_money(total_tva), is_numeric=True, raw_value=total_tva))
                 self.table.setItem(row, 6, self._create_centered_item(format_money(remise), is_numeric=True, raw_value=remise))
                 self.table.setItem(row, 7, self._create_centered_item(format_money(total_ttc), is_numeric=True, raw_value=total_ttc))
-                self.table.setItem(row, 8, self._create_centered_item(po_id or '---'))
+                self.table.setItem(row, 8, self._create_centered_item(f"BC #{po_id}" if po_id else "Direct (Sans BC)"))
                 
                 self.table.item(row, 0).setData(Qt.UserRole, reception)
                 
@@ -392,6 +398,33 @@ class ReceptionHistoryTab(QWidget):
                 item.setBackground(QColor(bg_color))
                 item.setForeground(QColor(fg_color))
                 item.setFont(QFont("Arial", 9, QFont.Bold))
+
+    def create_direct_reception(self):
+        """إنشاء وصل استلام (BL) مباشر مرتبط بمورد بدون أمر شراء (Bon de Commande)."""
+        try:
+            sup_id = self.supplier_filter.currentData() if self.supplier_filter.currentIndex() > 0 else None
+            sup_name = self.supplier_filter.currentText() if sup_id is not None else None
+            locations = self.manager.locations.get_all_locations_flat()
+
+            po_data = {
+                "PO_ID": None,
+                "Supplier_ID": sup_id,
+                "Supplier_Name": sup_name,
+            }
+            dialog = ReceptionDialog(
+                po_data=po_data,
+                locations_list=locations,
+                location_manager=self.manager.locations,
+                manager=self.manager,
+                printer_manager=self.manager.printer,
+                parent=self,
+                edit_mode=False,
+            )
+            if dialog.exec() or getattr(dialog, 'br_id', None):
+                self.load_data()
+        except Exception as e:
+            logging.error(f"Error creating direct BL reception: {str(e)}")
+            QMessageBox.critical(self, "Erreur", f"Impossible de créer un BL direct :\n{str(e)}")
 
     def edit_reception(self):
         """
@@ -420,7 +453,7 @@ class ReceptionHistoryTab(QWidget):
 
             logging.info(f"Ouverture modification BR: {br_id}, PO: {po_id}")
 
-            full_po_data = self.manager.po.get_full_order_details(po_id)
+            full_po_data = self.manager.po.get_full_order_details(po_id) if po_id else None
             if not full_po_data:
                 # محاولة تحميل جزئي إذا لم نجد PO (لأنه قد يكون PO وهمي أو محذوف)
                 # لكن الأفضل هنا افتراض وجود بيانات

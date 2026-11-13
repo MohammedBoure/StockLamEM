@@ -251,6 +251,8 @@ class ReceptionDialogLogicMixin:
         self.invoice_ref.setReadOnly(False)
         self.bl_ref.setReadOnly(False)
         self.reception_date.setReadOnly(False)
+        if hasattr(self, 'cb_supplier') and not self.po_data.get('PO_ID'):
+            self.cb_supplier.setEnabled(True)
 
         self.btn_validate_ref.setText(" Enregistrer")
         self.btn_validate_ref.setEnabled(True)
@@ -273,6 +275,19 @@ class ReceptionDialogLogicMixin:
         inv_ref = self.invoice_ref.text().strip()
         bl_ref  = self.bl_ref.text().strip()
 
+        supplier_id = self.po_data.get('Supplier_ID')
+        if not self.po_data.get('PO_ID') and hasattr(self, 'cb_supplier'):
+            supplier_id = self.cb_supplier.currentData()
+            if not supplier_id:
+                QMessageBox.warning(
+                    self, "Données manquantes",
+                    "Veuillez sélectionner un fournisseur avant de valider."
+                )
+                self.cb_supplier.setFocus()
+                return False
+            self.po_data['Supplier_ID'] = supplier_id
+            self.po_data['Supplier_Name'] = self.cb_supplier.currentText().strip()
+
         if not inv_ref and not bl_ref:
             QMessageBox.warning(
                 self, "Données manquantes",
@@ -290,7 +305,7 @@ class ReceptionDialogLogicMixin:
 
             header_data = {
                 "PO_ID":                self.po_data.get('PO_ID'),
-                "Supplier_ID":          self.po_data.get('Supplier_ID'),
+                "Supplier_ID":          supplier_id,
                 "Supplier_Invoice_Ref": inv_ref,
                 "Supplier_BL_Ref":      bl_ref,
                 "Reception_Date":       self.reception_date.date().toPyDate(),
@@ -311,6 +326,8 @@ class ReceptionDialogLogicMixin:
             self.invoice_ref.setReadOnly(True)
             self.bl_ref.setReadOnly(True)
             self.reception_date.setReadOnly(True)
+            if hasattr(self, 'cb_supplier'):
+                self.cb_supplier.setEnabled(False)
 
             self.btn_validate_ref.setText(" Validé")
             self.btn_validate_ref.setStyleSheet(
@@ -413,6 +430,8 @@ class ReceptionDialogLogicMixin:
             self.invoice_ref.setReadOnly(True)
             self.bl_ref.setReadOnly(True)
             self.reception_date.setReadOnly(True)
+            if hasattr(self, 'cb_supplier'):
+                self.cb_supplier.setEnabled(False)
 
             self.btn_validate_ref.setText(" Validé")
             self.btn_validate_ref.setEnabled(False)
@@ -424,6 +443,14 @@ class ReceptionDialogLogicMixin:
         self.table_items.setSortingEnabled(False)
 
         header  = self.reception_data['Header']
+        if hasattr(self, 'cb_supplier') and not self.po_data.get('PO_ID'):
+            sup_id = header.get('Supplier_ID')
+            if sup_id is not None:
+                idx_sup = self.cb_supplier.findData(sup_id)
+                if idx_sup >= 0:
+                    self.cb_supplier.setCurrentIndex(idx_sup)
+            if self.br_id:
+                self.cb_supplier.setEnabled(False)
         inv_ref = header.get('Supplier_Invoice_Ref') or ''
         self.invoice_ref.setText(inv_ref)
         self.bl_ref.setText(header.get('Supplier_BL_Ref') or '')
@@ -828,7 +855,7 @@ class ReceptionDialogLogicMixin:
             from database.inventory_batch_manager import InventoryBatchManager
             batch_mgr = InventoryBatchManager(self.manager.db)
 
-        po_id = self.po_data.get('PO_ID', '0')
+        po_id = self.po_data.get('PO_ID') or 0
         if hasattr(batch_mgr, 'get_barcode_prefix_for_po'):
             base_prefix = batch_mgr.get_barcode_prefix_for_po(po_id)
         else:

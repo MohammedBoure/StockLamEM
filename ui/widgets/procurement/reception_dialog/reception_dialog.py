@@ -45,10 +45,12 @@ class ReceptionDialog(ReceptionDialogUIMixin, ReceptionDialogLogicMixin, BaseDia
         if self.edit_mode and self.reception_data:
             self.br_id = self.reception_data.get('Header', {}).get('BR_ID')
 
-        title = (
-            f"Réception #{po_data.get('PO_ID', 'N/A')} "
-            f"- {po_data.get('Supplier_Name', 'N/A')}"
-        )
+        po_id = po_data.get('PO_ID')
+        sup_name = po_data.get('Supplier_Name') or 'Fournisseur'
+        if po_id:
+            title = f"Réception #{po_id} - {sup_name}"
+        else:
+            title = f"Nouveau BL Direct (Sans BC) - {sup_name}"
         super().__init__(title, parent)
 
         if hasattr(self, 'buttons'):
