@@ -32,6 +32,22 @@ from PySide6.QtWidgets import (
 
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
 from ui.icons import get_duotone_icon
+from ui.widgets.appliance_desks._theme import (
+    BORDER_SUBTLE,
+    BRAND_TEAL,
+    BRAND_TEAL_BORDER,
+    BRAND_TEAL_TINT,
+    BUREAUX_TABLE_QSS,
+    CANVAS_BG,
+    CARD_BG,
+    COMBO_QSS,
+    FILTER_CHIP_QSS,
+    INPUT_QSS,
+    PRIMARY_CTA_QSS,
+    SECONDARY_OUTLINE_QSS,
+    TEXT_BODY,
+    TEXT_PRIMARY,
+)
 from ui.widgets.appliance_desks.order_desk_view import (
     OUTLINE_BTN_STYLE,
     PRIMARY_BTN_STYLE,
@@ -66,40 +82,46 @@ class DispatchDeskWidget(QWidget):
         self.refresh_dispatch_queue()
 
     def _init_ui(self) -> None:
+        self.setObjectName("DispatchDeskRoot")
+        self.setStyleSheet(f"QWidget#DispatchDeskRoot {{ background-color: {CANVAS_BG}; }}")
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(6, 4, 6, 6)
         layout.setSpacing(10)
 
-        # 1. Top Order Selection Header
+        # 1. Unified Top Order & Filter Card (De-containerized from double stacked boxes)
         header = QFrame()
         header.setObjectName("DispatchHeaderCard")
-        header.setFixedHeight(52)
-        header.setStyleSheet("""
-            QFrame#DispatchHeaderCard {
-                background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
-            }
-            QLabel {
+        header.setStyleSheet(f"""
+            QFrame#DispatchHeaderCard {{
+                background-color: {CARD_BG};
+                border: 1px solid {BORDER_SUBTLE};
+                border-radius: 10px;
+            }}
+            QFrame#DispatchHeaderCard QLabel {{
                 border: none;
                 background: transparent;
-            }
+            }}
         """)
-        h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(14, 0, 14, 0)
+        header_v = QVBoxLayout(header)
+        header_v.setContentsMargins(16, 12, 16, 12)
+        header_v.setSpacing(10)
+
+        h_layout = QHBoxLayout()
         h_layout.setSpacing(10)
 
         ic = QLabel()
         ic.setPixmap(get_duotone_icon("barcode_scan", 20).pixmap(20, 20))
         h_layout.addWidget(ic)
 
-        lbl_title = QLabel("Bureau de Sortie & Magasin (Scan N° de Série -> Bon de Sortie) :")
-        lbl_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #1E293B;")
+        lbl_title = QLabel("Sortie Magasin (Scan N° de Série -> Bon de Sortie) :")
+        lbl_title.setStyleSheet(f"font-size: 13.5px; font-weight: 800; color: {TEXT_PRIMARY};")
         h_layout.addWidget(lbl_title)
 
         self.cbo_orders = QComboBox()
-        self.cbo_orders.setFixedHeight(34)
+        self.cbo_orders.setFixedHeight(36)
         self.cbo_orders.setMinimumWidth(320)
+        self.cbo_orders.setStyleSheet(COMBO_QSS)
         self.cbo_orders.currentIndexChanged.connect(self._on_order_changed)
         h_layout.addWidget(self.cbo_orders, stretch=1)
 
@@ -107,54 +129,23 @@ class DispatchDeskWidget(QWidget):
         btn_refresh.setIcon(get_duotone_icon("refresh", 14))
         btn_refresh.setIconSize(QSize(14, 14))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(34)
-        btn_refresh.setStyleSheet(OUTLINE_BTN_STYLE)
+        btn_refresh.setFixedHeight(36)
+        btn_refresh.setStyleSheet(SECONDARY_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.refresh_dispatch_queue)
         h_layout.addWidget(btn_refresh)
 
         self.lbl_status = QLabel("Prêt pour le scan physique")
         self.lbl_status.setStyleSheet(
-            "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #E6F4F1; "
-            "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 10px;"
+            f"font-size: 11px; font-weight: 700; color: {BRAND_TEAL}; background-color: {BRAND_TEAL_TINT}; "
+            f"border: 1px solid {BRAND_TEAL_BORDER}; border-radius: 6px; padding: 5px 12px;"
         )
         h_layout.addWidget(self.lbl_status)
-        layout.addWidget(header)
+        header_v.addLayout(h_layout)
 
-        # 1b. Filter & Search Bar (PC / PL / CR + Search by Bon Barcode, Client Name, Phone)
-        filter_bar = QFrame()
-        filter_bar.setObjectName("DispatchFilterCard")
-        filter_bar.setFixedHeight(48)
-        filter_bar.setStyleSheet("""
-            QFrame#DispatchFilterCard {
-                background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
-            }
-        """)
-        f_layout = QHBoxLayout(filter_bar)
-        f_layout.setContentsMargins(14, 6, 14, 6)
+        # Filter & Search Row
+        f_layout = QHBoxLayout()
         f_layout.setSpacing(8)
 
-        chip_style = """
-            QPushButton {
-                background-color: #F8FAFC;
-                color: #334155;
-                border: 1px solid #CBD5E1;
-                border-radius: 4px;
-                padding: 4px 12px;
-                font-size: 12px;
-                font-weight: 700;
-            }
-            QPushButton:hover {
-                border-color: #007572;
-                color: #007572;
-            }
-            QPushButton:checked {
-                background-color: #007572;
-                color: #FFFFFF;
-                border-color: #007572;
-            }
-        """
         self._type_filter_group = QButtonGroup(self)
         self._type_filter_group.setExclusive(True)
 
@@ -172,7 +163,7 @@ class DispatchDeskWidget(QWidget):
             btn.setCheckable(True)
             btn.setFixedHeight(32)
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setStyleSheet(chip_style)
+            btn.setStyleSheet(FILTER_CHIP_QSS)
             btn.setToolTip(tip)
             btn.setProperty("filter_code", code)
             self._type_filter_group.addButton(btn)
@@ -184,13 +175,15 @@ class DispatchDeskWidget(QWidget):
         self.txt_order_search = QLineEdit()
         self.txt_order_search.setFixedHeight(32)
         self.txt_order_search.setClearButtonEnabled(True)
+        self.txt_order_search.setStyleSheet(INPUT_QSS)
         self.txt_order_search.setPlaceholderText(
             "Rechercher par Code-barres Bon, Nom du Client ou Téléphone..."
         )
         self.txt_order_search.textChanged.connect(self._apply_order_filters)
         self.txt_order_search.returnPressed.connect(self._apply_order_filters)
         f_layout.addWidget(self.txt_order_search, stretch=1)
-        layout.addWidget(filter_bar)
+        header_v.addLayout(f_layout)
+        layout.addWidget(header)
 
         # 2. Expected Items Table Requiring Physical Serial Scan
         self.table = QTableWidget(0, 6)
@@ -202,9 +195,9 @@ class DispatchDeskWidget(QWidget):
             "Statut Vérification",
             "Horodatage Scan",
         ])
-        self.table.setStyleSheet(TABLE_STYLE)
+        self.table.setStyleSheet(BUREAUX_TABLE_QSS)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(38)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.horizontalHeader().setFixedHeight(38)
         self.table.setShowGrid(True)
         self.table.setAlternatingRowColors(True)
@@ -222,45 +215,47 @@ class DispatchDeskWidget(QWidget):
         # 3. Hardware Barcode & Serial Scanner Console
         scan_box = QFrame()
         scan_box.setObjectName("DispatchScanConsole")
-        scan_box.setStyleSheet("""
-            QFrame#DispatchScanConsole {
-                background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
-            }
-            QLabel {
+        scan_box.setStyleSheet(f"""
+            QFrame#DispatchScanConsole {{
+                background-color: {CARD_BG};
+                border: 1px solid {BORDER_SUBTLE};
+                border-radius: 10px;
+            }}
+            QFrame#DispatchScanConsole QLabel {{
                 border: none;
                 background: transparent;
-            }
+            }}
         """)
         s_layout = QVBoxLayout(scan_box)
-        s_layout.setContentsMargins(14, 12, 14, 12)
+        s_layout.setContentsMargins(16, 12, 16, 12)
         s_layout.setSpacing(10)
 
         lbl_inst = QLabel(
             "Contrôle Physique Obligatoire : Scannez le code-barres ou le numéro de série unique (N° de Série) "
-            "collé sur le châssis de chaque appareil sortant du magasin."
+            "de chaque appareil sortant du magasin."
         )
-        lbl_inst.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        lbl_inst.setStyleSheet(f"font-size: 12px; font-weight: 600; color: {TEXT_BODY};")
         s_layout.addWidget(lbl_inst)
 
         input_row = QHBoxLayout()
         input_row.setSpacing(10)
         self.txt_scan = QLineEdit()
-        self.txt_scan.setFixedHeight(38)
+        self.txt_scan.setFixedHeight(40)
+        self.txt_scan.setStyleSheet(INPUT_QSS + "QLineEdit { font-size: 13px; }")
         self.txt_scan.setPlaceholderText(
             "Scanner le N° de Série ici (ex: SN-BOSCH-2026-889120 ou <Product_ID>::<N° de Série>)..."
         )
         self.txt_scan.returnPressed.connect(self._on_manual_scan_submit)
         input_row.addWidget(self.txt_scan, stretch=2)
 
-        self.btn_emit_sortie = QPushButton("Valider && Imprimer Bon de Sortie (0.00 DA Impact Caisse)")
+        self.btn_emit_sortie = QPushButton("Valider && Imprimer Bon de Sortie")
+        self.btn_emit_sortie.setToolTip("Valider la sortie physique et imprimer le Bon de Sortie (0.00 DA impact Caisse)")
         self.btn_emit_sortie.setIcon(get_duotone_icon("print", 16))
         self.btn_emit_sortie.setIconSize(QSize(16, 16))
         self.btn_emit_sortie.setCursor(Qt.PointingHandCursor)
-        self.btn_emit_sortie.setFixedHeight(38)
+        self.btn_emit_sortie.setFixedHeight(40)
         self.btn_emit_sortie.setEnabled(False)
-        self.btn_emit_sortie.setStyleSheet(PRIMARY_BTN_STYLE)
+        self.btn_emit_sortie.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { font-size: 12.5px; }")
         self.btn_emit_sortie.clicked.connect(self._emit_bon_sortie)
         input_row.addWidget(self.btn_emit_sortie, stretch=1)
 

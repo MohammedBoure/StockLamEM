@@ -97,6 +97,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Verifies that `ReceptionDialog` (`Bon de Réception`) provides the product-linked `Réf` selector (`cb_ref`) + `+` button (`btn_add_ref`) and persists `Ref_Code`, and that `Lot_Number` is optional (auto-generated when blank) in `ReceptionDialog`, `QuickAddDialog`, and `InventoryBatchManager.add_direct_batch`.
 - **`test_mobile_order_sessions_api.py`**:
   - *Scope*: Verifies end-to-end mobile Order Desk session creation and item addition via `StockLamApiServer` (`/api/order-sessions`, `/api/order-sessions/clients`, `/api/order-sessions/catalog`, `/api/order-sessions/<sid>/items`), `MobileOrderSessionBridge`, and `OrderDeskWidget` without stealing the desktop operator's active tab.
+- **`test_bureaux_caisse_ux_redesign.py`**:
+  - *Scope*: Verifies the Bureaux & Caisse UX and Theme Overhaul (`_theme.py` design tokens, `CashierDeskWidget` resizable `QSplitter`, live queue summary pill, quick type filter chips, `Exact` amount button, live `Monnaie à rendre` / `Manquant` indicator, bon type pill, Enter-key validation shortcut, `ApplianceWorkflowTab` live queue badges, and clean emoji-free `OrderDeskWidget` / `DispatchDeskWidget` controls).
 - **`test_stock_actuel_ref_and_quick_add.py`**:
   - *Scope*: Verifies that `BatchesTab` (`Stock Actuel`) displays the `Réf` column (`col 24`) with `All_Refs` tooltip and supports filtering by `Réf`, that `QuickAddDialog` provides a product-linked `Réf` selector (`cb_ref`) with a `+` button (`btn_add_ref`) to add a new reference to the selected product and pre-fills `Ref_Code` on edit, and that `InventoryBatchManager` persists `Ref_Code` on add/update.
 - **`test_quick_add_ref_and_optional_bl.py`**:

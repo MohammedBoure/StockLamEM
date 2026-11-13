@@ -952,7 +952,9 @@ class OrderDeskWidget(QWidget):
         btn_new_sess.clicked.connect(lambda: self._create_new_session())
         sb_layout.addWidget(btn_new_sess)
 
-        self.btn_bind_scanner = QPushButton("🔗 Scanner")
+        self.btn_bind_scanner = QPushButton("Scanner")
+        self.btn_bind_scanner.setIcon(get_duotone_icon("barcode_scan", 12))
+        self.btn_bind_scanner.setIconSize(QSize(12, 12))
         self.btn_bind_scanner.setCursor(Qt.PointingHandCursor)
         self.btn_bind_scanner.setFixedHeight(22)
         self.btn_bind_scanner.setToolTip("Associer un lecteur code-barres libre à la session active")
@@ -2744,11 +2746,11 @@ class OrderDeskWidget(QWidget):
         sdata = self._sessions.get(sid, {})
         menu = QMenu(self)
 
-        act_bind = menu.addAction("🔗 Associer un Lecteur Code-Barres...")
+        act_bind = menu.addAction(get_duotone_icon("barcode_scan", 13), "Associer un Lecteur Code-Barres...")
         act_bind.triggered.connect(lambda: self._prompt_scanner_binding(sid))
 
         if sdata.get("scanner_id"):
-            act_unbind = menu.addAction("🔓 Dissocier le Lecteur (Mode Recherche)")
+            act_unbind = menu.addAction(get_duotone_icon("return_arrow", 13), "Dissocier le Lecteur (Mode Recherche)")
             act_unbind.triggered.connect(lambda: self.unbind_scanner_from_session(sid))
 
         menu.addSeparator()
