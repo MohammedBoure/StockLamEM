@@ -1541,3 +1541,103 @@ class ModifySalesPricesDialog(QDialog):
             super().accept()
         else:
             QMessageBox.critical(self, "Erreur", f"Échec de l'enregistrement des prix :\n{err}")
+
+
+class AdminStockAuthDialog(QDialog):
+    """Dialogue d'authentification Administrateur requis pour Sortie et Ajustement de stock."""
+
+    def __init__(self, action_label: str, item_summary: str, data_manager=None, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Autorisation Administrateur — {action_label}")
+        self.setFixedSize(440, 320)
+        self.setStyleSheet("""
+            QDialog { background-color: #FFFFFF; color: #1E293B; }
+            QLabel { border: none; background: transparent; }
+        """)
+        self.data_manager = data_manager
+        self.approved = False
+        self.admin_user_id = None
+        self._init_ui(action_label, item_summary)
+
+    def _init_ui(self, action_label: str, item_summary: str) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(10)
+
+        lbl_title = QLabel(f"Validation Administrateur Requise ({action_label})")
+        lbl_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #007572;")
+        layout.addWidget(lbl_title)
+
+        card = QFrame()
+        card.setStyleSheet(
+            "QFrame { background-color: #F8FAFC; border: 1px solid #DDE3EA; border-radius: 6px; }"
+        )
+        card_form = QFormLayout(card)
+        card_form.setContentsMargins(12, 8, 12, 8)
+        card_form.setSpacing(4)
+        card_form.addRow(QLabel("Action :"), QLabel(f"<b>{action_label}</b>"))
+        card_form.addRow(QLabel("Article :"), QLabel(f"<b>{item_summary}</b>"))
+        layout.addWidget(card)
+
+        lbl_u = QLabel("Identifiant Administrateur :")
+        lbl_u.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        layout.addWidget(lbl_u)
+        self.txt_admin_user = QLineEdit("admin")
+        self.txt_admin_user.setFixedHeight(34)
+        layout.addWidget(self.txt_admin_user)
+
+        lbl_p = QLabel("Mot de passe Administrateur :")
+        lbl_p.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        layout.addWidget(lbl_p)
+        self.txt_password = QLineEdit()
+        self.txt_password.setFixedHeight(34)
+        self.txt_password.setEchoMode(QLineEdit.Password)
+        self.txt_password.setPlaceholderText("Saisissez le mot de passe administrateur...")
+        self.txt_password.returnPressed.connect(self._verify_credentials)
+        layout.addWidget(self.txt_password)
+
+        layout.addStretch()
+
+        btn_box = QHBoxLayout()
+        btn_box.addStretch()
+        btn_cancel = QPushButton("Annuler")
+        btn_cancel.setFixedHeight(36)
+        btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.clicked.connect(self.reject)
+        btn_box.addWidget(btn_cancel)
+
+        btn_auth = QPushButton("Autoriser")
+        btn_auth.setFixedHeight(36)
+        btn_auth.setCursor(Qt.PointingHandCursor)
+        btn_auth.setStyleSheet(
+            "QPushButton { background-color: #007572; color: white; font-weight: bold; "
+            "padding: 0 16px; border-radius: 5px; border: none; }"
+            "QPushButton:hover { background-color: #005A57; }"
+        )
+        btn_auth.clicked.connect(self._verify_credentials)
+        btn_box.addWidget(btn_auth)
+        layout.addLayout(btn_box)
+
+    def _verify_credentials(self) -> None:
+        username = self.txt_admin_user.text().strip() or "admin"
+        secret = self.txt_password.text().strip()
+        if not secret:
+            QMessageBox.warning(self, "Champ requis", "Veuillez saisir le mot de passe Administrateur.")
+            self.txt_password.setFocus()
+            return
+
+        if self.data_manager and hasattr(self.data_manager, "users"):
+            user = self.data_manager.users.authenticate(username, secret)
+            if user and str(user.get("Role", "")).strip().lower() in ("admin", "administrateur"):
+                self.approved = True
+                self.admin_user_id = int(user.get("User_ID") or 1)
+                self.accept()
+                return
+
+        QMessageBox.warning(
+            self,
+            "Accès Refusé",
+            "Identifiant ou mot de passe administrateur invalide, ou compte sans privilèges Admin.",
+        )
+        self.txt_password.clear()
+        self.txt_password.setFocus()

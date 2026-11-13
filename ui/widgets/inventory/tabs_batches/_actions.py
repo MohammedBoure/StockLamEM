@@ -7,10 +7,10 @@ import logging
 from datetime import datetime, date
 from decimal import Decimal
 
-from PySide6.QtWidgets import QMessageBox, QInputDialog
+from PySide6.QtWidgets import QMessageBox, QInputDialog, QDialog
 from PySide6.QtCore import Qt
 
-from ..dialogs import AdjustmentDialog, WasteDialog, BatchDetailsDialog, UnpackTransferDialog
+from ..dialogs import AdjustmentDialog, WasteDialog, BatchDetailsDialog, UnpackTransferDialog, AdminStockAuthDialog
 from ui.widgets.procurement.reception_dialog import ReceptionDialog
 from ..quick_actions import QuickTransferDialog, QuickConsumeDialog
 from ui.formatting import format_quantity, quantity_to_int, format_money
@@ -138,8 +138,22 @@ def edit_reclamation(self, batch_data):
         else:
             QMessageBox.warning(self, "Erreur", "Impossible de mettre à jour la réclamation.")
 
+def _require_admin_auth(self, action_label: str, batch_data: dict):
+    """التحقق من صلاحية حساب المسؤول (Admin) قبل تنفيذ السحب أو التعديل."""
+    item_summary = f"{batch_data.get('Product_Name', '---')} (Lot: {batch_data.get('Lot_Number', '---')})"
+    auth_dlg = AdminStockAuthDialog(
+        action_label=action_label,
+        item_summary=item_summary,
+        data_manager=self.manager,
+        parent=self,
+    )
+    if auth_dlg.exec() == QDialog.Accepted and auth_dlg.approved:
+        return auth_dlg.admin_user_id
+    return None
+
+
 def direct_use_process(self):
-    """سحب مباشر من اللوط المحدد"""
+    """سحب مباشر من اللوط المحدد (يتطلب مصادقة حساب Admin)"""
     row_idx = self.table.currentRow()
     if row_idx < 0:
         QMessageBox.warning(self, "Sélection", "Veuillez sélectionner un lot.")
@@ -153,31 +167,38 @@ def direct_use_process(self):
     if max_qty <= 0:
         return
 
+    admin_user_id = _require_admin_auth(self, "Sortie de Stock", batch_data)
+    if admin_user_id is None:
+        return
+
     qty, ok = QInputDialog.getInt(
         self, "Sortie",
         f"Quantite (Max: {format_quantity(max_qty)}):", 1, 1, max_qty, 1
     )
     if ok:
-        u_id = get_current_user_id(self)
         if self.manager.batches.direct_consume_batch_unit(
-            batch_data['Batch_ID'], qty, user_id=u_id
+            batch_data['Batch_ID'], qty, user_id=admin_user_id
         ):
             self.load_data()
             self.data_changed.emit()
 
 
 def adjust_stock(self):
-    """تعديل كمية اللوط"""
+    """تعديل كمية اللوط (يتطلب مصادقة حساب Admin)"""
     row = self.table.currentRow()
     if row < 0:
         return
     data = self.table.item(row, 0).data(Qt.UserRole)
+    admin_user_id = _require_admin_auth(self, "Ajustement de Stock", data)
+    if admin_user_id is None:
+        return
+
     dlg  = AdjustmentDialog(data, self.manager.waste_reasons.get_all_reasons(), self)
     if dlg.exec():
         d = dlg.get_data()
         if self.manager.batches.adjust_batch_quantity(
             d['Batch_ID'], d['Qty_Change'], 'Adjustment',
-            d['Reason_ID'], get_current_user_id(self)
+            d['Reason_ID'], admin_user_id
         ):
             self.load_data()
             self.data_changed.emit()

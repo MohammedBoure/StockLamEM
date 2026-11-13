@@ -44,7 +44,7 @@ prix U HT لا يحتاجه العميل، يريد فقط السعر الذي �
 
 في ajouter rapid يمكن للعميل إضافة N bon de livraison وهو بشكل اختياري.
 
-# 7 : medium
+# 7 [COMPLETED]: medium
 المرور عبر الزر الأول # Stock & Magasin للوصول إلى ### 1. Stock Actuel:
 
 sortie يحتاج إلى acc admin وأيضاً ajustement.
