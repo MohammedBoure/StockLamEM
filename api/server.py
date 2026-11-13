@@ -373,6 +373,31 @@ class StockLamApiHandler(BaseHTTPRequestHandler):
                 self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
             return
 
+        if path.startswith("/api/order-sessions/") and path.endswith("/items/qty"):
+            bridge = getattr(self.server, "order_session_bridge", None)
+            if bridge is None:
+                self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Pont de sessions Commandes indisponible.")
+                return
+            parts = [p for p in path.split("/") if p]
+            if len(parts) == 5 and parts[1] == "order-sessions" and parts[3] == "items" and parts[4] == "qty":
+                target_sid = parts[2]
+                try:
+                    data = self._read_body()
+                    result = bridge.update_item_qty(
+                        session_id=target_sid,
+                        product_id=int(data.get("product_id") or 0),
+                        delta=int(data.get("delta") or 0),
+                        actor=data.get("actor"),
+                    )
+                    http_status = HTTPStatus.OK if result.get("success") else HTTPStatus.BAD_REQUEST
+                    self._send_json(http_status, result)
+                except json.JSONDecodeError:
+                    self._send_error(HTTPStatus.BAD_REQUEST, "Corps JSON invalide.")
+                except Exception as exc:
+                    logging.exception("Erreur mise à jour quantité session Commandes API")
+                    self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+                return
+
         if path.startswith("/api/order-sessions/") and path.endswith("/items"):
             bridge = getattr(self.server, "order_session_bridge", None)
             if bridge is None:

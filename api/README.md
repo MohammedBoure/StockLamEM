@@ -50,3 +50,4 @@ Le serveur API s'exécute sur le réseau local (LAN/WiFi).
 | `GET` | `/api/order-sessions/clients` | Liste filtrée des clients pour attribution de session |
 | `GET` | `/api/order-sessions/catalog` | Recherche de produits disponibles en stock (nom, `Réf`, code-barres) |
 | `POST` | `/api/order-sessions/<id>/items` | Ajout d'un produit (par `product_id` ou `barcode`) au panier d'une session |
+| `POST` | `/api/order-sessions/<id>/items/qty` | Ajustement rapide de quantité (`+1` / `-1` / suppression) d'un article de session |

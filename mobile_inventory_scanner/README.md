@@ -1,10 +1,15 @@
-# MODERNSTOCK Mobile Companion & Direct Stock Scanner
+# stocklamEM Mobile Companion & Order Desk Scanner
 
-Application mobile Flutter compagne pour StockLam / MODERNSTOCK permettant d'effectuer la gestion directe du stock sur site et de servir de douchette code-barres sans fil.
+Application mobile Flutter compagne pour **stocklamEM** permettant de gérer les sessions `Commandes` directement sur site (création en 1 clic sans sélection de client, changement instantané entre sessions, ajout/ajustement de produits par scan ou recherche), ainsi que le stock direct, la saisie rapide, l'inventaire physique et le pont scanner bureau.
 
 ## Modes de Fonctionnement
 
-### 1. 📦 Mode Stock Direct (Dispatch sur site)
+### 1. 🛍️ Mode Commandes (Onglet par défaut — Sessions Clients sur Serveur PC)
+- Consultez toutes les sessions ouvertes dans `Bureaux -> Commandes` sur le PC serveur via une barre horizontale à changement instantané en 1 clic.
+- Créez une nouvelle session en 1 clic (`+ Nouvelle`) sans bloquer sur le choix du client (le caissier/opérateur de bureau attribue le client lorsque celui-ci se présente au bureau).
+- Ajoutez ou ajustez (`+` / `-` / suppression) des produits au panier de la session par scan caméra, saisie code-barres ou recherche catalogue instantanée (`order_sessions_view.dart`).
+
+### 2. 📦 Mode Stock Direct (Dispatch sur site)
 - **Recherche par Code-Barres ou Saisie Manuelle** : Scan caméra ou saisie directe du numéro de code-barres / numéro de lot.
 - **Fiche Produit et Consultation des Lots** : Affichage du nom, famille, fabricant, unité et de tous les lots actifs avec leurs emplacements respectifs et dates de péremption.
 - **Priorité FEFO Intelligente** : Surlignage du lot prioritaire (**⭐ RECOMMANDÉ**) selon la règle First Expired First Out.
@@ -20,11 +25,8 @@ Application mobile Flutter compagne pour StockLam / MODERNSTOCK permettant d'eff
 ### 3. ⚡ Mode Saisie Rapide (Multi-Produits)
 - Saisie groupée de multiples références avec basculement Consommation / Transfert et validation en un clic.
 
-### 4. 📱 Mode Pont Bureau (Scanner sans fil)
+### 5. 📱 Mode Pont Bureau (Scanner sans fil)
 - Scannez les codes-barres avec la caméra du téléphone pour les transmettre instantanément dans le champ actif du logiciel bureau.
-
-### 5. 🛒 Mode Commandes (Sessions Clients sur Serveur PC)
-- Consultez les sessions ouvertes dans `Bureaux -> Commandes` sur le PC serveur, créez une nouvelle session pour un client donné, et ajoutez des produits au panier de la session par scan code-barres (caméra/saisie) ou recherche catalogue (`order_sessions_view.dart`).
 
 ## Connexion Réseau et Découverte
 

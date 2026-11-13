@@ -178,6 +178,15 @@ class TestMobileOrderSessionsAPI(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertFalse(fail_over["success"])
 
+        # 7. Decrement quantity cleanly via /items/qty
+        status, dec = _http_json(
+            f"{base}/api/order-sessions/{new_sid}/items/qty",
+            method="POST",
+            body={"product_id": 101, "delta": -1, "actor": "Karim"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(dec["session"]["item_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

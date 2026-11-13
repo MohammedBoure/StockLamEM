@@ -3389,6 +3389,56 @@ class OrderDeskWidget(QWidget):
             "session": self._serialize_session_snapshot(session_id),
         }
 
+    def update_mobile_item_quantity(
+        self,
+        session_id: str,
+        product_id: int,
+        delta: int,
+        actor: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Incrémente, décrémente ou retire un produit d'une session Commandes depuis le mobile."""
+        if session_id not in self._sessions:
+            return {"success": False, "message": f"Session '{session_id}' introuvable."}
+
+        pid = int(product_id)
+        cart = self._sessions[session_id]["cart"]
+        idx = next((i for i, it in enumerate(cart) if int(it.get("product_id") or 0) == pid), -1)
+        if idx < 0:
+            return {"success": False, "message": "Produit absent du panier de cette session."}
+
+        item = cart[idx]
+        new_qty = int(item.get("quantity") or 0) + int(delta or 0)
+        if new_qty <= 0:
+            cart.pop(idx)
+            msg = f"{item.get('name')} retiré."
+        else:
+            avail = int(item.get("max_avail") or 0)
+            if avail > 0 and new_qty > avail:
+                return {
+                    "success": False,
+                    "message": f"Stock théorique insuffisant ({avail} disponible(s)).",
+                }
+            item["quantity"] = new_qty
+            msg = f"{item.get('name')} : quantité {new_qty}."
+
+        if session_id == getattr(self, "_active_session_id", None):
+            self._refresh_cart_ui()
+        else:
+            self._mark_session_event(session_id)
+        self._update_tab_label(session_id)
+
+        if hasattr(self, "lbl_scanner_status"):
+            who = f" ({actor})" if actor else ""
+            self.lbl_scanner_status.setText(
+                f"Mobile{who} -> {self._sessions[session_id]['label']} : {msg}"
+            )
+
+        return {
+            "success": True,
+            "message": msg,
+            "session": self._serialize_session_snapshot(session_id),
+        }
+
     def _refresh_cart_ui(self) -> None:
         cart = self._sessions[self._active_session_id]["cart"]
         self.cart_table.setRowCount(0)

@@ -85,6 +85,13 @@ class MobileOrderSessionBridge(QObject):
                     price_tier=payload.get("price_tier"),
                     added_by=payload.get("added_by"),
                 )
+            if action == "update_item_qty":
+                return desk.update_mobile_item_quantity(
+                    session_id=str(payload.get("session_id") or ""),
+                    product_id=int(payload.get("product_id") or 0),
+                    delta=int(payload.get("delta") or 0),
+                    actor=payload.get("actor"),
+                )
         except Exception as exc:
             logging.exception("Order session mobile bridge action '%s' failed.", action)
             return {"success": False, "message": str(exc)}
@@ -123,5 +130,22 @@ class MobileOrderSessionBridge(QObject):
                 "quantity": quantity,
                 "price_tier": price_tier,
                 "added_by": added_by,
+            },
+        )
+
+    def update_item_qty(
+        self,
+        session_id: str,
+        product_id: int,
+        delta: int,
+        actor: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return self._call(
+            "update_item_qty",
+            {
+                "session_id": session_id,
+                "product_id": product_id,
+                "delta": delta,
+                "actor": actor,
             },
         )

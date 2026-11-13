@@ -466,6 +466,27 @@ class ApiClient {
     return OrderSession.fromJson(data['session'] as Map<String, dynamic>);
   }
 
+  Future<OrderSession> updateOrderSessionItemQty(
+    String sessionId, {
+    required int productId,
+    required int delta,
+    String? actor,
+  }) async {
+    final response = await http
+        .post(
+          uri('/api/order-sessions/$sessionId/items/qty'),
+          headers: headers,
+          body: jsonEncode({
+            'product_id': productId,
+            'delta': delta,
+            if (actor != null && actor.trim().isNotEmpty) 'actor': actor.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 6));
+    final data = _decode(response);
+    return OrderSession.fromJson(data['session'] as Map<String, dynamic>);
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     final decoded =
         jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;

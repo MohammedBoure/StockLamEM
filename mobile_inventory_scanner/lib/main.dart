@@ -26,7 +26,7 @@ class ModernStockApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MODERNSTOCK',
+      title: 'stocklamEM',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -379,7 +379,35 @@ class _ScannerHomePageState extends State<ScannerHomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('MODERNSTOCK', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF007572),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'SL',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'stocklamEM',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 1,
@@ -415,6 +443,11 @@ class _ScannerHomePageState extends State<ScannerHomePage> {
                   child: IndexedStack(
                     index: _currentTabIndex,
                     children: [
+                      OrderSessionsView(
+                        api: api,
+                        connected: connected,
+                        currentUser: currentUser,
+                      ),
                       DirectInventoryView(
                         api: api,
                         connected: connected,
@@ -442,11 +475,6 @@ class _ScannerHomePageState extends State<ScannerHomePage> {
                           });
                         },
                       ),
-                      OrderSessionsView(
-                        api: api,
-                        connected: connected,
-                        currentUser: currentUser,
-                      ),
                     ],
                   ),
                 ),
@@ -462,37 +490,9 @@ class _ScannerHomePageState extends State<ScannerHomePage> {
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentTabIndex,
-        onDestinationSelected: (index) => setState(() => _currentTabIndex = index),
-        indicatorColor: const Color(0xFFE8F8F0),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2, color: Color(0xFF007572)),
-            label: 'Stock Direct',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.flash_on_outlined),
-            selectedIcon: Icon(Icons.flash_on, color: Color(0xFF007572)),
-            label: 'Saisie Rapide',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.checklist_rtl_outlined),
-            selectedIcon: Icon(Icons.checklist_rtl, color: Color(0xFF007572)),
-            label: 'Inventaire',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.phone_android_outlined),
-            selectedIcon: Icon(Icons.phone_android, color: Color(0xFF007572)),
-            label: 'Pont Bureau',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_cart_checkout_outlined),
-            selectedIcon: Icon(Icons.shopping_cart_checkout, color: Color(0xFF007572)),
-            label: 'Commandes',
-          ),
-        ],
+      bottomNavigationBar: _SleekBottomNavBar(
+        currentIndex: _currentTabIndex,
+        onTap: (index) => setState(() => _currentTabIndex = index),
       ),
     );
   }
@@ -633,6 +633,115 @@ class _ScannerHomePageState extends State<ScannerHomePage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SleekBottomNavBar extends StatelessWidget {
+  const _SleekBottomNavBar({
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  static const _items = [
+    (
+      icon: Icons.shopping_bag_outlined,
+      activeIcon: Icons.shopping_bag_rounded,
+      label: 'Commandes',
+    ),
+    (
+      icon: Icons.inventory_2_outlined,
+      activeIcon: Icons.inventory_2_rounded,
+      label: 'Stock',
+    ),
+    (
+      icon: Icons.flash_on_outlined,
+      activeIcon: Icons.flash_on_rounded,
+      label: 'Rapide',
+    ),
+    (
+      icon: Icons.checklist_rtl_outlined,
+      activeIcon: Icons.checklist_rtl_rounded,
+      label: 'Inventaire',
+    ),
+    (
+      icon: Icons.qr_code_scanner_outlined,
+      activeIcon: Icons.qr_code_scanner_rounded,
+      label: 'Pont PC',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: List.generate(_items.length, (i) {
+              final item = _items[i];
+              final selected = i == currentIndex;
+              return Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => onTap(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xFFE6F4F1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          selected ? item.activeIcon : item.icon,
+                          size: 22,
+                          color: selected
+                              ? const Color(0xFF007572)
+                              : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
+                            color: selected
+                                ? const Color(0xFF007572)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
