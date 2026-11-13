@@ -23,7 +23,11 @@ class ReclamationTab(QWidget):
         
         # Toolbar
         top_frame = QFrame()
-        top_frame.setStyleSheet("QFrame { background-color: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; }")
+        top_frame.setObjectName("ReclamationTopToolbar")
+        top_frame.setStyleSheet(
+            "QFrame#ReclamationTopToolbar { background-color: #FFFFFF; border: none; border-bottom: 1px solid #E2E8F0; }"
+            "QFrame#ReclamationTopToolbar QLabel { border: none; background: transparent; }"
+        )
         top_layout = QHBoxLayout(top_frame)
         top_layout.setContentsMargins(10, 5, 10, 5)
         

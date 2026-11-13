@@ -29,7 +29,7 @@ class LocationsTab(QWidget):
         toolbar = QHBoxLayout()
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Rechercher un emplacement...")
+        self.search_input.setPlaceholderText("Rechercher un emplacement...")
         self.search_input.textChanged.connect(self.filter_tree)
         self.search_input.setFixedHeight(36)
 
@@ -225,7 +225,7 @@ class LocationsTab(QWidget):
         menu.setStyleSheet("QMenu::item:selected { background-color: #007572; color: white; }")
         act_add = QAction("➕ Ajouter Sous-Emplacement", self)
         act_edit = QAction("✏️ Modifier", self)
-        act_del = QAction("🗑️ Supprimer", self)
+        act_del = QAction("Supprimer", self)
         act_add.triggered.connect(self.add_child_location)
         act_edit.triggered.connect(self.edit_location)
         act_del.triggered.connect(self.delete_location)

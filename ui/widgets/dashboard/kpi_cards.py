@@ -9,16 +9,22 @@ class KPICard(QFrame):
     # أضفنا معامل جديد sub_value (اختياري)
     def __init__(self, title, value, icon_char, color="#007572", sub_value=None):
         super().__init__()
-        self.setMinimumHeight(130)
+        self.setObjectName("DashboardKpiCard")
+        self.setMinimumHeight(112)
         self.setStyleSheet(f"""
-            QFrame {{
+            QFrame#DashboardKpiCard {{
                 background-color: white; 
-                border-radius: 12px; 
-                border: 1px solid #eef2f5;
+                border-radius: 6px; 
+                border: 1px solid #E2E8F0;
+                border-left: 3px solid {color};
             }}
-            QFrame:hover {{ 
-                border: 2px solid {color}; 
-                background-color: #fcfdfd;
+            QFrame#DashboardKpiCard:hover {{ 
+                border-color: {color}; 
+                background-color: #F8FAFC;
+            }}
+            QFrame#DashboardKpiCard QLabel {{
+                border: none;
+                background: transparent;
             }}
         """)
         
@@ -47,20 +53,21 @@ class KPICard(QFrame):
         
         text_side.addStretch()
         
-        # أيقونة
-        icon_circle = QLabel(icon_char)
-        icon_circle.setFixedSize(60, 60)
-        icon_circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_circle.setStyleSheet(f"""
-            background-color: {color}15; 
-            border-radius: 30px; 
-            font-size: 28px; 
-            color: {color}; 
-            border:none;
-        """)
-        
-        layout.addLayout(text_side, 1)
-        layout.addWidget(icon_circle)
+        if icon_char:
+            icon_circle = QLabel(icon_char)
+            icon_circle.setFixedSize(48, 48)
+            icon_circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            icon_circle.setStyleSheet(f"""
+                background-color: {color}15; 
+                border-radius: 24px; 
+                font-size: 22px; 
+                color: {color}; 
+                border:none;
+            """)
+            layout.addLayout(text_side, 1)
+            layout.addWidget(icon_circle)
+        else:
+            layout.addLayout(text_side, 1)
 
 class KPICardsSection(QWidget):
     def __init__(self):
@@ -97,16 +104,14 @@ class KPICardsSection(QWidget):
         waste_val_str = format_money(waste_val, "DA")
         
         # --- إنشاء البطاقات ---
-        # البطاقات العادية (بدون قيمة سفلية)
-        self.layout.addWidget(KPICard("VALEUR STOCK", stock_str, "💰", "#27ae60"))
-        self.layout.addWidget(KPICard("CONSOMMATION", cons_str, "💸", "#2980b9"))
-        self.layout.addWidget(KPICard("SORTIES STOCK", qty_str, "📦", "#16a085"))
+        self.layout.addWidget(KPICard("VALEUR STOCK", stock_str, "", "#27ae60"))
+        self.layout.addWidget(KPICard("CONSOMMATION", cons_str, "", "#2980b9"))
+        self.layout.addWidget(KPICard("SORTIES STOCK", qty_str, "", "#16a085"))
         
-        # البطاقة الرابعة (مع القيمة السفلية)
         self.layout.addWidget(KPICard(
             title="PERTES & DÉCHETS", 
-            value=waste_qty_str,         # الكمية (كبير)
-            icon_char="🗑️", 
-            color="#c0392b",             # أحمر
-            sub_value=waste_val_str      # القيمة المالية (صغير تحته)
+            value=waste_qty_str,
+            icon_char="", 
+            color="#c0392b",
+            sub_value=waste_val_str
         ))

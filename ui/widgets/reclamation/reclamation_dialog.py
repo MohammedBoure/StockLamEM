@@ -35,8 +35,8 @@ class ReclamationDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # --- 1. Header Info ---
-        info_group = QGroupBox("📋 Informations Générales")
-        info_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #bdc3c7; border-radius: 6px; margin-top: 10px; }")
+        info_group = QGroupBox("Informations Générales")
+        info_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #E2E8F0; border-radius: 6px; margin-top: 10px; }")
         info_layout = QHBoxLayout(info_group)
 
         form1 = QFormLayout()
@@ -52,8 +52,8 @@ class ReclamationDialog(QDialog):
         layout.addWidget(info_group)
 
         # --- 2. Edit Note Section (General) ---
-        note_group = QGroupBox("📝 Note Générale (Facture / BL)")
-        note_group.setStyleSheet("QGroupBox { font-weight: bold; color: #2980b9; border: 1px solid #2980b9; border-radius: 6px; margin-top: 10px; }")
+        note_group = QGroupBox("Note Générale (Facture / BL)")
+        note_group.setStyleSheet("QGroupBox { font-weight: bold; color: #007572; border: 1px solid #E2E8F0; border-radius: 6px; margin-top: 10px; }")
         note_layout = QVBoxLayout(note_group)
 
         self.txt_note = QTextEdit()
@@ -76,7 +76,7 @@ class ReclamationDialog(QDialog):
 
         # --- 3. Products Table ---
         prod_layout = QHBoxLayout()
-        lbl_table = QLabel("📦 Produits avec Réclamations (Non-Conformes) :")
+        lbl_table = QLabel("Produits Non-Conformes :")
         lbl_table.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px;")
         prod_layout.addWidget(lbl_table)
         prod_layout.addStretch()

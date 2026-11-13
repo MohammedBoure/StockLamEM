@@ -257,7 +257,7 @@ class BonRetourDialog(QDialog):
         banner_card.setStyleSheet("""
             QFrame#RetourFirewallBanner {
                 background-color: #F8FAFC;
-                border: 1px solid #DDE3EA;
+                border: none;
                 border-left: 3px solid #0E7471;
                 border-radius: 4px;
             }
@@ -268,12 +268,11 @@ class BonRetourDialog(QDialog):
         """)
         b_layout = QVBoxLayout(banner_card)
         b_layout.setContentsMargins(12, 8, 12, 8)
-        b_title = QLabel("Isolation Stricte de la Caisse (Versement Virtuel)")
+        b_title = QLabel("Isolation Caisse — Versement Virtuel")
         b_title.setStyleSheet("font-size: 12px; font-weight: 800; color: #0E7471;")
         b_layout.addWidget(b_title)
         b_desc = QLabel(
-            "Le retour produit crédite exclusivement le portefeuille virtuel du client (Versement Virtuel) "
-            "sans aucune sortie d'espèces de la Caisse physique (Δ Caisse = 0.00 DA)."
+            "Le retour crédite le solde virtuel du client sans sortie d'espèces (Δ Caisse = 0.00 DA)."
         )
         b_desc.setWordWrap(True)
         b_desc.setStyleSheet("font-size: 11px; color: #64748B;")
@@ -1310,8 +1309,8 @@ class CashierDeskWidget(QWidget):
         left_panel.setStyleSheet(f"""
             QFrame#CaisseQueuePanel {{
                 background-color: {CARD_BG};
-                border: 1px solid {BORDER_SUBTLE};
-                border-radius: 10px;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
             }}
             QFrame#CaisseQueuePanel QLabel {{
                 border: none;
@@ -1319,7 +1318,7 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         l_layout = QVBoxLayout(left_panel)
-        l_layout.setContentsMargins(16, 14, 16, 14)
+        l_layout.setContentsMargins(14, 12, 14, 12)
         l_layout.setSpacing(10)
 
         # 1a. Header Row
@@ -1329,7 +1328,7 @@ class CashierDeskWidget(QWidget):
         q_icon.setPixmap(get_duotone_icon("payment", 18).pixmap(18, 18))
         top_q.addWidget(q_icon)
 
-        lbl_q = QLabel("File d'Attente Caisse")
+        lbl_q = QLabel("File d'attente")
         lbl_q.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {TEXT_PRIMARY};")
         top_q.addWidget(lbl_q)
 
@@ -1407,8 +1406,9 @@ class CashierDeskWidget(QWidget):
         scan_frame.setStyleSheet(f"""
             QFrame#CaisseScanFrame {{
                 background-color: {SUBTLE_BG};
-                border: 1px solid {BORDER_SUBTLE};
-                border-radius: 8px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                border-radius: 6px;
             }}
             QFrame#CaisseScanFrame QLabel {{
                 border: none;
@@ -1416,7 +1416,7 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         scan_layout = QHBoxLayout(scan_frame)
-        scan_layout.setContentsMargins(10, 6, 8, 6)
+        scan_layout.setContentsMargins(8, 6, 8, 6)
         scan_layout.setSpacing(8)
 
         sc_icon = QLabel()
@@ -1424,7 +1424,7 @@ class CashierDeskWidget(QWidget):
         scan_layout.addWidget(sc_icon)
 
         self.txt_scan_bon = QLineEdit()
-        self.txt_scan_bon.setPlaceholderText("Scanner N° Bon ou rechercher client (1: Comptant | 2: Crédit | 3: Livraison)...")
+        self.txt_scan_bon.setPlaceholderText("Scanner N° Bon ou client...")
         self.txt_scan_bon.setClearButtonEnabled(True)
         self.txt_scan_bon.setFixedHeight(34)
         self.txt_scan_bon.setStyleSheet(INPUT_QSS)
@@ -1549,8 +1549,8 @@ class CashierDeskWidget(QWidget):
         right_panel.setStyleSheet(f"""
             QFrame#CaisseSettlementPanel {{
                 background-color: {CARD_BG};
-                border: 1px solid {BORDER_SUBTLE};
-                border-radius: 10px;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
             }}
             QFrame#CaisseSettlementPanel QLabel {{
                 border: none;
@@ -1558,8 +1558,8 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         r_layout = QVBoxLayout(right_panel)
-        r_layout.setContentsMargins(18, 14, 18, 16)
-        r_layout.setSpacing(12)
+        r_layout.setContentsMargins(16, 12, 16, 14)
+        r_layout.setSpacing(10)
 
         # 2a. Console Header + Active Bon Type Pill
         s_hdr = QHBoxLayout()
@@ -1567,7 +1567,7 @@ class CashierDeskWidget(QWidget):
         w_ic = QLabel()
         w_ic.setPixmap(get_duotone_icon("kpi_wallet", 18).pixmap(18, 18))
         s_hdr.addWidget(w_ic)
-        lbl_settle = QLabel("Validation Caisse")
+        lbl_settle = QLabel("Encaissement")
         lbl_settle.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {TEXT_PRIMARY};")
         s_hdr.addWidget(lbl_settle)
 
@@ -1588,14 +1588,15 @@ class CashierDeskWidget(QWidget):
         s_hdr.addWidget(self.btn_view_articles)
         r_layout.addLayout(s_hdr)
 
-        # 2b. Selected Order Card
+        # 2b. Flat Selected Order Band
         self.selected_card = QFrame()
         self.selected_card.setObjectName("SelectedOrderSummaryCard")
         self.selected_card.setStyleSheet(f"""
             QFrame#SelectedOrderSummaryCard {{
                 background-color: {SUBTLE_BG};
-                border: 1px solid {BORDER_SUBTLE};
-                border-radius: 8px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                border-radius: 6px;
             }}
             QFrame#SelectedOrderSummaryCard QLabel {{
                 border: none;
@@ -1603,23 +1604,24 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         sel_layout = QVBoxLayout(self.selected_card)
-        sel_layout.setContentsMargins(14, 10, 14, 10)
-        sel_layout.setSpacing(6)
+        sel_layout.setContentsMargins(12, 8, 12, 8)
+        sel_layout.setSpacing(4)
 
-        self.lbl_selected_info = QLabel("Sélectionnez un bon dans la file d'attente pour le traiter...")
+        self.lbl_selected_info = QLabel("Sélectionnez un bon.")
         self.lbl_selected_info.setWordWrap(True)
         self.lbl_selected_info.setStyleSheet(f"font-size: 12.5px; color: {TEXT_BODY}; line-height: 1.4;")
         sel_layout.addWidget(self.lbl_selected_info)
         r_layout.addWidget(self.selected_card)
 
-        # 2c. Customer Wallet Card (Real Versement + Virtual Credit)
+        # 2c. Customer Wallet Strip (Flat with Left Teal Accent)
         wallet_box = QFrame()
         wallet_box.setObjectName("CustomerWalletCard")
         wallet_box.setStyleSheet(f"""
             QFrame#CustomerWalletCard {{
                 background-color: #F2FBF9;
-                border: 1px solid {BRAND_TEAL_BORDER};
-                border-radius: 8px;
+                border: none;
+                border-left: 3px solid {BRAND_TEAL};
+                border-radius: 4px;
             }}
             QFrame#CustomerWalletCard QLabel {{
                 border: none;
@@ -1627,8 +1629,8 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         w_layout = QVBoxLayout(wallet_box)
-        w_layout.setContentsMargins(14, 10, 14, 10)
-        w_layout.setSpacing(8)
+        w_layout.setContentsMargins(12, 8, 12, 8)
+        w_layout.setSpacing(6)
 
         w_header_row = QHBoxLayout()
         w_header_row.setSpacing(8)
@@ -1651,22 +1653,22 @@ class CashierDeskWidget(QWidget):
         w_header_row.addWidget(self.btn_inspect_wallet)
         w_layout.addLayout(w_header_row)
 
-        self.cb_wallet = QCheckBox("Déduire du solde portefeuille client (Versement / Virtuel)")
+        self.cb_wallet = QCheckBox("Utiliser le solde portefeuille")
         self.cb_wallet.setCursor(Qt.PointingHandCursor)
         self.cb_wallet.setStyleSheet(f"color: {BRAND_TEAL}; font-weight: 700; font-size: 12px;")
         self.cb_wallet.toggled.connect(self._recalculate_amounts)
         w_layout.addWidget(self.cb_wallet)
         r_layout.addWidget(wallet_box)
 
-        # 2d. Hero Remaining Due & Change Due Readout
+        # 2d. Remaining Due & Change Due Readout (Flat Accent Strip)
         hero_due_card = QFrame()
         hero_due_card.setObjectName("CaisseAmountHeroCard")
         hero_due_card.setStyleSheet(f"""
             QFrame#CaisseAmountHeroCard {{
                 background-color: {SUBTLE_BG};
-                border: 1px solid {BORDER_SUBTLE};
-                border-left: 4px solid {BRAND_TEAL};
-                border-radius: 8px;
+                border: none;
+                border-left: 3px solid {BRAND_TEAL};
+                border-radius: 4px;
             }}
             QFrame#CaisseAmountHeroCard QLabel {{
                 border: none;
@@ -1674,10 +1676,10 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         hero_layout = QHBoxLayout(hero_due_card)
-        hero_layout.setContentsMargins(14, 10, 14, 10)
+        hero_layout.setContentsMargins(12, 8, 12, 8)
         hero_layout.setSpacing(10)
 
-        self.lbl_rem_due = QLabel("Reste à Encaisser : 0.00 DA")
+        self.lbl_rem_due = QLabel("Reste : 0.00 DA")
         self.lbl_rem_due.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {STATUS_DANGER};")
         hero_layout.addWidget(self.lbl_rem_due, 1)
 
@@ -2066,7 +2068,7 @@ class CashierDeskWidget(QWidget):
             self._selected_order = None
             self._current_remaining_due = 0.0
             if hasattr(self, "lbl_selected_info"):
-                self.lbl_selected_info.setText("Sélectionnez un bon dans la file d'attente pour le traiter...")
+                self.lbl_selected_info.setText("Sélectionnez un bon.")
             if hasattr(self, "lbl_order_type_pill"):
                 self.lbl_order_type_pill.setVisible(False)
             if hasattr(self, "btn_view_articles"):
@@ -2093,7 +2095,7 @@ class CashierDeskWidget(QWidget):
             self._selected_order = None
             self._current_remaining_due = 0.0
             if hasattr(self, "lbl_selected_info"):
-                self.lbl_selected_info.setText("Sélectionnez un bon dans la file d'attente pour le traiter...")
+                self.lbl_selected_info.setText("Sélectionnez un bon.")
             if hasattr(self, "lbl_order_type_pill"):
                 self.lbl_order_type_pill.setVisible(False)
             if hasattr(self, "btn_view_articles"):
@@ -2454,7 +2456,7 @@ class CashierDeskWidget(QWidget):
         w_ded = self._get_wallet_deduction()
         rem = max(0.0, base_due - w_ded)
         self._current_remaining_due = rem
-        self.lbl_rem_due.setText(f"Reste à Encaisser : {format_money(rem)} DA")
+        self.lbl_rem_due.setText(f"Reste : {format_money(rem)} DA")
         due_color = STATUS_SUCCESS if rem <= 0.01 else STATUS_DANGER
         self.lbl_rem_due.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {due_color};")
 

@@ -14,7 +14,7 @@ from ui.widgets.master_data.dialogs import BaseDialog
 
 SYSTEM_PERMISSIONS = {
     "1. TABLEAU_DE_BORD": {
-        "label": "📊 Tableau de Bord",
+        "label": "Tableau de Bord",
         "icon": "fa5s.chart-pie",
         "perms": {
             "nav_dashboard": "Accès au Tableau de bord",
@@ -27,7 +27,7 @@ SYSTEM_PERMISSIONS = {
         }
     },
     "2. DONNEES_DE_BASE": {
-        "label": "📚 Données de Base",
+        "label": "Données de Base",
         "icon": "fa5s.layer-group",
         "perms": {
             "nav_data": "Accès aux Données de base",
@@ -46,14 +46,14 @@ SYSTEM_PERMISSIONS = {
         }
     },
     "2b. CLIENTS": {
-        "label": "👥 Clients",
+        "label": "Clients",
         "icon": "fa5s.user-friends",
         "perms": {
             "nav_clients": "Accès aux Clients"
         }
     },
     "3. ACHATS": {
-        "label": "🛒 Achats & Entrées",
+        "label": "Achats & Entrées",
         "icon": "fa5s.shopping-cart",
         "perms": {
             "nav_procurement": "Accès aux Achats",
@@ -63,14 +63,14 @@ SYSTEM_PERMISSIONS = {
         }
     },
     "3a. RECLAMATIONS": {
-        "label": "⚠️ Réclamations",
+        "label": "Réclamations",
         "icon": "fa5s.exclamation-circle",
         "perms": {
             "tab_proc_reclamation": "Accès aux Réclamations"
         }
     },
     "4. STOCK": {
-        "label": "📦 Stock & Magasin",
+        "label": "Stock & Magasin",
         "icon": "fa5s.boxes",
         "perms": {
             "nav_inventory": "Accès au Stock",
@@ -80,21 +80,21 @@ SYSTEM_PERMISSIONS = {
         }
     },
     "7. TRACABILITE": {
-        "label": "📜 Traçabilité",
+        "label": "Traçabilité",
         "icon": "fa5s.history",
         "perms": {
             "nav_history": "Accès à la Traçabilité"
         }
     },
     "8. UTILISATEURS": {
-        "label": "👥 Utilisateurs",
+        "label": "Utilisateurs",
         "icon": "fa5s.users",
         "perms": {
             "tab_users": "Accès aux Utilisateurs"
         }
     },
     "9. PARAMETRES": {
-        "label": "🔧 Paramètres",
+        "label": "Paramètres",
         "icon": "fa5s.sliders-h",
         "perms": {
             "nav_settings": "Accès aux Paramètres",
@@ -108,7 +108,7 @@ SYSTEM_PERMISSIONS = {
         }
     },
     "10. BUREAUX_WORKFLOW": {
-        "label": "🏢 Bureaux",
+        "label": "Bureaux",
         "icon": "fa5s.cash-register",
         "perms": {
             "nav_appliance_workflow": "Accès aux Bureaux",
@@ -118,7 +118,7 @@ SYSTEM_PERMISSIONS = {
         }
     },
     "11. SAV_WORKSPACE": {
-        "label": "🔧 Service Après-Vente (SAV)",
+        "label": "Service Après-Vente (SAV)",
         "icon": "fa5s.wrench",
         "perms": {
             "nav_sav": "Accès au Service Après-Vente (SAV)",

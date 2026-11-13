@@ -142,33 +142,33 @@ class SerialBatchRegistryWidget(QWidget):
         root_layout.setSpacing(10)
 
         self.inner_tabs = QTabWidget()
+        self.inner_tabs.setDocumentMode(True)
         self.inner_tabs.setIconSize(QSize(16, 16))
         self.inner_tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #DDE3EA;
-                background: #F8FAFC;
-                border-radius: 6px;
+                border: none;
+                border-top: 1px solid #E2E8F0;
+                background: #FFFFFF;
                 top: -1px;
             }
             QTabBar::tab {
-                background: #ECEFF1;
-                color: #475569;
-                border: 1px solid #DDE3EA;
-                border-bottom: none;
-                padding: 7px 14px;
+                background: transparent;
+                color: #64748B;
+                border: none;
+                border-bottom: 2px solid transparent;
+                padding: 8px 14px;
                 margin-right: 4px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                font-size: 11.5px;
-                font-weight: 700;
+                font-size: 12px;
+                font-weight: 600;
             }
             QTabBar::tab:selected {
-                background: #FFFFFF;
+                background: transparent;
                 color: #007572;
-                border-top: 3px solid #007572;
+                border-bottom: 2px solid #007572;
+                font-weight: 700;
             }
             QTabBar::tab:hover:!selected {
-                background: #E2E8F0;
+                background: #F8FAFC;
                 color: #1E293B;
             }
         """)
@@ -215,36 +215,35 @@ class SerialBatchRegistryWidget(QWidget):
         policy_card.setObjectName("PolicyCard")
         policy_card.setStyleSheet(
             "QFrame#PolicyCard { "
-            "  background-color: #F8FAFC; border: 1.5px solid #007572; border-radius: 8px; "
+            "  background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 3px solid #007572; border-radius: 6px; "
             "}"
+            "QFrame#PolicyCard QLabel { border: none; background: transparent; }"
         )
         pol_layout = QVBoxLayout(policy_card)
-        pol_layout.setContentsMargins(14, 12, 14, 12)
+        pol_layout.setContentsMargins(14, 10, 14, 10)
         pol_layout.setSpacing(6)
 
         pol_header = QHBoxLayout()
         lbl_pol_icon = QLabel()
-        lbl_pol_icon.setPixmap(get_duotone_icon("security", 20).pixmap(20, 20))
+        lbl_pol_icon.setPixmap(get_duotone_icon("security", 18).pixmap(18, 18))
         pol_header.addWidget(lbl_pol_icon)
 
-        lbl_pol_title = QLabel("Politique de Réception Centralisée & Traçabilité (Parcours Restreint)")
+        lbl_pol_title = QLabel("Réception Centralisée (Parcours Restreint)")
         lbl_pol_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #007572;")
         pol_header.addWidget(lbl_pol_title)
         pol_header.addStretch()
         pol_layout.addLayout(pol_header)
 
         lbl_pol_desc = QLabel(
-            "La création de produits et la réception de nouveaux lots sont strictement restreintes à 2 parcours autorisés :<br>"
-            "&nbsp;&nbsp;<b>1. Achats & Entrées</b> (Commandes et Bons de Réception officiels)<br>"
-            "&nbsp;&nbsp;<b>2. Stock & Magasin</b> (Ajout direct au stock avec saisie obligatoire de toutes les données)<br>"
-            "<i>Tout enregistrement direct depuis cette interface opérationnelle est verrouillé.</i>"
+            "Création et réception autorisées uniquement via :<br>"
+            "<b>1. Achats & Entrées</b> &nbsp;|&nbsp; <b>2. Stock & Magasin</b>"
         )
-        lbl_pol_desc.setStyleSheet("color: #334155; font-size: 11.5px; line-height: 1.4;")
+        lbl_pol_desc.setStyleSheet("color: #475569; font-size: 11.5px; line-height: 1.4;")
         lbl_pol_desc.setWordWrap(True)
         pol_layout.addWidget(lbl_pol_desc)
 
         btn_row = QHBoxLayout()
-        self.btn_nav_procurement = QPushButton("🛒 Aller à Achats & Entrées")
+        self.btn_nav_procurement = QPushButton("Aller à Achats & Entrées")
         self.btn_nav_procurement.setCursor(Qt.PointingHandCursor)
         self.btn_nav_procurement.setFixedHeight(30)
         self.btn_nav_procurement.setStyleSheet(
@@ -253,7 +252,7 @@ class SerialBatchRegistryWidget(QWidget):
         )
         self.btn_nav_procurement.clicked.connect(self._on_goto_procurement)
 
-        self.btn_nav_stock = QPushButton("📦 Aller à Stock & Magasin")
+        self.btn_nav_stock = QPushButton("Aller à Stock & Magasin")
         self.btn_nav_stock.setCursor(Qt.PointingHandCursor)
         self.btn_nav_stock.setFixedHeight(30)
         self.btn_nav_stock.setStyleSheet(
@@ -274,19 +273,20 @@ class SerialBatchRegistryWidget(QWidget):
         serial_card.setObjectName("SerialAuditCard")
         serial_card.setStyleSheet(
             "QFrame#SerialAuditCard { "
-            "  background-color: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 8px; "
+            "  background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; "
             "}"
+            "QFrame#SerialAuditCard QLabel { border: none; background: transparent; }"
         )
         sn_layout = QVBoxLayout(serial_card)
-        sn_layout.setContentsMargins(14, 12, 14, 12)
+        sn_layout.setContentsMargins(14, 10, 14, 10)
         sn_layout.setSpacing(6)
 
         sn_header = QHBoxLayout()
         lbl_sn_icon = QLabel()
-        lbl_sn_icon.setPixmap(get_duotone_icon("barcode_scan", 20).pixmap(20, 20))
+        lbl_sn_icon.setPixmap(get_duotone_icon("barcode_scan", 18).pixmap(18, 18))
         sn_header.addWidget(lbl_sn_icon)
 
-        lbl_sn_title = QLabel("Contrôle & Audit Instantané d'un N° de Série")
+        lbl_sn_title = QLabel("Audit N° de Série")
         lbl_sn_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #0F172A;")
         sn_header.addWidget(lbl_sn_title)
         sn_header.addStretch()
@@ -295,11 +295,11 @@ class SerialBatchRegistryWidget(QWidget):
         sn_input_row = QHBoxLayout()
         self.serial_search_input = QLineEdit()
         self.serial_search_input.setFixedHeight(32)
-        self.serial_search_input.setPlaceholderText("Scanner ou saisir un N° de Série (ex: SN-BOSCH-9001)...")
+        self.serial_search_input.setPlaceholderText("Scanner N° de Série...")
         self.serial_search_input.returnPressed.connect(self._on_verify_serial)
         sn_input_row.addWidget(self.serial_search_input, 1)
 
-        self.btn_search_serial = QPushButton("🔍 Vérifier")
+        self.btn_search_serial = QPushButton("Vérifier")
         self.btn_search_serial.setCursor(Qt.PointingHandCursor)
         self.btn_search_serial.setFixedHeight(32)
         self.btn_search_serial.setStyleSheet(
@@ -615,7 +615,7 @@ class SerialBatchRegistryWidget(QWidget):
                     f"<b>Coût Achat :</b> {cost:,.2f} DA"
                 )
             else:
-                self.lbl_serial_result.setText(f"<span style='color: #DC2626; font-weight: bold;'>⚠️ N° de Série '{sn}' introuvable dans le référentiel.</span>")
+                self.lbl_serial_result.setText(f"<span style='color: #DC2626; font-weight: bold;'>N° de Série '{sn}' introuvable.</span>")
         except Exception as exc:
             self.lbl_serial_result.setText(f"<span style='color: #DC2626;'>Erreur d'audit : {exc}</span>")
 

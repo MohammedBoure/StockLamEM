@@ -121,16 +121,16 @@ class SettingsTab(QWidget):
 
         # Bottom buttons setup
         btn_layout = QHBoxLayout()
-        btn_save = QPushButton("💾 Enregistrer les paramètres du programme")
+        btn_save = QPushButton("Enregistrer les paramètres du programme")
         btn_save.setToolTip(
             "Enregistre uniquement les réglages généraux locaux. "
             "Les réglages PDF se gèrent dans la fenêtre Configuration PDF."
         )
-        btn_save.setStyleSheet("background-color: #27ae60; color: white; padding: 10px; font-weight: bold;")
+        btn_save.setStyleSheet("background-color: #007572; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold;")
         btn_save.clicked.connect(self.save_settings)
 
-        btn_export_env = QPushButton("📄 Exporter .env")
-        btn_export_env.setStyleSheet("background-color: #2980b9; color: white; padding: 10px;")
+        btn_export_env = QPushButton("Exporter .env")
+        btn_export_env.setStyleSheet("background-color: #FFFFFF; color: #334155; border: 1px solid #CBD5E1; border-radius: 4px; padding: 8px 14px;")
         btn_export_env.clicked.connect(self.export_to_env_file)
 
         btn_layout.addStretch()
@@ -221,7 +221,7 @@ class SettingsTab(QWidget):
         layout = QVBoxLayout(self.tab_printer)
 
         # === 1. Section: Imprimante Code-Barres ===
-        grp_barcode = QGroupBox("🖨️ Paramètres de l'imprimante Code-Barres (Melsoqates)")
+        grp_barcode = QGroupBox("Imprimante Code-Barres")
         form_barcode = QFormLayout()
 
         self.combo_printers = QComboBox()
@@ -257,8 +257,8 @@ class SettingsTab(QWidget):
         grp_barcode.setLayout(form_barcode)
         layout.addWidget(grp_barcode)
 
-        # === 2. Section: Imprimante Fiches/Tickets (Receipts) ===
-        grp_receipt = QGroupBox("🧾 Paramètres de l'imprimante Fiches/Factures (Tickets)")
+        # === 2. Section: Imprimante Fiches/Tickets ===
+        grp_receipt = QGroupBox("Imprimante Tickets")
         form_receipt = QFormLayout()
 
         self.combo_receipt_printers = QComboBox()
@@ -276,7 +276,7 @@ class SettingsTab(QWidget):
         grp_receipt.setLayout(form_receipt)
         layout.addWidget(grp_receipt)
 
-        btn_test_print = QPushButton("🖨️ Imprimer une étiquette test")
+        btn_test_print = QPushButton("Imprimer une étiquette test")
         btn_test_print.clicked.connect(self.test_print_label)
         layout.addWidget(btn_test_print)
         layout.addStretch()
@@ -497,7 +497,7 @@ class SettingsTab(QWidget):
                 cursor = conn.cursor()
                 cursor.execute("SELECT VERSION()")
                 version = cursor.fetchone()[0]
-                msg = "✅ Connexion réussie ! Authentification validée."
+                msg = "Connexion réussie ! Authentification validée."
                 msg = f"{msg}\nVersion MySQL: {version}"
                 logging.info(msg)
                 QMessageBox.information(self, "Succès", msg)
@@ -508,7 +508,7 @@ class SettingsTab(QWidget):
             self.set_connection_error(error_msg)
             QMessageBox.critical(self, "Échec", error_msg)
         except Exception as e:
-            error_msg = f"⚠️ Erreur inattendue : {str(e)}"
+            error_msg = f"Erreur inattendue : {str(e)}"
             logging.error(error_msg)
             self.set_connection_error(error_msg)
             QMessageBox.critical(self, "Échec", error_msg)

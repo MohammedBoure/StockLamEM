@@ -429,9 +429,10 @@ def _build_table(self):
 
 def _build_bottom_bar(self):
     bottom_frame = QFrame()
+    bottom_frame.setObjectName("BatchesBottomBar")
     self.bottom_frame = bottom_frame
     bottom_frame.setStyleSheet("""
-        QFrame {
+        QFrame#BatchesBottomBar {
             background-color: #f8fafc;
             border-top: 2px solid #cbd5e1;
             border-radius: 0px;

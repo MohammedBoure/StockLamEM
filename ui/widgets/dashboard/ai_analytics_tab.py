@@ -61,32 +61,35 @@ class AiAnalyticsTab(QWidget):
 
         # --- Header ---
         header_frame = QFrame()
+        header_frame.setObjectName("AiHeaderBar")
         header_frame.setStyleSheet("""
-            QFrame {
-                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                border-radius: 8px;
-                padding: 15px;
+            QFrame#AiHeaderBar {
+                background: #FFFFFF;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                padding: 8px 4px;
             }
-            QLabel { color: white; }
+            QFrame#AiHeaderBar QLabel { color: #0F172A; border: none; background: transparent; }
         """)
         header_layout = QHBoxLayout(header_frame)
 
-        title_label = QLabel("🧠 الذكاء الاصطناعي والتحليلات التنبؤية (AI & Machine Learning Insights)")
-        title_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        title_label = QLabel("Analyses Prédictives (IA)")
+        title_label.setFont(QFont("Segoe UI", 13, QFont.Bold))
         header_layout.addWidget(title_label)
 
         header_layout.addStretch()
 
-        self.btn_refresh = QPushButton("🔄 تحديث تحليلات الذكاء الاصطناعي")
+        self.btn_refresh = QPushButton("Actualiser")
         self.btn_refresh.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #007572;
                 color: white;
                 font-weight: bold;
-                padding: 8px 15px;
-                border-radius: 5px;
+                padding: 6px 14px;
+                border: none;
+                border-radius: 4px;
             }
-            QPushButton:hover { background-color: #219150; }
+            QPushButton:hover { background-color: #005A57; }
         """)
         self.btn_refresh.clicked.connect(self.refresh_ai_data)
         header_layout.addWidget(self.btn_refresh)
@@ -95,9 +98,9 @@ class AiAnalyticsTab(QWidget):
 
         # --- KPI Cards Row ---
         kpi_layout = QHBoxLayout()
-        self.card_reorder = self._create_kpi_card("📦 منتجات تتطلب إعادة طلب", "0", "#e67e22")
-        self.card_risks = self._create_kpi_card("⚠️ دفعات عالية خطورة التلف", "0", "#e74c3c")
-        self.card_anomalies = self._create_kpi_card("🚨 شذوذ استهلاك مكتشف", "0", "#8e44ad")
+        self.card_reorder = self._create_kpi_card("Produits à réapprovisionner", "0", "#e67e22")
+        self.card_risks = self._create_kpi_card("Lots à risque d'expiration", "0", "#e74c3c")
+        self.card_anomalies = self._create_kpi_card("Anomalies détectées", "0", "#8e44ad")
         
         kpi_layout.addWidget(self.card_reorder)
         kpi_layout.addWidget(self.card_risks)
@@ -114,36 +117,38 @@ class AiAnalyticsTab(QWidget):
 
         # --- Sub-Tabs ---
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
 
         # Tab 1: Demand Forecasting & Auto-Reorder
         self.tab_reorder = QWidget()
         self._setup_reorder_tab()
-        self.tabs.addTab(self.tab_reorder, "🔮 التنبؤ بالطلب والطلب الذاتي")
+        self.tabs.addTab(self.tab_reorder, "Prévision Demande")
 
         # Tab 2: Expiry Risk Analyzer
         self.tab_risks = QWidget()
         self._setup_risks_tab()
-        self.tabs.addTab(self.tab_risks, "⚠️ تنبؤات مخاطر الصلاحية (Expiry Risk)")
+        self.tabs.addTab(self.tab_risks, "Risques d'Expiration")
 
         # Tab 3: Anomaly Detection
         self.tab_anomalies = QWidget()
         self._setup_anomalies_tab()
-        self.tabs.addTab(self.tab_anomalies, "🚨 كشف الشذوذ في الاستهلاك والهدر")
+        self.tabs.addTab(self.tab_anomalies, "Détection Anomalies")
 
         main_layout.addWidget(self.tabs)
 
     def _create_kpi_card(self, title: str, value: str, color: str) -> QFrame:
         card = QFrame()
+        card.setObjectName("AiKpiCard")
         card.setStyleSheet(f"""
-            QFrame {{
+            QFrame#AiKpiCard {{
                 background-color: white;
-                border-left: 5px solid {color};
-                border-radius: 6px;
-                padding: 10px;
-                border-top: 1px solid #dcdde1;
-                border-right: 1px solid #dcdde1;
-                border-bottom: 1px solid #dcdde1;
+                border: none;
+                border-left: 3px solid {color};
+                border-bottom: 1px solid #E2E8F0;
+                border-radius: 4px;
+                padding: 8px;
             }}
+            QFrame#AiKpiCard QLabel {{ border: none; background: transparent; }}
         """)
         layout = QVBoxLayout(card)
         lbl_title = QLabel(title)

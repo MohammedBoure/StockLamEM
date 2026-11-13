@@ -22,7 +22,7 @@ class WasteReasonsTab(QWidget):
         # --- Barre d'outils (Toolbar) ---
         toolbar = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Rechercher les raisons (Nom)...")
+        self.search_input.setPlaceholderText("Rechercher les raisons (Nom)...")
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_data)
         
@@ -31,7 +31,7 @@ class WasteReasonsTab(QWidget):
         btn_add.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
         btn_add.clicked.connect(self.open_add_dialog)
 
-        btn_refresh = QPushButton("🔄 Actualiser")
+        btn_refresh = QPushButton("Actualiser")
         btn_refresh.setMinimumHeight(35)
         btn_refresh.clicked.connect(self.load_data)
         
@@ -69,7 +69,7 @@ class WasteReasonsTab(QWidget):
         btn_edit = QPushButton("✏️ Modifier")
         btn_edit.clicked.connect(self.open_edit_dialog)
         
-        btn_delete = QPushButton("🗑️ Désactiver la Raison")
+        btn_delete = QPushButton("Désactiver la Raison")
         btn_delete.setStyleSheet("color: red;")
         btn_delete.clicked.connect(self.delete_reason)
         

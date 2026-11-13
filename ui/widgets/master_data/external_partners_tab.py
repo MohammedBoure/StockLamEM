@@ -85,7 +85,7 @@ class ExternalPartnersTab(QWidget):
         self.btn_edit.clicked.connect(self.edit_partner)
         self.btn_edit.setEnabled(False)
 
-        self.btn_delete = QPushButton("🗑️ Supprimer")
+        self.btn_delete = QPushButton("Supprimer")
         self.btn_delete.clicked.connect(self.delete_partner)
         self.btn_delete.setEnabled(False)
 

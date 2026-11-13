@@ -131,7 +131,7 @@ class AutoBackupTab(QWidget):
         lbl_desc.setStyleSheet("color: #555; font-size: 12px; margin-bottom: 5px;")
         manual_layout.addWidget(lbl_desc)
 
-        btn_backup = QPushButton("📦 Sauvegarde complète (Excel)")
+        btn_backup = QPushButton("Sauvegarde complète (Excel)")
         btn_backup.setMinimumHeight(42)
         btn_backup.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; font-size: 13px; border-radius: 4px;")
         btn_backup.clicked.connect(self.perform_backup)

@@ -28,7 +28,7 @@ class MovementDetailsDialog(QDialog):
     def __init__(self, data, parent=None):
         super().__init__(parent)
         self.data = data
-        self.setWindowTitle("📄 Détails de l'Opération")
+        self.setWindowTitle("Détails de l'Opération")
         self.resize(550, 600)
         self.init_ui()
 
@@ -190,20 +190,20 @@ class MovementHistoryTab(QWidget):
 
         self.combo_type = QComboBox()
         self.combo_type.addItems([
-            "📋 Tous les mouvements",
-            "📥 Réceptions (Achats)",
-            "🧪 Consommations (Patients)",
-            "🛡️ Contrôles Qualité (QC)",
-            "⚙️ Calibrations",
-            "📦 Ouvertures Boîtes",
-            "✏️ Ajustements Manuels",
-            "🗑️ Rebuts / Pertes",
-            "🚚 Transferts Internes",
-            "💰 Ventes / Transf. Externes",
-            "↩️ Retours Sous-traitants (BR)",
-            "↩️ Retours Fournisseurs (Avoirs)",
-            "💸 Ventes / Sorties (POS & Bon de Sortie)",
-            "🔄 Retours Ventes (Bon de Retour)",
+            "Tous les mouvements",
+            "Réceptions (Achats)",
+            "Consommations (Patients)",
+            "Contrôles Qualité (QC)",
+            "Calibrations",
+            "Ouvertures Boîtes",
+            "Ajustements Manuels",
+            "Rebuts / Pertes",
+            "Transferts Internes",
+            "Ventes / Transf. Externes",
+            "Retours Sous-traitants (BR)",
+            "Retours Fournisseurs (Avoirs)",
+            "Ventes / Sorties (POS & Bon de Sortie)",
+            "Retours Ventes (Bon de Retour)",
         ])
 
         movement_types = [
@@ -230,7 +230,7 @@ class MovementHistoryTab(QWidget):
         self.combo_type.currentIndexChanged.connect(self.reset_and_reload)
 
         self.search_input = BarcodeLineEdit()
-        self.search_input.setPlaceholderText("🔍 Barcode, Produit, Lot, Utilisateur...")
+        self.search_input.setPlaceholderText("Code-barres, Produit, Lot, Utilisateur...")
         self.search_input.textChanged.connect(self.on_search_text_changed)
 
         btn_refresh = QPushButton()
@@ -357,7 +357,7 @@ class MovementHistoryTab(QWidget):
             self.update_status_ui()
         except Exception as error:
             logging.error("Error fetching lazy movement batch: %s", error)
-            self.lbl_status.setText("⚠️ Erreur lors du chargement des données")
+            self.lbl_status.setText("Erreur lors du chargement des données")
         finally:
             self.is_loading = False
 
@@ -537,7 +537,7 @@ class MovementHistoryTab(QWidget):
                     )
                 else:
                     self.lbl_serial_audit_result.setText(
-                        f"<span style='color:#DC2626; font-weight:bold;'>⚠️ N° de Série '{sn}' non enregistré dans le référentiel unitaire (filtrage journal activé).</span>"
+                        f"<span style='color:#DC2626; font-weight:bold;'>N° de Série '{sn}' non enregistré (filtrage journal activé).</span>"
                     )
             except Exception as err:
                 logging.error(f"Error auditing serial {sn}: {err}")

@@ -45,10 +45,12 @@ class ProcurementTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
         self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: none; background: transparent; }
-            QTabBar::tab { padding: 10px 20px; font-weight: bold; color: #555; border: none; }
-            QTabBar::tab:selected { color: #1abc9c; border-bottom: 2px solid #1abc9c; background: transparent; }
+            QTabWidget::pane { border: none; border-top: 1px solid #E2E8F0; background: #FFFFFF; }
+            QTabBar::tab { padding: 9px 18px; font-weight: 600; color: #64748B; border: none; border-bottom: 2px solid transparent; }
+            QTabBar::tab:selected { color: #007572; border-bottom: 2px solid #007572; font-weight: 700; background: transparent; }
+            QTabBar::tab:hover:!selected { background: #F8FAFC; color: #1E293B; }
         """)
         
         # تهيئة الواجهات فقط دون إضافتها
@@ -126,14 +128,18 @@ class PurchaseOrdersTab(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         
         toolbar_frame = QFrame()
-        toolbar_frame.setStyleSheet("QFrame { background-color: #f8f9fa; border: none; border-radius: 6px; }")
+        toolbar_frame.setObjectName("ProcurementToolbar")
+        toolbar_frame.setStyleSheet(
+            "QFrame#ProcurementToolbar { background-color: #FFFFFF; border: none; border-bottom: 1px solid #E2E8F0; }"
+            "QFrame#ProcurementToolbar QLabel { border: none; background: transparent; }"
+        )
         controls = QHBoxLayout(toolbar_frame)
         
         today = QDate.currentDate()
         start_of_year = QDate(today.year(), 1, 1)
         end_of_year = QDate(today.year(), 12, 31)
 
-        lbl_du = QLabel("📅 Du:")
+        lbl_du = QLabel("Du:")
         lbl_du.setStyleSheet("font-weight: bold; color: #555;")
         
         self.date_from = QDateEdit()
@@ -153,19 +159,19 @@ class PurchaseOrdersTab(QWidget):
         self.date_to.setFixedWidth(140)
         self.date_to.dateChanged.connect(self.refresh_orders)
 
-        btn_add = QPushButton("➕ Créer Commande")
+        btn_add = QPushButton("+ Créer Commande")
         btn_add.clicked.connect(self.open_add_dialog)
         btn_add.setStyleSheet(self.btn_style)
 
-        btn_mark_sent = QPushButton("🚚 Soumettez la demande")
+        btn_mark_sent = QPushButton("Soumettre la demande")
         btn_mark_sent.setStyleSheet(self.sent_btn_style)
         btn_mark_sent.clicked.connect(self.confirm_order_sent)
 
-        btn_pdf = QPushButton("📄 Bon de Commande (PDF)")
+        btn_pdf = QPushButton("Bon de Commande (PDF)")
         btn_pdf.clicked.connect(self.export_po_pdf)
         btn_pdf.setStyleSheet(self.btn_style)
 
-        btn_refresh = QPushButton("🔄 Actualiser")
+        btn_refresh = QPushButton("Actualiser")
         btn_refresh.clicked.connect(self.refresh_orders)
         btn_refresh.setStyleSheet(self.btn_style)
         

@@ -288,24 +288,26 @@ class WasteAnalysisTab(QWidget):
 
         # 1. Bandeau supérieur : KPIs & Recherche
         top_bar = QFrame()
+        top_bar.setObjectName("WasteTopBar")
         top_bar.setStyleSheet("""
-            QFrame {
+            QFrame#WasteTopBar {
                 background-color: white;
-                border-radius: 8px;
-                border: 1px solid #eef2f5;
-                padding: 6px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                padding: 4px;
             }
+            QFrame#WasteTopBar QLabel { border: none; background: transparent; }
         """)
         top_layout = QHBoxLayout(top_bar)
         top_layout.setContentsMargins(10, 8, 10, 8)
         top_layout.setSpacing(15)
 
         # Mini KPI 1: Perte Totale
-        self.kpi_total_loss = self._create_mini_kpi("PERTE TOTALE (TTC)", "0,00 DA", "🗑️", "#c0392b", "#fef2f2", "#fecaca")
+        self.kpi_total_loss = self._create_mini_kpi("PERTE TOTALE (TTC)", "0,00 DA", "", "#c0392b", "#fef2f2", "#fecaca")
         # Mini KPI 2: Produits Distincts
-        self.kpi_products_count = self._create_mini_kpi("PRODUITS AU REBUT", "0 Produit(s)", "📦", "#2c3e50", "#f8fafc", "#e2e8f0")
+        self.kpi_products_count = self._create_mini_kpi("PRODUITS AU REBUT", "0 Produit(s)", "", "#2c3e50", "#f8fafc", "#e2e8f0")
         # Mini KPI 3: Événements
-        self.kpi_events_count = self._create_mini_kpi("DÉCLARATIONS REBUT", "0 Événement(s)", "📋", "#007572", "#e6f4f3", "#b2dfdb")
+        self.kpi_events_count = self._create_mini_kpi("DÉCLARATIONS REBUT", "0 Événement(s)", "", "#007572", "#e6f4f3", "#b2dfdb")
 
         top_layout.addWidget(self.kpi_total_loss)
         top_layout.addWidget(self.kpi_products_count)
@@ -314,7 +316,7 @@ class WasteAnalysisTab(QWidget):
 
         # Barre de recherche de produits
         self.txt_search = QLineEdit()
-        self.txt_search.setPlaceholderText("🔍 Rechercher un produit, famille, motif...")
+        self.txt_search.setPlaceholderText("Rechercher produit, famille, motif...")
         self.txt_search.setFixedWidth(280)
         self.txt_search.setStyleSheet("""
             QLineEdit {
@@ -425,11 +427,13 @@ class WasteAnalysisTab(QWidget):
 
     def _create_mini_kpi(self, title: str, value: str, icon: str, text_color: str, bg_color: str, border_color: str) -> QFrame:
         card = QFrame()
+        card.setObjectName("WasteMiniKpi")
         card.setStyleSheet(f"""
-            QFrame {{
+            QFrame#WasteMiniKpi {{
                 background-color: {bg_color};
-                border: 1px solid {border_color};
-                border-radius: 6px;
+                border: none;
+                border-left: 3px solid {border_color};
+                border-radius: 4px;
                 padding: 4px 10px;
             }}
         """)
@@ -437,8 +441,10 @@ class WasteAnalysisTab(QWidget):
         layout.setContentsMargins(6, 4, 6, 4)
         layout.setSpacing(8)
 
-        lbl_icon = QLabel(icon)
-        lbl_icon.setStyleSheet("font-size: 16px; border: none; background: transparent;")
+        if icon:
+            lbl_icon = QLabel(icon)
+            lbl_icon.setStyleSheet("font-size: 16px; border: none; background: transparent;")
+            layout.addWidget(lbl_icon)
 
         vbox = QVBoxLayout()
         vbox.setSpacing(1)
@@ -453,7 +459,6 @@ class WasteAnalysisTab(QWidget):
         vbox.addWidget(lbl_title)
         vbox.addWidget(lbl_val)
 
-        layout.addWidget(lbl_icon)
         layout.addLayout(vbox)
         return card
 

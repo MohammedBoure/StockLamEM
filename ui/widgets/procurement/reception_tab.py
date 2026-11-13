@@ -22,16 +22,20 @@ class ReceptionTab(QWidget):
         
         # --- Barre d'outils ---
         top_frame = QFrame()
-        top_frame.setStyleSheet("QFrame { background-color: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; }")
+        top_frame.setObjectName("ReceptionTopToolbar")
+        top_frame.setStyleSheet(
+            "QFrame#ReceptionTopToolbar { background-color: #FFFFFF; border: none; border-bottom: 1px solid #E2E8F0; }"
+            "QFrame#ReceptionTopToolbar QLabel { border: none; background: transparent; }"
+        )
         top_layout = QHBoxLayout(top_frame)
         top_layout.setContentsMargins(10, 10, 10, 10)
         
-        lbl_title = QLabel("📥 Réception des Commandes")
+        lbl_title = QLabel("Réception des Commandes")
         lbl_title.setStyleSheet("border: none; font-size: 14px; font-weight: bold; color: #2c3e50;")
         
         # مربع البحث
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 ID...")
+        self.search_input.setPlaceholderText("ID...")
         self.search_input.setStyleSheet("background: white; border: 1px solid #ccc; padding: 5px; border-radius: 4px;")
         self.search_input.setFixedWidth(150)
         self.search_input.textChanged.connect(self.load_pending_pos)
@@ -44,11 +48,11 @@ class ReceptionTab(QWidget):
         self.load_suppliers() # تعبئة القائمة
         self.supplier_filter.currentTextChanged.connect(self.load_pending_pos)
 
-        btn_refresh = QPushButton("🔄 Actualiser")
+        btn_refresh = QPushButton("Actualiser")
         btn_refresh.setStyleSheet("QPushButton { background-color: #ecf0f1; border: 1px solid #bdc3c7; border-radius: 4px; padding: 6px 12px; } QPushButton:hover { background-color: #dfe6e9; }")
         btn_refresh.clicked.connect(self.load_pending_pos)
         
-        btn_receive = QPushButton("📥 Réceptionner")
+        btn_receive = QPushButton("Réceptionner")
         btn_receive.setStyleSheet("QPushButton { background-color: #27ae60; color: white; font-weight: bold; border-radius: 4px; padding: 6px 15px; border: none;} QPushButton:hover { background-color: #2ecc71; }")
         btn_receive.clicked.connect(self.open_receive_dialog)
 

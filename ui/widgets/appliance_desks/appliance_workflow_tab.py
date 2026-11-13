@@ -84,41 +84,38 @@ class ApplianceWorkflowTab(QWidget):
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(0)
 
-        # Clean borderless pane eliminates double-box nesting around sub-desks
+        # Flat underline sub-desk tabs matching global/SAV clean aesthetic
         self.desk_tabs = QTabWidget(self)
+        self.desk_tabs.setDocumentMode(True)
         self.desk_tabs.setIconSize(QSize(16, 16))
         self.desk_tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: none;
                 border-top: 1px solid #DCDFE6;
-                background: {CANVAS_BG};
+                background: {CARD_BG};
                 top: -1px;
                 padding-top: 6px;
             }}
             QTabBar::tab {{
-                background: {SUBTLE_BG};
+                background: transparent;
                 color: {TEXT_BODY};
-                border: 1px solid #CED4DA;
-                border-bottom: none;
-                padding: 8px 18px;
-                margin-right: 4px;
-                border-top-left-radius: 7px;
-                border-top-right-radius: 7px;
+                border: none;
+                border-bottom: 2px solid transparent;
+                padding: 8px 16px;
+                margin-right: 6px;
                 font-size: 12.5px;
                 font-weight: 700;
                 min-height: 20px;
             }}
             QTabBar::tab:selected {{
-                background: {CARD_BG};
+                background: transparent;
                 color: {BRAND_TEAL};
-                border: 1px solid #DCDFE6;
-                border-top: 3px solid {BRAND_TEAL};
-                border-bottom: 1px solid {CARD_BG};
+                border-bottom: 2px solid {BRAND_TEAL};
             }}
             QTabBar::tab:hover:!selected {{
-                background: #EEF2F6;
+                background: {SUBTLE_BG};
                 color: {TEXT_PRIMARY};
-                border-color: {BORDER_CONTROL};
+                border-bottom: 2px solid #CED4DA;
             }}
         """)
 

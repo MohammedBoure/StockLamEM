@@ -36,7 +36,7 @@ class LocationTypesManagerDialog(QDialog):
         
         self.btn_add = QPushButton("➕ Ajouter")
         self.btn_edit = QPushButton("✏️ Modifier")
-        self.btn_delete = QPushButton("🗑️ Supprimer")
+        self.btn_delete = QPushButton("Supprimer")
         
         self.btn_add.clicked.connect(self.add_type)
         self.btn_edit.clicked.connect(self.edit_type)

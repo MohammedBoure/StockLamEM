@@ -314,8 +314,9 @@ class ChartsSection(QWidget):
 
         # --- 1. Sélecteur de Granularité (Jour / Semaine / Mois) ---
         granularity_container = QFrame()
+        granularity_container.setObjectName("GranularityContainer")
         granularity_container.setStyleSheet("""
-            QFrame {
+            QFrame#GranularityContainer {
                 background-color: #f1f5f9;
                 border: 1px solid #e2e8f0;
                 border-radius: 6px;
@@ -329,9 +330,9 @@ class ChartsSection(QWidget):
         self.btn_group_granularity = QButtonGroup(self)
         self.btn_group_granularity.setExclusive(True)
 
-        self.btn_day = self._create_toggle_btn("📅 Jour", self.GRANULARITY_DAY)
-        self.btn_week = self._create_toggle_btn("📆 Semaine", self.GRANULARITY_WEEK)
-        self.btn_month = self._create_toggle_btn("🗓️ Mois", self.GRANULARITY_MONTH, checked=True)
+        self.btn_day = self._create_toggle_btn("Jour", self.GRANULARITY_DAY)
+        self.btn_week = self._create_toggle_btn("Semaine", self.GRANULARITY_WEEK)
+        self.btn_month = self._create_toggle_btn("Mois", self.GRANULARITY_MONTH, checked=True)
 
         for btn in [self.btn_day, self.btn_week, self.btn_month]:
             self.btn_group_granularity.addButton(btn)
@@ -466,7 +467,7 @@ class ChartsSection(QWidget):
         self.badge_in = self._create_compact_metric_pill(
             title="Entrées :", 
             value="0,00 DA", 
-            icon="📥", 
+            icon="", 
             bg_color=self.COLOR_IN_LIGHT, 
             text_color=self.COLOR_IN_BORDER,
             border_color="#a7f3d0"
@@ -474,7 +475,7 @@ class ChartsSection(QWidget):
         self.badge_out = self._create_compact_metric_pill(
             title="Sorties :", 
             value="0,00 DA", 
-            icon="📤", 
+            icon="", 
             bg_color=self.COLOR_OUT_LIGHT, 
             text_color=self.COLOR_OUT_BORDER,
             border_color="#fecaca"
@@ -543,20 +544,23 @@ class ChartsSection(QWidget):
     def _create_compact_metric_pill(self, title: str, value: str, icon: str, 
                                     bg_color: str, text_color: str, border_color: str) -> QFrame:
         pill = QFrame()
+        pill.setObjectName("ChartMetricPill")
         pill.setFixedHeight(28)
         pill.setStyleSheet(f"""
-            QFrame {{
+            QFrame#ChartMetricPill {{
                 background-color: {bg_color};
-                border: 1px solid {border_color};
-                border-radius: 6px;
+                border: none;
+                border-left: 3px solid {border_color};
+                border-radius: 4px;
             }}
         """)
         p_layout = QHBoxLayout(pill)
         p_layout.setContentsMargins(8, 2, 8, 2)
         p_layout.setSpacing(5)
 
-        lbl_icon = QLabel(icon)
-        lbl_icon.setStyleSheet("font-size: 12px; border: none; background: transparent;")
+        if icon:
+            lbl_icon = QLabel(icon)
+            lbl_icon.setStyleSheet("font-size: 12px; border: none; background: transparent;")
 
         lbl_title = QLabel(title)
         lbl_title.setStyleSheet("font-size: 10px; font-weight: 700; color: #64748b; border: none; background: transparent;")
@@ -565,7 +569,8 @@ class ChartsSection(QWidget):
         lbl_val.setStyleSheet(f"font-size: 11px; font-weight: 800; color: {text_color}; border: none; background: transparent;")
         lbl_val.setObjectName("val_label")
 
-        p_layout.addWidget(lbl_icon)
+        if icon:
+            p_layout.addWidget(lbl_icon)
         p_layout.addWidget(lbl_title)
         p_layout.addWidget(lbl_val)
 
@@ -842,13 +847,13 @@ class ChartsSection(QWidget):
     def _render_in_out_bars(self, buckets: List[Dict[str, Any]], categories: List[str], max_val: float):
         """Construit les colonnes d'entrées (Vert) et sorties (Rouge) groupées ou empilées"""
         # Colonnes Entrées (Vert)
-        set_in = QBarSet("📥 Entrées (Achats)")
+        set_in = QBarSet("Entrées (Achats)")
         set_in.setColor(QColor(self.COLOR_IN))
         set_in.setBorderColor(QColor(self.COLOR_IN_BORDER))
         set_in.setBrush(QBrush(QColor(self.COLOR_IN)))
 
         # Colonnes Sorties (Rouge)
-        set_out = QBarSet("📤 Sorties (Consommation)")
+        set_out = QBarSet("Sorties (Consommation)")
         set_out.setColor(QColor(self.COLOR_OUT))
         set_out.setBorderColor(QColor(self.COLOR_OUT_BORDER))
         set_out.setBrush(QBrush(QColor(self.COLOR_OUT)))

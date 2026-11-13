@@ -75,15 +75,17 @@ class TransactionDetailsDialog(QDialog):
         root_layout.setContentsMargins(18, 18, 18, 18)
         root_layout.setSpacing(12)
 
-        # 1. Header Bar
+        # 1. Header Bar (Flat clean band)
         header_frame = QFrame()
+        header_frame.setObjectName("TxHeaderFrame")
         header_frame.setStyleSheet("""
-            QFrame {
+            QFrame#TxHeaderFrame {
                 background-color: #F8FAFC;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                border-radius: 4px;
             }
-            QLabel {
+            QFrame#TxHeaderFrame QLabel {
                 border: none;
                 background: transparent;
             }
@@ -120,15 +122,16 @@ class TransactionDetailsDialog(QDialog):
 
         root_layout.addWidget(header_frame)
 
-        # 2. Financial Summary Card
+        # 2. Financial Summary Band
         summary_frame = QFrame()
+        summary_frame.setObjectName("TxSummaryFrame")
         summary_frame.setStyleSheet("""
-            QFrame {
+            QFrame#TxSummaryFrame {
                 background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
-                border-radius: 6px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
             }
-            QLabel {
+            QFrame#TxSummaryFrame QLabel {
                 border: none;
                 background: transparent;
             }
@@ -268,15 +271,16 @@ class TransactionDetailsDialog(QDialog):
             root_layout.addWidget(table_items, 1)
 
         else:
-            # Payment or General Operation Details Card
+            # Payment or General Operation Details Section
             detail_box = QFrame()
+            detail_box.setObjectName("TxDetailBox")
             detail_box.setStyleSheet("""
-                QFrame {
+                QFrame#TxDetailBox {
                     background-color: #FFFFFF;
-                    border: 1px solid #DDE3EA;
+                    border: 1px solid #E2E8F0;
                     border-radius: 6px;
                 }
-                QLabel {
+                QFrame#TxDetailBox QLabel {
                     border: none;
                     background: transparent;
                 }
@@ -307,7 +311,7 @@ class TransactionDetailsDialog(QDialog):
         btn_layout.setSpacing(10)
 
         if invoice_data:
-            btn_print_inv = QPushButton("🖨️ Imprimer la Facture")
+            btn_print_inv = QPushButton("Imprimer la Facture")
             btn_print_inv.setIcon(get_duotone_icon("print", 14))
             btn_print_inv.setIconSize(QSize(14, 14))
             btn_print_inv.setCursor(Qt.PointingHandCursor)
@@ -433,7 +437,7 @@ class ClientStatementDialog(QDialog):
         self.ledger_data = {}
         self._open_detail_dialogs = []
 
-        self.setWindowTitle("📄 Relevé de Compte Client - Grand Livre Auxiliaire")
+        self.setWindowTitle("Relevé de Compte Client — Grand Livre")
         self.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
         self.resize(1200, 780)
         self.setMinimumSize(950, 600)
@@ -450,15 +454,16 @@ class ClientStatementDialog(QDialog):
         layout.setContentsMargins(14, 14, 14, 14)
         layout.setSpacing(10)
 
-        # 1. Header Card (Nom du client & Coordonnées & Risque Crédit) - Clean open layout
+        # 1. Flat Header Bar
         self.header_frame = QFrame()
+        self.header_frame.setObjectName("ClientLedgerHeader")
         self.header_frame.setStyleSheet("""
-            QFrame {
+            QFrame#ClientLedgerHeader {
                 background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
-                border-radius: 8px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
             }
-            QLabel {
+            QFrame#ClientLedgerHeader QLabel {
                 border: none;
                 background: transparent;
             }
@@ -734,7 +739,7 @@ class ClientStatementDialog(QDialog):
 
         # 5. Bottom Status and Legend (Single Unified Bar, duplicate bottom close button removed)
         bottom_layout = QHBoxLayout()
-        lbl_legend = QLabel("💡 * Note : Double-cliquez sur une ligne ou cliquez sur 'Détails' pour ouvrir sa fiche complète. Les Devis et Bons de Commande brouillon sont répertoriés [Hors bilan] avec Débit 0,00 DA sans affecter le solde exigible.")
+        lbl_legend = QLabel("Double-cliquez sur une ligne pour consulter sa fiche. Les Devis et BC brouillon sont [Hors bilan].")
         lbl_legend.setStyleSheet("font-size: 11px; color: #64748B; font-style: italic; border: none; background: transparent;")
         bottom_layout.addWidget(lbl_legend)
         bottom_layout.addStretch(1)
@@ -742,13 +747,14 @@ class ClientStatementDialog(QDialog):
 
     def _create_kpi_card(self, title, default_val, text_color):
         frame = QFrame()
+        frame.setObjectName("ClientKpiStrip")
         frame.setStyleSheet("""
-            QFrame {
+            QFrame#ClientKpiStrip {
                 background-color: #FFFFFF;
-                border: 1px solid #DDE3EA;
-                border-radius: 8px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
             }
-            QLabel {
+            QFrame#ClientKpiStrip QLabel {
                 border: none;
                 background: transparent;
             }

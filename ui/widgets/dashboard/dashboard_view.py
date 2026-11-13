@@ -69,16 +69,18 @@ class DashboardTab(QWidget):
         content_layout.setSpacing(10)
 
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
         self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #dcdde1; background: white; border-radius: 8px; }
-            QTabBar::tab { 
-                background: #ecf0f1; color: #7f8c8d; padding: 12px 25px; 
-                font-weight: bold; margin-right: 2px; border-top-left-radius: 6px; border-top-right-radius: 6px;
+            QTabWidget::pane { border: none; border-top: 1px solid #E2E8F0; background: #FFFFFF; }
+            QTabBar::tab {
+                background: transparent; color: #64748B; border: none;
+                border-bottom: 2px solid transparent;
+                padding: 10px 18px; font-weight: 600; margin-right: 4px;
             }
-            QTabBar::tab:selected { 
-                background: white; color: #007572; border-top: 3px solid #007572; 
+            QTabBar::tab:selected {
+                background: transparent; color: #007572; border-bottom: 2px solid #007572; font-weight: 700;
             }
-            QTabBar::tab:hover { background: #e0e0e0; }
+            QTabBar::tab:hover:!selected { background: #F8FAFC; color: #1E293B; }
         """)
 
         # 1. الصفحة المجمعة (Overview: KPIs + Charts)
@@ -148,20 +150,20 @@ class DashboardTab(QWidget):
             if idx_alerts != -1:
                 crit_count = sum(1 for a in alerts if a.get('Criticality') == 'High')
                 if crit_count > 0:
-                    self.tabs.setTabText(idx_alerts, f"⚠️ Alertes ({len(alerts)})")
+                    self.tabs.setTabText(idx_alerts, f"Alertes ({len(alerts)})")
                     self.tabs.tabBar().setTabTextColor(idx_alerts, QColor("#c0392b"))
                 else:
-                    self.tabs.setTabText(idx_alerts, "✅ Alertes (0)")
+                    self.tabs.setTabText(idx_alerts, "Alertes (0)")
                     self.tabs.tabBar().setTabTextColor(idx_alerts, QColor("#27ae60"))
             
             # تلوين تبويب التنبيهات (الاندكس 5 لأننا أضفنا 6 تبويبات والترتيب يبدأ من 0)
             crit_count = sum(1 for a in alerts if a.get('Criticality') == 'High')
             idx_alerts = 5
             if crit_count > 0:
-                self.tabs.setTabText(idx_alerts, f"⚠️ Alertes ({len(alerts)})")
+                self.tabs.setTabText(idx_alerts, f"Alertes ({len(alerts)})")
                 self.tabs.tabBar().setTabTextColor(idx_alerts, QColor("#c0392b"))
             else:
-                self.tabs.setTabText(idx_alerts, "✅ Alertes (0)")
+                self.tabs.setTabText(idx_alerts, "Alertes (0)")
                 self.tabs.tabBar().setTabTextColor(idx_alerts, QColor("#27ae60"))
         except Exception as e:
             logging.error(f"Dashboard Refresh Error: {e}", exc_info=True)

@@ -196,7 +196,7 @@ class SystemLogsTab(QWidget):
             for row_idx, log in enumerate(self.current_logs_data):
                 self.table.insertRow(row_idx)
                 
-                action_display = f"📦 {log['module']} ➔ ⚙️ {log['action']}"
+                action_display = f"{log['module']} — {log['action']}"
 
                 preview_text = "{}"
                 if log.get('details_dict'):

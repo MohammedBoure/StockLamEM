@@ -103,6 +103,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Verifies the dedicated `Versement` (`page_id=17`, `nav_versement`) and `Paiement Livraison` (`page_id=18`, `nav_paiement_livraison`) sidebar entries, their tooltips, icons, compact-mode toggling, placeholder page switching (`VersementTab`, `PaiementLivraisonTab`), and RBAC permission/fallback checks.
 - **`test_sav_reception_minimal_ui.py`**:
   - *Scope*: Verifies the minimalist, distraction-free `SAVReceptionDialog` (no container border leakage onto labels, uncorrupted tab titles, non-clipping table headers, empty optional fields with placeholders, 1-step Bon Rouge auto-selection) and emoji-free `SAVWorkspaceTab` tabs/KPIs.
+- **`test_global_and_bureaux_clean_theme.py`**:
+  - *Scope*: Verifies the SAV-style flat, underline, emoji-free visual overhaul across `ui/styles.qss`, `ui/main_window.py` sub-tabs, `ApplianceWorkflowTab`, `CashierDeskWidget`, `DispatchDeskWidget`, `SerialBatchRegistryWidget`, `BonRetourDialog`, `DashboardTab`, `WasteAnalysisTab`, `KPICardsSection`, `AiAnalyticsTab`, and `SYSTEM_PERMISSIONS`.
 - **`test_stock_actuel_ref_and_quick_add.py`**:
   - *Scope*: Verifies that `BatchesTab` (`Stock Actuel`) displays the `Réf` column (`col 24`) with `All_Refs` tooltip and supports filtering by `Réf`, that `QuickAddDialog` provides a product-linked `Réf` selector (`cb_ref`) with a `+` button (`btn_add_ref`) to add a new reference to the selected product and pre-fills `Ref_Code` on edit, and that `InventoryBatchManager` persists `Ref_Code` on add/update.
 - **`test_quick_add_ref_and_optional_bl.py`**:

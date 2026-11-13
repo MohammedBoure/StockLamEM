@@ -17,20 +17,21 @@ class LabInfoTab(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        grp_info = QGroupBox("📋 Informations du laboratoire")
+        grp_info = QGroupBox("Informations du laboratoire")
         grp_info.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                font-size: 14px;
-                border: 1px solid #cfd8dc;
-                border-radius: 8px;
+                font-size: 13px;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
                 margin-top: 10px;
-                padding-top: 15px;
+                padding-top: 14px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 15px;
+                left: 12px;
                 padding: 0 5px;
+                color: #007572;
             }
         """)
 

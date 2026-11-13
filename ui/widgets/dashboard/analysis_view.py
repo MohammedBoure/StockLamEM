@@ -516,15 +516,18 @@ class AnalysisView(QWidget):
 
         # --- 2. Content Tabs ---
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
         self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #dcdde1; background: #f9f9f9; }
-            QTabBar::tab { 
-                background: #ecf0f1; color: #7f8c8d; padding: 12px 30px; 
-                font-weight: bold; margin-right: 2px;
+            QTabWidget::pane { border: none; border-top: 1px solid #E2E8F0; background: #FFFFFF; }
+            QTabBar::tab {
+                background: transparent; color: #64748B; border: none;
+                border-bottom: 2px solid transparent;
+                padding: 10px 20px; font-weight: 600; margin-right: 4px;
             }
-            QTabBar::tab:selected { 
-                background: white; color: #2c3e50; border-top: 3px solid #2c3e50; 
+            QTabBar::tab:selected {
+                background: transparent; color: #007572; border-bottom: 2px solid #007572; font-weight: 700;
             }
+            QTabBar::tab:hover:!selected { background: #F8FAFC; color: #1E293B; }
         """)
         
         # إنشاء التبويبات
@@ -535,11 +538,11 @@ class AnalysisView(QWidget):
         self.tab_caisse = CashSessionsAnalysisTab(self.manager)
         self.tab_ai = AiAnalyticsTab(db_instance=self.stats.db)
         
-        self.tabs.addTab(self.tab_valuation, "💰 Valorisation du Stock")
-        self.tabs.addTab(self.tab_waste, "🗑️ Analyse des Pertes (Déchets)")
-        self.tabs.addTab(self.tab_consumption, "📉 Rapport Consommation")
-        self.tabs.addTab(self.tab_caisse, "💵 Analyse des Caisses & Sessions")
-        self.tabs.addTab(self.tab_ai, "🧠 Intelligence Artificielle & Prédictions")
+        self.tabs.addTab(self.tab_valuation, "Valorisation du Stock")
+        self.tabs.addTab(self.tab_waste, "Analyse des Pertes")
+        self.tabs.addTab(self.tab_consumption, "Consommation")
+        self.tabs.addTab(self.tab_caisse, "Caisses & Sessions")
+        self.tabs.addTab(self.tab_ai, "Prédictions IA")
         
         main_layout.addWidget(self.tabs)
         

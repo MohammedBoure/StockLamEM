@@ -897,18 +897,24 @@ class UnpackTransferDialog(BaseDialog):
 
         right_layout.addWidget(decond_group)
 
-        # 4. Carte d'Aperçu du Résultat (Épurée et moderne)
-        prev_group = QGroupBox("📊 Aperçu du Résultat")
+        # 4. Aperçu du Résultat
+        prev_group = QGroupBox("Aperçu du Résultat")
         prev_layout = QVBoxLayout(prev_group)
         prev_layout.setSpacing(6)
 
         prev_frame = QFrame()
+        prev_frame.setObjectName("UnpackPreviewFrame")
         prev_frame.setStyleSheet("""
-            QFrame {
+            QFrame#UnpackPreviewFrame {
                 background-color: #eef9f6;
-                border: 1px solid #b2e2d8;
-                border-radius: 6px;
-                padding: 10px;
+                border: none;
+                border-left: 3px solid #007572;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            QFrame#UnpackPreviewFrame QLabel {
+                border: none;
+                background: transparent;
             }
         """)
         pf_layout = QVBoxLayout(prev_frame)
@@ -1239,16 +1245,20 @@ class ModifySalesPricesDialog(QDialog):
 
         # 1. Product & Batch Summary Card
         card = QFrame()
+        card.setObjectName("ModifyPriceBatchCard")
         card.setStyleSheet("""
-            QFrame {
+            QFrame#ModifyPriceBatchCard {
                 background-color: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
-                padding: 10px;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                border-radius: 4px;
+                padding: 8px;
             }
-            QLabel {
+            QFrame#ModifyPriceBatchCard QLabel {
                 font-size: 12px;
                 color: #2c3e50;
+                border: none;
+                background: transparent;
             }
         """)
         card_layout = QGridLayout(card)

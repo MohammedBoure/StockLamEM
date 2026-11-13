@@ -15,7 +15,7 @@
 }
 
 QMainWindow, QDialog {
-    background-color: #f4f7fa;
+    background-color: #f8fafc;
 }
 
 QWidget {
@@ -45,12 +45,12 @@ QWidget#sidebar_header {
    ============================================================ */
 QTableWidget, QTableView {
     background-color: #ffffff;
-    border: 1px solid #cfd8dc; /* حدود رمادية واضحة */
-    border-radius: 8px;
-    gridline-color: #f1f5f9;   /* خطوط شبكية خفيفة جداً */
-    selection-background-color: #e0f2f1; /* لون التحديد */
-    selection-color: #007572; /* لون النص المحدد */
-    alternate-background-color: #fafbfc; /* تلوين الأسطر الزوجية */
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    gridline-color: #f1f5f9;
+    selection-background-color: #e6f4f3;
+    selection-color: #007572;
+    alternate-background-color: #fafbfc;
 }
 
 /* --- رؤوس الجداول العامة --- */
@@ -191,49 +191,49 @@ QLineEdit:read-only, QLineEdit:disabled, QComboBox:disabled {
    6. TABS & CONTAINERS (التبويبات والحاويات)
    ============================================================ */
 QTabWidget::pane {
-    border: 1px solid #cfd8dc;
+    border: none;
+    border-top: 1px solid #e2e8f0;
     background: #ffffff;
-    border-radius: 6px;
     top: -1px;
 }
 
 QTabBar::tab {
-    background: #eceff1;
-    color: #607d8b;
-    border: 1px solid transparent;
-    padding: 10px 22px;
-    margin-right: 2px;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    background: transparent;
+    color: #64748b;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 16px;
+    margin-right: 4px;
     font-weight: 600;
 }
 
 QTabBar::tab:selected {
-    background: #ffffff;
+    background: transparent;
     color: #007572;
-    border-top: 3px solid #007572; /* الشريط العلوي المميز */
-    border-bottom: 1px solid #ffffff; /* دمج مع المحتوى */
+    border-bottom: 2px solid #007572;
+    font-weight: 700;
 }
 
 QTabBar::tab:hover:!selected {
-    background: #cfd8dc;
+    background: #f1f5f9;
+    color: #1e293b;
 }
 
 /* المجموعات (GroupBox) */
 QGroupBox {
     background-color: #ffffff;
-    border: 1px solid #cfd8dc;
-    border-radius: 8px;
-    margin-top: 28px;
-    padding-top: 20px;
-    font-weight: bold;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    margin-top: 20px;
+    padding-top: 14px;
+    font-weight: 700;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 15px;
-    padding: 0 5px;
+    left: 12px;
+    padding: 0 6px;
     color: #007572;
 }
 

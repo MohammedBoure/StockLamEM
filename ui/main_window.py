@@ -536,17 +536,17 @@ class MainWindow(QMainWindow):
         if page_id == 0:
             widget = DashboardTab(self.data_manager)
             if self.has_permission("tab_dash_overview"):
-                widget.tabs.addTab(widget.page_overview, "📌 Vue d'ensemble")
+                widget.tabs.addTab(widget.page_overview, "Vue d'ensemble")
             if self.has_permission("tab_dash_reception"):
-                widget.tabs.addTab(widget.page_family_reception, "📅 Entrées par Famille")
+                widget.tabs.addTab(widget.page_family_reception, "Entrées par Famille")
             if self.has_permission("tab_dash_consumption"):
-                widget.tabs.addTab(widget.page_consumption, "📋 Consommation")
+                widget.tabs.addTab(widget.page_consumption, "Consommation")
             if self.has_permission("tab_dash_valuation"):
-                widget.tabs.addTab(widget.page_valuation, "💰 Valorisation")
+                widget.tabs.addTab(widget.page_valuation, "Valorisation")
             if self.has_permission("tab_dash_waste"):
-                widget.tabs.addTab(widget.page_waste, "🗑️ Pertes")
+                widget.tabs.addTab(widget.page_waste, "Pertes")
             if self.has_permission("tab_dash_alerts"):
-                widget.tabs.addTab(widget.page_alerts, "⚠️ Alertes")
+                widget.tabs.addTab(widget.page_alerts, "Alertes")
 
         # --- 1. Master Data (Données de Base) ---
         elif page_id == 1:
@@ -582,13 +582,13 @@ class MainWindow(QMainWindow):
         elif page_id == 2:
             widget = ProcurementTab(self.data_manager)
             if self.has_permission("tab_proc_po"):
-                widget.tabs.addTab(widget.po_tab, "🛒 Bons de Commandes")
+                widget.tabs.addTab(widget.po_tab, "Bons de Commandes")
             if self.has_permission("tab_proc_reception"):
-                widget.tabs.addTab(widget.history_tab, "📜 Bons de Réceptions")
+                widget.tabs.addTab(widget.history_tab, "Bons de Réceptions")
             if self.has_permission("tab_proc_credit"):
-                widget.tabs.addTab(widget.credit_tab, "↩️ Avoirs / Retours")
+                widget.tabs.addTab(widget.credit_tab, "Avoirs / Retours")
             if self.has_permission("tab_proc_reclamation"):
-                widget.tabs.addTab(widget.reclamation_tab, "⚠️ Réclamations")
+                widget.tabs.addTab(widget.reclamation_tab, "Réclamations")
 
         # --- 8. Réclamations ---
         elif page_id == 8:
@@ -602,9 +602,9 @@ class MainWindow(QMainWindow):
             if hasattr(widget, 'batches_tab'):
                 widget.batches_tab.request_product_history.connect(self.open_product_history)
             if self.has_permission("tab_inv_list"):
-                widget.tabs.addTab(widget.batches_tab, "📦 1. Stock Actuel")
+                widget.tabs.addTab(widget.batches_tab, "1. Stock Actuel")
             if self.has_permission("tab_inv_dispatch"):
-                widget.tabs.addTab(widget.dispatch_tab, "🚚 2. Transfert & Consommation")
+                widget.tabs.addTab(widget.dispatch_tab, "2. Transfert & Consommation")
 
         # --- 4. Settings (Paramètres) ---
         elif page_id == 4:
@@ -616,26 +616,26 @@ class MainWindow(QMainWindow):
                 widget.tabs.setCurrentWidget(widget.tab_db)
             if self.has_permission("tab_config"):
                 if hasattr(widget, 'tab_lab_info'):
-                    widget.tabs.addTab(widget.tab_lab_info, "🏢 Informations du Laboratoire")
+                    widget.tabs.addTab(widget.tab_lab_info, "Informations du Laboratoire")
                 elif hasattr(widget, 'tab_general'):
-                    widget.tabs.addTab(widget.tab_general, "🏢 Informations du Laboratoire")
+                    widget.tabs.addTab(widget.tab_general, "Informations du Laboratoire")
             if (self.has_permission("tab_auto_backup") or self.has_permission("tab_config")) and hasattr(widget, 'tab_auto_backup'):
-                widget.tabs.addTab(widget.tab_auto_backup, "⏱️ Sauvegarde Automatique")
+                widget.tabs.addTab(widget.tab_auto_backup, "Sauvegarde Automatique")
             if self.has_permission("tab_set_db") and hasattr(widget, 'tab_db'):
-                widget.tabs.addTab(widget.tab_db, "🗄️ Base de données")
+                widget.tabs.addTab(widget.tab_db, "Base de données")
             if self.has_permission("tab_set_printer"):
                 if hasattr(widget, 'tab_printer'):
-                    widget.tabs.addTab(widget.tab_printer, "🖨️ Imprimante")
+                    widget.tabs.addTab(widget.tab_printer, "Imprimante")
                 if hasattr(widget, 'tab_barcode_config'):
-                    widget.tabs.addTab(widget.tab_barcode_config, "🏷️ Éditeur Étiquettes")
+                    widget.tabs.addTab(widget.tab_barcode_config, "Éditeur Étiquettes")
                 if hasattr(widget, 'tab_receipt_config'):
-                    widget.tabs.addTab(widget.tab_receipt_config, "🧾 Facture Thermique")
+                    widget.tabs.addTab(widget.tab_receipt_config, "Facture Thermique")
             if self.has_permission("tab_set_system") and hasattr(widget, 'tab_system'):
-                widget.tabs.addTab(widget.tab_system, "⚙️ Système")
+                widget.tabs.addTab(widget.tab_system, "Système")
             if self.has_permission("tab_system_logs") and hasattr(widget, 'tab_system_logs'):
-                widget.tabs.addTab(widget.tab_system_logs, "📝 Logs Système")
+                widget.tabs.addTab(widget.tab_system_logs, "Logs Système")
             if self.has_permission("tab_set_pdf") and hasattr(widget, 'tab_pdf_config'):
-                widget.tabs.addTab(widget.tab_pdf_config, "🎨 Configuration PDF")
+                widget.tabs.addTab(widget.tab_pdf_config, "Configuration PDF")
 
         # --- 5. Users ---
         elif page_id == 5:

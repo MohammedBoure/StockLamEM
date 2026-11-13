@@ -21,7 +21,7 @@ class ManufacturersTab(QWidget):
         # --- Barre d'outils (Toolbar) ---
         toolbar = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Rechercher un fabricant...")
+        self.search_input.setPlaceholderText("Rechercher un fabricant...")
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_data)
         
@@ -30,7 +30,7 @@ class ManufacturersTab(QWidget):
         btn_add.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
         btn_add.clicked.connect(self.open_add_dialog)
         
-        btn_refresh = QPushButton("🔄 Actualiser")
+        btn_refresh = QPushButton("Actualiser")
         btn_refresh.setMinimumHeight(35)
         btn_refresh.clicked.connect(self.load_data)
 
@@ -68,7 +68,7 @@ class ManufacturersTab(QWidget):
         self.btn_edit = QPushButton("✏️ Modifier")
         self.btn_edit.clicked.connect(self.open_edit_dialog)
         
-        self.btn_delete = QPushButton("🗑️ Supprimer")
+        self.btn_delete = QPushButton("Supprimer")
         self.btn_delete.setStyleSheet("color: #c0392b;")
         self.btn_delete.clicked.connect(self.delete_item)
         

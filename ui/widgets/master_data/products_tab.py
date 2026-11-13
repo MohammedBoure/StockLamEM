@@ -25,7 +25,7 @@ class ProductsTab(QWidget):
         # --- Barre d'outils ---
         toolbar = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Rechercher un produit (Nom, Famille, Marque, Unité...)")
+        self.search_input.setPlaceholderText("Rechercher un produit (Nom, Famille, Marque, Unité)...")
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_products_data)
 
@@ -34,7 +34,7 @@ class ProductsTab(QWidget):
         self.btn_add.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
         self.btn_add.clicked.connect(self.open_add_dialog)
 
-        self.btn_refresh = QPushButton("🔄 Actualiser")
+        self.btn_refresh = QPushButton("Actualiser")
         self.btn_refresh.setMinimumHeight(35)
         self.btn_refresh.clicked.connect(self.load_products_data)
         
@@ -77,7 +77,7 @@ class ProductsTab(QWidget):
         self.btn_edit = QPushButton("✏️ Modifier le Produit Sélectionné")
         self.btn_edit.clicked.connect(self.open_edit_dialog)
         
-        self.btn_delete = QPushButton("🗑️ Supprimer")
+        self.btn_delete = QPushButton("Supprimer")
         self.btn_delete.setStyleSheet("color: #c0392b;")
         self.btn_delete.clicked.connect(self.delete_product)
         

@@ -83,20 +83,20 @@ class DispatchDeskWidget(QWidget):
 
     def _init_ui(self) -> None:
         self.setObjectName("DispatchDeskRoot")
-        self.setStyleSheet(f"QWidget#DispatchDeskRoot {{ background-color: {CANVAS_BG}; }}")
+        self.setStyleSheet(f"QWidget#DispatchDeskRoot {{ background-color: {CARD_BG}; }}")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 4, 6, 6)
+        layout.setContentsMargins(8, 6, 8, 8)
         layout.setSpacing(10)
 
-        # 1. Unified Top Order & Filter Card (De-containerized from double stacked boxes)
+        # 1. Flat Top Order & Filter Section
         header = QFrame()
         header.setObjectName("DispatchHeaderCard")
         header.setStyleSheet(f"""
             QFrame#DispatchHeaderCard {{
                 background-color: {CARD_BG};
-                border: 1px solid {BORDER_SUBTLE};
-                border-radius: 10px;
+                border: none;
+                border-bottom: 1px solid {BORDER_SUBTLE};
             }}
             QFrame#DispatchHeaderCard QLabel {{
                 border: none;
@@ -104,40 +104,40 @@ class DispatchDeskWidget(QWidget):
             }}
         """)
         header_v = QVBoxLayout(header)
-        header_v.setContentsMargins(16, 12, 16, 12)
-        header_v.setSpacing(10)
+        header_v.setContentsMargins(4, 4, 4, 10)
+        header_v.setSpacing(8)
 
         h_layout = QHBoxLayout()
         h_layout.setSpacing(10)
 
         ic = QLabel()
-        ic.setPixmap(get_duotone_icon("barcode_scan", 20).pixmap(20, 20))
+        ic.setPixmap(get_duotone_icon("barcode_scan", 18).pixmap(18, 18))
         h_layout.addWidget(ic)
 
-        lbl_title = QLabel("Sortie Magasin (Scan N° de Série -> Bon de Sortie) :")
-        lbl_title.setStyleSheet(f"font-size: 13.5px; font-weight: 800; color: {TEXT_PRIMARY};")
+        lbl_title = QLabel("Sortie Magasin")
+        lbl_title.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {TEXT_PRIMARY};")
         h_layout.addWidget(lbl_title)
 
         self.cbo_orders = QComboBox()
-        self.cbo_orders.setFixedHeight(36)
-        self.cbo_orders.setMinimumWidth(320)
+        self.cbo_orders.setFixedHeight(34)
+        self.cbo_orders.setMinimumWidth(300)
         self.cbo_orders.setStyleSheet(COMBO_QSS)
         self.cbo_orders.currentIndexChanged.connect(self._on_order_changed)
         h_layout.addWidget(self.cbo_orders, stretch=1)
 
-        btn_refresh = QPushButton("Actualiser la File")
+        btn_refresh = QPushButton("Actualiser")
         btn_refresh.setIcon(get_duotone_icon("refresh", 14))
         btn_refresh.setIconSize(QSize(14, 14))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(36)
+        btn_refresh.setFixedHeight(34)
         btn_refresh.setStyleSheet(SECONDARY_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.refresh_dispatch_queue)
         h_layout.addWidget(btn_refresh)
 
-        self.lbl_status = QLabel("Prêt pour le scan physique")
+        self.lbl_status = QLabel("Prêt")
         self.lbl_status.setStyleSheet(
             f"font-size: 11px; font-weight: 700; color: {BRAND_TEAL}; background-color: {BRAND_TEAL_TINT}; "
-            f"border: 1px solid {BRAND_TEAL_BORDER}; border-radius: 6px; padding: 5px 12px;"
+            f"border: none; border-radius: 4px; padding: 4px 10px;"
         )
         h_layout.addWidget(self.lbl_status)
         header_v.addLayout(h_layout)
@@ -177,7 +177,7 @@ class DispatchDeskWidget(QWidget):
         self.txt_order_search.setClearButtonEnabled(True)
         self.txt_order_search.setStyleSheet(INPUT_QSS)
         self.txt_order_search.setPlaceholderText(
-            "Rechercher par Code-barres Bon, Nom du Client ou Téléphone..."
+            "Rechercher bon, client ou tél..."
         )
         self.txt_order_search.textChanged.connect(self._apply_order_filters)
         self.txt_order_search.returnPressed.connect(self._apply_order_filters)
@@ -188,12 +188,12 @@ class DispatchDeskWidget(QWidget):
         # 2. Expected Items Table Requiring Physical Serial Scan
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([
-            "Produit Attendu (Marque & Modèle)",
+            "Produit",
             "Couleur",
-            "Code-barres Modèle",
-            "N° de Série Scanné",
-            "Statut Vérification",
-            "Horodatage Scan",
+            "Réf",
+            "N° de Série",
+            "Statut",
+            "Heure",
         ])
         self.table.setStyleSheet(BUREAUX_TABLE_QSS)
         self.table.verticalHeader().setVisible(False)
@@ -212,14 +212,14 @@ class DispatchDeskWidget(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
         layout.addWidget(self.table, 1)
 
-        # 3. Hardware Barcode & Serial Scanner Console
+        # 3. Flat Bottom Scanner Console
         scan_box = QFrame()
         scan_box.setObjectName("DispatchScanConsole")
         scan_box.setStyleSheet(f"""
             QFrame#DispatchScanConsole {{
                 background-color: {CARD_BG};
-                border: 1px solid {BORDER_SUBTLE};
-                border-radius: 10px;
+                border: none;
+                border-top: 1px solid {BORDER_SUBTLE};
             }}
             QFrame#DispatchScanConsole QLabel {{
                 border: none;
@@ -227,23 +227,16 @@ class DispatchDeskWidget(QWidget):
             }}
         """)
         s_layout = QVBoxLayout(scan_box)
-        s_layout.setContentsMargins(16, 12, 16, 12)
-        s_layout.setSpacing(10)
-
-        lbl_inst = QLabel(
-            "Contrôle Physique Obligatoire : Scannez le code-barres ou le numéro de série unique (N° de Série) "
-            "de chaque appareil sortant du magasin."
-        )
-        lbl_inst.setStyleSheet(f"font-size: 12px; font-weight: 600; color: {TEXT_BODY};")
-        s_layout.addWidget(lbl_inst)
+        s_layout.setContentsMargins(4, 10, 4, 4)
+        s_layout.setSpacing(6)
 
         input_row = QHBoxLayout()
         input_row.setSpacing(10)
         self.txt_scan = QLineEdit()
-        self.txt_scan.setFixedHeight(40)
+        self.txt_scan.setFixedHeight(38)
         self.txt_scan.setStyleSheet(INPUT_QSS + "QLineEdit { font-size: 13px; }")
         self.txt_scan.setPlaceholderText(
-            "Scanner le N° de Série ici (ex: SN-BOSCH-2026-889120 ou <Product_ID>::<N° de Série>)..."
+            "Scanner le N° de Série..."
         )
         self.txt_scan.returnPressed.connect(self._on_manual_scan_submit)
         input_row.addWidget(self.txt_scan, stretch=2)
