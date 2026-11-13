@@ -2100,13 +2100,13 @@ class OrderDeskWidget(QWidget):
         tot_layout.addWidget(self.lbl_total)
         layout.addWidget(total_box)
 
-        # Primary CTA: Bon C
-        btn_bon_c = QPushButton("Émettre Bon Comptant")
-        btn_bon_c.setIcon(get_duotone_icon("payment_white", 16))
-        btn_bon_c.setIconSize(QSize(16, 16))
-        btn_bon_c.setCursor(Qt.PointingHandCursor)
-        btn_bon_c.setFixedHeight(44)
-        btn_bon_c.setStyleSheet("""
+        # Primary CTA: Paiement complet (Bon Comptant)
+        self.btn_bon_c = QPushButton("Paiement complet")
+        self.btn_bon_c.setIcon(get_duotone_icon("payment_white", 16))
+        self.btn_bon_c.setIconSize(QSize(16, 16))
+        self.btn_bon_c.setCursor(Qt.PointingHandCursor)
+        self.btn_bon_c.setFixedHeight(44)
+        self.btn_bon_c.setStyleSheet("""
             QPushButton {
                 background-color: #007572;
                 color: #FFFFFF;
@@ -2123,30 +2123,30 @@ class OrderDeskWidget(QWidget):
                 background-color: #003D3A;
             }
         """)
-        btn_bon_c.clicked.connect(lambda: self._submit_order("BON_C"))
-        layout.addWidget(btn_bon_c)
+        self.btn_bon_c.clicked.connect(lambda: self._submit_order("BON_C"))
+        layout.addWidget(self.btn_bon_c)
 
-        # Secondary Row: Bon Crédit & Bon de Livraison side-by-side
+        # Secondary Row: Paiement à crédit & Paiement à la livraison side-by-side
         sec_row = QHBoxLayout()
         sec_row.setSpacing(8)
 
-        btn_credit = QPushButton("Bon Crédit")
-        btn_credit.setIcon(get_duotone_icon("shield_admin", 15))
-        btn_credit.setIconSize(QSize(15, 15))
-        btn_credit.setCursor(Qt.PointingHandCursor)
-        btn_credit.setFixedHeight(40)
-        btn_credit.setStyleSheet(OUTLINE_BTN_STYLE)
-        btn_credit.clicked.connect(lambda: self._submit_order("BON_CREDIT"))
-        sec_row.addWidget(btn_credit)
+        self.btn_credit = QPushButton("Paiement à crédit")
+        self.btn_credit.setIcon(get_duotone_icon("shield_admin", 15))
+        self.btn_credit.setIconSize(QSize(15, 15))
+        self.btn_credit.setCursor(Qt.PointingHandCursor)
+        self.btn_credit.setFixedHeight(40)
+        self.btn_credit.setStyleSheet(OUTLINE_BTN_STYLE)
+        self.btn_credit.clicked.connect(lambda: self._submit_order("BON_CREDIT"))
+        sec_row.addWidget(self.btn_credit)
 
-        btn_livraison = QPushButton("Bon de Livraison")
-        btn_livraison.setIcon(get_duotone_icon("truck_delivery", 15))
-        btn_livraison.setIconSize(QSize(15, 15))
-        btn_livraison.setCursor(Qt.PointingHandCursor)
-        btn_livraison.setFixedHeight(40)
-        btn_livraison.setStyleSheet(OUTLINE_BTN_STYLE)
-        btn_livraison.clicked.connect(lambda: self._submit_order("BON_LIVRAISON"))
-        sec_row.addWidget(btn_livraison)
+        self.btn_livraison = QPushButton("Paiement à la livraison")
+        self.btn_livraison.setIcon(get_duotone_icon("truck_delivery", 15))
+        self.btn_livraison.setIconSize(QSize(15, 15))
+        self.btn_livraison.setCursor(Qt.PointingHandCursor)
+        self.btn_livraison.setFixedHeight(40)
+        self.btn_livraison.setStyleSheet(OUTLINE_BTN_STYLE)
+        self.btn_livraison.clicked.connect(lambda: self._submit_order("BON_LIVRAISON"))
+        sec_row.addWidget(self.btn_livraison)
 
         layout.addLayout(sec_row)
         return panel

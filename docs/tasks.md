@@ -76,7 +76,7 @@ sortie يحتاج إلى acc admin وأيضاً ajustement.
 
 لما يحصل event في session ما يحصل تغير لون لزر session نفسه.
 
-# 11 : medium
+# 11 [COMPLETED]: medium
 المرور عبر الزر الأول # Bureaux للوصول إلى ### 1. Commandes:
 
 خيارات الدفع: Payment complet , Payment a livraison , payment Payment Crédit.
