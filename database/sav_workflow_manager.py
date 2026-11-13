@@ -583,6 +583,190 @@ class SAVWorkflowManager:
             if hasattr(self.db, "get_raw_connection"):
                 conn.close()
 
+    def process_sav_reception_resolution(
+        self,
+        sav_ticket_id: int,
+        admin_user_id: int,
+        resolution_mode: str,
+        refund_amount: Decimal = Decimal("0.00"),
+        cash_session_id: Optional[int] = 1,
+        notes: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Resolves a ticket at SAV Réception:
+        - GOOD_RESTOCK_CASH_REFUND: Product is in good condition -> returns serial to IN_STOCK,
+          increments batch stock, refunds money to client, and records a negative cash entry in Caisse.
+        - DAMAGED_CASH_REFUND: Product is damaged -> marks serial SCRAPPED, refunds money to client,
+          and records a negative cash entry in Caisse.
+        - DAMAGED_VIRTUAL_VERSEMENT: Product is damaged -> issues virtual wallet versement with 0 Caisse impact.
+        """
+        mode = str(resolution_mode or "").strip().upper()
+        if mode == "DAMAGED_VIRTUAL_VERSEMENT":
+            return self.process_irreparable_compensation(
+                sav_ticket_id=sav_ticket_id,
+                admin_user_id=admin_user_id,
+                compensation_amount=refund_amount,
+                notes=notes or "Produit endommagé — Versement virtuel sans impact caisse",
+            )
+
+        if mode not in ("GOOD_RESTOCK_CASH_REFUND", "DAMAGED_CASH_REFUND"):
+            raise ValueError(f"Unsupported SAV reception resolution mode: {resolution_mode}")
+
+        ref_dec = Decimal(str(refund_amount or "0.00")).quantize(Decimal("0.01"))
+        if ref_dec <= Decimal("0.00"):
+            raise ValueError("Le montant du remboursement doit être strictement supérieur à 0 DA.")
+
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            if hasattr(conn, "start_transaction"):
+                conn.start_transaction()
+
+            cursor.execute(
+                """
+                SELECT t.SAV_Ticket_ID, t.Serial_ID, t.Client_ID, t.Current_Stage,
+                       s.Batch_ID
+                FROM SAV_Tickets t
+                LEFT JOIN Product_Serials s ON t.Serial_ID = s.Serial_ID
+                WHERE t.SAV_Ticket_ID = %s
+                FOR UPDATE
+                """,
+                (int(sav_ticket_id),),
+            )
+            t = cursor.fetchone()
+            if not t:
+                raise ValueError("SAV ticket not found.")
+
+            if mode == "GOOD_RESTOCK_CASH_REFUND":
+                new_serial_status = "IN_STOCK"
+                voucher_type = "SAV_GOOD_RESTOCK"
+                res_status = "GOOD_RESTOCKED_REFUNDED"
+                action_note = notes or f"Retour en stock (bon état) + remboursement caisse (-{ref_dec} DA)"
+                if t.get("Batch_ID"):
+                    cursor.execute(
+                        """
+                        UPDATE Inventory_Batches
+                        SET Quantity_Available = COALESCE(Quantity_Available, 0) + 1
+                        WHERE Batch_ID = %s
+                        """,
+                        (int(t["Batch_ID"]),),
+                    )
+            else:
+                new_serial_status = "SCRAPPED"
+                voucher_type = "SAV_DAMAGED_REFUND"
+                res_status = "DAMAGED_CASH_REFUNDED"
+                action_note = notes or f"Produit endommagé — remboursement caisse (-{ref_dec} DA)"
+
+            if t.get("Serial_ID"):
+                cursor.execute(
+                    "UPDATE Product_Serials SET Status = %s WHERE Serial_ID = %s",
+                    (new_serial_status, int(t["Serial_ID"])),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO Product_Serial_History (
+                        Serial_ID, Previous_Status, New_Status, Voucher_Type,
+                        Voucher_ID, Changed_By_User_ID, Action_Notes
+                    ) VALUES (%s, 'IN_SAV', %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        int(t["Serial_ID"]),
+                        new_serial_status,
+                        voucher_type,
+                        int(sav_ticket_id),
+                        int(admin_user_id),
+                        action_note,
+                    ),
+                )
+
+            if cash_session_id:
+                cursor.execute(
+                    """
+                    UPDATE POS_Cash_Sessions
+                    SET Expected_Cash = COALESCE(Expected_Cash, 0.00) - %s
+                    WHERE Cash_Session_ID = %s
+                    """,
+                    (ref_dec, int(cash_session_id)),
+                )
+
+            cursor.execute(
+                "SELECT Wallet_ID, Current_Balance FROM Client_Wallets WHERE Client_ID = %s FOR UPDATE",
+                (int(t["Client_ID"]),),
+            )
+            wallet = cursor.fetchone()
+            if not wallet:
+                cursor.execute(
+                    """
+                    INSERT INTO Client_Wallets (
+                        Client_ID, Current_Balance, Real_Deposit_Balance, Virtual_Credit_Balance
+                    ) VALUES (%s, 0.00, 0.00, 0.00)
+                    """,
+                    (int(t["Client_ID"]),),
+                )
+                wallet_id = cursor.lastrowid
+                bal_before = Decimal("0.00")
+            else:
+                wallet_id = wallet["Wallet_ID"]
+                bal_before = Decimal(str(wallet.get("Current_Balance") or "0.00"))
+
+            cursor.execute(
+                """
+                INSERT INTO Client_Wallet_Transactions (
+                    Wallet_ID, Client_ID, Transaction_Type, Amount,
+                    Balance_Before, Balance_After, Source_Document_Type,
+                    Source_Document_ID, Authorized_By_User_ID,
+                    Affects_Physical_Caisse, Transaction_Notes
+                ) VALUES (%s, %s, 'SAV_CASH_REFUND', %s, %s, %s, 'SAV_TICKET', %s, %s, TRUE, %s)
+                """,
+                (
+                    wallet_id,
+                    int(t["Client_ID"]),
+                    -ref_dec,
+                    bal_before,
+                    bal_before,
+                    int(sav_ticket_id),
+                    int(admin_user_id),
+                    action_note,
+                ),
+            )
+
+            cursor.execute(
+                """
+                UPDATE SAV_Tickets
+                SET Current_Stage = 'SAV_CLOSED_DELIVERED',
+                    Resolution_Status = %s,
+                    Delivered_To_Client_Date = CURRENT_TIMESTAMP
+                WHERE SAV_Ticket_ID = %s
+                """,
+                (res_status, int(sav_ticket_id)),
+            )
+            cursor.execute(
+                """
+                INSERT INTO SAV_Ticket_History (
+                    SAV_Ticket_ID, From_Stage, To_Stage, Action_Performed_By_User_ID, Stage_Notes
+                ) VALUES (%s, %s, 'SAV_CLOSED_DELIVERED', %s, %s)
+                """,
+                (int(sav_ticket_id), t.get("Current_Stage"), int(admin_user_id), action_note),
+            )
+
+            conn.commit()
+            return {
+                "success": True,
+                "resolution_mode": mode,
+                "serial_status": new_serial_status,
+                "refund_amount": float(ref_dec),
+                "physical_till_delta": float(-ref_dec),
+                "resolution_status": res_status,
+            }
+        except Exception as err:
+            conn.rollback()
+            logger.error(f"Error processing SAV reception resolution: {err}")
+            raise
+        finally:
+            cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
     def get_all_sav_tickets(self, stage_filter: Optional[str] = None) -> List[Dict[str, Any]]:
         """Fetches SAV tickets for the 4-stage Kanban board and SAV management table."""
         try:

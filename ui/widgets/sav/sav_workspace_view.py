@@ -69,6 +69,97 @@ TABLE_STYLE = """
 """
 
 
+class SAVReceptionResolutionDialog(QDialog):
+    """Modal dialog for resolving a ticket at SAV Réception (Good Restock + Cash Refund, Damaged + Cash Refund, or Damaged + Virtual Versement)."""
+
+    def __init__(self, ticket: Dict[str, Any], default_price: float = 0.0, parent=None):
+        super().__init__(parent)
+        self.ticket = ticket
+        self.selected_mode = "GOOD_RESTOCK_CASH_REFUND"
+        self.refund_amount = float(default_price or 0.0)
+        self.notes = ""
+
+        self.setWindowTitle(f"Résolution Réception SAV — {ticket.get('Ticket_Number', '')}")
+        self.setMinimumWidth(460)
+        self.setStyleSheet("""
+            QDialog { background-color: #FFFFFF; color: #1E293B; }
+            QLabel { border: none; background: transparent; color: #334155; font-size: 12px; }
+            QComboBox, QDoubleSpinBox, QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 4px;
+                padding: 5px 8px;
+                color: #1E293B;
+                min-height: 28px;
+            }
+            QComboBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
+                border: 1.5px solid #007572;
+            }
+        """)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        lbl_info = QLabel(
+            f"<b>Ticket :</b> {ticket.get('Ticket_Number', '')}  |  "
+            f"<b>Client :</b> {ticket.get('Client_Name', 'Client')}<br>"
+            f"<b>Appareil :</b> {ticket.get('Product_Name', '')}"
+        )
+        layout.addWidget(lbl_info)
+
+        layout.addWidget(QLabel("Décision selon l'état du produit :"))
+        self.cbo_mode = QComboBox()
+        self.cbo_mode.addItem(
+            "Produit en bon état → Retour au Stock + Remboursement Caisse (-)",
+            "GOOD_RESTOCK_CASH_REFUND",
+        )
+        self.cbo_mode.addItem(
+            "Produit endommagé → Remboursement Caisse (-)",
+            "DAMAGED_CASH_REFUND",
+        )
+        self.cbo_mode.addItem(
+            "Produit endommagé → Versement Virtuel (Sans impact Caisse)",
+            "DAMAGED_VIRTUAL_VERSEMENT",
+        )
+        layout.addWidget(self.cbo_mode)
+
+        layout.addWidget(QLabel("Montant (DA) :"))
+        self.spin_amount = QDoubleSpinBox()
+        self.spin_amount.setRange(1.0, 99_999_999.0)
+        self.spin_amount.setDecimals(2)
+        self.spin_amount.setSuffix(" DA")
+        self.spin_amount.setValue(max(1.0, float(default_price or 1000.0)))
+        layout.addWidget(self.spin_amount)
+
+        layout.addWidget(QLabel("Notes (optionnel) :"))
+        self.txt_notes = QLineEdit()
+        self.txt_notes.setPlaceholderText("Observation SAV...")
+        layout.addWidget(self.txt_notes)
+
+        btns = QHBoxLayout()
+        btns.addStretch()
+        btn_cancel = QPushButton("Annuler")
+        btn_cancel.setFixedHeight(36)
+        btn_cancel.clicked.connect(self.reject)
+        btns.addWidget(btn_cancel)
+
+        btn_ok = QPushButton("Valider la Décision")
+        btn_ok.setFixedHeight(36)
+        btn_ok.setStyleSheet(
+            "background-color: #007572; color: #FFFFFF; font-weight: bold; "
+            "border: none; border-radius: 4px; padding: 0 16px;"
+        )
+        btn_ok.clicked.connect(self._on_confirm)
+        btns.addWidget(btn_ok)
+        layout.addLayout(btns)
+
+    def _on_confirm(self) -> None:
+        self.selected_mode = str(self.cbo_mode.currentData() or "GOOD_RESTOCK_CASH_REFUND")
+        self.refund_amount = float(self.spin_amount.value())
+        self.notes = self.txt_notes.text().strip()
+        self.accept()
+
+
 class ActionCellWidget(QWidget):
     """Container widget embedding stage-specific action buttons cleanly inside table cells."""
 
@@ -621,6 +712,12 @@ class SAVWorkspaceTab(QWidget):
                 )
             elif stage == "SAV_RECEIVED":
                 act_widget.add_action_button(
+                    "🔄 Reprise / Remb.",
+                    "#007572",
+                    lambda checked=False, t_copy=t: self._open_reception_resolution_dialog(t_copy),
+                    "Bon état (retour stock + caisse négative) ou endommagé (caisse négative / versement virtuel)",
+                )
+                act_widget.add_action_button(
                     "📤 Envoi Atelier",
                     "#D97706",
                     lambda checked=False, t_copy=t: self._open_dispatch_dialog(t_copy),
@@ -692,6 +789,51 @@ class SAVWorkspaceTab(QWidget):
             )
             self.refresh_tickets()
             self.tabs.setCurrentIndex(1)  # Focus on Réception tab
+
+    def _open_reception_resolution_dialog(self, ticket: Dict[str, Any]) -> None:
+        t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
+        price = float(
+            ticket.get("Purchase_Price")
+            or ticket.get("Unit_Price_TTC")
+            or ticket.get("Selling_Price_TTC")
+            or 0.0
+        )
+        dlg = SAVReceptionResolutionDialog(ticket, default_price=price, parent=self)
+        if dlg.exec() == QDialog.Accepted:
+            try:
+                if self.data_manager and hasattr(self.data_manager, "sav"):
+                    u_id = int((self.current_user or {}).get("User_ID") or 1)
+                    self.data_manager.sav.process_sav_reception_resolution(
+                        sav_ticket_id=int(t_id),
+                        admin_user_id=u_id,
+                        resolution_mode=dlg.selected_mode,
+                        refund_amount=Decimal(str(dlg.refund_amount)),
+                        cash_session_id=1,
+                        notes=dlg.notes,
+                    )
+                else:
+                    ticket["Current_Stage"] = "SAV_CLOSED_DELIVERED"
+                    ticket["Resolution_Status"] = dlg.selected_mode
+
+                if dlg.selected_mode == "GOOD_RESTOCK_CASH_REFUND":
+                    msg = (
+                        f"Appareil remis en stock (IN_STOCK) et remboursement de "
+                        f"{format_money(dlg.refund_amount)} DA enregistré en négatif dans la Caisse (-{format_money(dlg.refund_amount)} DA)."
+                    )
+                elif dlg.selected_mode == "DAMAGED_CASH_REFUND":
+                    msg = (
+                        f"Remboursement client de {format_money(dlg.refund_amount)} DA "
+                        f"enregistré en négatif dans la Caisse (-{format_money(dlg.refund_amount)} DA)."
+                    )
+                else:
+                    msg = (
+                        f"Versement virtuel de {format_money(dlg.refund_amount)} DA crédité sur le portefeuille client "
+                        f"sans impact sur la Caisse."
+                    )
+                QMessageBox.information(self, "Décision SAV Enregistrée", msg)
+                self.refresh_tickets()
+            except Exception as err:
+                QMessageBox.critical(self, "Erreur Résolution SAV", str(err))
 
     def _open_dispatch_dialog(self, ticket: Dict[str, Any]) -> None:
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
