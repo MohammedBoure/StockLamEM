@@ -87,6 +87,19 @@ class TestSAVMinimalUI(unittest.TestCase):
             text = ws.tabs.tabText(i)
             for e in emojis:
                 self.assertNotIn(e, text)
+        self.assertEqual(
+            [ws.tabs.tabText(i) for i in range(ws.tabs.count())],
+            [
+                "Toutes (0)",
+                "Réception (0)",
+                "Atelier (0)",
+                "Prêts Restitution (0)",
+                "Clôturés (0)",
+                "Irréparables (0)",
+            ],
+        )
+        # Redundant top KPI strip is hidden to eliminate duplicate information clutter
+        self.assertTrue(ws.lbl_kpi_total.parentWidget().isHidden())
         for lbl in (
             ws.lbl_kpi_total,
             ws.lbl_kpi_received,
@@ -97,6 +110,11 @@ class TestSAVMinimalUI(unittest.TestCase):
         ):
             for e in emojis:
                 self.assertNotIn(e, lbl.text())
+
+        tbl = ws._stage_tables["ALL"]
+        hdr = tbl.horizontalHeader()
+        self.assertEqual(hdr.sectionResizeMode(3), QHeaderView.Stretch)
+        self.assertEqual(hdr.sectionResizeMode(8), QHeaderView.ResizeToContents)
         ws.deleteLater()
 
 

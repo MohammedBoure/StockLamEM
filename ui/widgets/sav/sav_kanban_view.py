@@ -57,8 +57,8 @@ INPUT_STYLE = """
 
 class IrreparableDefectModal(QDialog):
     """
-    Irreparable appliance compensation dialog (آلية عدم إمكانية الإصلاح).
-    Credits the customer's virtual wallet (Versement Virtuel) with zero physical cash drawer impact.
+    Minimal irreparable appliance compensation dialog.
+    Credits the customer's virtual wallet with zero physical cash drawer impact.
     """
 
     def __init__(
@@ -70,11 +70,11 @@ class IrreparableDefectModal(QDialog):
         parent=None,
     ):
         super().__init__(parent)
-        self.setWindowTitle("Appareil Irréparable — Compensation Versement Virtuel")
-        self.setFixedSize(520, 420)
+        self.setWindowTitle("Appareil Irréparable — Avoir Client")
+        self.setFixedSize(460, 320)
         self.setStyleSheet(
             "QDialog { background-color: #FFFFFF; color: #0F172A; }"
-            "QLabel { border: none; background: transparent; color: #1E293B; }"
+            "QLabel { border: none; background: transparent; color: #334155; font-size: 12px; }"
             + INPUT_STYLE
         )
         self.compensation_confirmed = False
@@ -84,78 +84,62 @@ class IrreparableDefectModal(QDialog):
 
     def _init_ui(self, ticket_id: str, client_name: str, model: str, price: float) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(12)
 
-        lbl_header = QLabel("Constat d'Irréparabilité — Avoir Portefeuille (Versement Virtuel)")
+        lbl_header = QLabel("Avoir Portefeuille (Sans impact caisse)")
         lbl_header.setFont(QFont("Segoe UI", 11, QFont.Bold))
         lbl_header.setStyleSheet("color: #DC2626;")
         layout.addWidget(lbl_header)
 
-        details_frame = QFrame()
-        details_frame.setObjectName("DetailsCard")
-        details_frame.setStyleSheet(
-            "QFrame#DetailsCard { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; }"
-        )
-        d_layout = QVBoxLayout(details_frame)
-        d_layout.setContentsMargins(12, 10, 12, 10)
         details = QLabel(
-            f"Ticket SAV : <b>{ticket_id}</b>  |  Client : <b>{client_name}</b><br>"
-            f"Appareil : <b>{model}</b><br>"
-            f"Prix d'achat initial : <b>{price:,.2f} DA</b>"
+            f"<b>{ticket_id}</b>  |  {client_name}  |  {model}<br>"
+            f"Prix d'achat : <b>{price:,.2f} DA</b>"
         )
-        d_layout.addWidget(details)
-        layout.addWidget(details_frame)
+        details.setStyleSheet("color: #0F172A; padding: 4px 0;")
+        layout.addWidget(details)
 
-        layout.addWidget(QLabel("Barème de compensation applicable :"))
+        layout.addWidget(QLabel("Barème :"))
         self.cbo_policy = QComboBox()
+        self.cbo_policy.setFixedHeight(36)
         self.cbo_policy.addItems([
-            "Compensation intégrale 100% (Sous Garantie)",
-            "Compensation 80% (Décote vétusté 20%)",
-            "Geste commercial 50%",
+            "100% — Sous garantie",
+            "80% — Décote vétusté",
+            "50% — Geste commercial",
         ])
         self.cbo_policy.currentIndexChanged.connect(self._update_policy_amount)
         layout.addWidget(self.cbo_policy)
 
-        notice_box = QFrame()
-        notice_box.setObjectName("LiquidityNotice")
-        notice_box.setStyleSheet(
-            "QFrame#LiquidityNotice { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; }"
-        )
-        n_layout = QVBoxLayout(notice_box)
-        n_layout.setContentsMargins(12, 10, 12, 10)
-        n_title = QLabel("<b>Protection de Trésorerie Caisse (Liquidity Guardrail) :</b>")
-        n_title.setStyleSheet("color: #166534;")
-        n_layout.addWidget(n_title)
-        n_desc = QLabel(
-            "Émission d'un <b>Versement Virtuel</b> crédité sur le portefeuille client pour l'achat d'un produit de remplacement, "
-            "sans aucun décaissement espèces en Caisse (0.00 DA)."
-        )
-        n_desc.setWordWrap(True)
-        n_desc.setStyleSheet("color: #15803D;")
-        n_layout.addWidget(n_desc)
-        layout.addWidget(notice_box)
+        n_desc = QLabel("Crédité sur le portefeuille client (0.00 DA décaissé en caisse).")
+        n_desc.setStyleSheet("color: #64748B; font-size: 11.5px;")
+        layout.addWidget(n_desc)
 
-        self.lbl_credit_amt = QLabel(f"Montant crédité au portefeuille client : {price:,.2f} DA")
+        self.lbl_credit_amt = QLabel(f"Avoir : {price:,.2f} DA")
         self.lbl_credit_amt.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        self.lbl_credit_amt.setStyleSheet("color: #0E7471; margin: 4px 0;")
+        self.lbl_credit_amt.setStyleSheet("color: #0E7471;")
         layout.addWidget(self.lbl_credit_amt)
 
+        layout.addStretch()
+
         btn_box = QHBoxLayout()
+        btn_box.addStretch()
         btn_cancel = QPushButton("Annuler")
+        btn_cancel.setFixedHeight(36)
         btn_cancel.setCursor(Qt.PointingHandCursor)
         btn_cancel.setStyleSheet(
-            "QPushButton { background: #F1F5F9; color: #334155; font-weight: bold; min-height: 0px; padding: 8px 16px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton { background: #FFFFFF; color: #334155; font-weight: 600; padding: 0 16px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton:hover { background: #F1F5F9; }"
         )
         btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(btn_cancel)
 
-        btn_confirm = QPushButton("Émettre Versement Virtuel && Réformer (SCRAPPED)")
+        btn_confirm = QPushButton("Valider Avoir")
+        btn_confirm.setFixedHeight(36)
         btn_confirm.setIcon(get_duotone_icon("payment_white", 16))
         btn_confirm.setCursor(Qt.PointingHandCursor)
         btn_confirm.setStyleSheet(
-            "QPushButton { background: #0E7471; color: white; font-weight: bold; min-height: 0px; padding: 8px 16px; border: none; border-radius: 6px; }"
-            "QPushButton:hover { background: #0A5E5C; }"
+            "QPushButton { background: #0E7471; color: #FFFFFF; font-weight: 700; padding: 0 18px; border: none; border-radius: 6px; }"
+            "QPushButton:hover { background: #0A5C59; }"
         )
         btn_confirm.clicked.connect(self._confirm_credit)
         btn_box.addWidget(btn_confirm)
@@ -166,7 +150,7 @@ class IrreparableDefectModal(QDialog):
         factors = [1.0, 0.8, 0.5]
         factor = factors[idx] if 0 <= idx < len(factors) else 1.0
         self.compensation_amount = round(self._base_price * factor, 2)
-        self.lbl_credit_amt.setText(f"Montant crédité au portefeuille client : {self.compensation_amount:,.2f} DA")
+        self.lbl_credit_amt.setText(f"Avoir : {self.compensation_amount:,.2f} DA")
 
     def _confirm_credit(self) -> None:
         self.compensation_confirmed = True
@@ -757,12 +741,12 @@ class SAVKanbanWidget(QWidget):
         icon_lbl.setPixmap(get_duotone_icon("wrench_sav", 20).pixmap(QSize(20, 20)))
         tb_layout.addWidget(icon_lbl)
 
-        lbl_title = QLabel("Service Après-Vente & Réparation (SAV — Suivi 4 Étapes & Garantie)")
-        lbl_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #0F172A;")
+        lbl_title = QLabel("SAV")
+        lbl_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #0F172A;")
         tb_layout.addWidget(lbl_title)
         tb_layout.addStretch()
 
-        btn_new_sav = QPushButton("+ Réceptionner Appareil (Bon de Réparation)")
+        btn_new_sav = QPushButton("+ Réceptionner")
         btn_new_sav.setCursor(Qt.PointingHandCursor)
         btn_new_sav.setFixedHeight(34)
         btn_new_sav.setStyleSheet(
@@ -778,8 +762,8 @@ class SAVKanbanWidget(QWidget):
         btn_refresh.setCursor(Qt.PointingHandCursor)
         btn_refresh.setFixedHeight(34)
         btn_refresh.setStyleSheet(
-            "QPushButton { background: #FFFFFF; color: #0E7471; font-weight: 700; font-size: 12px; min-height: 0px; padding: 4px 12px; border: 1.5px solid #0E7471; border-radius: 6px; }"
-            "QPushButton:hover { background: #E6F4F1; }"
+            "QPushButton { background: #FFFFFF; color: #334155; font-weight: 600; font-size: 12px; min-height: 0px; padding: 4px 12px; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "QPushButton:hover { background: #F1F5F9; color: #0E7471; border-color: #0E7471; }"
         )
         btn_refresh.clicked.connect(self.refresh_tickets)
         tb_layout.addWidget(btn_refresh)
@@ -789,10 +773,10 @@ class SAVKanbanWidget(QWidget):
         board_layout = QHBoxLayout()
         board_layout.setSpacing(10)
 
-        col1 = self._create_kanban_column("1. Réception Client (Bon de Réparation)", "#0E7471")
-        col2 = self._create_kanban_column("2. Envoi Technicien / Atelier", "#D97706")
-        col3 = self._create_kanban_column("3. Retour & Diagnostic", "#0284C7")
-        col4 = self._create_kanban_column("4. Remise Client / Clôture", "#16A34A")
+        col1 = self._create_kanban_column("1. Réception", "#0E7471")
+        col2 = self._create_kanban_column("2. Atelier", "#D97706")
+        col3 = self._create_kanban_column("3. Retour", "#0284C7")
+        col4 = self._create_kanban_column("4. Clôturés", "#16A34A")
 
         self._columns = {
             "SAV_RECEIVED": col1,

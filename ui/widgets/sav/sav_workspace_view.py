@@ -48,29 +48,28 @@ logger = logging.getLogger("StockLamPlus.SAVWorkspace")
 TABLE_STYLE = """
     QTableWidget {
         background-color: #FFFFFF;
-        border: 1px solid #CBD5E1;
-        border-radius: 6px;
+        border: none;
+        border-top: 1px solid #E2E8F0;
         gridline-color: #F1F5F9;
-        font-size: 11px;
-        color: #1E293B;
+        font-size: 12px;
+        color: #0F172A;
         selection-background-color: #E6F4F1;
-        selection-color: #007572;
+        selection-color: #0E7471;
     }
     QHeaderView::section {
         background-color: #F8FAFC;
-        color: #334155;
+        color: #475569;
         font-size: 11px;
         font-weight: 700;
         border: none;
-        border-bottom: 2px solid #007572;
-        border-right: 1px solid #E2E8F0;
-        padding: 6px 8px;
+        border-bottom: 1px solid #CBD5E1;
+        padding: 6px 10px;
     }
 """
 
 
 class SAVReceptionResolutionDialog(QDialog):
-    """Modal dialog for resolving a ticket at SAV Réception (Good Restock + Cash Refund, Damaged + Cash Refund, or Damaged + Virtual Versement)."""
+    """Minimal modal dialog for resolving a ticket at SAV Réception."""
 
     def __init__(self, ticket: Dict[str, Any], default_price: float = 0.0, parent=None):
         super().__init__(parent)
@@ -79,75 +78,79 @@ class SAVReceptionResolutionDialog(QDialog):
         self.refund_amount = float(default_price or 0.0)
         self.notes = ""
 
-        self.setWindowTitle(f"Résolution Réception SAV — {ticket.get('Ticket_Number', '')}")
-        self.setMinimumWidth(460)
+        self.setWindowTitle(f"Résolution SAV — {ticket.get('Ticket_Number', '')}")
+        self.setMinimumWidth(420)
         self.setStyleSheet("""
-            QDialog { background-color: #FFFFFF; color: #1E293B; }
-            QLabel { border: none; background: transparent; color: #334155; font-size: 12px; }
+            QDialog { background-color: #FFFFFF; color: #0F172A; }
+            QLabel { border: none; background: transparent; color: #334155; font-size: 12px; font-weight: 600; }
             QComboBox, QDoubleSpinBox, QLineEdit {
                 background-color: #FFFFFF;
                 border: 1px solid #CBD5E1;
-                border-radius: 4px;
-                padding: 5px 8px;
-                color: #1E293B;
-                min-height: 28px;
+                border-radius: 6px;
+                padding: 5px 10px;
+                color: #0F172A;
+                min-height: 24px;
             }
             QComboBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
-                border: 1.5px solid #007572;
+                border: 1.5px solid #0E7471;
             }
         """)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(10)
 
         lbl_info = QLabel(
-            f"<b>Ticket :</b> {ticket.get('Ticket_Number', '')}  |  "
-            f"<b>Client :</b> {ticket.get('Client_Name', 'Client')}<br>"
-            f"<b>Appareil :</b> {ticket.get('Product_Name', '')}"
+            f"<b>{ticket.get('Ticket_Number', '')}</b>  |  "
+            f"{ticket.get('Client_Name', 'Client')}  |  "
+            f"{ticket.get('Product_Name', '')}"
         )
+        lbl_info.setStyleSheet("color: #0F172A; font-size: 12.5px; border: none; background: transparent;")
         layout.addWidget(lbl_info)
 
-        layout.addWidget(QLabel("Décision selon l'état du produit :"))
+        layout.addWidget(QLabel("Décision :"))
         self.cbo_mode = QComboBox()
-        self.cbo_mode.addItem(
-            "Produit en bon état → Retour au Stock + Remboursement Caisse (-)",
-            "GOOD_RESTOCK_CASH_REFUND",
-        )
-        self.cbo_mode.addItem(
-            "Produit endommagé → Remboursement Caisse (-)",
-            "DAMAGED_CASH_REFUND",
-        )
-        self.cbo_mode.addItem(
-            "Produit endommagé → Versement Virtuel (Sans impact Caisse)",
-            "DAMAGED_VIRTUAL_VERSEMENT",
-        )
+        self.cbo_mode.setFixedHeight(36)
+        self.cbo_mode.addItem("Bon état → Stock + Remb. Caisse", "GOOD_RESTOCK_CASH_REFUND")
+        self.cbo_mode.addItem("Endommagé → Remb. Caisse", "DAMAGED_CASH_REFUND")
+        self.cbo_mode.addItem("Endommagé → Avoir Portefeuille", "DAMAGED_VIRTUAL_VERSEMENT")
         layout.addWidget(self.cbo_mode)
 
         layout.addWidget(QLabel("Montant (DA) :"))
         self.spin_amount = QDoubleSpinBox()
+        self.spin_amount.setFixedHeight(36)
         self.spin_amount.setRange(1.0, 99_999_999.0)
         self.spin_amount.setDecimals(2)
         self.spin_amount.setSuffix(" DA")
         self.spin_amount.setValue(max(1.0, float(default_price or 1000.0)))
         layout.addWidget(self.spin_amount)
 
-        layout.addWidget(QLabel("Notes (optionnel) :"))
+        layout.addWidget(QLabel("Note :"))
         self.txt_notes = QLineEdit()
-        self.txt_notes.setPlaceholderText("Observation SAV...")
+        self.txt_notes.setFixedHeight(36)
+        self.txt_notes.setPlaceholderText("Optionnel...")
         layout.addWidget(self.txt_notes)
 
         btns = QHBoxLayout()
+        btns.setContentsMargins(0, 6, 0, 0)
         btns.addStretch()
         btn_cancel = QPushButton("Annuler")
         btn_cancel.setFixedHeight(36)
+        btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.setStyleSheet(
+            "QPushButton { background: #FFFFFF; color: #334155; font-weight: 600; "
+            "border: 1px solid #CBD5E1; border-radius: 6px; padding: 0 16px; }"
+            "QPushButton:hover { background: #F1F5F9; }"
+        )
         btn_cancel.clicked.connect(self.reject)
         btns.addWidget(btn_cancel)
 
-        btn_ok = QPushButton("Valider la Décision")
+        btn_ok = QPushButton("Valider")
         btn_ok.setFixedHeight(36)
+        btn_ok.setCursor(Qt.PointingHandCursor)
         btn_ok.setStyleSheet(
-            "background-color: #007572; color: #FFFFFF; font-weight: bold; "
-            "border: none; border-radius: 4px; padding: 0 16px;"
+            "QPushButton { background-color: #0E7471; color: #FFFFFF; font-weight: 700; "
+            "border: none; border-radius: 6px; padding: 0 18px; }"
+            "QPushButton:hover { background-color: #0A5C59; }"
         )
         btn_ok.clicked.connect(self._on_confirm)
         btns.addWidget(btn_ok)
@@ -236,35 +239,30 @@ class SAVWorkspaceTab(QWidget):
         self.setObjectName("SAVWorkspaceTabRoot")
         self.setStyleSheet("""
             QWidget#SAVWorkspaceTabRoot {
-                background-color: #F4F6F8;
+                background-color: #FFFFFF;
             }
             QTabWidget#SAVTabWidget::pane {
-                border: 1px solid #CBD5E1;
-                border-radius: 6px;
+                border: none;
+                border-top: 1px solid #E2E8F0;
                 background-color: #FFFFFF;
-                top: -1px;
             }
             QTabBar#SAVTabBar::tab {
-                background-color: #E2E8F0;
-                color: #475569;
+                background: transparent;
+                color: #64748B;
                 font-weight: 700;
-                font-size: 11px;
-                padding: 6px 14px;
+                font-size: 12px;
+                padding: 8px 14px;
                 margin-right: 4px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                border: 1px solid #CBD5E1;
-                border-bottom: none;
-                min-height: 26px;
+                border: none;
+                border-bottom: 2px solid transparent;
+                min-height: 24px;
             }
             QTabBar#SAVTabBar::tab:selected {
-                background-color: #007572;
-                color: #FFFFFF;
-                border-color: #007572;
+                color: #0E7471;
+                border-bottom: 2px solid #0E7471;
             }
             QTabBar#SAVTabBar::tab:hover:!selected {
-                background-color: #CBD5E1;
-                color: #1E293B;
+                color: #0F172A;
             }
         """)
 
@@ -280,36 +278,38 @@ class SAVWorkspaceTab(QWidget):
 
     def _init_ui(self) -> None:
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(12, 12, 12, 12)
-        root_layout.setSpacing(10)
+        root_layout.setContentsMargins(16, 12, 16, 12)
+        root_layout.setSpacing(6)
 
-        # 1. Top Header & Action Console
+        # 1. Flat Header Bar (minimal text, zero outer card clutter)
         top_bar = self._create_top_header()
         root_layout.addWidget(top_bar)
 
-        # 2. Global KPI Summary Badges Bar
+        # Hidden compatibility KPI store (counts already shown directly in tab buttons)
         kpi_bar = self._create_kpi_bar()
+        kpi_bar.hide()
         root_layout.addWidget(kpi_bar)
 
-        # 3. Main Multi-Tab Widget (One dedicated tab per request status)
+        # 2. Clean Underline Tabs (one dedicated tab per stage)
         self.tabs = QTabWidget()
         self.tabs.setObjectName("SAVTabWidget")
+        self.tabs.setDocumentMode(True)
         self.tabs.tabBar().setObjectName("SAVTabBar")
-        self.tabs.setIconSize(QSize(16, 16))
+        self.tabs.setIconSize(QSize(15, 15))
 
-        self.tab_all = self._create_stage_tab_widget(None, "Toutes les Demandes SAV")
-        self.tab_received = self._create_stage_tab_widget("SAV_RECEIVED", "1. Réception Client (Dépôt)")
-        self.tab_sent_to_tech = self._create_stage_tab_widget("SAV_SENT_TO_TECH", "2. En Atelier / Réparateur")
-        self.tab_returned = self._create_stage_tab_widget("SAV_RETURNED_FROM_TECH", "3. Prêt pour Restitution")
-        self.tab_closed = self._create_stage_tab_widget("SAV_CLOSED_DELIVERED", "4. Clôturés & Livrés")
-        self.tab_irreparable = self._create_stage_tab_widget("IRREPARABLE", "5. Appareils Irréparables")
+        self.tab_all = self._create_stage_tab_widget(None, "Toutes")
+        self.tab_received = self._create_stage_tab_widget("SAV_RECEIVED", "Réception")
+        self.tab_sent_to_tech = self._create_stage_tab_widget("SAV_SENT_TO_TECH", "Atelier")
+        self.tab_returned = self._create_stage_tab_widget("SAV_RETURNED_FROM_TECH", "Prêts Restitution")
+        self.tab_closed = self._create_stage_tab_widget("SAV_CLOSED_DELIVERED", "Clôturés")
+        self.tab_irreparable = self._create_stage_tab_widget("IRREPARABLE", "Irréparables")
 
-        self.tabs.addTab(self.tab_all, get_duotone_icon("wrench_sav", 16), "Toutes les Demandes")
-        self.tabs.addTab(self.tab_received, get_duotone_icon("barcode_scan", 16), "1. Réception")
-        self.tabs.addTab(self.tab_sent_to_tech, get_duotone_icon("services", 16), "2. En Atelier")
-        self.tabs.addTab(self.tab_returned, get_duotone_icon("check_circle", 16), "3. Prêts Restitution")
-        self.tabs.addTab(self.tab_closed, get_duotone_icon("truck_delivery", 16), "4. Clôturés & Livrés")
-        self.tabs.addTab(self.tab_irreparable, get_duotone_icon("alert_warning", 16), "5. Irréparables")
+        self.tabs.addTab(self.tab_all, get_duotone_icon("wrench_sav", 15), "Toutes")
+        self.tabs.addTab(self.tab_received, get_duotone_icon("barcode_scan", 15), "Réception")
+        self.tabs.addTab(self.tab_sent_to_tech, get_duotone_icon("services", 15), "Atelier")
+        self.tabs.addTab(self.tab_returned, get_duotone_icon("check_circle", 15), "Prêts Restitution")
+        self.tabs.addTab(self.tab_closed, get_duotone_icon("truck_delivery", 15), "Clôturés")
+        self.tabs.addTab(self.tab_irreparable, get_duotone_icon("alert_warning", 15), "Irréparables")
 
         sav_tab_perms = [
             (0, "tab_sav_all"),
@@ -333,112 +333,91 @@ class SAVWorkspaceTab(QWidget):
         root_layout.addWidget(self.tabs, 1)
 
     def _create_top_header(self) -> QWidget:
-        header_card = QFrame()
-        header_card.setObjectName("SAVHeaderCard")
-        header_card.setFixedHeight(52)
-        header_card.setStyleSheet("""
-            QFrame#SAVHeaderCard {
-                background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 8px;
-            }
-            QLabel {
-                border: none;
-                background: transparent;
-            }
-        """)
-        h_layout = QHBoxLayout(header_card)
-        h_layout.setContentsMargins(14, 0, 14, 0)
+        header_bar = QWidget()
+        header_bar.setObjectName("SAVHeaderBar")
+        header_bar.setFixedHeight(44)
+        h_layout = QHBoxLayout(header_bar)
+        h_layout.setContentsMargins(0, 0, 0, 0)
         h_layout.setSpacing(10)
 
         ico = QLabel()
-        ico.setPixmap(get_duotone_icon("wrench_sav", 22).pixmap(22, 22))
+        ico.setPixmap(get_duotone_icon("wrench_sav", 20).pixmap(20, 20))
         h_layout.addWidget(ico)
 
-        lbl_title = QLabel("Service Après-Vente (SAV)")
-        lbl_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #0F172A;")
+        lbl_title = QLabel("SAV")
+        lbl_title.setStyleSheet("font-size: 16px; font-weight: 800; color: #0F172A;")
         h_layout.addWidget(lbl_title)
 
         h_layout.addStretch()
 
-        # Instant search across all tickets
         self.txt_global_search = QLineEdit()
-        self.txt_global_search.setPlaceholderText("Rechercher ticket, N° série, client, appareil...")
+        self.txt_global_search.setPlaceholderText("Rechercher...")
         self.txt_global_search.setClearButtonEnabled(True)
         self.txt_global_search.setFixedHeight(34)
-        self.txt_global_search.setFixedWidth(260)
+        self.txt_global_search.setFixedWidth(240)
         self.txt_global_search.setStyleSheet("""
             QLineEdit {
                 background-color: #FFFFFF;
-                border: 1.5px solid #CBD5E1;
+                border: 1px solid #CBD5E1;
                 border-radius: 6px;
                 padding: 2px 10px;
-                font-size: 11px;
-                font-weight: 600;
-                color: #1E293B;
+                font-size: 12px;
+                color: #0F172A;
             }
             QLineEdit:focus {
-                border-color: #007572;
+                border: 1.5px solid #0E7471;
             }
         """)
         self.txt_global_search.textChanged.connect(self._on_search_changed)
         h_layout.addWidget(self.txt_global_search)
 
-        # Primary Action: Check-in defective product
-        btn_intake = QPushButton("+ Réceptionner Appareil (Bon de Réparation)")
-        btn_intake.setIcon(get_duotone_icon("wrench_sav", 16))
-        btn_intake.setIconSize(QSize(16, 16))
-        btn_intake.setFixedHeight(36)
+        btn_intake = QPushButton("+ Réceptionner")
+        btn_intake.setIcon(get_duotone_icon("wrench_sav", 15))
+        btn_intake.setIconSize(QSize(15, 15))
+        btn_intake.setFixedHeight(34)
         btn_intake.setStyleSheet("""
             QPushButton {
-                background-color: #007572;
+                background-color: #0E7471;
                 color: #FFFFFF;
                 font-weight: 700;
-                font-size: 11.5px;
+                font-size: 12px;
                 border: none;
                 border-radius: 6px;
                 padding: 0 16px;
             }
-            QPushButton:hover {
-                background-color: #005A57;
-            }
-            QPushButton:pressed {
-                background-color: #003D3A;
-            }
-            QPushButton:disabled {
-                background-color: #CBD5E1;
-                color: #94A3B8;
-            }
+            QPushButton:hover { background-color: #0A5C59; }
+            QPushButton:disabled { background-color: #CBD5E1; color: #94A3B8; }
         """)
         btn_intake.setCursor(Qt.PointingHandCursor)
         btn_intake.clicked.connect(self._open_reception_dialog)
         self.btn_intake = btn_intake
         h_layout.addWidget(btn_intake)
 
-        # Refresh button
         btn_refresh = QPushButton("Actualiser")
         btn_refresh.setIcon(get_duotone_icon("refresh", 14))
         btn_refresh.setIconSize(QSize(14, 14))
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setFixedHeight(36)
+        btn_refresh.setFixedHeight(34)
         btn_refresh.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF;
-                color: #007572;
-                font-weight: 700;
-                font-size: 11.5px;
-                border: 1.5px solid #007572;
+                color: #334155;
+                font-weight: 600;
+                font-size: 12px;
+                border: 1px solid #CBD5E1;
                 border-radius: 6px;
                 padding: 0 12px;
             }
             QPushButton:hover {
-                background-color: #E6F4F1;
+                background-color: #F1F5F9;
+                color: #0E7471;
+                border-color: #0E7471;
             }
         """)
         btn_refresh.clicked.connect(self.refresh_tickets)
         h_layout.addWidget(btn_refresh)
 
-        return header_card
+        return header_bar
 
     def _create_kpi_bar(self) -> QWidget:
         kpi_frame = QFrame()
@@ -484,28 +463,28 @@ class SAVWorkspaceTab(QWidget):
     def _create_stage_tab_widget(self, stage_filter: Optional[str], stage_title: str) -> QWidget:
         container = QWidget()
         c_layout = QVBoxLayout(container)
-        c_layout.setContentsMargins(10, 10, 10, 10)
-        c_layout.setSpacing(8)
+        c_layout.setContentsMargins(0, 6, 0, 0)
+        c_layout.setSpacing(0)
 
         # Table configuration
         table = QTableWidget(0, 10)
         table.setHorizontalHeaderLabels([
             "N° Ticket",
-            "Code Bon",
+            "Bon",
             "Client",
-            "Désignation Produit",
-            "N° de Série",
+            "Produit",
+            "N° Série",
             "Garantie",
-            "Symptôme / Panne",
-            "Technicien / Atelier",
-            "Date Réception",
+            "Panne",
+            "Atelier",
+            "Date",
             "Actions",
         ])
         table.setStyleSheet(TABLE_STYLE)
         table.verticalHeader().setVisible(False)
-        table.verticalHeader().setDefaultSectionSize(44)
+        table.verticalHeader().setDefaultSectionSize(42)
         table.horizontalHeader().setFixedHeight(36)
-        table.horizontalHeader().setMinimumSectionSize(40)
+        table.horizontalHeader().setMinimumSectionSize(80)
         table.setShowGrid(True)
         table.setAlternatingRowColors(True)
         table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -516,26 +495,15 @@ class SAVWorkspaceTab(QWidget):
         table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
 
         h = table.horizontalHeader()
-        h.setSectionResizeMode(0, QHeaderView.Interactive)
-        table.setColumnWidth(0, 120)  # Ticket Number
-        h.setSectionResizeMode(1, QHeaderView.Interactive)
-        table.setColumnWidth(1, 120)  # Bon Barcode
+        for col in (0, 1, 4, 5, 7, 8):
+            h.setSectionResizeMode(col, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(2, QHeaderView.Interactive)
-        table.setColumnWidth(2, 140)  # Client
-        h.setSectionResizeMode(3, QHeaderView.Interactive)
-        table.setColumnWidth(3, 200)  # Product
-        h.setSectionResizeMode(4, QHeaderView.Interactive)
-        table.setColumnWidth(4, 130)  # Serial Number
-        h.setSectionResizeMode(5, QHeaderView.Fixed)
-        table.setColumnWidth(5, 105)  # Warranty badge
+        table.setColumnWidth(2, 135)  # Client
+        h.setSectionResizeMode(3, QHeaderView.Stretch)  # Produit fills available space
         h.setSectionResizeMode(6, QHeaderView.Interactive)
-        table.setColumnWidth(6, 180)  # Symptom
-        h.setSectionResizeMode(7, QHeaderView.Interactive)
-        table.setColumnWidth(7, 130)  # Technician
-        h.setSectionResizeMode(8, QHeaderView.Fixed)
-        table.setColumnWidth(8, 100)  # Date
+        table.setColumnWidth(6, 165)  # Panne
         h.setSectionResizeMode(9, QHeaderView.Fixed)
-        table.setColumnWidth(9, 210)  # Actions
+        table.setColumnWidth(9, 220)  # Actions
 
         c_layout.addWidget(table, 1)
 
@@ -614,14 +582,14 @@ class SAVWorkspaceTab(QWidget):
         self.lbl_kpi_closed.setText(f"Clôturés : {counts.get('SAV_CLOSED_DELIVERED', 0)}")
         self.lbl_kpi_irreparable.setText(f"Irréparables : {counts.get('IRREPARABLE', 0)}")
 
-        # Update Tab Titles with Live Badges
+        # Update Tab Titles with Live Badges (clean, minimal wording)
         if hasattr(self, "tabs"):
-            self.tabs.setTabText(0, f"Toutes les Demandes ({counts.get('ALL', 0)})")
-            self.tabs.setTabText(1, f"1. Réception ({counts.get('SAV_RECEIVED', 0)})")
-            self.tabs.setTabText(2, f"2. En Atelier ({counts.get('SAV_SENT_TO_TECH', 0)})")
-            self.tabs.setTabText(3, f"3. Prêts Restitution ({counts.get('SAV_RETURNED_FROM_TECH', 0)})")
-            self.tabs.setTabText(4, f"4. Clôturés ({counts.get('SAV_CLOSED_DELIVERED', 0)})")
-            self.tabs.setTabText(5, f"5. Irréparables ({counts.get('IRREPARABLE', 0)})")
+            self.tabs.setTabText(0, f"Toutes ({counts.get('ALL', 0)})")
+            self.tabs.setTabText(1, f"Réception ({counts.get('SAV_RECEIVED', 0)})")
+            self.tabs.setTabText(2, f"Atelier ({counts.get('SAV_SENT_TO_TECH', 0)})")
+            self.tabs.setTabText(3, f"Prêts Restitution ({counts.get('SAV_RETURNED_FROM_TECH', 0)})")
+            self.tabs.setTabText(4, f"Clôturés ({counts.get('SAV_CLOSED_DELIVERED', 0)})")
+            self.tabs.setTabText(5, f"Irréparables ({counts.get('IRREPARABLE', 0)})")
 
     def _populate_table(self, table: QTableWidget, tickets: List[Dict[str, Any]], stage_context: str) -> None:
         table.setRowCount(0)
@@ -697,62 +665,62 @@ class SAVWorkspaceTab(QWidget):
 
             if is_irrep:
                 act_widget.add_action_button(
-                    "Avoir Portefeuille",
+                    "Avoir",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._show_ticket_details(t_copy),
-                    "Afficher les détails de la compensation portefeuille",
+                    "Détails de la compensation portefeuille",
                 )
             elif stage == "SAV_RECEIVED":
                 act_widget.add_action_button(
-                    "Reprise / Remb.",
+                    "Reprise",
                     "#007572",
                     lambda checked=False, t_copy=t: self._open_reception_resolution_dialog(t_copy),
-                    "Bon état (retour stock + caisse négative) ou endommagé (caisse négative / versement virtuel)",
+                    "Retour stock ou remboursement / avoir",
                 )
                 act_widget.add_action_button(
-                    "Envoi Atelier",
+                    "Atelier",
                     "#D97706",
                     lambda checked=False, t_copy=t: self._open_dispatch_dialog(t_copy),
-                    "Affecter et envoyer l'appareil au technicien ou atelier",
+                    "Envoyer au technicien / atelier",
                 )
                 act_widget.add_action_button(
                     "Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
-                    "Constater l'irréparabilité et émettre un avoir portefeuille",
+                    "Déclarer irréparable",
                 )
             elif stage == "SAV_SENT_TO_TECH":
                 act_widget.add_action_button(
-                    "Retour Réparation",
+                    "Retour",
                     "#0284C7",
                     lambda checked=False, t_copy=t: self._open_return_dialog(t_copy),
-                    "Enregistrer le retour de l'appareil réparé",
+                    "Enregistrer le retour d'atelier",
                 )
                 act_widget.add_action_button(
                     "Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
-                    "Appareil non réparable",
+                    "Déclarer irréparable",
                 )
             elif stage == "SAV_RETURNED_FROM_TECH":
                 act_widget.add_action_button(
-                    "Remise au Client",
+                    "Remettre",
                     "#16A34A",
                     lambda checked=False, t_copy=t: self._deliver_to_client(t_copy),
-                    "Restituer l'appareil réparé au client et clôturer le ticket",
+                    "Remettre au client et clôturer",
                 )
                 act_widget.add_action_button(
                     "Irréparable",
                     "#DC2626",
                     lambda checked=False, t_copy=t: self._declare_irreparable(t_copy),
-                    "Constat irréparable avant remise",
+                    "Déclarer irréparable",
                 )
             elif stage == "SAV_CLOSED_DELIVERED":
                 act_widget.add_action_button(
-                    "Fiche Clôture",
+                    "Détails",
                     "#16A34A",
                     lambda checked=False, t_copy=t: self._show_ticket_details(t_copy),
-                    "Consulter l'historique de clôture du ticket",
+                    "Fiche ticket",
                 )
 
             # Global "Bon" receipt print button available on all active cards
@@ -831,10 +799,10 @@ class SAVWorkspaceTab(QWidget):
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
         tech_name, ok = QInputDialog.getText(
             self,
-            "Envoi au Technicien",
-            f"Ticket {ticket.get('Ticket_Number')} :\nNom du réparateur / Atelier technique :",
+            "Envoi Atelier",
+            f"{ticket.get('Ticket_Number')} — Atelier / Technicien :",
             QLineEdit.Normal,
-            "Atelier Central Alger",
+            "",
         )
         if not ok or not tech_name.strip():
             return
@@ -866,10 +834,10 @@ class SAVWorkspaceTab(QWidget):
         t_id = ticket.get("SAV_Ticket_ID") or ticket.get("Ticket_ID") or ticket.get("ticket_id")
         diag, ok = QInputDialog.getText(
             self,
-            "Retour de Réparation",
-            f"Ticket {ticket.get('Ticket_Number')} :\nDiagnostic & Travaux effectués :",
+            "Retour Atelier",
+            f"{ticket.get('Ticket_Number')} — Diagnostic :",
             QLineEdit.Normal,
-            "Réparation effectuée avec succès — Tests fonctionnels validés",
+            "",
         )
         if not ok or not diag.strip():
             return
