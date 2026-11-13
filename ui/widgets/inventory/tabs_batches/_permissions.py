@@ -17,7 +17,8 @@ def apply_role_permissions(self, role=None):
         # استخدام الدالة الديناميكية للتحقق من صلاحية "tab_inv_financials"
         hide_fin = not _can_view_financials(self)
 
-    for col in (3, 4, 5, 6, 19, 20, 21):
+    self.table.setColumnHidden(3, True)  # Prix U. HT toujours masqué
+    for col in (4, 5, 6, 19, 20, 21):
         self.table.setColumnHidden(col, hide_fin)
 
     if hasattr(self, 'lbl_total_value'):

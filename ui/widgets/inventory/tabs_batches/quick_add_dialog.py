@@ -204,7 +204,10 @@ class QuickAddDialog(QDialog):
         lay_qty.addWidget(self.inp_qty)
         lay_qty.addWidget(QLabel("Lot * :"))
         lay_qty.addWidget(self.inp_lot)
-        lay_qty.addWidget(QLabel("Exp * :"))
+        lbl_exp = QLabel("Exp * :")
+        lbl_exp.setVisible(False)
+        self.inp_expiry.setVisible(False)
+        lay_qty.addWidget(lbl_exp)
         lay_qty.addWidget(self.inp_expiry)
         lay_qty.addWidget(QLabel("Code Barre Ext :"))
         lay_qty.addWidget(self.inp_barcode)
@@ -237,13 +240,18 @@ class QuickAddDialog(QDialog):
         self.cb_remise_type.addItems(["%", "DA"])
 
         self.chk_tva = QCheckBox("TVA 19%")
+        self.chk_tva.setChecked(False)
+        self.chk_tva.setVisible(False)
 
-        self.lbl_item_ttc = QLabel("TTC : 0.00 DA")
+        self.lbl_item_ttc = QLabel("Total : 0.00 DA")
         self.lbl_item_ttc.setStyleSheet("color: #e74c3c; font-weight: bold; font-size: 14px;")
 
-        lay_achat.addWidget(QLabel("Prix HT:"), 0, 0)
+        lay_achat.addWidget(QLabel("Prix d'Achat :"), 0, 0)
         lay_achat.addWidget(self.inp_price, 0, 1)
-        lay_achat.addWidget(QLabel("Prix TTC:"), 0, 2)
+        lbl_prix_ttc = QLabel("Prix TTC:")
+        lbl_prix_ttc.setVisible(False)
+        self.inp_price_ttc.setVisible(False)
+        lay_achat.addWidget(lbl_prix_ttc, 0, 2)
         lay_achat.addWidget(self.inp_price_ttc, 0, 3)
 
         lay_achat.addWidget(QLabel("Remise:"), 1, 0)
@@ -276,18 +284,21 @@ class QuickAddDialog(QDialog):
             sp.setGroupSeparatorShown(True)
 
         self.chk_sell_tva = QCheckBox("TVA Vente 19%")
+        self.chk_sell_tva.setChecked(False)
+        self.chk_sell_tva.setVisible(False)
 
-        self.lbl_sell_ttc = QLabel("TTC Vente : 0.00 DA")
+        self.lbl_sell_ttc = QLabel("Prix Vente : 0.00 DA")
         self.lbl_sell_ttc.setStyleSheet("color: #27ae60; font-weight: bold; font-size: 14px;")
+        self.lbl_sell_ttc.setVisible(False)
 
-        lay_vente.addWidget(QLabel("Vente 1 HT:"), 0, 0)
+        lay_vente.addWidget(QLabel("Vente 1 :"), 0, 0)
         lay_vente.addWidget(self.inp_sell_price, 0, 1)
-        lay_vente.addWidget(QLabel("Vente 2 HT:"), 0, 2)
+        lay_vente.addWidget(QLabel("Vente 2 :"), 0, 2)
         lay_vente.addWidget(self.inp_sell_price_2, 0, 3)
 
-        lay_vente.addWidget(QLabel("Vente 3 HT:"), 1, 0)
+        lay_vente.addWidget(QLabel("Vente 3 :"), 1, 0)
         lay_vente.addWidget(self.inp_sell_price_3, 1, 1)
-        lay_vente.addWidget(QLabel("Vente 4 HT:"), 1, 2)
+        lay_vente.addWidget(QLabel("Vente 4 :"), 1, 2)
         lay_vente.addWidget(self.inp_sell_price_4, 1, 3)
 
         lay_vente.addWidget(self.chk_sell_tva, 2, 0, 1, 2)
@@ -493,8 +504,8 @@ class QuickAddDialog(QDialog):
         if p.get('Package_Unit_Name') and p.get('Units_per_Package'):
             self.cb_unit_type.addItem(p['Package_Unit_Name'], int(p['Units_per_Package']))
 
-        self.chk_tva.setChecked(bool(float(p.get('Tax_Rate_Percent') or 0) > 0))
-        self.chk_sell_tva.setChecked(bool(float(p.get('Selling_TVA_Percent') or 0) > 0))
+        self.chk_tva.setChecked(False)
+        self.chk_sell_tva.setChecked(False)
 
         self.inp_sell_price.setValue(float(p.get('Default_Selling_Price_HT', 0)))
 
@@ -617,16 +628,16 @@ class QuickAddDialog(QDialog):
             'Color_Finish': chosen_color,
             'Quantity': effective_qty,
             'Lot_Number': self.inp_lot.text().strip(),
-            'Expiry_Date': self.inp_expiry.date().toPyDate(),
+            'Expiry_Date': None,
             'Unit_Price_HT': self.inp_price.value(),
             'Discount_Percent': discount_pct,
-            'Tax_Rate_Percent': 19.0 if self.chk_tva.isChecked() else 0.0,
+            'Tax_Rate_Percent': 0.0,
 
             'Selling_Price_HT': self.inp_sell_price.value(),
             'Selling_Price_HT_2': self.inp_sell_price_2.value(),
             'Selling_Price_HT_3': self.inp_sell_price_3.value(),
             'Selling_Price_HT_4': self.inp_sell_price_4.value(),
-            'Selling_TVA_Percent': 19.0 if self.chk_sell_tva.isChecked() else 0.0,
+            'Selling_TVA_Percent': 0.0,
 
             'Batch_Note': self.inp_observation.text().strip(),
             'External_Barcode': self.inp_barcode.text().strip(),

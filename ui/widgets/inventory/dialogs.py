@@ -317,7 +317,6 @@ class BatchDetailsDialog(BaseDialog):
                 elif (ed - today).days <= 30: color_exp = "#e67e22"
             except: pass
             
-        add_row(layout_stock, "Date Expiration", exp_date, True, color_exp)
         add_row(layout_stock, "Date Entrée (Système)", str(self.batch.get('Created_At', '---'))[:16])
         main_layout.addWidget(grp_stock)
 
@@ -328,14 +327,10 @@ class BatchDetailsDialog(BaseDialog):
         
         price_u = float(self.batch.get('Unit_Price_Received', 0))
         qty_curr = quantity_to_int(self.batch.get('Quantity_Current', 0))
-        tva_pct = float(self.batch.get('Tax_Rate_Percent', 0))
-        
-        tva_amount = price_u * (tva_pct / 100)
-        total_val_ttc = (price_u + tva_amount) * qty_curr
+        total_val = price_u * qty_curr
 
-        add_row(layout_fin, "Prix Unitaire (HT)", format_money(price_u, 'DA'))
-        add_row(layout_fin, "TVA", f"{format_money(tva_amount, 'DA')} ({tva_pct}%)")
-        add_row(layout_fin, "Valeur Totale (Stock Actuel)", f"{format_money(total_val_ttc, 'DA')} (TTC)", True, "#2c3e50")
+        add_row(layout_fin, "Prix d'Achat", format_money(price_u, 'DA'))
+        add_row(layout_fin, "Valeur Totale (Stock Actuel)", format_money(total_val, 'DA'), True, "#2c3e50")
 
         layout_fin.addRow(QLabel("----------"), QLabel(""))
         add_row(layout_fin, "Réf. Bon de Commande (PO)", self.batch.get('PO_ID', '---'))
@@ -1325,7 +1320,7 @@ class ModifySalesPricesDialog(QDialog):
         form_layout.setSpacing(10)
 
         # Prix Vente 1 (Principal)
-        form_layout.addWidget(QLabel("<b>Prix Vente 1 (HT) :</b>"), 0, 0)
+        form_layout.addWidget(QLabel("<b>Prix Vente 1 :</b>"), 0, 0)
         self.spin_p1 = QDoubleSpinBox()
         self.spin_p1.setRange(0.0, 99999999.99)
         self.spin_p1.setDecimals(2)
@@ -1338,17 +1333,20 @@ class ModifySalesPricesDialog(QDialog):
         self.lbl_margin.setStyleSheet("font-size: 11px; font-weight: bold;")
         form_layout.addWidget(self.lbl_margin, 0, 2)
 
-        # TVA Vente
-        form_layout.addWidget(QLabel("<b>TVA Vente :</b>"), 1, 0)
+        # TVA Vente (masquée — 0%)
+        lbl_tva_v = QLabel("<b>TVA Vente :</b>")
+        lbl_tva_v.setVisible(False)
+        form_layout.addWidget(lbl_tva_v, 1, 0)
         self.spin_tva = QDoubleSpinBox()
         self.spin_tva.setRange(0.0, 100.0)
         self.spin_tva.setDecimals(2)
-        self.spin_tva.setValue(float(self.batch_data.get('Selling_TVA_Percent', 0.0) or 0.0))
+        self.spin_tva.setValue(0.0)
         self.spin_tva.setSuffix(" %")
+        self.spin_tva.setVisible(False)
         form_layout.addWidget(self.spin_tva, 1, 1)
 
         # Prix Vente 2
-        form_layout.addWidget(QLabel("Prix Vente 2 (HT) :"), 2, 0)
+        form_layout.addWidget(QLabel("Prix Vente 2 :"), 2, 0)
         self.spin_p2 = QDoubleSpinBox()
         self.spin_p2.setRange(0.0, 99999999.99)
         self.spin_p2.setDecimals(2)

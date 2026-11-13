@@ -26,7 +26,7 @@ remis يجب أن تكون من أجل كل منتوج ومن أجل bon بال�
 
 العميل يحتاج إلى إنشاء BL متصل بـ fournisseur مباشرة وملء المعلومات بدون Bon de commande.
 
-# 5 : medium
+# 5 [COMPLETED]: medium
 المرور عبر الزر الأول # Stock & Magasin للوصول إلى ### 1. Stock Actuel:
 
 لا داعي للـ TVA.

@@ -159,6 +159,7 @@ def _build_left_filters(self):
     self.combo_automate.setMinimumWidth(125)
     self.populate_automates()
     self.combo_automate.currentIndexChanged.connect(self.apply_filters_local)
+    self.combo_automate.setVisible(False)
 
     self.combo_supplier = QComboBox()
     self.combo_supplier.addItem("🚚 Fournisseurs", None)
@@ -169,8 +170,7 @@ def _build_left_filters(self):
     self.combo_status = QComboBox()
     self.combo_status.addItems([
         "📋 Tous (>0)", "✅ En Stock", "⚠️ Faible (Seuil)",
-        "❌ Périmés", "🕒 Bientôt Exp.", "⭕ Épuisé (Qté=0)",
-        "🗑️ Rebuts / Pertes"
+        "⭕ Épuisé (Qté=0)", "🗑️ Rebuts / Pertes"
     ])
     self.combo_status.setMinimumWidth(130)
     self.combo_status.setCurrentIndex(1)
@@ -196,7 +196,7 @@ def _build_right_filters(self):
     right_layout = QVBoxLayout()
     right_layout.setSpacing(5)
 
-    # فلتر تاريخ الانتهاء
+    # فلتر تاريخ الانتهاء (مخفي حسب طلب العميل)
     exp_layout = QHBoxLayout()
     self.chk_date_filter = QCheckBox("Date Expiration:")
     self.chk_date_filter.setStyleSheet("font-weight: bold; color: #c0392b;")
@@ -215,11 +215,15 @@ def _build_right_filters(self):
     self.date_to.setFixedWidth(135)
     self.date_to.dateChanged.connect(self.apply_filters_local)
 
+    lbl_exp_du = QLabel("Du:")
+    lbl_exp_au = QLabel("Au:")
+    for w in (self.chk_date_filter, lbl_exp_du, self.date_from, lbl_exp_au, self.date_to):
+        w.setVisible(False)
     exp_layout.addWidget(self.chk_date_filter)
     exp_layout.addStretch()
-    exp_layout.addWidget(QLabel("Du:"))
+    exp_layout.addWidget(lbl_exp_du)
     exp_layout.addWidget(self.date_from)
-    exp_layout.addWidget(QLabel("Au:"))
+    exp_layout.addWidget(lbl_exp_au)
     exp_layout.addWidget(self.date_to)
 
     # فلتر تاريخ الدخول
@@ -295,7 +299,7 @@ def _build_table(self):
 
     # ترتيب الأعمدة: الأولوية الأولى للمنتج والمخزون والوحدة والأسعار الأساسية (HT, TTC, Valeur, Vente 1)، تليها بيانات اللوط والتصنيفات، ثم أسعار البيع 2 و 3 و 4 قبل الشكاوى
     cols = [
-        "Désignation Produit", "Stock (Actuel)", "Unité", "Prix U. HT", "Prix U. TTC",
+        "Désignation Produit", "Stock (Actuel)", "Unité", "Prix U. HT", "Prix d'Achat",
         "Valeur (DA)", "Prix Vente 1", "N° Lot", "Date Exp.", "Qté Init.",
         "Code-Barres", "Code Ext", "Emplacement", "Famille", "Marque",
         "Automate", "Fournisseur", "Ref PO", "Date Entrée",
@@ -304,6 +308,9 @@ def _build_table(self):
     ]
     self.table.setColumnCount(len(cols))
     self.table.setHorizontalHeaderLabels(cols)
+    self.table.setColumnHidden(3, True)   # Prix U. HT non requis
+    self.table.setColumnHidden(8, True)   # Date Exp. non requise
+    self.table.setColumnHidden(15, True)  # Automate non requis
 
     header = self.table.horizontalHeader()
     for c in range(len(cols)):
