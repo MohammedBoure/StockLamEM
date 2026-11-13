@@ -888,6 +888,7 @@ class BondLifecycleManager:
         amount_paid_cash: Decimal,
         amount_paid_card: Decimal = Decimal("0.00"),
         amount_paid_wallet: Decimal = Decimal("0.00"),
+        payment_method: str = "Cash",
     ) -> Dict[str, Any]:
         """
         Validates a Bon C (بيع مباشر) at the Caisse Desk.
@@ -933,6 +934,7 @@ class BondLifecycleManager:
             total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
             total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
 
+            norm_method = payment_method if payment_method in ("Cash", "BaridiMob", "TPE", "CCP") else "Cash"
             cursor.execute(
                 """
                 INSERT INTO Sales_Invoices (
@@ -941,7 +943,7 @@ class BondLifecycleManager:
                     Created_By, Cash_Session_ID, Payment_Method,
                     Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Card,
                     Amount_Paid_Wallet, Amount_Remaining_Credit
-                ) VALUES (%s, %s, %s, CURDATE(), 'Paid', %s, %s, %s, %s, %s, 'Cash', 'BON_C_CASH', %s, %s, %s, 0.00)
+                ) VALUES (%s, %s, %s, CURDATE(), 'Paid', %s, %s, %s, %s, %s, %s, 'BON_C_CASH', %s, %s, %s, 0.00)
                 """,
                 (
                     invoice_num,
@@ -952,6 +954,7 @@ class BondLifecycleManager:
                     total_ttc,
                     int(cashier_user_id),
                     int(cash_session_id) if cash_session_id else None,
+                    norm_method,
                     net_cash_retained,
                     card_dec,
                     wallet_dec,
@@ -1017,6 +1020,7 @@ class BondLifecycleManager:
         cash_session_id: int,
         amount_paid_cash: Decimal,
         amount_paid_wallet: Decimal = Decimal("0.00"),
+        payment_method: str = "Cash",
     ) -> Dict[str, Any]:
         """
         Validates a Bon Versement created at Order Desk by recording the versement
@@ -1062,6 +1066,9 @@ class BondLifecycleManager:
             total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
             total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
 
+            norm_method = payment_method if payment_method in ("Cash", "BaridiMob", "TPE", "CCP") else "Cash"
+            paid_cash_col = net_cash_retained if norm_method == "Cash" else Decimal("0.00")
+            paid_card_col = net_cash_retained if norm_method != "Cash" else Decimal("0.00")
             cursor.execute(
                 """
                 INSERT INTO Sales_Invoices (
@@ -1070,7 +1077,7 @@ class BondLifecycleManager:
                     Created_By, Cash_Session_ID, Payment_Method,
                     Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Card,
                     Amount_Paid_Wallet, Amount_Remaining_Credit
-                ) VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, %s, %s, %s, 'Cash', 'BON_VERSEMENT', %s, 0.00, %s, %s)
+                ) VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, %s, %s, %s, %s, 'BON_VERSEMENT', %s, %s, %s, %s)
                 """,
                 (
                     invoice_num,
@@ -1082,7 +1089,9 @@ class BondLifecycleManager:
                     total_ttc,
                     int(cashier_user_id),
                     int(cash_session_id) if cash_session_id else None,
-                    net_cash_retained,
+                    norm_method,
+                    paid_cash_col,
+                    paid_card_col,
                     wallet_dec,
                     remaining_credit,
                 ),

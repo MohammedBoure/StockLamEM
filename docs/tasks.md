@@ -96,7 +96,7 @@ sortie يحتاج إلى acc admin وأيضاً ajustement.
 
 يوجد زر من أجل إنشاء versement، المبلغ يتم تعيينه فقط من caisse bureaux.
 
-# 14 : medium
+# 14 [COMPLETED]: medium
 المرور عبر الزر الأول # Bureaux للوصول إلى ### 2. Caisse:
 
 يمكن للعميل إزالة bon لو أراد ذلك.

@@ -1338,7 +1338,9 @@ class CashierDeskWidget(QWidget):
         self.btn_remove_bon.setIconSize(QSize(13, 13))
         self.btn_remove_bon.setCursor(Qt.PointingHandCursor)
         self.btn_remove_bon.setFixedHeight(32)
-        self.btn_remove_bon.setToolTip("Retirer / Annuler le bon sélectionné de la file d'attente de la caisse")
+        self.btn_remove_bon.setToolTip(
+            "Marquer le bon sélectionné comme non valide (les données sont conservées)"
+        )
         self.btn_remove_bon.setStyleSheet("""
             QPushButton#BtnRemoveBon {
                 background-color: #FFFFFF;
@@ -1712,13 +1714,22 @@ class CashierDeskWidget(QWidget):
 
         form = QGridLayout()
         form.setSpacing(10)
-        lbl_c = QLabel("Montant Espèces Reçu (DA) :")
+        lbl_m = QLabel("Mode de Paiement :")
+        lbl_m.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        form.addWidget(lbl_m, 0, 0)
+        self.cbo_payment_method = QComboBox()
+        self.cbo_payment_method.setFixedHeight(36)
+        for label, code in [("Cash", "Cash"), ("BaridiMob", "BaridiMob"), ("TPE", "TPE"), ("CCP", "CCP")]:
+            self.cbo_payment_method.addItem(label, code)
+        form.addWidget(self.cbo_payment_method, 0, 1)
+
+        lbl_c = QLabel("Montant Reçu (DA) :")
         lbl_c.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
-        form.addWidget(lbl_c, 0, 0)
+        form.addWidget(lbl_c, 1, 0)
         self.txt_cash = QLineEdit("0")
         self.txt_cash.setFixedHeight(36)
         self.txt_cash.textChanged.connect(self._recalculate_amounts)
-        form.addWidget(self.txt_cash, 0, 1)
+        form.addWidget(self.txt_cash, 1, 1)
         r_layout.addLayout(form)
 
         # Action Buttons for the 3 Order Bond Types (Heightened for prominent enterprise UX)
@@ -2291,10 +2302,11 @@ class CashierDeskWidget(QWidget):
 
         reply = QMessageBox.question(
             self,
-            "Confirmer le Retrait du Bon",
-            f"Êtes-vous sûr de vouloir retirer et annuler le bon {order_num} ({client_name}) de la caisse ?\n\n"
+            "Marquer le Bon comme Non Valide",
+            f"Êtes-vous sûr de vouloir marquer le bon {order_num} ({client_name}) comme non valide ?\n\n"
             f"Montant : {tot_str} DA\n"
-            "Le stock théorique réservé sera immédiatement libéré.",
+            "Les données du bon seront conservées dans l'historique (statut Non valide / Annulé) "
+            "et le stock théorique réservé sera libéré.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -2307,17 +2319,20 @@ class CashierDeskWidget(QWidget):
                 self.data_manager.bonds.cancel_or_remove_caisse_order(
                     order_id=order_id,
                     user_id=uid,
-                    reason="Retrait / Annulation par Caisse",
+                    reason="Marqué non valide par Caisse",
                 )
             elif os.environ.get("PYTEST_CURRENT_TEST"):
                 if hasattr(self, "_pytest_dummy_orders"):
-                    self._pytest_dummy_orders = [o for o in self._pytest_dummy_orders if o.get("Order_ID") != order_id]
+                    for o in self._pytest_dummy_orders:
+                        if o.get("Order_ID") == order_id:
+                            o["Status"] = "CANCELLED"
                 self._orders_queue = [o for o in self._orders_queue if o.get("Order_ID") != order_id]
 
             QMessageBox.information(
                 self,
-                "Bon Retiré",
-                f"Le bon {order_num} a été retiré de la caisse avec succès.\nLe stock théorique a été libéré.",
+                "Bon Marqué Non Valide",
+                f"Le bon {order_num} a été marqué comme non valide (données conservées).\n"
+                "Le stock théorique a été libéré.",
             )
             self._selected_order = None
             self.refresh_queue()
@@ -2368,6 +2383,12 @@ class CashierDeskWidget(QWidget):
             QMessageBox.warning(self, "Montant invalide", "Veuillez saisir un montant numérique valide.")
             return
 
+        pay_method = (
+            self.cbo_payment_method.currentData()
+            if hasattr(self, "cbo_payment_method") and self.cbo_payment_method.currentData()
+            else "Cash"
+        )
+
         if b_type == "BON_VERSEMENT":
             if cash_val + w_ded <= 0:
                 QMessageBox.warning(
@@ -2385,12 +2406,13 @@ class CashierDeskWidget(QWidget):
                         cash_session_id=1,
                         amount_paid_cash=Decimal(str(cash_val)),
                         amount_paid_wallet=Decimal(str(w_ded)),
+                        payment_method=pay_method,
                     )
                 self.orderSettled.emit(order_num, "BON_VERSEMENT_PAID")
                 QMessageBox.information(
                     self,
                     "Bon Versement Validé",
-                    f"Le Versement ({order_num}) de {format_money(cash_val + w_ded)} DA a été enregistré en Caisse.\nTransmis au Bureau de Sortie.",
+                    f"Le Versement ({order_num}) de {format_money(cash_val + w_ded)} DA ({pay_method}) a été enregistré en Caisse.\nTransmis au Bureau de Sortie.",
                 )
                 self.refresh_queue()
             except Exception as err:
@@ -2408,13 +2430,16 @@ class CashierDeskWidget(QWidget):
         try:
             if self.data_manager and hasattr(self.data_manager, "bonds"):
                 uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
+                paid_cash_dec = Decimal(str(cash_val)) if pay_method == "Cash" else Decimal("0.00")
+                paid_card_dec = Decimal(str(cash_val)) if pay_method != "Cash" else Decimal("0.00")
                 self.data_manager.bonds.validate_bon_c_cash(
                     order_id=order_id,
                     cashier_user_id=uid,
                     cash_session_id=1,
-                    amount_paid_cash=Decimal(str(cash_val)),
-                    amount_paid_card=Decimal("0.00"),
+                    amount_paid_cash=paid_cash_dec,
+                    amount_paid_card=paid_card_dec,
                     amount_paid_wallet=Decimal(str(w_ded)),
+                    payment_method=pay_method,
                 )
             self.orderSettled.emit(order_num, "BON_C_PAID")
             QMessageBox.information(
