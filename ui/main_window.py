@@ -691,10 +691,10 @@ class MainWindow(QMainWindow):
             from .widgets.versement import VersementTab
             widget = VersementTab(self.data_manager, current_user=self.current_user)
 
-        # --- 18. Paiement Livraison (Placeholder dédié) ---
+        # --- 18. Paiement Livraison ---
         elif page_id == 18:
             from .widgets.paiement_livraison import PaiementLivraisonTab
-            widget = PaiementLivraisonTab(self.data_manager)
+            widget = PaiementLivraisonTab(self.data_manager, current_user=self.current_user)
 
         if widget:
             old_widget = self.content_area.widget(page_id)

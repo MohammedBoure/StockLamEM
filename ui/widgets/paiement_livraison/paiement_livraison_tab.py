@@ -1,68 +1,31 @@
 # -*- coding: utf-8 -*-
-"""Minimal placeholder view for the Paiement Livraison navbar section."""
+"""Dedicated management workspace for the independent Paiement Livraison navbar section."""
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from typing import Any, Dict, Optional
 
-from ui.icons import get_duotone_icon
+from PySide6.QtWidgets import QWidget
+
+from ui.widgets.versement.bon_payments_workspace import BonPaymentsWorkspaceWidget
 
 
-class PaiementLivraisonTab(QWidget):
-    """Dedicated placeholder page for the Paiement Livraison sidebar entry."""
+class PaiementLivraisonTab(BonPaymentsWorkspaceWidget):
+    """Main Paiement Livraison page mirroring VersementTab for BON_LIVRAISON orders."""
 
-    def __init__(self, data_manager=None, parent=None):
-        super().__init__(parent)
-        self.data_manager = data_manager
-        self._init_ui()
-
-    def _init_ui(self):
-        self.setObjectName("PaiementLivraisonWorkspace")
-        self.setStyleSheet(
-            "QWidget#PaiementLivraisonWorkspace { background-color: #F8FAFC; }"
+    def __init__(
+        self,
+        data_manager: Any = None,
+        current_user: Optional[Dict[str, Any]] = None,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(
+            data_manager=data_manager,
+            current_user=current_user,
+            bond_type="BON_LIVRAISON",
+            title="Gestion des Paiements Livraison",
+            subtitle="Suivi des bons de livraison, ajout direct d'un paiement et modification des montants versés",
+            icon_name="truck_delivery",
+            add_button_text="Paiement",
+            add_dialog_title="Ajouter un Paiement Livraison",
+            manage_dialog_title="Gérer les Paiements du Bon de Livraison",
+            parent=parent,
         )
-
-        root = QVBoxLayout(self)
-        root.setContentsMargins(32, 32, 32, 32)
-        root.setAlignment(Qt.AlignCenter)
-
-        card = QFrame(self)
-        card.setObjectName("PaiementLivraisonPlaceholderCard")
-        card.setMaximumWidth(460)
-        card.setStyleSheet(
-            "QFrame#PaiementLivraisonPlaceholderCard {"
-            "  background-color: #FFFFFF;"
-            "  border: 1px solid #E2E8F0;"
-            "  border-radius: 12px;"
-            "}"
-        )
-
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(32, 28, 32, 28)
-        card_layout.setSpacing(12)
-        card_layout.setAlignment(Qt.AlignCenter)
-
-        icon_label = QLabel(card)
-        icon_label.setAlignment(Qt.AlignCenter)
-        icon_label.setPixmap(get_duotone_icon("truck_delivery", 40).pixmap(40, 40))
-
-        self.lbl_title = QLabel("Paiement Livraison", card)
-        self.lbl_title.setAlignment(Qt.AlignCenter)
-        self.lbl_title.setStyleSheet(
-            "font-size: 20px; font-weight: 700; color: #0F172A;"
-        )
-
-        self.lbl_subtitle = QLabel(
-            "Interface Paiement Livraison prête dans la barre de navigation.\n"
-            "Le contenu détaillé sera ajouté prochainement.",
-            card,
-        )
-        self.lbl_subtitle.setAlignment(Qt.AlignCenter)
-        self.lbl_subtitle.setWordWrap(True)
-        self.lbl_subtitle.setStyleSheet(
-            "font-size: 13px; color: #64748B;"
-        )
-
-        card_layout.addWidget(icon_label)
-        card_layout.addWidget(self.lbl_title)
-        card_layout.addWidget(self.lbl_subtitle)
-        root.addWidget(card)
