@@ -7,6 +7,7 @@ Exports for the Multi-Desk Electrical Appliance Store Operational Workflow UI.
 
 from .appliance_workflow_tab import ApplianceWorkflowTab
 from .bon_pdf_export import export_order_bon_to_pdf
+from .caisse_versement_flow_dialogs import VersementAmountApplyDialog, VersementTypeChoiceDialog
 from .cashier_desk_view import AdminAuthModal, BonRetourDialog, CashierDeskWidget, ClientWalletDialog
 from .dispatch_desk_view import DispatchDeskWidget
 from .order_bons_dialog import OrderBonEditDialog, OrderDeskBonsDialog
@@ -28,6 +29,8 @@ __all__ = [
     "QuickClientDialog",
     "CashierDeskWidget",
     "ClientWalletDialog",
+    "VersementTypeChoiceDialog",
+    "VersementAmountApplyDialog",
     "AdminAuthModal",
     "BonRetourDialog",
     "DispatchDeskWidget",

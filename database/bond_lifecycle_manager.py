@@ -836,25 +836,51 @@ class BondLifecycleManager:
         invoice_id: int,
         user_id: int,
         notes: str = "Règlement achat via Portefeuille Client",
+        wallet_source: str = "AUTO",
     ) -> Decimal:
-        """Debits the client's wallet atomically inside an active transaction."""
+        """Debits the client's wallet atomically inside an active transaction.
+
+        wallet_source:
+        - "REAL": debit strictly from Real_Deposit_Balance (Versement Réel).
+        - "VIRTUAL": debit strictly from Virtual_Credit_Balance (Versement Virtuel).
+        - "AUTO": consume Virtual_Credit_Balance first, then Real_Deposit_Balance.
+        """
         debit_dec = Decimal(str(debit_amount)).quantize(Decimal("0.01"))
         if debit_dec <= Decimal("0.00"):
             return Decimal("0.00")
 
         wallet = self._get_or_create_wallet_locked(cursor, client_id)
         bal_before = wallet["Current_Balance"]
-        if bal_before < debit_dec:
-            raise ValueError(
-                f"Insufficient client wallet balance. Available: {bal_before}, Requested: {debit_dec}"
-            )
+        real_bal = wallet["Real_Deposit_Balance"]
+        virt_bal = wallet["Virtual_Credit_Balance"]
+        src_norm = str(wallet_source or "AUTO").upper()
+
+        if src_norm == "REAL":
+            if real_bal < debit_dec:
+                raise ValueError(
+                    f"Solde Versement Réel insuffisant. Disponible : {real_bal}, Demandé : {debit_dec}"
+                )
+            real_deduct = debit_dec
+            virt_deduct = Decimal("0.00")
+        elif src_norm == "VIRTUAL":
+            if virt_bal < debit_dec:
+                raise ValueError(
+                    f"Solde Versement Virtuel insuffisant. Disponible : {virt_bal}, Demandé : {debit_dec}"
+                )
+            virt_deduct = debit_dec
+            real_deduct = Decimal("0.00")
+        else:
+            if bal_before < debit_dec:
+                raise ValueError(
+                    f"Insufficient client wallet balance. Available: {bal_before}, Requested: {debit_dec}"
+                )
+            # Consume virtual credit first, then real deposit balance
+            virt_deduct = min(virt_bal, debit_dec)
+            real_deduct = (debit_dec - virt_deduct).quantize(Decimal("0.01"))
 
         bal_after = (bal_before - debit_dec).quantize(Decimal("0.01"))
-        # Consume virtual credit first, then real deposit balance
-        virt_deduct = min(wallet["Virtual_Credit_Balance"], debit_dec)
-        real_deduct = (debit_dec - virt_deduct).quantize(Decimal("0.01"))
-        virt_after = (wallet["Virtual_Credit_Balance"] - virt_deduct).quantize(Decimal("0.01"))
-        real_after = max(Decimal("0.00"), (wallet["Real_Deposit_Balance"] - real_deduct).quantize(Decimal("0.01")))
+        virt_after = max(Decimal("0.00"), (virt_bal - virt_deduct).quantize(Decimal("0.01")))
+        real_after = max(Decimal("0.00"), (real_bal - real_deduct).quantize(Decimal("0.01")))
 
         cursor.execute(
             """
@@ -903,6 +929,7 @@ class BondLifecycleManager:
         amount_paid_card: Decimal = Decimal("0.00"),
         amount_paid_wallet: Decimal = Decimal("0.00"),
         payment_method: str = "Cash",
+        wallet_source: str = "AUTO",
     ) -> Dict[str, Any]:
         """
         Validates a Bon C (بيع مباشر) at the Caisse Desk.
@@ -985,6 +1012,7 @@ class BondLifecycleManager:
                     invoice_id,
                     int(cashier_user_id),
                     f"Déduction portefeuille sur Bon C #{invoice_num}",
+                    wallet_source=wallet_source,
                 )
 
             # Update physical cash session for net cash retained
@@ -1035,6 +1063,7 @@ class BondLifecycleManager:
         amount_paid_cash: Decimal,
         amount_paid_wallet: Decimal = Decimal("0.00"),
         payment_method: str = "Cash",
+        wallet_source: str = "AUTO",
     ) -> Dict[str, Any]:
         """
         Validates a Bon Versement created at Order Desk by recording the versement
@@ -1120,6 +1149,7 @@ class BondLifecycleManager:
                     invoice_id,
                     int(cashier_user_id),
                     f"Déduction portefeuille sur Bon Versement #{invoice_num}",
+                    wallet_source=wallet_source,
                 )
 
             if cash_session_id and net_cash_retained > Decimal("0.00"):
@@ -1183,6 +1213,7 @@ class BondLifecycleManager:
         downpayment_cash: Decimal = Decimal("0.00"),
         downpayment_wallet: Decimal = Decimal("0.00"),
         installments_count: int = 1,
+        wallet_source: str = "AUTO",
     ) -> Dict[str, Any]:
         """
         Authorizes a Bon Crédit (بيع بالأجل) at the Caisse Desk.
@@ -1306,6 +1337,7 @@ class BondLifecycleManager:
                     invoice_id,
                     int(cashier_user_id),
                     f"Acompte portefeuille sur Bon Crédit #{inv_num}",
+                    wallet_source=wallet_source,
                 )
 
             # 5. Update physical Caisse session if cash downpayment was paid
@@ -1410,6 +1442,7 @@ class BondLifecycleManager:
         cash_session_id: Optional[int],
         advance_cash: Decimal = Decimal("0.00"),
         advance_wallet: Decimal = Decimal("0.00"),
+        wallet_source: str = "AUTO",
     ) -> Dict[str, Any]:
         """
         Validates a Bon de Livraison (سند توصيل مع الدفع عند الاستلام) at the Caisse before dispatch.
@@ -1487,6 +1520,7 @@ class BondLifecycleManager:
                     invoice_id,
                     int(cashier_user_id),
                     f"Avance portefeuille sur Bon de Livraison #{inv_num}",
+                    wallet_source=wallet_source,
                 )
 
             if cash_session_id and adv_cash > Decimal("0.00"):

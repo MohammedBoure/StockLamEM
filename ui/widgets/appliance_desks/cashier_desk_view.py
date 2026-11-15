@@ -82,6 +82,10 @@ from ui.widgets.appliance_desks._theme import (
     TEXT_MUTED,
     TEXT_PRIMARY,
 )
+from ui.widgets.appliance_desks.caisse_versement_flow_dialogs import (
+    VersementAmountApplyDialog,
+    VersementTypeChoiceDialog,
+)
 from ui.widgets.appliance_desks.order_desk_view import (
     OUTLINE_BTN_STYLE,
     PRIMARY_BTN_STYLE,
@@ -1274,6 +1278,8 @@ class CashierDeskWidget(QWidget):
         self._current_remaining_due: float = 0.0
         self._remaining_after_payment: float = 0.0
         self._selected_payment_method: str = "Cash"
+        self._custom_wallet_source: Optional[str] = None
+        self._custom_wallet_amount: float = 0.0
         self.payment_method_buttons: Dict[str, QPushButton] = {}
         self._wallet_info: Dict[str, Any] = {
             "current_balance": 0.0,
@@ -1657,11 +1663,52 @@ class CashierDeskWidget(QWidget):
         w_header_row.addWidget(self.btn_inspect_wallet)
         w_layout.addLayout(w_header_row)
 
+        wallet_actions_row = QHBoxLayout()
+        wallet_actions_row.setContentsMargins(0, 0, 0, 0)
+        wallet_actions_row.setSpacing(8)
+
         self.cb_wallet = QCheckBox("Utiliser le solde portefeuille")
         self.cb_wallet.setCursor(Qt.PointingHandCursor)
         self.cb_wallet.setStyleSheet(f"color: {BRAND_TEAL}; font-weight: 700; font-size: 12px;")
-        self.cb_wallet.toggled.connect(self._recalculate_amounts)
-        w_layout.addWidget(self.cb_wallet)
+        self.cb_wallet.toggled.connect(self._on_wallet_checkbox_toggled)
+        wallet_actions_row.addWidget(self.cb_wallet, 1)
+
+        self.btn_use_versement = QPushButton("Versement")
+        self.btn_use_versement.setObjectName("BtnCaisseUseVersement")
+        self.btn_use_versement.setIcon(get_duotone_icon("kpi_wallet", 14))
+        self.btn_use_versement.setIconSize(QSize(14, 14))
+        self.btn_use_versement.setCursor(Qt.PointingHandCursor)
+        self.btn_use_versement.setFixedHeight(32)
+        self.btn_use_versement.setToolTip(
+            "Utiliser un solde Versement Réel ou Versement Virtuel pour cette commande"
+        )
+        self.btn_use_versement.setStyleSheet(
+            SECONDARY_OUTLINE_QSS + "QPushButton { font-size: 11.5px; padding: 0 12px; }"
+        )
+        self.btn_use_versement.clicked.connect(self._open_use_versement_flow)
+        wallet_actions_row.addWidget(self.btn_use_versement)
+        w_layout.addLayout(wallet_actions_row)
+
+        self.applied_versement_row = QWidget()
+        applied_lay = QHBoxLayout(self.applied_versement_row)
+        applied_lay.setContentsMargins(0, 0, 0, 0)
+        applied_lay.setSpacing(6)
+        self.lbl_applied_versement = QLabel("")
+        self.lbl_applied_versement.setWordWrap(True)
+        self.lbl_applied_versement.setStyleSheet(f"font-size: 11.5px; font-weight: 700; color: {STATUS_SUCCESS};")
+        applied_lay.addWidget(self.lbl_applied_versement, 1)
+
+        self.btn_clear_applied_versement = QPushButton("×")
+        self.btn_clear_applied_versement.setCursor(Qt.PointingHandCursor)
+        self.btn_clear_applied_versement.setFixedSize(22, 22)
+        self.btn_clear_applied_versement.setToolTip("Retirer la déduction Versement sélectionnée")
+        self.btn_clear_applied_versement.setStyleSheet(
+            SLATE_OUTLINE_QSS + "QPushButton { padding: 0px; font-size: 13px; border-radius: 11px; }"
+        )
+        self.btn_clear_applied_versement.clicked.connect(self._clear_custom_versement)
+        applied_lay.addWidget(self.btn_clear_applied_versement)
+        self.applied_versement_row.setVisible(False)
+        w_layout.addWidget(self.applied_versement_row)
         r_layout.addWidget(wallet_box)
 
         # 2d. Prominent Montant Hero Display + Live Reste & Change Readout
@@ -2277,6 +2324,14 @@ class CashierDeskWidget(QWidget):
             f"<span style='font-size:11px; color:{TEXT_BODY};'>Dépôt Espèces : {format_money(self._wallet_info['real_deposit_balance'])} DA  |  "
             f"Avoir Virtuel : {format_money(self._wallet_info['virtual_credit_balance'])} DA</span>"
         )
+        self._custom_wallet_source = None
+        self._custom_wallet_amount = 0.0
+        if hasattr(self, "applied_versement_row"):
+            self.applied_versement_row.setVisible(False)
+        if hasattr(self, "cb_wallet"):
+            self.cb_wallet.blockSignals(True)
+            self.cb_wallet.setChecked(False)
+            self.cb_wallet.blockSignals(False)
         raw_st = str(ord_item.get("Status") or "")
         if raw_st in ("DISPATCHED_PENDING_COD", "APPROVED_LIVRAISON_PENDING_DISPATCH", "PARTIALLY_DISPATCHED"):
             rem_cod = float(ord_item.get("Amount_Remaining_Credit") if ord_item.get("Amount_Remaining_Credit") is not None else tot)
@@ -2563,10 +2618,124 @@ class CashierDeskWidget(QWidget):
         except Exception as err:
             QMessageBox.critical(self, "Erreur lors du retrait", f"Impossible de retirer le bon :\n{err}")
 
+    def _get_active_base_due(self) -> float:
+        if not self._selected_order:
+            return 0.0
+        raw_st = str(self._selected_order.get("Status") or "")
+        tot = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
+        if raw_st in ("DISPATCHED_PENDING_COD", "APPROVED_LIVRAISON_PENDING_DISPATCH", "PARTIALLY_DISPATCHED"):
+            return float(
+                self._selected_order.get("Amount_Remaining_Credit")
+                if self._selected_order.get("Amount_Remaining_Credit") is not None
+                else tot
+            )
+        return tot
+
+    def _on_wallet_checkbox_toggled(self, checked: bool) -> None:
+        if not checked:
+            self._custom_wallet_source = None
+            self._custom_wallet_amount = 0.0
+            if hasattr(self, "applied_versement_row"):
+                self.applied_versement_row.setVisible(False)
+        self._recalculate_amounts()
+
+    def _clear_custom_versement(self) -> None:
+        self._custom_wallet_source = None
+        self._custom_wallet_amount = 0.0
+        if hasattr(self, "applied_versement_row"):
+            self.applied_versement_row.setVisible(False)
+        if hasattr(self, "cb_wallet"):
+            self.cb_wallet.blockSignals(True)
+            self.cb_wallet.setChecked(False)
+            self.cb_wallet.blockSignals(False)
+        self._recalculate_amounts()
+
+    def _apply_custom_versement(self, versement_type: str, amount: float) -> None:
+        src = "VIRTUAL" if str(versement_type).upper() == "VIRTUAL" else "REAL"
+        type_key = "virtual_credit_balance" if src == "VIRTUAL" else "real_deposit_balance"
+        type_label = "Versement Virtuel" if src == "VIRTUAL" else "Versement Réel"
+        avail = max(0.0, float(self._wallet_info.get(type_key) or 0.0))
+        base_due = self._get_active_base_due()
+        applied = max(0.0, min(float(amount or 0.0), avail, base_due))
+        if applied <= 0.0:
+            return
+
+        self._custom_wallet_source = src
+        self._custom_wallet_amount = applied
+        rem_client = max(0.0, avail - applied)
+
+        if hasattr(self, "cb_wallet"):
+            self.cb_wallet.blockSignals(True)
+            self.cb_wallet.setChecked(True)
+            self.cb_wallet.blockSignals(False)
+
+        if hasattr(self, "lbl_applied_versement") and hasattr(self, "applied_versement_row"):
+            self.lbl_applied_versement.setText(
+                f"{type_label} appliqué : -{format_money(applied)} DA  "
+                f"(Solde client restant : {format_money(rem_client)} DA)"
+            )
+            self.applied_versement_row.setVisible(True)
+
+        b_type = str((self._selected_order or {}).get("Bond_Type") or "BON_C").upper()
+        if b_type == "BON_C":
+            cur_cash = self._parse_cash_input()
+            if abs(cur_cash - base_due) <= 0.01:
+                new_cash = max(0.0, base_due - applied)
+                self.txt_cash.setText(str(int(new_cash)) if new_cash.is_integer() else f"{new_cash:.2f}")
+
+        self._recalculate_amounts()
+
+    def _open_use_versement_flow(self) -> None:
+        """Sequential 2-dialog flow: (1) choose Versement Réel vs Virtuel, (2) enter amount & show remaining balance."""
+        if not self._selected_order:
+            QMessageBox.warning(
+                self,
+                "Sélection requise",
+                "Veuillez sélectionner un bon dans la file d'attente avant d'utiliser un Versement.",
+            )
+            return
+
+        client_name = str(self._selected_order.get("Client_Name") or "Client")
+        real_bal = float(self._wallet_info.get("real_deposit_balance") or 0.0)
+        virt_bal = float(self._wallet_info.get("virtual_credit_balance") or 0.0)
+        order_due = self._get_active_base_due()
+
+        dlg_type = VersementTypeChoiceDialog(
+            client_name=client_name,
+            real_balance=real_bal,
+            virtual_balance=virt_bal,
+            parent=self,
+        )
+        if dlg_type.exec() != QDialog.Accepted or not dlg_type.selected_type:
+            return
+
+        chosen_type = dlg_type.selected_type
+        avail_for_type = virt_bal if chosen_type == "VIRTUAL" else real_bal
+        initial_amt = (
+            self._custom_wallet_amount
+            if self._custom_wallet_source == chosen_type and self._custom_wallet_amount > 0
+            else 0.0
+        )
+
+        dlg_amt = VersementAmountApplyDialog(
+            client_name=client_name,
+            versement_type=chosen_type,
+            available_balance=avail_for_type,
+            order_due=order_due,
+            initial_amount=initial_amt,
+            parent=self,
+        )
+        if dlg_amt.exec() == QDialog.Accepted and dlg_amt.applied_amount > 0:
+            self._apply_custom_versement(chosen_type, dlg_amt.applied_amount)
+
     def _get_wallet_deduction(self) -> float:
         if not self._selected_order or not self.cb_wallet.isChecked():
             return 0.0
-        tot = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
+        tot = self._get_active_base_due()
+        if self._custom_wallet_source in ("REAL", "VIRTUAL"):
+            type_key = "real_deposit_balance" if self._custom_wallet_source == "REAL" else "virtual_credit_balance"
+            avail = max(0.0, float(self._wallet_info.get(type_key) or 0.0))
+            return min(tot, avail, max(0.0, float(self._custom_wallet_amount or 0.0)))
         return min(tot, float(self._wallet_info.get("current_balance") or 0.0))
 
     def _recalculate_amounts(self) -> None:
@@ -2657,14 +2826,17 @@ class CashierDeskWidget(QWidget):
             try:
                 if self.data_manager and hasattr(self.data_manager, "bonds"):
                     uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
-                    self.data_manager.bonds.validate_bon_versement(
-                        order_id=order_id,
-                        cashier_user_id=uid,
-                        cash_session_id=1,
-                        amount_paid_cash=Decimal(str(cash_val)),
-                        amount_paid_wallet=Decimal(str(w_ded)),
-                        payment_method=pay_method,
-                    )
+                    vrs_kwargs = {
+                        "order_id": order_id,
+                        "cashier_user_id": uid,
+                        "cash_session_id": 1,
+                        "amount_paid_cash": Decimal(str(cash_val)),
+                        "amount_paid_wallet": Decimal(str(w_ded)),
+                        "payment_method": pay_method,
+                    }
+                    if w_ded > 0 and self._custom_wallet_source in ("REAL", "VIRTUAL"):
+                        vrs_kwargs["wallet_source"] = self._custom_wallet_source
+                    self.data_manager.bonds.validate_bon_versement(**vrs_kwargs)
                 self.orderSettled.emit(order_num, "BON_VERSEMENT_PAID")
                 QMessageBox.information(
                     self,
@@ -2689,15 +2861,18 @@ class CashierDeskWidget(QWidget):
                 uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
                 paid_cash_dec = Decimal(str(cash_val)) if pay_method == "Cash" else Decimal("0.00")
                 paid_card_dec = Decimal(str(cash_val)) if pay_method != "Cash" else Decimal("0.00")
-                self.data_manager.bonds.validate_bon_c_cash(
-                    order_id=order_id,
-                    cashier_user_id=uid,
-                    cash_session_id=1,
-                    amount_paid_cash=paid_cash_dec,
-                    amount_paid_card=paid_card_dec,
-                    amount_paid_wallet=Decimal(str(w_ded)),
-                    payment_method=pay_method,
-                )
+                bon_c_kwargs = {
+                    "order_id": order_id,
+                    "cashier_user_id": uid,
+                    "cash_session_id": 1,
+                    "amount_paid_cash": paid_cash_dec,
+                    "amount_paid_card": paid_card_dec,
+                    "amount_paid_wallet": Decimal(str(w_ded)),
+                    "payment_method": pay_method,
+                }
+                if w_ded > 0 and self._custom_wallet_source in ("REAL", "VIRTUAL"):
+                    bon_c_kwargs["wallet_source"] = self._custom_wallet_source
+                self.data_manager.bonds.validate_bon_c_cash(**bon_c_kwargs)
             self.orderSettled.emit(order_num, "BON_C_PAID")
             QMessageBox.information(
                 self,
@@ -2740,15 +2915,18 @@ class CashierDeskWidget(QWidget):
             try:
                 if self.data_manager and hasattr(self.data_manager, "bonds"):
                     uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
-                    self.data_manager.bonds.authorize_bon_credit(
-                        order_id=order_id,
-                        cashier_user_id=uid,
-                        cash_session_id=1,
-                        admin_user_id=modal.admin_user_id,
-                        admin_pin_or_pwd=modal.admin_secret,
-                        downpayment_cash=Decimal(str(dp_cash)),
-                        downpayment_wallet=Decimal(str(dp_wallet)),
-                    )
+                    cr_kwargs = {
+                        "order_id": order_id,
+                        "cashier_user_id": uid,
+                        "cash_session_id": 1,
+                        "admin_user_id": modal.admin_user_id,
+                        "admin_pin_or_pwd": modal.admin_secret,
+                        "downpayment_cash": Decimal(str(dp_cash)),
+                        "downpayment_wallet": Decimal(str(dp_wallet)),
+                    }
+                    if dp_wallet > 0 and self._custom_wallet_source in ("REAL", "VIRTUAL"):
+                        cr_kwargs["wallet_source"] = self._custom_wallet_source
+                    self.data_manager.bonds.authorize_bon_credit(**cr_kwargs)
                 self.orderSettled.emit(order_num, "BON_CREDIT_APPROVED")
                 QMessageBox.information(
                     self,
@@ -2803,13 +2981,16 @@ class CashierDeskWidget(QWidget):
                     return
                 adv_res = {}
                 if self.data_manager and hasattr(self.data_manager, "bonds"):
-                    adv_res = self.data_manager.bonds.validate_bon_livraison_advance(
-                        order_id=order_id,
-                        cashier_user_id=uid,
-                        cash_session_id=1,
-                        advance_cash=Decimal(str(cash_val)),
-                        advance_wallet=Decimal(str(w_ded)),
-                    ) or {}
+                    bl_kwargs = {
+                        "order_id": order_id,
+                        "cashier_user_id": uid,
+                        "cash_session_id": 1,
+                        "advance_cash": Decimal(str(cash_val)),
+                        "advance_wallet": Decimal(str(w_ded)),
+                    }
+                    if w_ded > 0 and self._custom_wallet_source in ("REAL", "VIRTUAL"):
+                        bl_kwargs["wallet_source"] = self._custom_wallet_source
+                    adv_res = self.data_manager.bonds.validate_bon_livraison_advance(**bl_kwargs) or {}
                 self.orderSettled.emit(order_num, "BON_LIVRAISON_ADVANCE")
                 paid_eff = float(adv_res.get("advance_paid", min(tot_ttc, cash_val + w_ded)))
                 change_due = float(adv_res.get("change_due", max(0.0, (cash_val + w_ded) - tot_ttc)))
