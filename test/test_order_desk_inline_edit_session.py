@@ -146,6 +146,12 @@ class TestOrderDeskInlineEditSession(unittest.TestCase):
                     "client_phone": "",
                     "delivery_address": "Oran",
                 },
+            ), patch(
+                "ui.widgets.appliance_desks.order_desk_view.OrderDeskWidget._prompt_payment_confirmation",
+                return_value={
+                    "bond_type": "BON_CREDIT",
+                    "delivery_address": "Oran",
+                },
             ):
                 with patch.object(QMessageBox, "information"):
                     widget.btn_credit.click()

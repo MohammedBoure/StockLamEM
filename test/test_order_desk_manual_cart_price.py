@@ -135,6 +135,13 @@ def test_cart_manual_price_edit_and_instant_margin_validation(qapp):
                 "client_phone": "",
                 "delivery_address": "",
             },
+        ), patch.object(
+            desk,
+            "_prompt_payment_confirmation",
+            return_value={
+                "bond_type": "BON_C",
+                "delivery_address": "",
+            },
         ):
             with patch.object(QMessageBox, "information"):
                 desk._submit_order("BON_C")

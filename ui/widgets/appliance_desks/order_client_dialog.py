@@ -221,6 +221,32 @@ class OrderClientDialog(QDialog):
         self.mobile_banner.setVisible(self._has_incoming_data)
         layout.addWidget(self.mobile_banner)
 
+        # Versement Info Note (amount is entered strictly at Caisse)
+        self.versement_banner = QFrame()
+        self.versement_banner.setObjectName("VersementInfoBanner")
+        self.versement_banner.setStyleSheet("""
+            QFrame#VersementInfoBanner {
+                background-color: #FEF3C7;
+                border: 1px solid #FDE68A;
+                border-left: 3px solid #D97706;
+                border-radius: 4px;
+            }
+            QLabel {
+                color: #92400E;
+                font-size: 11px;
+                font-weight: 600;
+                border: none;
+                background: transparent;
+            }
+        """)
+        v_lay = QHBoxLayout(self.versement_banner)
+        v_lay.setContentsMargins(10, 6, 10, 6)
+        v_lbl = QLabel("Versement : sélectionnez le client — la saisie du montant s'effectue uniquement en Caisse.")
+        v_lbl.setWordWrap(True)
+        v_lay.addWidget(v_lbl)
+        self.versement_banner.setVisible(self.bond_type == "BON_VERSEMENT")
+        layout.addWidget(self.versement_banner)
+
         # Search & Select Existing Client
         search_grid = QGridLayout()
         search_grid.setVerticalSpacing(8)
