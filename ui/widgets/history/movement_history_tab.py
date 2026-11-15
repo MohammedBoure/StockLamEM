@@ -11,15 +11,16 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QComboBox,
     QDateEdit,
-    QStyle,
     QDialog,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QAbstractItemView,
 )
-from PySide6.QtCore import Qt, QDate, QTimer
+from PySide6.QtCore import Qt, QDate, QSize, QTimer
 from PySide6.QtGui import QColor, QBrush, QFont
 
+from ui.icons import get_duotone_icon
 from ui.widgets.inventory.dialogs import BarcodeLineEdit
 from ui.formatting import format_quantity
 
@@ -130,46 +131,14 @@ class MovementHistoryTab(QWidget):
         self.search_timer = QTimer(self)
         self.search_timer.setSingleShot(True)
         self.search_timer.setInterval(300)
-        self.search_timer.timeout.connect(self.reset_and_reload)
+        self.search_timer.timeout.connect(self._on_debounced_search)
 
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(6)
-        layout.setContentsMargins(8, 8, 8, 8)
-
-        # Quick Audit Bar for Unique Serial Numbers (N° de Série) & Vouchers
-        serial_bar = QGroupBox("🔎 Audit Instantané par N° de Série (Traçabilité Unitaire : Lot → Bon de Sortie → Retour / SAV)")
-        serial_bar.setStyleSheet(
-            "QGroupBox { font-weight: bold; color: #007572; border: 1px solid #CBD5E1; border-radius: 6px; margin-top: 6px; padding-top: 6px; background: #F8FAFC; }"
-            "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
-        )
-        sb_layout = QHBoxLayout(serial_bar)
-        sb_layout.setContentsMargins(10, 6, 10, 6)
-        sb_layout.setSpacing(8)
-
-        self.serial_audit_input = BarcodeLineEdit()
-        self.serial_audit_input.setPlaceholderText("Scanner ou saisir un N° de Série unique (ex: SN-BOSCH-...)...")
-        self.serial_audit_input.setFixedWidth(280)
-        self.serial_audit_input.returnPressed.connect(self.verify_serial_number)
-        sb_layout.addWidget(self.serial_audit_input)
-
-        self.btn_verify_serial = QPushButton("Vérifier N° Série")
-        self.btn_verify_serial.setCursor(Qt.PointingHandCursor)
-        self.btn_verify_serial.setStyleSheet(
-            "QPushButton { background-color: #007572; color: white; font-weight: bold; padding: 4px 12px; border-radius: 4px; border: none; }"
-            "QPushButton:hover { background-color: #005A57; }"
-        )
-        self.btn_verify_serial.clicked.connect(self.verify_serial_number)
-        sb_layout.addWidget(self.btn_verify_serial)
-
-        self.lbl_serial_audit_result = QLabel("Scannez un N° de Série pour afficher son lot d'origine, son statut actuel, son client et ses bons.")
-        self.lbl_serial_audit_result.setWordWrap(True)
-        self.lbl_serial_audit_result.setStyleSheet("color: #475569; font-size: 12px; font-weight: normal;")
-        sb_layout.addWidget(self.lbl_serial_audit_result, stretch=1)
-
-        layout.addWidget(serial_bar)
+        layout.setSpacing(8)
+        layout.setContentsMargins(10, 10, 10, 10)
 
         filter_layout = QHBoxLayout()
         filter_layout.setSpacing(8)
@@ -177,18 +146,21 @@ class MovementHistoryTab(QWidget):
         self.date_from = QDateEdit(QDate.currentDate().addYears(-1))
         self.date_from.setCalendarPopup(True)
         self.date_from.setDisplayFormat("yyyy-MM-dd")
-        self.date_from.setFixedWidth(110)
+        self.date_from.setFixedWidth(115)
+        self.date_from.setFixedHeight(36)
         self.date_from.setEnabled(True)
         self.date_from.dateChanged.connect(self.reset_and_reload)
 
         self.date_to = QDateEdit(QDate.currentDate())
         self.date_to.setCalendarPopup(True)
         self.date_to.setDisplayFormat("yyyy-MM-dd")
-        self.date_to.setFixedWidth(110)
+        self.date_to.setFixedWidth(115)
+        self.date_to.setFixedHeight(36)
         self.date_to.setEnabled(True)
         self.date_to.dateChanged.connect(self.reset_and_reload)
 
         self.combo_type = QComboBox()
+        self.combo_type.setFixedHeight(36)
         self.combo_type.addItems([
             "Tous les mouvements",
             "Réceptions (Achats)",
@@ -226,16 +198,37 @@ class MovementHistoryTab(QWidget):
             self.combo_type.setItemData(index, movement_type)
 
         self.combo_type.setMinimumWidth(220)
-        self.combo_type.setStyleSheet("QComboBox { padding: 4px; font-size: 13px; }")
+        self.combo_type.setStyleSheet("QComboBox { padding: 4px 8px; font-size: 13px; }")
         self.combo_type.currentIndexChanged.connect(self.reset_and_reload)
 
+        # Unified search & barcode/serial scan input
         self.search_input = BarcodeLineEdit()
-        self.search_input.setPlaceholderText("Code-barres, Produit, Lot, Utilisateur...")
+        self.search_input.setObjectName("UnifiedTraceSearchInput")
+        self.search_input.setFixedHeight(36)
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.setPlaceholderText(
+            "Rechercher ou scanner (N° Série, Code-barres, Produit, Lot, Utilisateur)..."
+        )
+        self.search_input.setStyleSheet(
+            "QLineEdit#UnifiedTraceSearchInput {"
+            "  background-color: #FFFFFF;"
+            "  border: 1.5px solid #CBD5E1;"
+            "  border-radius: 6px;"
+            "  padding: 4px 10px;"
+            "  font-size: 13px;"
+            "}"
+            "QLineEdit#UnifiedTraceSearchInput:focus {"
+            "  border-color: #0E7471;"
+            "}"
+        )
         self.search_input.textChanged.connect(self.on_search_text_changed)
+        self.search_input.returnPressed.connect(self.verify_serial_number)
 
         btn_refresh = QPushButton()
-        btn_refresh.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
-        btn_refresh.setFixedSize(32, 32)
+        btn_refresh.setIcon(get_duotone_icon("refresh", 16))
+        btn_refresh.setIconSize(QSize(16, 16))
+        btn_refresh.setFixedSize(36, 36)
+        btn_refresh.setCursor(Qt.PointingHandCursor)
         btn_refresh.setToolTip("Recharger")
         btn_refresh.clicked.connect(self.reset_and_reload)
 
@@ -247,6 +240,27 @@ class MovementHistoryTab(QWidget):
         filter_layout.addWidget(self.search_input, stretch=1)
         filter_layout.addWidget(btn_refresh)
         layout.addLayout(filter_layout)
+
+        # Compact inline audit banner updated automatically when a serial number is scanned/searched
+        self.serial_audit_banner = QFrame()
+        self.serial_audit_banner.setObjectName("SerialAuditBanner")
+        self.serial_audit_banner.setStyleSheet(
+            "QFrame#SerialAuditBanner {"
+            "  background-color: #F8FAFC;"
+            "  border: 1px solid #CBD5E1;"
+            "  border-radius: 6px;"
+            "}"
+            "QLabel { border: none; background: transparent; }"
+        )
+        banner_lay = QHBoxLayout(self.serial_audit_banner)
+        banner_lay.setContentsMargins(10, 6, 10, 6)
+        banner_lay.setSpacing(8)
+        self.lbl_serial_audit_result = QLabel("")
+        self.lbl_serial_audit_result.setWordWrap(True)
+        self.lbl_serial_audit_result.setStyleSheet("color: #334155; font-size: 12px;")
+        banner_lay.addWidget(self.lbl_serial_audit_result, 1)
+        self.serial_audit_banner.setVisible(False)
+        layout.addWidget(self.serial_audit_banner)
 
         self.table = QTableWidget()
         columns = [
@@ -294,7 +308,19 @@ class MovementHistoryTab(QWidget):
         self.reset_and_reload()
 
     def on_search_text_changed(self):
+        if not self.search_input.text().strip():
+            self.lbl_serial_audit_result.setText("")
+            self.serial_audit_banner.setVisible(False)
         self.search_timer.start()
+
+    def _on_debounced_search(self):
+        query = self.search_input.text().strip()
+        if len(query) >= 3:
+            self._lookup_serial_badge(query, show_not_found=False)
+        else:
+            self.lbl_serial_audit_result.setText("")
+            self.serial_audit_banner.setVisible(False)
+        self.reset_and_reload()
 
     def _on_scroll(self, value):
         scroll_bar = self.table.verticalScrollBar()
@@ -332,7 +358,7 @@ class MovementHistoryTab(QWidget):
             return
 
         self.is_loading = True
-        self.lbl_status.setText("⏳ Chargement du lot suivant...")
+        self.lbl_status.setText("Chargement du lot suivant...")
 
         try:
             filters = self.get_active_filters()
@@ -500,49 +526,57 @@ class MovementHistoryTab(QWidget):
         self.table.setRowCount(0)
         self._append_rows_to_table(filtered)
 
+    def _lookup_serial_badge(self, query: str, show_not_found: bool = True) -> None:
+        serial_mgr = getattr(self.manager, "serials", None)
+        if not (serial_mgr and hasattr(serial_mgr, "get_serial_details")):
+            return
+        try:
+            res = serial_mgr.get_serial_details(query)
+            if isinstance(res, dict) and res:
+                st = str(res.get("Status") or "UNKNOWN")
+                status_labels = {
+                    "IN_STOCK": ("En Stock Magasin", "#16A34A"),
+                    "DISPATCHED": ("Sorti / Vendu (Bon de Sortie)", "#007572"),
+                    "SOLD": ("Sorti / Vendu", "#007572"),
+                    "IN_SAV": ("En Réparation SAV", "#D97706"),
+                    "SCRAPPED": ("Irréparable / Rebut (SAV)", "#DC2626"),
+                }
+                st_lbl, st_col = status_labels.get(st, (st, "#334155"))
+                prod = res.get("Product_Name") or "-"
+                brand = res.get("Brand_Mark") or ""
+                color = res.get("Color_Finish") or ""
+                lot = res.get("Lot_Number") or f"Lot #{res.get('Batch_ID', '-')}"
+                client = res.get("Original_Client_Name") or "-"
+                inv_no = res.get("Original_Invoice_No") or "-"
+                self.lbl_serial_audit_result.setText(
+                    f"<b>Produit :</b> {brand} {prod} ({color}) | "
+                    f"<b>Lot :</b> {lot} | "
+                    f"<b>Statut :</b> <span style='color:{st_col}; font-weight:bold;'>{st_lbl}</span> | "
+                    f"<b>Client :</b> {client} | <b>Facture :</b> {inv_no}"
+                )
+                self.serial_audit_banner.setVisible(True)
+            elif show_not_found:
+                self.lbl_serial_audit_result.setText(
+                    f"<span style='color:#64748B;'>Filtre appliqué sur « {query} » (aucun N° de Série exact correspondant).</span>"
+                )
+                self.serial_audit_banner.setVisible(True)
+            else:
+                self.lbl_serial_audit_result.setText("")
+                self.serial_audit_banner.setVisible(False)
+        except Exception as err:
+            logging.error(f"Error auditing serial {query}: {err}")
+
     def verify_serial_number(self):
-        """Looks up a physical N° de Série in SerialTrackingManager and filters the movement log."""
-        sn = self.serial_audit_input.text().strip()
+        """Uses the unified search/scan field to audit a N° de Série or barcode and filter logs."""
+        self.search_timer.stop()
+        sn = self.search_input.text().strip()
         if not sn:
-            self.lbl_serial_audit_result.setText(
-                "<span style='color:#64748B;'>Veuillez scanner ou saisir un N° de Série.</span>"
-            )
+            self.lbl_serial_audit_result.setText("")
+            self.serial_audit_banner.setVisible(False)
+            self.reset_and_reload()
             return
 
-        serial_mgr = getattr(self.manager, "serials", None)
-        if serial_mgr and hasattr(serial_mgr, "get_serial_details"):
-            try:
-                res = serial_mgr.get_serial_details(sn)
-                if res:
-                    st = str(res.get("Status") or "UNKNOWN")
-                    status_labels = {
-                        "IN_STOCK": ("En Stock Magasin", "#16A34A"),
-                        "DISPATCHED": ("Sorti / Vendu (Bon de Sortie)", "#007572"),
-                        "SOLD": ("Sorti / Vendu", "#007572"),
-                        "IN_SAV": ("En Réparation SAV", "#D97706"),
-                        "SCRAPPED": ("Irréparable / Rebut (SAV)", "#DC2626"),
-                    }
-                    st_lbl, st_col = status_labels.get(st, (st, "#334155"))
-                    prod = res.get("Product_Name") or "-"
-                    brand = res.get("Brand_Mark") or ""
-                    color = res.get("Color_Finish") or ""
-                    lot = res.get("Lot_Number") or f"Lot #{res.get('Batch_ID', '-')}"
-                    client = res.get("Original_Client_Name") or "-"
-                    inv_no = res.get("Original_Invoice_No") or "-"
-                    self.lbl_serial_audit_result.setText(
-                        f"<b>Produit :</b> {brand} {prod} ({color}) | "
-                        f"<b>Lot :</b> {lot} | "
-                        f"<b>Statut :</b> <span style='color:{st_col}; font-weight:bold;'>{st_lbl}</span> | "
-                        f"<b>Client :</b> {client} | <b>Facture :</b> {inv_no}"
-                    )
-                else:
-                    self.lbl_serial_audit_result.setText(
-                        f"<span style='color:#DC2626; font-weight:bold;'>N° de Série '{sn}' non enregistré (filtrage journal activé).</span>"
-                    )
-            except Exception as err:
-                logging.error(f"Error auditing serial {sn}: {err}")
-
-        self.search_input.setText(sn)
+        self._lookup_serial_badge(sn, show_not_found=True)
         self.reset_and_reload()
 
     def show_full_details(self):

@@ -226,9 +226,10 @@ class TestWorkflowFiveInterfacesIntegration(unittest.TestCase):
         self.assertEqual(sav_dlg.cbo_client.currentData(), 15)
         sav_dlg.deleteLater()
 
-        # 2. MovementHistoryTab (Traçabilité) serial audit & Bon de Sortie label
+        # 2. MovementHistoryTab (Traçabilité) unified scan/search audit & Bon de Sortie label
         trace_tab = MovementHistoryTab(mock_dm)
-        trace_tab.serial_audit_input.setText("SN-BOSCH-1122")
+        self.assertFalse(hasattr(trace_tab, "serial_audit_input"))
+        trace_tab.search_input.setText("SN-BOSCH-1122")
         trace_tab.verify_serial_number()
         self.assertIn("Combi NoFrost", trace_tab.lbl_serial_audit_result.text())
         self.assertIn("Sorti / Vendu (Bon de Sortie)", trace_tab.lbl_serial_audit_result.text())
