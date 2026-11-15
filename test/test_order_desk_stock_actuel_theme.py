@@ -139,20 +139,21 @@ def test_order_desk_buttons_match_stock_actuel_hierarchy(qapp, mock_data_manager
 
 
 def test_order_desk_cart_controls_and_buttons_theme(qapp, mock_data_manager):
-    """Verifies cart inputs and buttons adopt Stock Actuel styling."""
+    """Verifies cart panels & popup client dialog inputs adopt Stock Actuel styling."""
+    from ui.widgets.appliance_desks.order_client_dialog import OrderClientDialog
+
     desk = OrderDeskWidget(data_manager=mock_data_manager)
 
-    # Client combo
-    client_style = desk.cbo_client.styleSheet()
-    assert "#CED4DA" in client_style.upper()
-    assert "#007572" in client_style
-    assert "border-radius: 4px" in client_style
+    # Client search/inputs removed from main desk and moved to popup OrderClientDialog
+    assert not hasattr(desk, "cbo_client")
+    assert not hasattr(desk, "txt_delivery_addr")
 
-    # Delivery address input
-    addr_style = desk.txt_delivery_addr.styleSheet()
-    assert "#CED4DA" in addr_style.upper()
-    assert "#007572" in addr_style
-    assert "border-radius: 4px" in addr_style
+    dlg = OrderClientDialog(data_manager=mock_data_manager, clients_cache=desk._clients_cache, parent=desk)
+    dlg_style = dlg.styleSheet()
+    assert "#CED4DA" in dlg_style.upper()
+    assert "#007572" in dlg_style
+    assert "border-radius: 4px" in dlg_style
+    dlg.deleteLater()
 
     # Panels border
     cat_style = desk.catalog_panel.styleSheet()

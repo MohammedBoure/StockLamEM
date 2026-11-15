@@ -288,27 +288,34 @@ def test_order_desk_quick_client_search_and_redesigned_action_buttons(qapp):
     assert len(desk._sessions["SESSION_1"]["cart"]) == 0
     assert desk.cart_table.rowCount() == 0
 
-    # 3. Client Search by Name and Phone Number
-    assert desk.cbo_client.isEditable() is True
-    completer = desk.cbo_client.completer()
-    assert completer is not None
-    assert completer.filterMode() == Qt.MatchContains
+    # 3. Client Search by Name and Phone Number lives in popup OrderClientDialog
+    from ui.widgets.appliance_desks.order_client_dialog import OrderClientDialog
 
-    # Add mock clients with phone numbers
+    assert not hasattr(desk, "cbo_client")
+    assert not hasattr(desk, "txt_delivery_addr")
+
     desk._clients_cache = [
         {"Client_ID": 1, "Client_Name": "Client Comptoir (Standard)", "Phone": "", "Address": ""},
         {"Client_ID": 10, "Client_Name": "Amine Bouzid", "Phone": "0550123456", "Address": "Didouche Mourad, Alger"},
         {"Client_ID": 20, "Client_Name": "SARL Techno Elec", "Phone": "023456789", "Address": "Zone Industrielle Oued Smar"},
     ]
-    desk._load_clients_into_combo()
+    client_dlg = OrderClientDialog(
+        data_manager=None,
+        clients_cache=desk._clients_cache,
+        session_data=desk._sessions[desk._active_session_id],
+        parent=desk,
+    )
 
-    # Verify combo displays phone numbers
-    items_text = [desk.cbo_client.itemText(i) for i in range(desk.cbo_client.count())]
+    items_text = [client_dlg.cbo_client.itemText(i) for i in range(client_dlg.cbo_client.count())]
     assert any("0550123456" in t for t in items_text)
     assert any("023456789" in t for t in items_text)
 
+    client_dlg.txt_client_search.setText("0550123")
+    assert client_dlg.cbo_client.currentData() == 10
+    assert client_dlg.txt_client_name.text() == "Amine Bouzid"
+
     # 4. Quick Client Dialog Creation
-    dlg = QuickClientDialog(data_manager=None, parent=desk)
+    dlg = QuickClientDialog(data_manager=None, parent=client_dlg)
     dlg.txt_name.setText("Karim Mansouri")
     dlg.txt_phone.setText("0661987654")
     dlg.txt_address.setText("Rue Larbi Ben M'hidi, Oran")
@@ -317,18 +324,17 @@ def test_order_desk_quick_client_search_and_redesigned_action_buttons(qapp):
     assert dlg.created_client["Client_Name"] == "Karim Mansouri"
     assert dlg.created_client["Phone"] == "0661987654"
 
-    # Simulate dialog acceptance in order desk
-    desk._clients_cache.append(dlg.created_client)
     new_cid = 30
     dlg.created_client["Client_ID"] = new_cid
-    desk._load_clients_into_combo(selected_id=new_cid)
-    desk._sessions[desk._active_session_id]["client_id"] = new_cid
-    desk.txt_delivery_addr.setText(dlg.created_client["Address"])
+    client_dlg.clients_cache.append(dlg.created_client)
+    client_dlg.txt_client_search.clear()
+    client_dlg._reload_client_combo(selected_id=new_cid)
+    client_dlg._on_combo_client_changed(client_dlg.cbo_client.currentIndex())
 
-    assert desk.cbo_client.currentData() == new_cid
-    assert "Karim Mansouri" in desk.cbo_client.currentText()
-    assert "0661987654" in desk.cbo_client.currentText()
-    assert desk.txt_delivery_addr.text() == "Rue Larbi Ben M'hidi, Oran"
-    assert desk._sessions["SESSION_1"]["client_id"] == new_cid
+    assert client_dlg.cbo_client.currentData() == new_cid
+    assert "Karim Mansouri" in client_dlg.cbo_client.currentText()
+    assert "0661987654" in client_dlg.cbo_client.currentText()
+    assert client_dlg.txt_delivery_addr.text() == "Rue Larbi Ben M'hidi, Oran"
+    client_dlg.deleteLater()
 
 

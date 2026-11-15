@@ -424,6 +424,9 @@ class ApiClient {
     int? clientId,
     String? label,
     String? createdBy,
+    String? clientName,
+    String? clientPhone,
+    String? deliveryAddress,
   }) async {
     final response = await http
         .post(
@@ -434,6 +437,12 @@ class ApiClient {
             if (label != null && label.trim().isNotEmpty) 'label': label.trim(),
             if (createdBy != null && createdBy.trim().isNotEmpty)
               'created_by': createdBy.trim(),
+            if (clientName != null && clientName.trim().isNotEmpty)
+              'client_name': clientName.trim(),
+            if (clientPhone != null && clientPhone.trim().isNotEmpty)
+              'client_phone': clientPhone.trim(),
+            if (deliveryAddress != null && deliveryAddress.trim().isNotEmpty)
+              'delivery_address': deliveryAddress.trim(),
           }),
         )
         .timeout(const Duration(seconds: 6));

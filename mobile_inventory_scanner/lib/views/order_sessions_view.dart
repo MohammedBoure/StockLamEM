@@ -104,8 +104,12 @@ class _OrderSessionsViewState extends State<OrderSessionsView> {
     }
   }
 
-  /// Création instantanée en 1 clic sans demander le client (le bureau choisit le client).
-  Future<void> _quickCreateSession() async {
+  /// Création de session avec informations client optionnelles (nom, tél, lieu).
+  Future<void> _createSession({
+    String? clientName,
+    String? clientPhone,
+    String? deliveryAddress,
+  }) async {
     if (!widget.connected) {
       _setFeedback('Connectez d’abord le téléphone au serveur PC.', isError: true);
       return;
@@ -114,6 +118,9 @@ class _OrderSessionsViewState extends State<OrderSessionsView> {
     try {
       final session = await widget.api.createOrderSession(
         createdBy: _actorName,
+        clientName: clientName,
+        clientPhone: clientPhone,
+        deliveryAddress: deliveryAddress,
       );
       if (!mounted) return;
       HapticFeedback.mediumImpact();
@@ -125,6 +132,124 @@ class _OrderSessionsViewState extends State<OrderSessionsView> {
       _setFeedback(e.toString().replaceFirst('Exception: ', ''), isError: true);
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  /// Affiche une feuille optionnelle permettant de saisir client, tél et lieu ou de créer sans nom.
+  Future<void> _promptCreateSession() async {
+    if (!widget.connected) {
+      _setFeedback('Connectez d’abord le téléphone au serveur PC.', isError: true);
+      return;
+    }
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final addrCtrl = TextEditingController();
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Nouvelle Session Commandes',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF007572),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Tous les champs ci-dessous sont optionnels.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nom du client (optionnel)',
+                  prefixIcon: Icon(Icons.person_outline, size: 18),
+                  isDense: true,
+                ),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'N° Téléphone (optionnel)',
+                  prefixIcon: Icon(Icons.phone_outlined, size: 18),
+                  isDense: true,
+                ),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: addrCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Lieu de livraison / retrait préféré (optionnel)',
+                  prefixIcon: Icon(Icons.location_on_outlined, size: 18),
+                  isDense: true,
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => Navigator.of(ctx).pop(true),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Annuler'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF007572),
+                      ),
+                      child: const Text('Créer la session'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    final cName = nameCtrl.text.trim();
+    final cPhone = phoneCtrl.text.trim();
+    final cAddr = addrCtrl.text.trim();
+    nameCtrl.dispose();
+    phoneCtrl.dispose();
+    addrCtrl.dispose();
+
+    if (confirmed == true) {
+      await _createSession(
+        clientName: cName,
+        clientPhone: cPhone,
+        deliveryAddress: cAddr,
+      );
     }
   }
 
@@ -166,7 +291,7 @@ class _OrderSessionsViewState extends State<OrderSessionsView> {
     }
     String? sid = _selectedSessionId;
     if (sid == null) {
-      await _quickCreateSession();
+      await _createSession();
       sid = _selectedSessionId;
       if (sid == null) return;
     }
@@ -241,7 +366,7 @@ class _OrderSessionsViewState extends State<OrderSessionsView> {
               FilledButton.icon(
                 onPressed: (!widget.connected || _submitting)
                     ? null
-                    : _quickCreateSession,
+                    : _promptCreateSession,
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF007572),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -616,6 +741,20 @@ class _OrderSessionsViewState extends State<OrderSessionsView> {
                             ),
                           ],
                         ),
+                        if (active.clientPhone.isNotEmpty || active.deliveryAddress.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            [
+                              if (active.clientPhone.isNotEmpty) 'Tél: ${active.clientPhone}',
+                              if (active.deliveryAddress.isNotEmpty) 'Lieu: ${active.deliveryAddress}',
+                            ].join('  •  '),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF475569),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                         const Divider(height: 14),
                         if (active.items.isEmpty)
                           const Padding(

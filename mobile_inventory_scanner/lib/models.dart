@@ -554,8 +554,10 @@ class OrderSession {
   const OrderSession({
     required this.sessionId,
     required this.label,
-    required this.clientId,
-    required this.clientName,
+    this.clientId,
+    this.clientName = '',
+    this.clientPhone = '',
+    this.deliveryAddress = '',
     required this.itemCount,
     required this.totalTtc,
     required this.isActive,
@@ -568,8 +570,10 @@ class OrderSession {
     return OrderSession(
       sessionId: json['session_id'] as String? ?? '',
       label: json['label'] as String? ?? '',
-      clientId: (json['client_id'] as num?)?.toInt() ?? 1,
-      clientName: json['client_name'] as String? ?? 'Client Divers',
+      clientId: (json['client_id'] as num?)?.toInt(),
+      clientName: json['client_name'] as String? ?? '',
+      clientPhone: json['client_phone'] as String? ?? '',
+      deliveryAddress: json['delivery_address'] as String? ?? '',
       itemCount: (json['item_count'] as num?)?.toInt() ?? 0,
       totalTtc: (json['total_ttc'] as num?)?.toDouble() ?? 0.0,
       isActive: json['is_active'] as bool? ?? false,
@@ -582,8 +586,10 @@ class OrderSession {
 
   final String sessionId;
   final String label;
-  final int clientId;
+  final int? clientId;
   final String clientName;
+  final String clientPhone;
+  final String deliveryAddress;
   final int itemCount;
   final double totalTtc;
   final bool isActive;

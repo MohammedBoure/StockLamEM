@@ -187,6 +187,41 @@ class TestMobileOrderSessionsAPI(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(dec["session"]["item_count"], 2)
 
+    def test_optional_client_info_and_unnamed_mobile_sessions(self):
+        base = f"http://127.0.0.1:{self.port}"
+
+        # A. Create session WITH optional client_name, client_phone, delivery_address
+        status, named = _http_json(
+            f"{base}/api/order-sessions",
+            method="POST",
+            body={
+                "created_by": "Samir",
+                "client_name": "Yacine Brahim",
+                "client_phone": "0555998877",
+                "delivery_address": "Boumerdes Centre",
+            },
+        )
+        self.assertEqual(status, 201)
+        s_named = named["session"]
+        self.assertEqual(s_named["label"], "Yacine Brahim")
+        self.assertEqual(s_named["client_name"], "Yacine Brahim")
+        self.assertEqual(s_named["client_phone"], "0555998877")
+        self.assertEqual(s_named["delivery_address"], "Boumerdes Centre")
+
+        # B. Create session WITHOUT any customer info -> no customer name
+        status, anon = _http_json(
+            f"{base}/api/order-sessions",
+            method="POST",
+            body={"created_by": "Samir"},
+        )
+        self.assertEqual(status, 201)
+        s_anon = anon["session"]
+        self.assertTrue(s_anon["label"].startswith("Session #"))
+        self.assertEqual(s_anon["client_name"], "")
+        self.assertEqual(s_anon["client_phone"], "")
+        self.assertEqual(s_anon["delivery_address"], "")
+        self.assertIsNone(s_anon["client_id"])
+
 
 if __name__ == "__main__":
     unittest.main()

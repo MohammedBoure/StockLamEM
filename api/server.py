@@ -359,10 +359,30 @@ class StockLamApiHandler(BaseHTTPRequestHandler):
                 return
             try:
                 data = self._read_body()
+                client_name = (
+                    data.get("client_name")
+                    or data.get("customer_name")
+                    or ""
+                )
+                client_phone = (
+                    data.get("client_phone")
+                    or data.get("phone")
+                    or ""
+                )
+                delivery_address = (
+                    data.get("delivery_address")
+                    or data.get("preferred_location")
+                    or data.get("delivery_location")
+                    or data.get("location")
+                    or ""
+                )
                 result = bridge.create_session(
                     client_id=data.get("client_id"),
                     label=data.get("label"),
                     created_by=data.get("created_by"),
+                    client_name=client_name,
+                    client_phone=client_phone,
+                    delivery_address=delivery_address,
                 )
                 http_status = HTTPStatus.CREATED if result.get("success") else HTTPStatus.BAD_REQUEST
                 self._send_json(http_status, result)

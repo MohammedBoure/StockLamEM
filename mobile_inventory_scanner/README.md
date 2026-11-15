@@ -6,7 +6,7 @@ Application mobile Flutter compagne pour **stocklamEM** permettant de gérer les
 
 ### 1. 🛍️ Mode Commandes (Onglet par défaut — Sessions Clients sur Serveur PC)
 - Consultez toutes les sessions ouvertes dans `Bureaux -> Commandes` sur le PC serveur via une barre horizontale à changement instantané en 1 clic.
-- Créez une nouvelle session en 1 clic (`+ Nouvelle`) sans bloquer sur le choix du client (le caissier/opérateur de bureau attribue le client lorsque celui-ci se présente au bureau).
+- Créez une nouvelle session via `+ Nouvelle` avec saisie optionnelle du nom client, téléphone et lieu de livraison/retrait préféré (ou en un clic sans nom client : la session reste sans nom client et le bureau confirme/modifie le client au moment de valider).
 - Ajoutez ou ajustez (`+` / `-` / suppression) des produits au panier de la session par scan caméra, saisie code-barres ou recherche catalogue instantanée (`order_sessions_view.dart`).
 
 ### 2. 📦 Mode Stock Direct (Dispatch sur site)

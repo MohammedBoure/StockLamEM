@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
-    QCompleter,
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -43,9 +42,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from .quick_client_dialog import QuickClientDialog
 from .bon_pdf_export import export_order_bon_to_pdf
 from .order_bons_dialog import OrderDeskBonsDialog
+from .order_client_dialog import OrderClientDialog
 
 from ui.formatting import format_money, format_quantity
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
@@ -911,14 +910,19 @@ class OrderDeskWidget(QWidget):
         self._session_counter = 1
         self._sessions: Dict[str, Dict[str, Any]] = {
             "SESSION_1": {
-                "label": "Session Vente #1",
+                "label": "Session #1",
+                "default_label": "Session #1",
+                "has_custom_label": False,
                 "scanner_id": None,
-                "client_id": 1,
-                "cart": [],
+                "client_id": None,
+                "client_name": "",
+                "client_phone": "",
                 "delivery_address": "",
+                "cart": [],
             },
         }
         self._active_session_id = "SESSION_1"
+        self._clients_cache: List[Dict[str, Any]] = []
         self._catalog_cache: List[Dict[str, Any]] = []
         self._catalog_filtered_items: List[Dict[str, Any]] = []
         self._catalog_loaded_count: int = 0
@@ -929,6 +933,7 @@ class OrderDeskWidget(QWidget):
         self.scanDispatched.connect(self._process_scanned_barcode)
         self.hid_manager.register_global_callback(self._on_any_scanner_input)
 
+        self._load_clients_cache()
         self._init_ui()
         self.refresh_catalog()
 
@@ -2080,76 +2085,6 @@ class OrderDeskWidget(QWidget):
         header_row.addWidget(btn_clear)
         layout.addLayout(header_row)
 
-        # Client Selection Header & Dedicated Full-Width Combobox
-        client_header = QHBoxLayout()
-        client_header.setSpacing(6)
-        lbl_cl = QLabel("Client :")
-        lbl_cl.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155;")
-        client_header.addWidget(lbl_cl)
-        client_header.addStretch()
-
-        btn_new_client = QPushButton("+ Nouveau Client")
-        btn_new_client.setCursor(Qt.PointingHandCursor)
-        btn_new_client.setFixedHeight(28)
-        btn_new_client.setStyleSheet(OUTLINE_BTN_STYLE)
-        btn_new_client.setToolTip("Ajouter rapidement un nouveau client en quelques secondes")
-        btn_new_client.clicked.connect(self._open_quick_client_dialog)
-        client_header.addWidget(btn_new_client)
-        layout.addLayout(client_header)
-
-        self.cbo_client = QComboBox()
-        self.cbo_client.setObjectName("OrderClientCombo")
-        self.cbo_client.setFixedHeight(36)
-        self.cbo_client.setMinimumHeight(36)
-        self.cbo_client.setEditable(True)
-        self.cbo_client.setInsertPolicy(QComboBox.NoInsert)
-        self.cbo_client.setStyleSheet("""
-            QComboBox#OrderClientCombo {
-                background-color: #FFFFFF;
-                border: 1px solid #CED4DA;
-                border-radius: 4px;
-                padding: 4px 10px;
-                font-size: 12px;
-                font-weight: 600;
-                color: #2C3E50;
-                min-height: 28px;
-            }
-            QComboBox#OrderClientCombo:hover {
-                border-color: #ADB5BD;
-            }
-            QComboBox#OrderClientCombo:focus {
-                border: 1.5px solid #007572;
-                background-color: #FFFFFF;
-            }
-            QComboBox#OrderClientCombo::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 24px;
-                border-left: 1px solid #CED4DA;
-                background-color: #F8FAFC;
-                border-top-right-radius: 4px;
-                border-bottom-right-radius: 4px;
-            }
-            QComboBox#OrderClientCombo QAbstractItemView {
-                border: 1px solid #CED4DA;
-                border-radius: 4px;
-                background-color: #FFFFFF;
-                selection-background-color: #E6F4F1;
-                selection-color: #007572;
-                font-size: 12px;
-                padding: 4px;
-                color: #2C3E50;
-            }
-        """)
-        if self.cbo_client.lineEdit():
-            self.cbo_client.lineEdit().setPlaceholderText("Rechercher par nom ou n° téléphone...")
-            self.cbo_client.lineEdit().setStyleSheet(
-                "border: none; background: transparent; font-size: 12px; font-weight: 600; color: #1E293B; padding: 0 4px;"
-            )
-        self._load_clients_into_combo()
-        self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
-        layout.addWidget(self.cbo_client)
-
         # Cart Items Table (6 columns: Désignation, Réf, Qté, Prix U., Total TTC, Suppr.)
         self.cart_table = QTableWidget(0, 6)
         self.cart_table.setHorizontalHeaderLabels(["Désignation", "Réf", "Qté", "Prix U.", "Total TTC", "Suppr."])
@@ -2207,30 +2142,6 @@ class OrderDeskWidget(QWidget):
             }
         """)
         layout.addWidget(self.lbl_cart_price_error)
-
-        # Delivery info for Bon de Livraison
-        self.txt_delivery_addr = QLineEdit()
-        self.txt_delivery_addr.setFixedHeight(34)
-        self.txt_delivery_addr.setPlaceholderText("Adresse de livraison & téléphone (pour Bon de Livraison)...")
-        self.txt_delivery_addr.setStyleSheet("""
-            QLineEdit {
-                background-color: #FFFFFF;
-                border: 1px solid #CED4DA;
-                border-radius: 4px;
-                padding: 4px 10px;
-                font-size: 12px;
-                color: #2C3E50;
-            }
-            QLineEdit:hover {
-                border-color: #ADB5BD;
-            }
-            QLineEdit:focus {
-                border: 1.5px solid #007572;
-                background-color: #FFFFFF;
-            }
-        """)
-        self.txt_delivery_addr.textChanged.connect(self._on_delivery_addr_changed)
-        layout.addWidget(self.txt_delivery_addr)
 
         # Summary Total Box (Styled matching Stock & Magasin KPI badges)
         total_box = QFrame()
@@ -2322,86 +2233,34 @@ class OrderDeskWidget(QWidget):
         layout.addWidget(self.btn_versement)
         return panel
 
-    def _open_quick_client_dialog(self) -> None:
-        dlg = QuickClientDialog(data_manager=self.data_manager, parent=self)
-        if dlg.exec() == QDialog.Accepted and dlg.created_client:
-            new_c = dlg.created_client
-            if not new_c.get("Client_ID"):
-                new_c["Client_ID"] = max([c["Client_ID"] for c in getattr(self, "_clients_cache", [])], default=1) + 1
-
-            if not hasattr(self, "_clients_cache"):
-                self._clients_cache = []
-            self._clients_cache.append(new_c)
-
-            self._load_clients_into_combo(selected_id=new_c["Client_ID"])
-
-            # Set as active session's client
-            if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
-                self._sessions[self._active_session_id]["client_id"] = new_c["Client_ID"]
-
-            # Auto-fill delivery address if provided and currently empty
-            if new_c.get("Address") and hasattr(self, "txt_delivery_addr") and not self.txt_delivery_addr.text().strip():
-                self.txt_delivery_addr.setText(new_c["Address"])
-
-            self.lbl_scanner_status.setText(f"Client '{new_c['Client_Name']}' créé et sélectionné")
-
-    def _on_client_changed(self, idx: int) -> None:
-        if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
-            cid = self.cbo_client.currentData()
-            if cid is not None:
-                self._sessions[self._active_session_id]["client_id"] = int(cid)
-                for c in getattr(self, "_clients_cache", []):
-                    if c.get("Client_ID") == int(cid) and c.get("Address") and hasattr(self, "txt_delivery_addr"):
-                        if not self.txt_delivery_addr.text().strip():
-                            self.txt_delivery_addr.setText(c["Address"])
-                        break
-
-    def _load_clients_into_combo(self, selected_id: Optional[int] = None) -> None:
-        self.cbo_client.blockSignals(True)
-        self.cbo_client.clear()
-
-        if not hasattr(self, "_clients_cache") or not self._clients_cache:
-            loaded_clients = []
-            if self.data_manager and hasattr(self.data_manager, "clients"):
-                try:
-                    db_clients = self.data_manager.clients.get_all_clients() or []
-                    for c in db_clients:
-                        cid = c.get("Client_ID")
-                        cname = str(c.get("Client_Name") or f"Client #{cid}").strip()
-                        cphone = str(c.get("Phone") or "").strip()
-                        caddr = str(c.get("Address") or "").strip()
-                        c_tier = str(c.get("Price_Tier") or "Prix_1").strip()
-                        loaded_clients.append({
-                            "Client_ID": int(cid) if cid is not None else 0,
-                            "Client_Name": cname,
-                            "Phone": cphone,
-                            "Address": caddr,
-                            "Price_Tier": c_tier,
-                        })
-                except Exception as err:
-                    logger.debug(f"Error loading clients: {err}")
-            elif os.environ.get("PYTEST_CURRENT_TEST"):
-                loaded_clients = [
-                    {"Client_ID": 1, "Client_Name": "Client Standard", "Phone": "", "Address": "", "Price_Tier": "Prix_1"}
-                ]
-            self._clients_cache = loaded_clients
-
-        select_idx = 0
-        for idx, c in enumerate(self._clients_cache):
-            display = c["Client_Name"]
-            if c.get("Phone"):
-                display += f"  —  Tél: {c['Phone']}"
-            self.cbo_client.addItem(display, c["Client_ID"])
-            if selected_id is not None and c["Client_ID"] == selected_id:
-                select_idx = idx
-
-        completer = QCompleter(self.cbo_client.model(), self.cbo_client)
-        completer.setFilterMode(Qt.MatchContains)
-        completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.cbo_client.setCompleter(completer)
-
-        self.cbo_client.setCurrentIndex(select_idx)
-        self.cbo_client.blockSignals(False)
+    def _load_clients_cache(self) -> None:
+        """Loads client records into self._clients_cache for popup client dialogs and price tiers."""
+        loaded_clients: List[Dict[str, Any]] = []
+        if self.data_manager and hasattr(self.data_manager, "clients"):
+            try:
+                db_clients = self.data_manager.clients.get_all_clients() or []
+                for c in db_clients:
+                    cid = c.get("Client_ID")
+                    if cid is None:
+                        continue
+                    cname = str(c.get("Client_Name") or c.get("Full_Name") or f"Client #{cid}").strip()
+                    cphone = str(c.get("Phone") or "").strip()
+                    caddr = str(c.get("Address") or "").strip()
+                    c_tier = str(c.get("Price_Tier") or "Prix_1").strip()
+                    loaded_clients.append({
+                        "Client_ID": int(cid),
+                        "Client_Name": cname,
+                        "Phone": cphone,
+                        "Address": caddr,
+                        "Price_Tier": c_tier,
+                    })
+            except Exception as err:
+                logger.debug(f"Error loading clients: {err}")
+        elif os.environ.get("PYTEST_CURRENT_TEST"):
+            loaded_clients = [
+                {"Client_ID": 1, "Client_Name": "Client Standard", "Phone": "", "Address": "", "Price_Tier": "Prix_1"}
+            ]
+        self._clients_cache = loaded_clients
 
     def _on_available_only_toggled(self, checked: bool) -> None:
         """Refreshes catalog when availability filter is toggled."""
@@ -2732,10 +2591,6 @@ class OrderDeskWidget(QWidget):
     # MULTI-SESSION & MULTI-SCANNER ROUTING (Tabs & HID Isolation)
     # =========================================================================
 
-    def _on_delivery_addr_changed(self, text: str) -> None:
-        if hasattr(self, "_active_session_id") and self._active_session_id in self._sessions:
-            self._sessions[self._active_session_id]["delivery_address"] = text.strip()
-
     def _format_session_tab_text(self, sid: str) -> str:
         sdata = self._sessions.get(sid)
         if not sdata:
@@ -2883,14 +2738,22 @@ class OrderDeskWidget(QWidget):
                 break
 
     def _clear_session_cart(self, sid: str) -> None:
-        """Empties cart items for a given session ID."""
+        """Empties cart items and resets transient customer details for a given session ID."""
         if sid in self._sessions:
-            self._sessions[sid]["cart"] = []
-            self._sessions[sid]["delivery_address"] = ""
-            if sid == self._active_session_id and hasattr(self, "txt_delivery_addr"):
-                self.txt_delivery_addr.clear()
+            sdata = self._sessions[sid]
+            sdata["cart"] = []
+            if not sdata.get("edit_order"):
+                sdata["client_id"] = None
+                sdata["client_name"] = ""
+                sdata["client_phone"] = ""
+                sdata["delivery_address"] = ""
+                if not sdata.get("has_custom_label"):
+                    sdata["label"] = sdata.get("default_label") or ("Session #1" if sid == "SESSION_1" else sid)
+            else:
+                sdata["delivery_address"] = ""
             self._update_tab_label(sid)
             if sid == self._active_session_id:
+                self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
                 self._refresh_cart_ui()
 
     def _on_session_tab_context_menu(self, pos) -> None:
@@ -2948,15 +2811,6 @@ class OrderDeskWidget(QWidget):
         if not sid or sid not in self._sessions:
             return
 
-        # Save previous session's delivery address only when switching from a different session
-        if (
-            hasattr(self, "_active_session_id")
-            and self._active_session_id in self._sessions
-            and self._active_session_id != sid
-        ):
-            if hasattr(self, "txt_delivery_addr"):
-                self._sessions[self._active_session_id]["delivery_address"] = self.txt_delivery_addr.text().strip()
-
         self._active_session_id = sid
         sdata = self._sessions[sid]
         sdata["has_event"] = False
@@ -2970,21 +2824,6 @@ class OrderDeskWidget(QWidget):
                 self.lbl_scanner_status.setText(f"Scanner [{sdata['scanner_id']}] actif")
             else:
                 self.lbl_scanner_status.setText("Prêt • Recherche directe / Scan")
-
-        # Restore client selection
-        if hasattr(self, "cbo_client"):
-            cid = sdata.get("client_id", 1)
-            c_idx = self.cbo_client.findData(cid)
-            if c_idx >= 0:
-                self.cbo_client.blockSignals(True)
-                self.cbo_client.setCurrentIndex(c_idx)
-                self.cbo_client.blockSignals(False)
-
-        # Restore delivery address
-        if hasattr(self, "txt_delivery_addr"):
-            self.txt_delivery_addr.blockSignals(True)
-            self.txt_delivery_addr.setText(sdata.get("delivery_address", ""))
-            self.txt_delivery_addr.blockSignals(False)
 
         self._refresh_cart_ui()
         self._update_tab_close_buttons()
@@ -3013,9 +2852,6 @@ class OrderDeskWidget(QWidget):
                 if reply != QMessageBox.Yes:
                     return
             self._clear_session_cart(sid)
-            self._load_clients_into_combo(selected_id=1)
-            if hasattr(self, "txt_delivery_addr"):
-                self.txt_delivery_addr.clear()
             self._update_tab_close_buttons()
             return
 
@@ -3097,6 +2933,9 @@ class OrderDeskWidget(QWidget):
         custom_label: Optional[str] = None,
         client_id: Optional[int] = None,
         created_by: Optional[str] = None,
+        client_name: Optional[str] = None,
+        client_phone: Optional[str] = None,
+        delivery_address: Optional[str] = None,
     ) -> str:
         clean_sc = str(scanner_id).strip() if scanner_id else None
         if clean_sc:
@@ -3111,13 +2950,27 @@ class OrderDeskWidget(QWidget):
             sid = f"SESSION_{self._session_counter}"
 
         clean_label = str(custom_label or "").strip()
-        label = clean_label or f"Session #{self._session_counter}"
+        clean_cname = str(client_name or "").strip()
+        clean_cphone = str(client_phone or "").strip()
+        clean_addr = str(delivery_address or "").strip()
+        parsed_cid = int(client_id) if client_id else None
+        if not clean_cname and parsed_cid is not None:
+            resolved_name = self._resolve_session_client_name(parsed_cid)
+            if resolved_name and resolved_name.lower() not in ("client divers", "client comptoir", "client standard"):
+                clean_cname = resolved_name
+
+        default_label = f"Session #{self._session_counter}"
+        label = clean_label or clean_cname or default_label
         self._sessions[sid] = {
             "label": label,
+            "default_label": default_label,
+            "has_custom_label": bool(clean_label),
             "scanner_id": clean_sc,
-            "client_id": int(client_id) if client_id else 1,
+            "client_id": parsed_cid,
+            "client_name": clean_cname,
+            "client_phone": clean_cphone,
+            "delivery_address": clean_addr,
             "cart": [],
-            "delivery_address": "",
             "has_event": False,
             "edit_order": None,
             "created_by": str(created_by or "").strip(),
@@ -3394,16 +3247,17 @@ class OrderDeskWidget(QWidget):
         self._update_tab_label(session_id)
 
     def _resolve_session_client_name(self, client_id: Optional[int]) -> str:
-        cid = int(client_id or 1)
-        if hasattr(self, "cbo_client"):
-            idx = self.cbo_client.findData(cid)
-            if idx >= 0:
-                return str(self.cbo_client.itemText(idx) or f"Client #{cid}")
+        if client_id is None:
+            return ""
+        cid = int(client_id)
+        for c in getattr(self, "_clients_cache", []):
+            if int(c.get("Client_ID") or 0) == cid:
+                return str(c.get("Client_Name") or c.get("Full_Name") or f"Client #{cid}")
         if self.data_manager and hasattr(self.data_manager, "clients"):
             try:
                 for c in self.data_manager.clients.get_all_clients() or []:
                     if int(c.get("Client_ID") or 0) == cid:
-                        return str(c.get("Full_Name") or f"Client #{cid}")
+                        return str(c.get("Client_Name") or c.get("Full_Name") or f"Client #{cid}")
             except Exception:
                 pass
         return "Client Divers" if cid == 1 else f"Client #{cid}"
@@ -3428,12 +3282,17 @@ class OrderDeskWidget(QWidget):
                 "unit_price_ttc": unit_p,
                 "line_total": line_total,
             })
-        cid = int(sdata.get("client_id") or 1)
+        cid = sdata.get("client_id")
+        c_name = str(sdata.get("client_name") or "").strip()
+        if not c_name and cid is not None:
+            c_name = self._resolve_session_client_name(int(cid))
         return {
             "session_id": sid,
             "label": str(sdata.get("label") or sid),
-            "client_id": cid,
-            "client_name": self._resolve_session_client_name(cid),
+            "client_id": int(cid) if cid else None,
+            "client_name": c_name,
+            "client_phone": str(sdata.get("client_phone") or ""),
+            "delivery_address": str(sdata.get("delivery_address") or ""),
             "item_count": item_count,
             "total_ttc": round(total_ttc, 2),
             "is_active": sid == getattr(self, "_active_session_id", None),
@@ -3450,6 +3309,9 @@ class OrderDeskWidget(QWidget):
         client_id: Optional[int] = None,
         label: Optional[str] = None,
         created_by: Optional[str] = None,
+        client_name: Optional[str] = None,
+        client_phone: Optional[str] = None,
+        delivery_address: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Crée une nouvelle session Commandes depuis l'app mobile sans perturber la session active."""
         sid = self._create_new_session(
@@ -3458,6 +3320,9 @@ class OrderDeskWidget(QWidget):
             custom_label=label,
             client_id=client_id,
             created_by=created_by,
+            client_name=client_name,
+            client_phone=client_phone,
+            delivery_address=delivery_address,
         )
         if sid != getattr(self, "_active_session_id", None):
             self._mark_session_event(sid)
@@ -3773,13 +3638,39 @@ class OrderDeskWidget(QWidget):
 
     def _clear_current_cart(self) -> None:
         if self._active_session_id in self._sessions:
-            self._sessions[self._active_session_id]["cart"] = []
-            self._sessions[self._active_session_id]["delivery_address"] = ""
-        if hasattr(self, "txt_delivery_addr"):
-            self.txt_delivery_addr.clear()
+            sdata = self._sessions[self._active_session_id]
+            sdata["cart"] = []
+            if not sdata.get("edit_order"):
+                sdata["client_id"] = None
+                sdata["client_name"] = ""
+                sdata["client_phone"] = ""
+                sdata["delivery_address"] = ""
+                if not sdata.get("has_custom_label"):
+                    sdata["label"] = sdata.get("default_label") or (
+                        "Session #1" if self._active_session_id == "SESSION_1" else self._active_session_id
+                    )
+            else:
+                sdata["delivery_address"] = ""
+            if hasattr(self, "lbl_cart_header"):
+                self.lbl_cart_header.setText(f"Panier — {sdata['label']}")
         self._clear_cart_price_error()
         self._update_tab_label(self._active_session_id)
         self._refresh_cart_ui()
+
+    def _prompt_order_client(self, sdata: Dict[str, Any], bond_type: str = "BON_C") -> Optional[Dict[str, Any]]:
+        """Opens the popup OrderClientDialog so user can verify/edit mobile client info or choose a client."""
+        dlg = OrderClientDialog(
+            data_manager=self.data_manager,
+            clients_cache=getattr(self, "_clients_cache", []),
+            session_data=sdata,
+            bond_type=bond_type,
+            parent=self,
+        )
+        if dlg.exec() != QDialog.Accepted or not dlg.selected_client_info:
+            return None
+        if dlg.clients_cache_updated:
+            self._clients_cache = list(dlg.clients_cache)
+        return dict(dlg.selected_client_info)
 
     # =========================================================================
     # ORDER SUBMISSION (Bon C, Bon Crédit, Bon de Livraison)
@@ -3817,7 +3708,20 @@ class OrderDeskWidget(QWidget):
                 QMessageBox.warning(self, "Prix Non Autorisé", msg)
                 return
 
-        client_id = int(self.cbo_client.currentData() or 1)
+        client_info = self._prompt_order_client(sdata, bond_type=bond_type)
+        if not client_info:
+            return
+
+        client_id = int(client_info.get("client_id") or 1)
+        client_label = str(client_info.get("client_name") or "").strip() or "Client Comptoir"
+        deliv_phone = str(client_info.get("client_phone") or "").strip() or None
+        deliv_addr = str(client_info.get("delivery_address") or "").strip() or None
+
+        sdata["client_id"] = client_id
+        sdata["client_name"] = client_label
+        sdata["client_phone"] = deliv_phone or ""
+        sdata["delivery_address"] = deliv_addr or ""
+
         user_id = 1
         if self.data_manager and getattr(self.data_manager, "current_user", None):
             user_id = int(
@@ -3832,7 +3736,6 @@ class OrderDeskWidget(QWidget):
             "BON_LIVRAISON": "LIVRAISON_COD",
             "BON_VERSEMENT": "VERSEMENT",
         }
-        deliv_addr = sdata.get("delivery_address") or self.txt_delivery_addr.text().strip() or None
 
         try:
             edit_meta = sdata.get("edit_order")
@@ -3866,6 +3769,7 @@ class OrderDeskWidget(QWidget):
                     bond_type=bond_type,
                     scanner_session_id=self._active_session_id,
                     delivery_address=deliv_addr,
+                    delivery_phone=deliv_phone,
                 )
             else:
                 total_val = sum(Decimal(str(i["unit_price_ttc"])) * int(i["quantity"]) for i in cart)
@@ -3888,7 +3792,6 @@ class OrderDeskWidget(QWidget):
             order_num = res["order_number"]
             total_ttc = res["total_ttc"]
 
-            client_label = self.cbo_client.currentText().split("  —  ")[0].strip() or "Client Comptoir"
             bon_snapshot = {
                 "Order_ID": res.get("order_id"),
                 "Order_Number": order_num,
@@ -3965,11 +3868,9 @@ class OrderDeskWidget(QWidget):
                     sdata["edit_order"] = None
                     sdata["label"] = "Session #1"
                     self._clear_current_cart()
-                    self.txt_delivery_addr.clear()
                     self._update_tab_label(self._active_session_id)
             else:
                 self._clear_current_cart()
-                self.txt_delivery_addr.clear()
             self.refresh_catalog()
         except Exception as err:
             QMessageBox.critical(self, "Erreur Création Bon", f"Impossible de créer le bon :\n{err}")
@@ -4039,6 +3940,8 @@ class OrderDeskWidget(QWidget):
         }
         sdata["label"] = f"تعديل • {order_num}"
         sdata["client_id"] = int(bon.get("Client_ID") or 1)
+        sdata["client_name"] = str(bon.get("Client_Name") or "")
+        sdata["client_phone"] = str(bon.get("Client_Phone") or bon.get("Delivery_Phone") or "")
         sdata["delivery_address"] = str(bon.get("Delivery_Address") or "")
         sdata["cart"] = cart_items
 

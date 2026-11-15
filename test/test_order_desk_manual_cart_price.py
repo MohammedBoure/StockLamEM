@@ -126,8 +126,18 @@ def test_cart_manual_price_edit_and_instant_margin_validation(qapp):
         assert "160" in desk.lbl_total.text()
 
         # 5) Submitting submits edited valid price
-        with patch.object(QMessageBox, "information"):
-            desk._submit_order("BON_C")
+        with patch.object(
+            desk,
+            "_prompt_order_client",
+            return_value={
+                "client_id": 1,
+                "client_name": "Client Comptoir",
+                "client_phone": "",
+                "delivery_address": "",
+            },
+        ):
+            with patch.object(QMessageBox, "information"):
+                desk._submit_order("BON_C")
         dm.bonds.create_sales_order_draft.assert_called_once()
         submitted_items = dm.bonds.create_sales_order_draft.call_args.kwargs["items"]
         assert submitted_items[0]["unit_price_ttc"] == 80000.0

@@ -70,6 +70,9 @@ class MobileOrderSessionBridge(QObject):
                     client_id=payload.get("client_id"),
                     label=payload.get("label"),
                     created_by=payload.get("created_by"),
+                    client_name=payload.get("client_name"),
+                    client_phone=payload.get("client_phone"),
+                    delivery_address=payload.get("delivery_address"),
                 )
                 return {
                     "success": True,
@@ -106,10 +109,20 @@ class MobileOrderSessionBridge(QObject):
         client_id: Optional[int] = None,
         label: Optional[str] = None,
         created_by: Optional[str] = None,
+        client_name: Optional[str] = None,
+        client_phone: Optional[str] = None,
+        delivery_address: Optional[str] = None,
     ) -> Dict[str, Any]:
         return self._call(
             "create_session",
-            {"client_id": client_id, "label": label, "created_by": created_by},
+            {
+                "client_id": client_id,
+                "label": label,
+                "created_by": created_by,
+                "client_name": client_name,
+                "client_phone": client_phone,
+                "delivery_address": delivery_address,
+            },
         )
 
     def add_item(

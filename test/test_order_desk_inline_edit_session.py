@@ -127,20 +127,28 @@ class TestOrderDeskInlineEditSession(unittest.TestCase):
 
             idx = widget.session_tab_bar.currentIndex()
             self.assertIn("تعديل", widget.session_tab_bar.tabText(idx))
-            self.assertEqual(widget.txt_delivery_addr.text(), "Alger Centre")
+            self.assertEqual(widget._sessions[edit_sid]["delivery_address"], "Alger Centre")
             self.assertEqual(len(widget._sessions[edit_sid]["cart"]), 1)
 
             # Re-opening the same bon focuses the existing edit session
             same_sid = widget.open_bon_in_edit_session(sample_bon)
             self.assertEqual(same_sid, edit_sid)
 
-            # Modify session: add second product & update delivery address
+            # Modify session: add second product & update delivery address in session
             widget._add_product_to_session(edit_sid, dm.serials.get_catalog_with_theoretical_stock.return_value[1])
-            widget.txt_delivery_addr.setText("Oran")
             widget._sessions[edit_sid]["delivery_address"] = "Oran"
 
-            with patch.object(QMessageBox, "information"):
-                widget.btn_credit.click()
+            with patch(
+                "ui.widgets.appliance_desks.order_desk_view.OrderDeskWidget._prompt_order_client",
+                return_value={
+                    "client_id": 15,
+                    "client_name": "SARL Atlas",
+                    "client_phone": "",
+                    "delivery_address": "Oran",
+                },
+            ):
+                with patch.object(QMessageBox, "information"):
+                    widget.btn_credit.click()
 
             dm.bonds.update_sales_order_draft.assert_called_once()
             kwargs = dm.bonds.update_sales_order_draft.call_args.kwargs

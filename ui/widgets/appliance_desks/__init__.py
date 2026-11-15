@@ -10,6 +10,7 @@ from .bon_pdf_export import export_order_bon_to_pdf
 from .cashier_desk_view import AdminAuthModal, BonRetourDialog, CashierDeskWidget, ClientWalletDialog
 from .dispatch_desk_view import DispatchDeskWidget
 from .order_bons_dialog import OrderBonEditDialog, OrderDeskBonsDialog
+from .order_client_dialog import OrderClientDialog
 from .order_desk_view import OrderDeskWidget
 from .quick_client_dialog import QuickClientDialog
 from .serial_batch_view import SerialBatchRegistryWidget
@@ -18,6 +19,7 @@ from ui.widgets.sav import IrreparableDefectModal, SAVKanbanWidget, SAVReception
 __all__ = [
     "ApplianceWorkflowTab",
     "OrderDeskWidget",
+    "OrderClientDialog",
     "OrderDeskBonsDialog",
     "OrderBonEditDialog",
     "export_order_bon_to_pdf",
