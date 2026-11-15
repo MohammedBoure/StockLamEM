@@ -4,26 +4,60 @@ import mysql.connector
 import logging
 from typing import List, Dict, Optional, Tuple
 from decimal import Decimal
-from .system_logger import log_methods 
-from .product_reference_manager import (
-    ALL_REFS_SQL,
-    PRIMARY_REF_SQL,
-    REF_SEARCH_EXISTS_SQL,
-    ProductReferenceManager,
-)
+from .system_logger import log_methods
+
+_SINGLE_PRIMARY_REF_SQL = "NULLIF(TRIM(p.Manuf_Cat_No), '') AS Primary_Ref"
+_SINGLE_ALL_REFS_SQL = "NULLIF(TRIM(p.Manuf_Cat_No), '') AS All_Refs"
+
 
 @log_methods()
 class ProductManager:
     """
     Gestion des opérations sur la table des produits (Products_Master).
     Mise à jour : Protection désactivée pour permettre la correction des unités.
-    Integration : Ajout du champ Is_Billable.
+    Integration : Ajout du champ Is_Billable et Réf unique directe par produit (Manuf_Cat_No).
     """
 
     def __init__(self, db_instance):
         self.db = db_instance
-        # Guarantees Product_References exists before Réf sub-queries are executed
-        ProductReferenceManager(db_instance)
+
+    @staticmethod
+    def normalize_ref_code(ref_code: Optional[str], *, allow_empty: bool = True) -> Optional[str]:
+        """Normalise une référence produit unique (Réf / Manuf_Cat_No)."""
+        clean = str(ref_code or "").strip()
+        if not clean:
+            if allow_empty:
+                return None
+            raise ValueError("La référence (Réf) ne peut pas être vide.")
+        if len(clean) > 100:
+            raise ValueError("La référence (Réf) ne doit pas dépasser 100 caractères.")
+        return clean
+
+    def set_product_ref(self, product_id: int, ref_code: str) -> str:
+        """Définit ou met à jour l'unique référence (Réf / Manuf_Cat_No) d'un produit."""
+        clean_ref = self.normalize_ref_code(ref_code, allow_empty=False)
+        with self.db.get_db_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT Product_ID, Product_Name
+                FROM Products_Master
+                WHERE Manuf_Cat_No = %s AND Product_ID <> %s AND Deleted_At IS NULL
+                LIMIT 1
+                """,
+                (clean_ref, int(product_id)),
+            )
+            dup = cursor.fetchone()
+            if dup:
+                raise ValueError(
+                    f"La référence '{clean_ref}' est déjà associée au produit « {dup.get('Product_Name') or dup.get('Product_ID')} »."
+                )
+            cursor.execute(
+                "UPDATE Products_Master SET Manuf_Cat_No = %s WHERE Product_ID = %s",
+                (clean_ref, int(product_id)),
+            )
+            conn.commit()
+        return clean_ref
 
     def add_product(self, product_data: Dict) -> bool:
         """
@@ -32,8 +66,18 @@ class ProductManager:
         logging.info(f"ProduitManager: Tentative d'ajout d'un nouveau produit: {product_data.get('Product_Name')}")
 
         try:
+            ref_code = self.normalize_ref_code(product_data.get('Manuf_Cat_No'), allow_empty=True)
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor()
+                if ref_code:
+                    cursor.execute(
+                        "SELECT Product_ID, Product_Name FROM Products_Master WHERE Manuf_Cat_No = %s AND Deleted_At IS NULL LIMIT 1",
+                        (ref_code,),
+                    )
+                    dup = cursor.fetchone()
+                    if dup:
+                        dup_name = dup[1] if isinstance(dup, (tuple, list)) else dup.get('Product_Name')
+                        raise ValueError(f"La référence '{ref_code}' est déjà associée au produit « {dup_name} ».")
                 # إضافة Is_Billable إلى الاستعلام
                 query = """
                     INSERT INTO Products_Master 
@@ -55,7 +99,7 @@ class ProductManager:
                     product_data['Product_Name'],
                     product_data['Family_ID'],
                     product_data.get('Barcode'),
-                    product_data.get('Manuf_Cat_No'),
+                    ref_code,
                     product_data.get('Ordering_Unit', 'Carton'),
                     product_data.get('Stock_Unit', 'Box'),
                     product_data.get('Stock_Qty_Per_Order_Unit', 1),
@@ -119,6 +163,24 @@ class ProductManager:
                     logging.warning(f"⚠️ AVERTISSEMENT: Modification forcée des unités pour le produit {product_id} alors que du stock existe.")
 
                 # 4. التحديث
+                if 'Manuf_Cat_No' in product_data:
+                    clean_ref = self.normalize_ref_code(product_data.get('Manuf_Cat_No'), allow_empty=True)
+                    product_data = dict(product_data)
+                    product_data['Manuf_Cat_No'] = clean_ref
+                    if clean_ref:
+                        cursor.execute(
+                            """
+                            SELECT Product_ID, Product_Name
+                            FROM Products_Master
+                            WHERE Manuf_Cat_No = %s AND Product_ID <> %s AND Deleted_At IS NULL
+                            LIMIT 1
+                            """,
+                            (clean_ref, product_id),
+                        )
+                        dup = cursor.fetchone()
+                        if dup:
+                            return False, f"La référence '{clean_ref}' est déjà associée au produit « {dup.get('Product_Name')} »."
+
                 fields_to_update = []
                 params = []
                 
@@ -262,7 +324,7 @@ class ProductManager:
                 cursor = conn.cursor(dictionary=True)
                 query = f"""
                     SELECT p.*, m.Manuf_Name, pf.Family_Name, a.Automate_Name,
-                           {PRIMARY_REF_SQL}, {ALL_REFS_SQL}
+                           {_SINGLE_PRIMARY_REF_SQL}, {_SINGLE_ALL_REFS_SQL}
                     FROM Products_Master p
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
@@ -282,7 +344,7 @@ class ProductManager:
                 cursor = conn.cursor(dictionary=True)
                 query = f"""
                     SELECT p.*, pf.Family_Name, m.Manuf_Name, a.Automate_Name,
-                           {PRIMARY_REF_SQL}, {ALL_REFS_SQL}
+                           {_SINGLE_PRIMARY_REF_SQL}, {_SINGLE_ALL_REFS_SQL}
                     FROM Products_Master p
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
@@ -325,7 +387,7 @@ class ProductManager:
                 params = []
                 query = f"""
                     SELECT p.*, m.Manuf_Name, pf.Family_Name, a.Automate_Name,
-                           {PRIMARY_REF_SQL}, {ALL_REFS_SQL}
+                           {_SINGLE_PRIMARY_REF_SQL}, {_SINGLE_ALL_REFS_SQL}
                     FROM Products_Master p
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
@@ -336,13 +398,12 @@ class ProductManager:
                         p.Barcode LIKE %s OR 
                         p.Manuf_Cat_No LIKE %s OR
                         pf.Family_Name LIKE %s OR
-                        a.Automate_Name LIKE %s OR
-                        {REF_SEARCH_EXISTS_SQL}
+                        a.Automate_Name LIKE %s
                     )
                     ORDER BY p.Product_Name
                 """
                 term = f"%{search_term}%"
-                params.extend([term, term, term, term, term, term])
+                params.extend([term, term, term, term, term])
                 if limit:
                     try:
                         limit_value = max(1, min(int(limit), 500))

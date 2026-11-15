@@ -562,7 +562,7 @@ class MainWindow(QMainWindow):
             if hasattr(self.data_manager, 'suppliers') and self.has_permission("tab_data_suppliers"):
                 widget.tabs.addTab(widget.tab_suppliers, "Fournisseurs")
             if hasattr(self.data_manager, 'manufacturers') and self.has_permission("tab_data_manufacturers"):
-                widget.tabs.addTab(widget.tab_manufacturers, "Fabricants")
+                widget.tabs.addTab(widget.tab_manufacturers, "Marque")
             if hasattr(self.data_manager, 'partners') and self.has_permission("tab_data_partners"):
                 widget.tabs.addTab(widget.tab_partners, "Partenaires")
             if hasattr(self.data_manager, 'automates') and self.has_permission("tab_data_automates"):
@@ -575,8 +575,6 @@ class MainWindow(QMainWindow):
                 widget.tabs.addTab(widget.tab_caisses, "Caisses")
             if hasattr(widget, 'tab_colors') and self.has_permission("tab_data_colors"):
                 widget.tabs.addTab(widget.tab_colors, "Couleurs")
-            if hasattr(widget, 'tab_references') and hasattr(self.data_manager, 'product_refs') and self.has_permission("tab_data_references"):
-                widget.tabs.addTab(widget.tab_references, "Références (Réf)")
 
         # --- 2. Procurement (Achats) ---
         elif page_id == 2:

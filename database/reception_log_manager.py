@@ -861,12 +861,9 @@ class ReceptionLogManager:
                 has_ref_col = self._ensure_ref_code_column(cursor)
                 ref_select = "b.Ref_Code" if has_ref_col else "NULL AS Ref_Code"
                 primary_ref_expr = (
-                    "COALESCE(NULLIF(b.Ref_Code, ''), "
-                    "(SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = p.Product_ID "
-                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), p.Manuf_Cat_No)"
+                    "COALESCE(NULLIF(TRIM(b.Ref_Code), ''), NULLIF(TRIM(p.Manuf_Cat_No), ''))"
                     if has_ref_col else
-                    "COALESCE((SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = p.Product_ID "
-                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), p.Manuf_Cat_No)"
+                    "NULLIF(TRIM(p.Manuf_Cat_No), '')"
                 )
                 query_header = "SELECT rl.*, s.Supplier_Name FROM Reception_Log rl LEFT JOIN Suppliers s ON rl.Supplier_ID = s.Supplier_ID WHERE rl.BR_ID = %s"
                 cursor.execute(query_header, (br_id,))

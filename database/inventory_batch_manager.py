@@ -1182,12 +1182,9 @@ class InventoryBatchManager:
                 has_ref_col = self._ensure_ref_code_column(cursor)
                 ref_select = "B.Ref_Code" if has_ref_col else "NULL AS Ref_Code"
                 primary_ref_expr = (
-                    "COALESCE(NULLIF(B.Ref_Code, ''), "
-                    "(SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = P.Product_ID "
-                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), P.Manuf_Cat_No)"
+                    "COALESCE(NULLIF(TRIM(B.Ref_Code), ''), NULLIF(TRIM(P.Manuf_Cat_No), ''))"
                     if has_ref_col else
-                    "COALESCE((SELECT pr.Ref_Code FROM Product_References pr WHERE pr.Product_ID = P.Product_ID "
-                    "ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC LIMIT 1), P.Manuf_Cat_No)"
+                    "NULLIF(TRIM(P.Manuf_Cat_No), '')"
                 )
 
                 # شرط استبعاد المنتجات المحذوفة
@@ -1212,11 +1209,7 @@ class InventoryBatchManager:
                         P.Manuf_Cat_No,
                         {ref_select},
                         {primary_ref_expr} AS Primary_Ref,
-                        (
-                            SELECT GROUP_CONCAT(pr.Ref_Code ORDER BY pr.Is_Primary DESC, pr.Ref_ID ASC SEPARATOR ' | ')
-                            FROM Product_References pr
-                            WHERE pr.Product_ID = P.Product_ID
-                        ) AS All_Refs,
+                        NULLIF(TRIM(P.Manuf_Cat_No), '') AS All_Refs,
                         F.Family_Name,
                         P.Family_ID,
                         P.Color_Finish,

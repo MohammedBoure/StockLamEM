@@ -48,8 +48,9 @@ def _make_mock_manager():
             "Product_ID": 10,
             "Product_Name": "Lampe LED 12W",
             "Manuf_Name": "Philips",
+            "Manuf_Cat_No": "REF-A1",
             "Primary_Ref": "REF-A1",
-            "All_Refs": "REF-A1 | REF-A2",
+            "All_Refs": "REF-A1",
             "Base_Unit_Name": "Unité",
             "Default_Selling_Price_HT": 1500.0,
         },
@@ -57,6 +58,7 @@ def _make_mock_manager():
             "Product_ID": 20,
             "Product_Name": "Spot Encastrable",
             "Manuf_Name": "Osram",
+            "Manuf_Cat_No": "",
             "Primary_Ref": "",
             "All_Refs": "",
             "Base_Unit_Name": "Unité",
@@ -64,32 +66,19 @@ def _make_mock_manager():
         },
     ]
 
-    refs_store = {
-        10: [
-            {"Ref_ID": 1, "Product_ID": 10, "Ref_Code": "REF-A1", "Is_Primary": True},
-            {"Ref_ID": 2, "Product_ID": 10, "Ref_Code": "REF-A2", "Is_Primary": False},
-        ],
-        20: [],
-    }
+    single_refs = {10: "REF-A1", 20: ""}
 
-    def _get_refs(pid):
-        return list(refs_store.get(pid, []))
-
-    def _add_ref(pid, code):
-        code = str(code).strip()
-        if not code:
+    def _set_ref(pid, code):
+        clean = str(code or "").strip()
+        if not clean:
             raise ValueError("Réf vide")
-        for existing in refs_store.values():
-            if any(r["Ref_Code"] == code for r in existing):
+        for other_pid, other_code in single_refs.items():
+            if other_pid != pid and other_code == clean:
                 raise ValueError("Réf déjà utilisée")
-        refs_store.setdefault(pid, []).append(
-            {"Ref_ID": 99, "Product_ID": pid, "Ref_Code": code, "Is_Primary": False}
-        )
-        return 99
+        single_refs[pid] = clean
+        return clean
 
-    mgr.product_refs = MagicMock()
-    mgr.product_refs.get_references_for_product.side_effect = _get_refs
-    mgr.product_refs.add_reference.side_effect = _add_ref
+    mgr.products.set_product_ref.side_effect = _set_ref
 
     mgr.batches.get_all_batches_with_details.return_value = [
         {
@@ -149,25 +138,23 @@ class TestStockActuelRefAndQuickAdd(unittest.TestCase):
         self.assertFalse(dlg.cb_ref.isEnabled())
         self.assertFalse(dlg.btn_add_ref.isEnabled())
 
-        # Select product 10 (has REF-A1 and REF-A2)
+        # Select product 10 (has single Réf REF-A1)
         dlg.cb_product.setCurrentIndex(1)
         self.assertTrue(dlg.cb_ref.isEnabled())
         self.assertTrue(dlg.btn_add_ref.isEnabled())
-        self.assertEqual(dlg.cb_ref.count(), 2)
+        self.assertEqual(dlg.cb_ref.count(), 1)
         self.assertEqual(dlg.cb_ref.itemData(0), "REF-A1")
-        self.assertEqual(dlg.cb_ref.itemData(1), "REF-A2")
+        self.assertEqual(dlg.get_data()["Ref_Code"], "REF-A1")
 
-        dlg.cb_ref.setCurrentIndex(1)
-        self.assertEqual(dlg.get_data()["Ref_Code"], "REF-A2")
-
-        # Click '+' to add a new Réf to product 10
+        # Click '+' to update the single Réf on product 10
         with patch(
             "ui.widgets.inventory.tabs_batches.quick_add_dialog.QInputDialog.getText",
             return_value=("REF-NEW-99", True),
         ):
             dlg.btn_add_ref.click()
 
-        mgr.product_refs.add_reference.assert_called_once_with(10, "REF-NEW-99")
+        mgr.products.set_product_ref.assert_called_once_with(10, "REF-NEW-99")
+        self.assertEqual(dlg.cb_ref.count(), 1)
         self.assertEqual(dlg.cb_ref.currentData(), "REF-NEW-99")
         self.assertEqual(dlg.get_data()["Ref_Code"], "REF-NEW-99")
         dlg.close()

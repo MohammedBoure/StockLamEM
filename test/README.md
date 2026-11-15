@@ -80,7 +80,7 @@ This test suite enforces strict software quality gatekeeping across:
 - **`test_quick_add_color_assignment.py`**:
   - *Scope*: Verifies Task #4 deliverables: in Stock & Magasin -> Stock Actuel -> Ajout Rapide (`QuickAddDialog`), dynamic color swatch badge preview (`lbl_color_swatch`), color combobox populated with active finishes (`ProductColorManager` / `Product_Colors`), automatic pre-selection from product Master Data (`Color_Finish`) or existing batch data, custom color input support, and persistence of `Color_Finish` on `Products_Master` and `Product_Colors` via `InventoryBatchManager` (`add_direct_batch` and `update_direct_batch`).
 - **`test_product_references.py`**:
-  - *Scope*: Verifies the multi-`Réf` registry (`ProductReferenceManager`, `ProductReferencesTab`), RBAC permission `tab_data_references` in `SYSTEM_PERMISSIONS` / `UserDialog` / `navigation_permissions`, and `Primary_Ref` prioritization in `OrderDeskWidget`.
+  - *Scope*: Verifies Task #1 (`Données de Base`): renaming `Fabricants` to `Marque` across permissions, UI labels, and `MainWindow` tabs; complete removal of `ProductReferencesTab`, `ProductReferenceManager`, and `tab_data_references`; and direct single-`Réf` (`Manuf_Cat_No`) validation, dialog/table display, and `OrderDeskWidget` rendering.
 - **`test_order_desk_inline_edit_session.py`**:
   - *Scope*: Verifies Task #12 deliverables in `OrderDeskBonsDialog` and `OrderDeskWidget`: emitting `editBonRequested` without launching `OrderBonEditDialog` when `inline_edit=True`, opening an editable bon inside a dedicated `"تعديل"` session tab with pre-filled client/address/cart lines, and submitting updates via `update_sales_order_draft`.
 - **`test_order_desk_payment_labels.py`**:

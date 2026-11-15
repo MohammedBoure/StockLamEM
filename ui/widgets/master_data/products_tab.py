@@ -48,15 +48,16 @@ class ProductsTab(QWidget):
         columns = [
             "ID",                  # 0 - مخفية
             "Nom du Produit",      # 1
-            "Famille",             # 2
-            "Marque",              # 3
-            "Unité Stock",         # 4
-            "Unité Commande",      # 5
-            "Seuil Min",           # 6
-            "Température",         # 7
-            "Automate Préféré",    # 8
-            "Alertes (🔔)",       # 9
-            "Groupe Vente"        # 10
+            "Réf",                 # 2
+            "Famille",             # 3
+            "Marque",              # 4
+            "Unité Stock",         # 5
+            "Unité Commande",      # 6
+            "Seuil Min",           # 7
+            "Température",         # 8
+            "Automate Préféré",    # 9
+            "Alertes (🔔)",       # 10
+            "Groupe Vente"         # 11
         ]
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
@@ -131,40 +132,44 @@ class ProductsTab(QWidget):
                 # 1. Nom du Produit
                 self.table.setItem(row_idx, 1, self._create_centered_item(product['Product_Name']))
                 
-                # 2. Famille
-                self.table.setItem(row_idx, 2, self._create_centered_item(product.get('Family_Name', '---')))
+                # 2. Réf unique
+                ref_val = str(product.get('Primary_Ref') or product.get('Manuf_Cat_No') or '').strip() or '---'
+                self.table.setItem(row_idx, 2, self._create_centered_item(ref_val))
+
+                # 3. Famille
+                self.table.setItem(row_idx, 3, self._create_centered_item(product.get('Family_Name', '---')))
                 
-                # 3. Marque
-                self.table.setItem(row_idx, 3, self._create_centered_item(product.get('Manuf_Name', '---')))
+                # 4. Marque
+                self.table.setItem(row_idx, 4, self._create_centered_item(product.get('Manuf_Name', '---')))
                 
-                # 4. Unité Stock
-                self.table.setItem(row_idx, 4, self._create_centered_item(product.get('Stock_Unit', '---')))
+                # 5. Unité Stock
+                self.table.setItem(row_idx, 5, self._create_centered_item(product.get('Stock_Unit', '---')))
                 
-                # 5. Unité Commande
-                self.table.setItem(row_idx, 5, self._create_centered_item(product.get('Ordering_Unit', '---')))
+                # 6. Unité Commande
+                self.table.setItem(row_idx, 6, self._create_centered_item(product.get('Ordering_Unit', '---')))
                 
-                # 6. Seuil Min
+                # 7. Seuil Min
                 min_stock = product.get('Minimum_Stock_Level', 0)
-                self.table.setItem(row_idx, 6, self._create_centered_item(min_stock, is_numeric=True))
+                self.table.setItem(row_idx, 7, self._create_centered_item(min_stock, is_numeric=True))
                 
-                # 7. Température
+                # 8. Température
                 temp = product.get('Storage_Temp_Req', '')
-                self.table.setItem(row_idx, 7, self._create_centered_item(temp if temp else 'Ambiante'))
+                self.table.setItem(row_idx, 8, self._create_centered_item(temp if temp else 'Ambiante'))
                 
-                # 8. Automate Préféré ← مصحح هنا
+                # 9. Automate Préféré ← مصحح هنا
                 preferred_id = product.get('Preferred_Automate_ID')
                 automate_name = all_automates.get(preferred_id, 'Aucun') if preferred_id else 'Aucun'
-                self.table.setItem(row_idx, 8, self._create_centered_item(automate_name))
+                self.table.setItem(row_idx, 9, self._create_centered_item(automate_name))
 
-                # 9. Alertes
+                # 10. Alertes
                 show_alerts = product.get('Show_In_Alerts', False)
                 alert_text = "🔔 Oui" if show_alerts else "🔕 Non"
-                self.table.setItem(row_idx, 9, self._create_centered_item(alert_text))
+                self.table.setItem(row_idx, 10, self._create_centered_item(alert_text))
 
-                # 10. Groupe Vente (Caisse)
+                # 11. Groupe Vente (Caisse)
                 pos_grp = product.get('POS_Priority_Group')
                 grp_text = f"⭐ Liste {pos_grp}" if pos_grp else "---"
-                self.table.setItem(row_idx, 10, self._create_centered_item(grp_text))
+                self.table.setItem(row_idx, 11, self._create_centered_item(grp_text))
 
             self.table.setSortingEnabled(True)
             logging.info(f"{len(products)} produits chargés dans le tableau.")
@@ -224,11 +229,15 @@ class ProductsTab(QWidget):
             if dialog.exec():
                 new_data = dialog.get_data()
                 if new_data:
-                    success = self.data_manager.products.update_product(product_data['Product_ID'], new_data)
-                    if success:
+                    res = self.data_manager.products.update_product(product_data['Product_ID'], new_data)
+                    if isinstance(res, tuple):
+                        ok, err_msg = res
+                    else:
+                        ok, err_msg = bool(res), "Échec de la mise à jour en base de données."
+                    if ok:
                         self.load_products_data()
                     else:
-                        QMessageBox.warning(self, "Erreur", "Échec de la mise à jour en base de données.")
+                        QMessageBox.warning(self, "Erreur", err_msg or "Échec de la mise à jour en base de données.")
                 
         except Exception as e:
             logging.error(f"Erreur édition produit : {traceback.format_exc()}")

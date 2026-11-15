@@ -31,7 +31,6 @@ NAVIGATION_PERMISSION_FALLBACKS = {
         "tab_clients",
         "tab_data_caisses",
         "tab_data_colors",
-        "tab_data_references",
     ),
     "nav_clients": (
         "tab_clients",

@@ -35,14 +35,13 @@ SYSTEM_PERMISSIONS = {
             "tab_data_families": "Familles",
             "tab_data_units": "Unités (Pkg)",
             "tab_data_suppliers": "Fournisseurs",
-            "tab_data_manufacturers": "Fabricants",
+            "tab_data_manufacturers": "Marque",
             "tab_data_partners": "Partenaires",
             "tab_data_automates": "Automates",
             "tab_data_locations": "Emplacements",
             "tab_data_waste_reasons": "Motifs Rebut",
             "tab_data_caisses": "Caisses",
-            "tab_data_colors": "Couleurs",
-            "tab_data_references": "Références (Réf)"
+            "tab_data_colors": "Couleurs"
         }
     },
     "2b. CLIENTS": {

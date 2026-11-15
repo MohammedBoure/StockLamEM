@@ -165,6 +165,10 @@ class ProductDialog(BaseDialog):
         
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Nom du produit (obligatoire)")
+
+        self.ref_input = QLineEdit()
+        self.ref_input.setPlaceholderText("Référence unique (Réf) du produit")
+        self.ref_input.setMaxLength(100)
         
         self.family_combo = QComboBox()
         self.manuf_combo = QComboBox()
@@ -181,6 +185,7 @@ class ProductDialog(BaseDialog):
         self.pos_priority_group_spin.setToolTip("Groupe / Liste de priorité pour l'interface de vente (1, 2, 3... sans limite. Laissez 0 pour aucun).")
         
         basic_layout.addRow("Nom du Produit * :", self.name_input)
+        basic_layout.addRow("Référence (Réf) :", self.ref_input)
         basic_layout.addRow("Famille * :", self.family_combo)
         basic_layout.addRow("Marque * :", self.manuf_combo)
         basic_layout.addRow("Facturation :", self.is_billable_cb)
@@ -326,6 +331,7 @@ class ProductDialog(BaseDialog):
         """تعبئة البيانات عند التعديل"""
         d = self.data
         self.name_input.setText(d.get('Product_Name', ''))
+        self.ref_input.setText(str(d.get('Manuf_Cat_No') or d.get('Primary_Ref') or '').strip())
         
         # تعبئة القوائم المنسدلة المرتبطة بـ ID
         for combo, key in [(self.family_combo, 'Family_ID'), (self.manuf_combo, 'Manuf_ID'), (self.auto_combo, 'Preferred_Automate_ID')]:
@@ -377,6 +383,7 @@ class ProductDialog(BaseDialog):
             
         return {
             "Product_Name": product_name,
+            "Manuf_Cat_No": self.ref_input.text().strip() or None,
             "Family_ID": self.family_combo.currentData(),
             "Manuf_ID": self.manuf_combo.currentData(),
             "Is_Billable": self.is_billable_cb.isChecked(),  # الحقل الجديد

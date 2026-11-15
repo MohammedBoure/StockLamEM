@@ -149,7 +149,7 @@ class ReceptionDialogUIMixin:
         self.btn_add_ref.setFixedSize(28, 26)
         self.btn_add_ref.setCursor(Qt.PointingHandCursor)
         self.btn_add_ref.setEnabled(False)
-        self.btn_add_ref.setToolTip("Ajouter une nouvelle Réf pour le produit sélectionné")
+        self.btn_add_ref.setToolTip("Définir ou modifier l'unique Réf du produit sélectionné")
         self.btn_add_ref.setStyleSheet(
             "QPushButton { background-color: #e6f4f1; color: #007572; border: 1px solid #007572; "
             "border-radius: 4px; font-weight: bold; font-size: 14px; padding: 0px; margin: 0px; }"

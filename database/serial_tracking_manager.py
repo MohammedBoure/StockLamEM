@@ -14,7 +14,6 @@ import re
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
-from .product_reference_manager import ALL_REFS_SQL, PRIMARY_REF_SQL
 
 import mysql.connector
 
@@ -318,8 +317,8 @@ class SerialTrackingManager:
                         COALESCE(p.Category_Name, pf.Family_Name, 'Électroménager') AS Category_Name,
                         COALESCE(p.Color_Finish, 'Standard') AS Color_Finish,
                         p.Barcode,
-                        {PRIMARY_REF_SQL},
-                        {ALL_REFS_SQL},
+                        NULLIF(TRIM(p.Manuf_Cat_No), '') AS Primary_Ref,
+                        NULLIF(TRIM(p.Manuf_Cat_No), '') AS All_Refs,
                         p.Warranty_Months,
                         p.Requires_Serial_Tracking,
                         COALESCE(p.Default_Selling_Price_HT, 0.00) AS Default_Selling_Price_HT,

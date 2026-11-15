@@ -21,11 +21,11 @@ class ManufacturersTab(QWidget):
         # --- Barre d'outils (Toolbar) ---
         toolbar = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Rechercher un fabricant...")
+        self.search_input.setPlaceholderText("Rechercher une marque...")
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_data)
         
-        btn_add = QPushButton("➕ Ajouter Fabricant")
+        btn_add = QPushButton("➕ Ajouter Marque")
         btn_add.setMinimumHeight(35)
         btn_add.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
         btn_add.clicked.connect(self.open_add_dialog)
@@ -43,7 +43,7 @@ class ManufacturersTab(QWidget):
         self.table = QTableWidget()
         # "ID" موجود برمجياً في العمود 0 ولكن سيتم إخفاؤه عن المستخدم
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "Nom du Fabricant", "Pays d'Origine", "Site Web"])
+        self.table.setHorizontalHeaderLabels(["ID", "Nom de la Marque", "Pays d'Origine", "Site Web"])
         
         # 1. تفعيل الترتيب عند الضغط على العناوين
         self.table.setSortingEnabled(True)

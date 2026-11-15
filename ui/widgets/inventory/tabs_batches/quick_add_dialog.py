@@ -193,7 +193,7 @@ class QuickAddDialog(QDialog):
         self.btn_add_ref.setFixedSize(28, 26)
         self.btn_add_ref.setCursor(Qt.PointingHandCursor)
         self.btn_add_ref.setEnabled(False)
-        self.btn_add_ref.setToolTip("Ajouter une nouvelle Réf pour le produit sélectionné")
+        self.btn_add_ref.setToolTip("Définir ou modifier l'unique Réf du produit sélectionné")
         self.btn_add_ref.setStyleSheet(
             "QPushButton { background-color: #e6f4f1; color: #007572; border: 1px solid #007572; "
             "border-radius: 4px; font-weight: bold; font-size: 14px; padding: 0px; margin: 0px; }"
@@ -528,7 +528,7 @@ class QuickAddDialog(QDialog):
         self._update_color_swatch()
 
     def _load_product_references(self, product_data, selected_ref=None):
-        """Charge les références (Réf) disponibles pour le produit sélectionné."""
+        """Charge l'unique référence (Réf) associée directement au produit sélectionné."""
         self.cb_ref.blockSignals(True)
         self.cb_ref.clear()
 
@@ -542,75 +542,43 @@ class QuickAddDialog(QDialog):
         self.cb_ref.setEnabled(True)
         self.btn_add_ref.setEnabled(True)
 
-        pid = product_data.get('Product_ID')
-        refs = []
-        ref_mgr = getattr(self.manager, 'product_refs', None)
-        if not ref_mgr and hasattr(self.manager, 'db') and self.manager.db:
-            try:
-                from database.product_reference_manager import ProductReferenceManager
-                ref_mgr = ProductReferenceManager(self.manager.db)
-            except Exception:
-                ref_mgr = None
-        if ref_mgr and hasattr(ref_mgr, 'get_references_for_product') and pid:
-            try:
-                refs = ref_mgr.get_references_for_product(pid) or []
-            except Exception as e:
-                logging.debug(f"Could not load product references: {e}")
+        direct_ref = str(
+            selected_ref
+            or product_data.get('Primary_Ref')
+            or product_data.get('Manuf_Cat_No')
+            or ''
+        ).strip()
 
-        seen = set()
-        for r in refs:
-            code = str(r.get('Ref_Code') or '').strip()
-            if not code or code in seen:
-                continue
-            seen.add(code)
-            label = f"{code} (Principale)" if r.get('Is_Primary') else code
-            self.cb_ref.addItem(label, code)
+        if not direct_ref and product_data.get('Product_ID'):
+            prod_mgr = getattr(self.manager, 'products', None)
+            if prod_mgr and hasattr(prod_mgr, 'get_product_by_id'):
+                try:
+                    fresh = prod_mgr.get_product_by_id(product_data['Product_ID']) or {}
+                    direct_ref = str(fresh.get('Primary_Ref') or fresh.get('Manuf_Cat_No') or '').strip()
+                except Exception as e:
+                    logging.debug(f"Could not load product single ref: {e}")
 
-        if not seen:
-            raw_all = str(product_data.get('All_Refs') or '').strip()
-            if raw_all:
-                for part in raw_all.split('|'):
-                    code = part.strip()
-                    if code and code not in seen:
-                        seen.add(code)
-                        self.cb_ref.addItem(code, code)
-            else:
-                fallback_code = str(
-                    product_data.get('Primary_Ref')
-                    or product_data.get('Manuf_Cat_No')
-                    or ''
-                ).strip()
-                if fallback_code:
-                    seen.add(fallback_code)
-                    self.cb_ref.addItem(fallback_code, fallback_code)
-
-        if not seen:
+        if direct_ref:
+            self.cb_ref.addItem(direct_ref, direct_ref)
+            self.cb_ref.setCurrentIndex(0)
+        else:
             self.cb_ref.addItem("--- Aucune Réf ---", "")
-
-        if selected_ref:
-            target = str(selected_ref).strip()
-            idx = self.cb_ref.findData(target)
-            if idx < 0 and target:
-                if self.cb_ref.count() == 1 and self.cb_ref.itemData(0) == "":
-                    self.cb_ref.clear()
-                self.cb_ref.addItem(target, target)
-                idx = self.cb_ref.findData(target)
-            if idx >= 0:
-                self.cb_ref.setCurrentIndex(idx)
 
         self.cb_ref.blockSignals(False)
 
     def on_add_ref_clicked(self):
-        """Ajoute une nouvelle Réf directement au produit actuellement sélectionné."""
+        """Définit ou met à jour l'unique Réf directement sur le produit sélectionné."""
         p = self.cb_product.currentData()
         if not p:
             QMessageBox.warning(self, "Produit requis", "Veuillez d'abord sélectionner un produit.")
             return
 
+        current_ref = str(p.get('Primary_Ref') or p.get('Manuf_Cat_No') or '').strip()
         new_ref, ok = QInputDialog.getText(
             self,
-            "Nouvelle Référence (Réf)",
-            f"Ajouter une nouvelle Réf pour « {p.get('Product_Name', '')} » :"
+            "Référence du Produit (Réf)",
+            f"Définir l'unique Réf pour « {p.get('Product_Name', '')} » :",
+            text=current_ref,
         )
         if not ok:
             return
@@ -619,24 +587,28 @@ class QuickAddDialog(QDialog):
         if not new_ref:
             return
 
-        ref_mgr = getattr(self.manager, 'product_refs', None)
-        if not ref_mgr and hasattr(self.manager, 'db') and self.manager.db:
+        prod_mgr = getattr(self.manager, 'products', None)
+        if not prod_mgr and hasattr(self.manager, 'db') and self.manager.db:
             try:
-                from database.product_reference_manager import ProductReferenceManager
-                ref_mgr = ProductReferenceManager(self.manager.db)
+                from database.product_manager import ProductManager
+                prod_mgr = ProductManager(self.manager.db)
             except Exception:
-                ref_mgr = None
-        if not ref_mgr or not hasattr(ref_mgr, 'add_reference'):
-            QMessageBox.warning(self, "Indisponible", "Le gestionnaire de références n'est pas disponible.")
+                prod_mgr = None
+
+        if not prod_mgr or not hasattr(prod_mgr, 'set_product_ref'):
+            QMessageBox.warning(self, "Indisponible", "Le gestionnaire de produits n'est pas disponible.")
             return
 
         try:
-            ref_mgr.add_reference(p['Product_ID'], new_ref)
+            saved_ref = prod_mgr.set_product_ref(p['Product_ID'], new_ref)
         except Exception as exc:
             QMessageBox.warning(self, "Erreur Réf", str(exc))
             return
 
-        self._load_product_references(p, selected_ref=new_ref)
+        p['Manuf_Cat_No'] = saved_ref
+        p['Primary_Ref'] = saved_ref
+        p['All_Refs'] = saved_ref
+        self._load_product_references(p, selected_ref=saved_ref)
 
     def on_product_selected(self):
         p = self.cb_product.currentData()

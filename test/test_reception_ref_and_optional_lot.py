@@ -31,8 +31,9 @@ def _make_mock_manager():
             "Product_ID": 10,
             "Product_Name": "Lave-linge 8KG",
             "Manuf_Name": "LG",
+            "Manuf_Cat_No": "REF-LG-8K",
             "Primary_Ref": "REF-LG-8K",
-            "All_Refs": "REF-LG-8K | REF-LG-ALT",
+            "All_Refs": "REF-LG-8K",
             "Stock_Unit": "Unité",
             "Base_Unit_Name": "Unité",
             "Default_Selling_Price_HT": 75000.0,
@@ -48,26 +49,18 @@ def _make_mock_manager():
     mgr.colors = MagicMock()
     mgr.colors.get_all_colors.return_value = []
 
-    refs_store = {
-        10: [
-            {"Ref_ID": 1, "Product_ID": 10, "Ref_Code": "REF-LG-8K", "Is_Primary": True},
-            {"Ref_ID": 2, "Product_ID": 10, "Ref_Code": "REF-LG-ALT", "Is_Primary": False},
-        ]
-    }
+    single_refs_store = {10: "REF-LG-8K"}
 
-    def _get_refs(pid):
-        return list(refs_store.get(pid, []))
+    def _set_ref(pid, code):
+        clean = str(code or "").strip()
+        if not clean:
+            raise ValueError("Réf vide")
+        single_refs_store[pid] = clean
+        mgr.products.get_all_products.return_value[0]["Manuf_Cat_No"] = clean
+        mgr.products.get_all_products.return_value[0]["Primary_Ref"] = clean
+        return clean
 
-    def _add_ref(pid, code):
-        code = str(code).strip()
-        refs_store.setdefault(pid, []).append(
-            {"Ref_ID": 88, "Product_ID": pid, "Ref_Code": code, "Is_Primary": False}
-        )
-        return 88
-
-    mgr.product_refs = MagicMock()
-    mgr.product_refs.get_references_for_product.side_effect = _get_refs
-    mgr.product_refs.add_reference.side_effect = _add_ref
+    mgr.products.set_product_ref.side_effect = _set_ref
 
     mgr.reception = MagicMock()
     mgr.reception.add_reception_line.return_value = (True, "OK")
@@ -125,16 +118,18 @@ class TestReceptionRefAndOptionalLot(unittest.TestCase):
         dlg.cb_product.setCurrentIndex(1)
         self.assertTrue(dlg.cb_ref.isEnabled())
         self.assertTrue(dlg.btn_add_ref.isEnabled())
-        self.assertEqual(dlg.cb_ref.count(), 2)
+        self.assertEqual(dlg.cb_ref.count(), 1)
+        self.assertEqual(dlg.cb_ref.currentData(), "REF-LG-8K")
 
-        # Click '+' to add a new Réf directly in Bon de Réception
+        # Click '+' to set/update the single Réf directly on the product in Bon de Réception
         with patch(
             "ui.widgets.procurement.reception_dialog.reception_dialog_logic.QInputDialog.getText",
             return_value=("REF-LG-NEW", True),
         ):
             dlg.btn_add_ref.click()
 
-        mgr.product_refs.add_reference.assert_called_once_with(10, "REF-LG-NEW")
+        mgr.products.set_product_ref.assert_called_once_with(10, "REF-LG-NEW")
+        self.assertEqual(dlg.cb_ref.count(), 1)
         self.assertEqual(dlg.cb_ref.currentData(), "REF-LG-NEW")
 
         # Leave Lot empty (optional), add item

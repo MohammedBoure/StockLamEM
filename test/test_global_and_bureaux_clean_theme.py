@@ -37,7 +37,6 @@ def _make_mock_dm():
     dm.bonds.get_caisse_queue.return_value = []
     dm.bonds.get_dispatch_queue.return_value = []
     dm.product_colors.get_all_colors.return_value = []
-    dm.product_refs.get_all_references.return_value = []
     dm.stats = MagicMock()
     dm.stats.db = MagicMock()
     dm.stats.get_dashboard_summary.return_value = {}
