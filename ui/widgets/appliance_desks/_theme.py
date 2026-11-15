@@ -47,28 +47,28 @@ STATUS_DANGER_BORDER = "#FCA5A5"
 # ---------------------------------------------------------------------------
 BOND_TYPE_BADGES = {
     "BON_C": {
-        "label": "Bon Comptant",
-        "short": "Comptant",
+        "label": "Paiement complet",
+        "short": "Paiement complet",
         "fg": BRAND_TEAL,
         "bg": BRAND_TEAL_TINT,
         "border": BRAND_TEAL_BORDER,
     },
     "BON_CREDIT": {
-        "label": "Bon Crédit",
-        "short": "Crédit",
+        "label": "Paiement à crédit",
+        "short": "Paiement à crédit",
         "fg": STATUS_INFO,
         "bg": STATUS_INFO_BG,
         "border": STATUS_INFO_BORDER,
     },
     "BON_LIVRAISON": {
-        "label": "Bon de Livraison",
-        "short": "Livraison",
+        "label": "Paiement à la livraison",
+        "short": "Paiement à la livraison",
         "fg": STATUS_WARN,
         "bg": STATUS_WARN_BG,
         "border": STATUS_WARN_BORDER,
     },
     "BON_VERSEMENT": {
-        "label": "Bon Versement",
+        "label": "Versement",
         "short": "Versement",
         "fg": STATUS_SUCCESS,
         "bg": STATUS_SUCCESS_BG,

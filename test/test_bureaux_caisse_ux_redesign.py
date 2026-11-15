@@ -109,9 +109,9 @@ class TestBureauxCaisseUXRedesign(unittest.TestCase):
             # Summary pill & chip counts
             self.assertIn("3 bons", desk.lbl_queue_summary.text())
             self.assertEqual(desk.btn_filter_all.text(), "Tous (3)")
-            self.assertEqual(desk.btn_filter_bc.text(), "Comptant (1)")
-            self.assertEqual(desk.btn_filter_credit.text(), "Crédit (1)")
-            self.assertEqual(desk.btn_filter_bl.text(), "Livraison (1)")
+            self.assertEqual(desk.btn_filter_bc.text(), "Paiement complet (1)")
+            self.assertEqual(desk.btn_filter_credit.text(), "Paiement à crédit (1)")
+            self.assertEqual(desk.btn_filter_bl.text(), "Paiement à la livraison (1)")
             self.assertEqual(desk.btn_filter_vrs.text(), "Versement (0)")
 
             # Click Comptant chip -> only row 0 visible
@@ -135,9 +135,9 @@ class TestBureauxCaisseUXRedesign(unittest.TestCase):
             desk.queue_table.selectRow(0)
             desk._on_order_selected()
 
-            # Type pill reflects Bon Comptant
+            # Type pill reflects Paiement complet
             self.assertFalse(desk.lbl_order_type_pill.isHidden())
-            self.assertEqual(desk.lbl_order_type_pill.text(), "Bon Comptant")
+            self.assertEqual(desk.lbl_order_type_pill.text(), "Paiement complet")
 
             # Check wallet deduction + Exact button
             desk.cb_wallet.setChecked(True)

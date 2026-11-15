@@ -98,27 +98,27 @@ class TestCaisseBarcodeAndOrderRemoval(unittest.TestCase):
         self.widget._reset_scan_filter()
         self.assertIn("Tous", self.widget.lbl_scan_type_badge.text())
 
-        # 1 -> Bon Comptant
+        # 1 -> Paiement complet
         self.widget.txt_scan_bon.setText("1-BC-20261106-00042")
-        self.assertIn("1 : Bon Comptant", self.widget.lbl_scan_type_badge.text())
+        self.assertIn("1 : Paiement complet", self.widget.lbl_scan_type_badge.text())
 
-        # 2 -> Bon Crédit
+        # 2 -> Paiement à crédit
         self.widget.txt_scan_bon.setText("2-BCR-20261106-00043")
-        self.assertIn("2 : Bon Crédit", self.widget.lbl_scan_type_badge.text())
+        self.assertIn("2 : Paiement à crédit", self.widget.lbl_scan_type_badge.text())
 
-        # 3 -> Bon de Livraison
+        # 3 -> Paiement à la livraison
         self.widget.txt_scan_bon.setText("3-BLV-20261106-00044")
-        self.assertIn("3 : Bon de Livraison", self.widget.lbl_scan_type_badge.text())
+        self.assertIn("3 : Paiement à la livraison", self.widget.lbl_scan_type_badge.text())
 
         # Single digit tests
         self.widget.txt_scan_bon.setText("1")
-        self.assertIn("1 : Bon Comptant", self.widget.lbl_scan_type_badge.text())
+        self.assertIn("1 : Paiement complet", self.widget.lbl_scan_type_badge.text())
 
         self.widget.txt_scan_bon.setText("2")
-        self.assertIn("2 : Bon Crédit", self.widget.lbl_scan_type_badge.text())
+        self.assertIn("2 : Paiement à crédit", self.widget.lbl_scan_type_badge.text())
 
         self.widget.txt_scan_bon.setText("3")
-        self.assertIn("3 : Bon de Livraison", self.widget.lbl_scan_type_badge.text())
+        self.assertIn("3 : Paiement à la livraison", self.widget.lbl_scan_type_badge.text())
 
     def test_scan_queue_filtering_and_selection(self):
         """Verifies filtering queue rows and selecting matching bon upon scan."""

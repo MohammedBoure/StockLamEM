@@ -328,6 +328,33 @@ DUOTONE_SVGS: Dict[str, str] = {
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
     </svg>''',
+
+    # Payment Methods (Caisse visual icon bar)
+    "pay_cash": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2" fill="#E6F4F1"/>
+        <circle cx="12" cy="12" r="2.8" fill="#FFFFFF" stroke="#0E7471"/>
+        <line x1="5.5" y1="9.5" x2="5.5" y2="14.5" stroke="#1E293B"/>
+        <line x1="18.5" y1="9.5" x2="18.5" y2="14.5" stroke="#1E293B"/>
+    </svg>''',
+
+    "pay_baridimob": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="2" width="12" height="20" rx="2.5" fill="#E6F4F1"/>
+        <line x1="10" y1="18" x2="14" y2="18" stroke="#1E293B"/>
+        <path d="M9.5 10.5l2 2 3.5-4" stroke="#0E7471" stroke-width="2.2"/>
+    </svg>''',
+
+    "pay_tpe": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" fill="#E6F4F1"/>
+        <line x1="2" y1="10" x2="22" y2="10" stroke="#1E293B" stroke-width="2.2"/>
+        <rect x="5" y="13.5" width="5" height="2.5" rx="0.5" fill="#0E7471" stroke="none"/>
+    </svg>''',
+
+    "pay_ccp": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2" fill="#E6F4F1"/>
+        <line x1="7" y1="9" x2="17" y2="9" stroke="#1E293B"/>
+        <line x1="7" y1="13" x2="13" y2="13" stroke="#0E7471"/>
+        <line x1="14.5" y1="15.5" x2="17.5" y2="15.5" stroke="#1E293B"/>
+    </svg>''',
 }
 
 def get_duotone_icon(

@@ -785,9 +785,10 @@ class OrderArticlesDialog(QDialog):
 
         btype = self.order_data.get("Bond_Type") or "BON_C"
         type_labels = {
-            "BON_C": "Bon Comptant",
-            "BON_CREDIT": "Bon Crédit",
-            "BON_LIVRAISON": "Bon de Livraison",
+            "BON_C": "Paiement complet",
+            "BON_CREDIT": "Paiement à crédit",
+            "BON_LIVRAISON": "Paiement à la livraison",
+            "BON_VERSEMENT": "Versement",
         }
         lbl_type = QLabel(type_labels.get(btype, btype))
         lbl_type.setStyleSheet("""
@@ -1271,6 +1272,9 @@ class CashierDeskWidget(QWidget):
         self._selected_order: Optional[Dict[str, Any]] = None
         self._active_type_filter: str = "ALL"
         self._current_remaining_due: float = 0.0
+        self._remaining_after_payment: float = 0.0
+        self._selected_payment_method: str = "Cash"
+        self.payment_method_buttons: Dict[str, QPushButton] = {}
         self._wallet_info: Dict[str, Any] = {
             "current_balance": 0.0,
             "real_deposit_balance": 0.0,
@@ -1375,17 +1379,17 @@ class CashierDeskWidget(QWidget):
         self._caisse_filter_group.setExclusive(True)
 
         self.btn_filter_all = QPushButton("Tous (0)")
-        self.btn_filter_bc = QPushButton("Comptant (0)")
-        self.btn_filter_credit = QPushButton("Crédit (0)")
-        self.btn_filter_bl = QPushButton("Livraison (0)")
+        self.btn_filter_bc = QPushButton("Paiement complet (0)")
+        self.btn_filter_credit = QPushButton("Paiement à crédit (0)")
+        self.btn_filter_bl = QPushButton("Paiement à la livraison (0)")
         self.btn_filter_vrs = QPushButton("Versement (0)")
 
         for btn, code, tip in [
             (self.btn_filter_all, "ALL", "Afficher tous les bons en attente"),
-            (self.btn_filter_bc, "BON_C", "Filtrer : Bons Comptant (1)"),
-            (self.btn_filter_credit, "BON_CREDIT", "Filtrer : Bons Crédit (2)"),
-            (self.btn_filter_bl, "BON_LIVRAISON", "Filtrer : Bons de Livraison (3)"),
-            (self.btn_filter_vrs, "BON_VERSEMENT", "Filtrer : Bons Versement (4)"),
+            (self.btn_filter_bc, "BON_C", "Filtrer : Paiement complet (1)"),
+            (self.btn_filter_credit, "BON_CREDIT", "Filtrer : Paiement à crédit (2)"),
+            (self.btn_filter_bl, "BON_LIVRAISON", "Filtrer : Paiement à la livraison (3)"),
+            (self.btn_filter_vrs, "BON_VERSEMENT", "Filtrer : Versement (4)"),
         ]:
             btn.setCheckable(True)
             btn.setFixedHeight(30)
@@ -1660,65 +1664,153 @@ class CashierDeskWidget(QWidget):
         w_layout.addWidget(self.cb_wallet)
         r_layout.addWidget(wallet_box)
 
-        # 2d. Remaining Due & Change Due Readout (Flat Accent Strip)
+        # 2d. Prominent Montant Hero Display + Live Reste & Change Readout
         hero_due_card = QFrame()
         hero_due_card.setObjectName("CaisseAmountHeroCard")
         hero_due_card.setStyleSheet(f"""
             QFrame#CaisseAmountHeroCard {{
-                background-color: {SUBTLE_BG};
+                background-color: #F0FDFA;
                 border: none;
                 border-left: 3px solid {BRAND_TEAL};
-                border-radius: 4px;
+                border-radius: 6px;
             }}
             QFrame#CaisseAmountHeroCard QLabel {{
                 border: none;
                 background: transparent;
             }}
         """)
-        hero_layout = QHBoxLayout(hero_due_card)
-        hero_layout.setContentsMargins(12, 8, 12, 8)
-        hero_layout.setSpacing(10)
+        hero_outer = QVBoxLayout(hero_due_card)
+        hero_outer.setContentsMargins(14, 10, 14, 10)
+        hero_outer.setSpacing(6)
 
-        self.lbl_rem_due = QLabel("Reste : 0.00 DA")
-        self.lbl_rem_due.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {STATUS_DANGER};")
-        hero_layout.addWidget(self.lbl_rem_due, 1)
+        hero_metrics_row = QHBoxLayout()
+        hero_metrics_row.setSpacing(12)
+
+        montant_col = QVBoxLayout()
+        montant_col.setContentsMargins(0, 0, 0, 0)
+        montant_col.setSpacing(2)
+        lbl_montant_cap = QLabel("MONTANT")
+        lbl_montant_cap.setStyleSheet(
+            f"font-size: 11px; font-weight: 800; color: {TEXT_MUTED}; letter-spacing: 0.6px;"
+        )
+        montant_col.addWidget(lbl_montant_cap)
+
+        self.lbl_total_montant = QLabel("0,00 DA")
+        self.lbl_total_montant.setObjectName("LblCaisseTotalMontant")
+        self.lbl_total_montant.setStyleSheet(
+            f"font-size: 26px; font-weight: 900; color: {TEXT_PRIMARY};"
+        )
+        montant_col.addWidget(self.lbl_total_montant)
+        hero_metrics_row.addLayout(montant_col, 1)
+
+        reste_col = QVBoxLayout()
+        reste_col.setContentsMargins(0, 0, 0, 0)
+        reste_col.setSpacing(2)
+        lbl_reste_cap = QLabel("RESTE À PAYER")
+        lbl_reste_cap.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        lbl_reste_cap.setStyleSheet(
+            f"font-size: 11px; font-weight: 800; color: {TEXT_MUTED}; letter-spacing: 0.6px;"
+        )
+        reste_col.addWidget(lbl_reste_cap)
+
+        self.lbl_rem_due = QLabel("Reste : 0,00 DA")
+        self.lbl_rem_due.setObjectName("LblCaisseResteDue")
+        self.lbl_rem_due.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_rem_due.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {STATUS_DANGER};")
+        reste_col.addWidget(self.lbl_rem_due)
+        hero_metrics_row.addLayout(reste_col, 1)
+
+        hero_outer.addLayout(hero_metrics_row)
 
         self.lbl_change_due = QLabel("")
         self.lbl_change_due.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_change_due.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {STATUS_SUCCESS};")
+        self.lbl_change_due.setStyleSheet(f"font-size: 12.5px; font-weight: 700; color: {STATUS_SUCCESS};")
         self.lbl_change_due.setVisible(False)
-        hero_layout.addWidget(self.lbl_change_due)
+        hero_outer.addWidget(self.lbl_change_due)
         r_layout.addWidget(hero_due_card)
 
-        # 2e. Fast Payment Controls (Method, Amount, Exact Shortcut & Quick Banknote Chips)
+        # 2e. Visual Payment Method Strip (Icon Tiles) & Fast Cash Input
+        lbl_m = QLabel("Mode de Paiement :")
+        lbl_m.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {TEXT_BODY};")
+        r_layout.addWidget(lbl_m)
+
+        self.payment_method_strip = QFrame()
+        self.payment_method_strip.setObjectName("CaissePaymentMethodStrip")
+        self.payment_method_strip.setStyleSheet(f"""
+            QFrame#CaissePaymentMethodStrip {{
+                background-color: {SUBTLE_BG};
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+            }}
+            QFrame#CaissePaymentMethodStrip QPushButton {{
+                background-color: {CARD_BG};
+                color: {TEXT_BODY};
+                border: 1px solid {BORDER_CONTROL};
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                font-weight: 700;
+            }}
+            QFrame#CaissePaymentMethodStrip QPushButton:hover {{
+                border-color: {BRAND_TEAL};
+                color: {BRAND_TEAL};
+                background-color: #F0FDFA;
+            }}
+            QFrame#CaissePaymentMethodStrip QPushButton:checked {{
+                background-color: {BRAND_TEAL_TINT};
+                color: {BRAND_TEAL};
+                border: 2px solid {BRAND_TEAL};
+                font-weight: 800;
+            }}
+        """)
+        pm_layout = QHBoxLayout(self.payment_method_strip)
+        pm_layout.setContentsMargins(6, 6, 6, 6)
+        pm_layout.setSpacing(6)
+
+        self.payment_method_group = QButtonGroup(self)
+        self.payment_method_group.setExclusive(True)
+        for code, label, icon_name, tip in [
+            ("Cash", "Cash", "pay_cash", "Paiement en espèces (Cash)"),
+            ("BaridiMob", "BaridiMob", "pay_baridimob", "Paiement mobile BaridiMob"),
+            ("TPE", "TPE", "pay_tpe", "Carte bancaire / Terminal TPE"),
+            ("CCP", "CCP", "pay_ccp", "Virement / Chèque postal CCP"),
+        ]:
+            pm_btn = QPushButton(label)
+            pm_btn.setObjectName(f"BtnPayMethod_{code}")
+            pm_btn.setCheckable(True)
+            pm_btn.setIcon(get_duotone_icon(icon_name, 20))
+            pm_btn.setIconSize(QSize(20, 20))
+            pm_btn.setFixedHeight(44)
+            pm_btn.setCursor(Qt.PointingHandCursor)
+            pm_btn.setToolTip(tip)
+            pm_btn.setProperty("payment_code", code)
+            self.payment_method_group.addButton(pm_btn)
+            self.payment_method_buttons[code] = pm_btn
+            pm_layout.addWidget(pm_btn, 1)
+
+        self.payment_method_buttons["Cash"].setChecked(True)
+        self._selected_payment_method = "Cash"
+        self.payment_method_group.buttonClicked.connect(self._on_payment_method_clicked)
+        r_layout.addWidget(self.payment_method_strip)
+
         form = QGridLayout()
         form.setHorizontalSpacing(10)
         form.setVerticalSpacing(8)
 
-        lbl_m = QLabel("Mode de Paiement :")
-        lbl_m.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {TEXT_BODY};")
-        form.addWidget(lbl_m, 0, 0)
-        self.cbo_payment_method = QComboBox()
-        self.cbo_payment_method.setFixedHeight(38)
-        self.cbo_payment_method.setStyleSheet(COMBO_QSS)
-        for label, code in [("Cash", "Cash"), ("BaridiMob", "BaridiMob"), ("TPE", "TPE"), ("CCP", "CCP")]:
-            self.cbo_payment_method.addItem(label, code)
-        form.addWidget(self.cbo_payment_method, 0, 1)
-
         lbl_c = QLabel("Montant Reçu (DA) :")
         lbl_c.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {TEXT_BODY};")
-        form.addWidget(lbl_c, 1, 0)
+        form.addWidget(lbl_c, 0, 0)
 
         cash_input_row = QHBoxLayout()
         cash_input_row.setContentsMargins(0, 0, 0, 0)
         cash_input_row.setSpacing(6)
 
         self.txt_cash = QLineEdit("0")
-        self.txt_cash.setFixedHeight(40)
+        self.txt_cash.setFixedHeight(42)
         self.txt_cash.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.txt_cash.setStyleSheet(
             INPUT_QSS
-            + f"QLineEdit {{ font-size: 15px; font-weight: 800; color: {TEXT_PRIMARY}; }}"
+            + f"QLineEdit {{ font-size: 17px; font-weight: 800; color: {TEXT_PRIMARY}; }}"
         )
         self.txt_cash.textChanged.connect(self._recalculate_amounts)
         self.txt_cash.returnPressed.connect(self._trigger_primary_validation)
@@ -1726,13 +1818,13 @@ class CashierDeskWidget(QWidget):
 
         self.btn_exact_cash = QPushButton("Exact")
         self.btn_exact_cash.setCursor(Qt.PointingHandCursor)
-        self.btn_exact_cash.setFixedHeight(40)
+        self.btn_exact_cash.setFixedHeight(42)
         self.btn_exact_cash.setToolTip("Remplir exactement le montant Reste à Encaisser")
         self.btn_exact_cash.setStyleSheet(SECONDARY_OUTLINE_QSS + "QPushButton { padding: 0 12px; font-size: 12px; }")
         self.btn_exact_cash.clicked.connect(self._fill_exact_amount)
         cash_input_row.addWidget(self.btn_exact_cash)
 
-        form.addLayout(cash_input_row, 1, 1)
+        form.addLayout(cash_input_row, 0, 1)
         r_layout.addLayout(form)
 
         # Quick Cash Tender Chips
@@ -1762,9 +1854,9 @@ class CashierDeskWidget(QWidget):
 
         r_layout.addSpacing(2)
 
-        # 2f. Dynamic Primary Settlement CTA Buttons
-        self.btn_val_bon_c = QPushButton("Valider Bon Comptant")
-        self.btn_val_bon_c.setToolTip("Valider Bon Comptant (Encaissement Direct -> Sortie)")
+        # 2f. Dynamic Primary Settlement CTA Buttons (Unified Commandes labels)
+        self.btn_val_bon_c = QPushButton("Valider Paiement complet")
+        self.btn_val_bon_c.setToolTip("Valider Paiement complet (Encaissement Direct -> Sortie)")
         self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 18))
         self.btn_val_bon_c.setIconSize(QSize(18, 18))
         self.btn_val_bon_c.setCursor(Qt.PointingHandCursor)
@@ -1773,7 +1865,7 @@ class CashierDeskWidget(QWidget):
         self.btn_val_bon_c.clicked.connect(self._finalize_bon_c)
         r_layout.addWidget(self.btn_val_bon_c)
 
-        self.btn_val_credit = QPushButton("Autoriser Bon Crédit (Validation Admin)")
+        self.btn_val_credit = QPushButton("Autoriser Paiement à crédit (Validation Admin)")
         self.btn_val_credit.setIcon(get_duotone_icon("shield_admin", 16))
         self.btn_val_credit.setIconSize(QSize(16, 16))
         self.btn_val_credit.setCursor(Qt.PointingHandCursor)
@@ -1782,8 +1874,8 @@ class CashierDeskWidget(QWidget):
         self.btn_val_credit.clicked.connect(self._authorize_bon_credit)
         r_layout.addWidget(self.btn_val_credit)
 
-        self.btn_val_livraison = QPushButton("Valider Bon de Livraison")
-        self.btn_val_livraison.setToolTip("Valider Bon de Livraison (Acompte maintenant / Solde après livraison)")
+        self.btn_val_livraison = QPushButton("Valider Paiement à la livraison")
+        self.btn_val_livraison.setToolTip("Valider Paiement à la livraison (Acompte maintenant / Solde après livraison)")
         self.btn_val_livraison.setIcon(get_duotone_icon("truck_delivery", 16))
         self.btn_val_livraison.setIconSize(QSize(16, 16))
         self.btn_val_livraison.setCursor(Qt.PointingHandCursor)
@@ -1792,7 +1884,7 @@ class CashierDeskWidget(QWidget):
         self.btn_val_livraison.clicked.connect(self._handle_bon_livraison)
         r_layout.addWidget(self.btn_val_livraison)
 
-        self.btn_val_livraison_cod_later = QPushButton("Payer à la Livraison (0 DA)")
+        self.btn_val_livraison_cod_later = QPushButton("Paiement à la livraison (0 DA maintenant)")
         self.btn_val_livraison_cod_later.setToolTip("Envoyer directement en livraison avec paiement total à domicile")
         self.btn_val_livraison_cod_later.setIcon(get_duotone_icon("truck_delivery", 16))
         self.btn_val_livraison_cod_later.setIconSize(QSize(16, 16))
@@ -1830,6 +1922,34 @@ class CashierDeskWidget(QWidget):
         except Exception:
             pass
 
+    def _on_payment_method_clicked(self, btn: QPushButton) -> None:
+        self._selected_payment_method = str(btn.property("payment_code") or "Cash")
+
+    def selected_payment_method(self) -> str:
+        """Returns the currently selected payment method code ('Cash', 'BaridiMob', 'TPE', 'CCP')."""
+        checked = self.payment_method_group.checkedButton() if hasattr(self, "payment_method_group") else None
+        if checked is not None:
+            return str(checked.property("payment_code") or "Cash")
+        return str(getattr(self, "_selected_payment_method", "Cash") or "Cash")
+
+    def set_payment_method(self, code: str) -> None:
+        """Programmatically selects a payment method tile in the visual icon strip."""
+        btn = self.payment_method_buttons.get(code)
+        if btn is not None:
+            btn.setChecked(True)
+            self._selected_payment_method = code
+
+    def _parse_cash_input(self) -> float:
+        """Parses numeric cash input tolerating spaces and French decimal commas."""
+        raw = (self.txt_cash.text() if hasattr(self, "txt_cash") else "").strip()
+        if not raw:
+            return 0.0
+        normalized = raw.replace("\u00a0", "").replace(" ", "").replace(",", ".")
+        try:
+            return max(0.0, float(normalized))
+        except ValueError:
+            return 0.0
+
     def _on_type_chip_clicked(self, btn: QPushButton) -> None:
         self._active_type_filter = str(btn.property("filter_code") or "ALL")
         self._filter_queue_table(self.txt_scan_bon.text().strip() if hasattr(self, "txt_scan_bon") else "")
@@ -1844,10 +1964,7 @@ class CashierDeskWidget(QWidget):
         self.txt_cash.selectAll()
 
     def _add_cash_increment(self, delta: int) -> None:
-        try:
-            cur = float(self.txt_cash.text().strip() or "0")
-        except ValueError:
-            cur = 0.0
+        cur = self._parse_cash_input()
         new_val = max(0.0, cur + delta)
         self.txt_cash.setText(str(int(new_val)) if new_val.is_integer() else f"{new_val:.2f}")
 
@@ -1876,9 +1993,9 @@ class CashierDeskWidget(QWidget):
             self.lbl_queue_summary.setText(f"{cnt_all} {word} • {format_money(total_ttc)} DA")
         if hasattr(self, "btn_filter_all"):
             self.btn_filter_all.setText(f"Tous ({cnt_all})")
-            self.btn_filter_bc.setText(f"Comptant ({cnt_bc})")
-            self.btn_filter_credit.setText(f"Crédit ({cnt_cr})")
-            self.btn_filter_bl.setText(f"Livraison ({cnt_bl})")
+            self.btn_filter_bc.setText(f"Paiement complet ({cnt_bc})")
+            self.btn_filter_credit.setText(f"Paiement à crédit ({cnt_cr})")
+            self.btn_filter_bl.setText(f"Paiement à la livraison ({cnt_bl})")
             self.btn_filter_vrs.setText(f"Versement ({cnt_vrs})")
 
     def refresh_queue(self) -> None:
@@ -1949,10 +2066,10 @@ class CashierDeskWidget(QWidget):
 
             raw_type = str(ord_item.get("Bond_Type") or "BON_C").upper()
             type_labels = {
-                "BON_C": "Bon Comptant (Direct)",
-                "BON_CREDIT": "Bon Crédit",
-                "BON_LIVRAISON": "Bon de Livraison",
-                "BON_VERSEMENT": "Bon Versement",
+                "BON_C": "Paiement complet",
+                "BON_CREDIT": "Paiement à crédit",
+                "BON_LIVRAISON": "Paiement à la livraison",
+                "BON_VERSEMENT": "Versement",
             }
             badge_meta = BOND_TYPE_BADGES.get(raw_type, BOND_TYPE_BADGES["BON_C"])
             it_type = QTableWidgetItem(type_labels.get(raw_type, raw_type))
@@ -1998,16 +2115,17 @@ class CashierDeskWidget(QWidget):
             if hasattr(self, "lbl_order_type_pill"):
                 self.lbl_order_type_pill.setVisible(False)
             self._update_action_buttons_for_order()
+            self._recalculate_amounts()
 
     def _update_action_buttons_for_order(self) -> None:
-        """Dynamically shows only the action button(s) matching the active Bon type (BC, BCréde, BL)."""
+        """Dynamically shows only the action button(s) matching the active Bon type."""
         if not hasattr(self, "btn_val_bon_c"):
             return
 
         if not self._selected_order:
             self.btn_val_bon_c.setVisible(False)
             self.btn_val_credit.setVisible(False)
-            self.btn_val_livraison.setText("Valider Bon de Livraison")
+            self.btn_val_livraison.setText("Valider Paiement à la livraison")
             self.btn_val_livraison.setEnabled(True)
             self.btn_val_livraison.setVisible(False)
             if hasattr(self, "btn_val_livraison_cod_later"):
@@ -2018,13 +2136,13 @@ class CashierDeskWidget(QWidget):
         status = str(self._selected_order.get("Status") or "").upper()
 
         if b_type == "BON_C":
-            self.btn_val_bon_c.setText("Valider Bon Comptant (Encaisser)")
+            self.btn_val_bon_c.setText("Valider Paiement complet")
             self.btn_val_bon_c.setVisible(True)
             self.btn_val_credit.setVisible(False)
             self.btn_val_livraison.setVisible(False)
             self.btn_val_livraison_cod_later.setVisible(False)
         elif b_type == "BON_VERSEMENT":
-            self.btn_val_bon_c.setText("Valider Versement (Caisse)")
+            self.btn_val_bon_c.setText("Valider Versement")
             self.btn_val_bon_c.setVisible(True)
             self.btn_val_credit.setVisible(False)
             self.btn_val_livraison.setVisible(False)
@@ -2038,7 +2156,7 @@ class CashierDeskWidget(QWidget):
             self.btn_val_bon_c.setVisible(False)
             self.btn_val_credit.setVisible(False)
             if status == "CONFIRMED_PENDING_PAYMENT":
-                self.btn_val_livraison.setText("Payer Acompte & Valider BL")
+                self.btn_val_livraison.setText("Payer Acompte & Valider Paiement à la livraison")
                 self.btn_val_livraison.setEnabled(True)
                 self.btn_val_livraison.setVisible(True)
                 self.btn_val_livraison_cod_later.setVisible(True)
@@ -2050,7 +2168,7 @@ class CashierDeskWidget(QWidget):
                     else 0.0
                 )
                 if rem_cod > 0.01:
-                    self.btn_val_livraison.setText("Encaisser Solde & Clôturer BL")
+                    self.btn_val_livraison.setText("Encaisser Solde & Clôturer Paiement à la livraison")
                     self.btn_val_livraison.setEnabled(True)
                 else:
                     self.btn_val_livraison.setText("Payé — Attente Sortie Magasin")
@@ -2077,6 +2195,7 @@ class CashierDeskWidget(QWidget):
             if hasattr(self, "lbl_change_due"):
                 self.lbl_change_due.setVisible(False)
             self._update_action_buttons_for_order()
+            self._recalculate_amounts()
             return
 
         it = self.queue_table.item(row, 0)
@@ -2104,6 +2223,7 @@ class CashierDeskWidget(QWidget):
             if hasattr(self, "lbl_change_due"):
                 self.lbl_change_due.setVisible(False)
             self._update_action_buttons_for_order()
+            self._recalculate_amounts()
             return
 
         self._selected_order = ord_item
@@ -2212,9 +2332,10 @@ class CashierDeskWidget(QWidget):
         is_comptant = first_char == "1" or raw.upper().startswith("BC-") or raw.upper().startswith("1-BC")
         is_credit = first_char == "2" or raw.upper().startswith("BCR-") or raw.upper().startswith("2-BCR")
         is_livraison = first_char == "3" or raw.upper().startswith("BLV-") or raw.upper().startswith("3-BLV")
+        is_versement = first_char == "4" or raw.upper().startswith("VRS-") or raw.upper().startswith("4-VRS")
 
         if is_comptant:
-            self.lbl_scan_type_badge.setText("1 : Bon Comptant")
+            self.lbl_scan_type_badge.setText("1 : Paiement complet")
             self.lbl_scan_type_badge.setStyleSheet("""
                 background-color: #E6F4F1;
                 color: #007572;
@@ -2225,7 +2346,7 @@ class CashierDeskWidget(QWidget):
                 font-weight: 800;
             """)
         elif is_credit:
-            self.lbl_scan_type_badge.setText("2 : Bon Crédit")
+            self.lbl_scan_type_badge.setText("2 : Paiement à crédit")
             self.lbl_scan_type_badge.setStyleSheet("""
                 background-color: #EFF6FF;
                 color: #1D4ED8;
@@ -2236,11 +2357,22 @@ class CashierDeskWidget(QWidget):
                 font-weight: 800;
             """)
         elif is_livraison:
-            self.lbl_scan_type_badge.setText("3 : Bon de Livraison")
+            self.lbl_scan_type_badge.setText("3 : Paiement à la livraison")
             self.lbl_scan_type_badge.setStyleSheet("""
                 background-color: #FEF3C7;
                 color: #B45309;
                 border: 1.5px solid #D97706;
+                border-radius: 4px;
+                padding: 2px 10px;
+                font-size: 11px;
+                font-weight: 800;
+            """)
+        elif is_versement:
+            self.lbl_scan_type_badge.setText("4 : Versement")
+            self.lbl_scan_type_badge.setStyleSheet("""
+                background-color: #ECFDF5;
+                color: #047857;
+                border: 1.5px solid #047857;
                 border-radius: 4px;
                 padding: 2px 10px;
                 font-size: 11px;
@@ -2440,9 +2572,16 @@ class CashierDeskWidget(QWidget):
     def _recalculate_amounts(self) -> None:
         if not self._selected_order:
             self._current_remaining_due = 0.0
+            self._remaining_after_payment = 0.0
+            if hasattr(self, "lbl_total_montant"):
+                self.lbl_total_montant.setText(f"{format_money(0.0)} DA")
+            if hasattr(self, "lbl_rem_due"):
+                self.lbl_rem_due.setText(f"Reste : {format_money(0.0)} DA")
+                self.lbl_rem_due.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {TEXT_MUTED};")
             if hasattr(self, "lbl_change_due"):
                 self.lbl_change_due.setVisible(False)
             return
+
         raw_st = str(self._selected_order.get("Status") or "")
         tot = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
         if raw_st in ("DISPATCHED_PENDING_COD", "APPROVED_LIVRAISON_PENDING_DISPATCH", "PARTIALLY_DISPATCHED"):
@@ -2453,27 +2592,32 @@ class CashierDeskWidget(QWidget):
             )
         else:
             base_due = tot
+
         w_ded = self._get_wallet_deduction()
-        rem = max(0.0, base_due - w_ded)
-        self._current_remaining_due = rem
-        self.lbl_rem_due.setText(f"Reste : {format_money(rem)} DA")
-        due_color = STATUS_SUCCESS if rem <= 0.01 else STATUS_DANGER
-        self.lbl_rem_due.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {due_color};")
+        net_due = max(0.0, base_due - w_ded)
+        self._current_remaining_due = net_due
+
+        cash_val = self._parse_cash_input()
+        rem_after_payment = max(0.0, net_due - cash_val)
+        self._remaining_after_payment = rem_after_payment
+
+        if hasattr(self, "lbl_total_montant"):
+            self.lbl_total_montant.setText(f"{format_money(tot)} DA")
+
+        self.lbl_rem_due.setText(f"Reste : {format_money(rem_after_payment)} DA")
+        due_color = STATUS_SUCCESS if rem_after_payment <= 0.01 else STATUS_DANGER
+        self.lbl_rem_due.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {due_color};")
 
         if hasattr(self, "lbl_change_due"):
-            try:
-                cash_val = float(self.txt_cash.text().strip() or "0")
-            except ValueError:
-                cash_val = 0.0
-            diff = cash_val - rem
+            diff = cash_val - net_due
             b_type = str(self._selected_order.get("Bond_Type") or "BON_C").upper()
             if diff > 0.01 and b_type != "BON_VERSEMENT":
                 self.lbl_change_due.setText(f"Monnaie à rendre : {format_money(diff)} DA")
-                self.lbl_change_due.setStyleSheet(f"font-size: 12px; font-weight: 800; color: {STATUS_SUCCESS};")
+                self.lbl_change_due.setStyleSheet(f"font-size: 12.5px; font-weight: 800; color: {STATUS_SUCCESS};")
                 self.lbl_change_due.setVisible(True)
             elif diff < -0.01 and b_type == "BON_C":
                 self.lbl_change_due.setText(f"Manquant : {format_money(abs(diff))} DA")
-                self.lbl_change_due.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {STATUS_WARN};")
+                self.lbl_change_due.setStyleSheet(f"font-size: 12.5px; font-weight: 700; color: {STATUS_WARN};")
                 self.lbl_change_due.setVisible(True)
             else:
                 self.lbl_change_due.setVisible(False)
@@ -2493,17 +2637,14 @@ class CashierDeskWidget(QWidget):
         tot = float(self._selected_order["Total_Amount_TTC"])
         w_ded = self._get_wallet_deduction()
 
+        raw_cash = self.txt_cash.text().strip().replace("\u00a0", "").replace(" ", "").replace(",", ".")
         try:
-            cash_val = float(self.txt_cash.text().strip() or "0")
+            cash_val = float(raw_cash or "0")
         except ValueError:
             QMessageBox.warning(self, "Montant invalide", "Veuillez saisir un montant numérique valide.")
             return
 
-        pay_method = (
-            self.cbo_payment_method.currentData()
-            if hasattr(self, "cbo_payment_method") and self.cbo_payment_method.currentData()
-            else "Cash"
-        )
+        pay_method = self.selected_payment_method()
 
         if b_type == "BON_VERSEMENT":
             if cash_val + w_ded <= 0:
@@ -2527,7 +2668,7 @@ class CashierDeskWidget(QWidget):
                 self.orderSettled.emit(order_num, "BON_VERSEMENT_PAID")
                 QMessageBox.information(
                     self,
-                    "Bon Versement Validé",
+                    "Versement Validé",
                     f"Le Versement ({order_num}) de {format_money(cash_val + w_ded)} DA ({pay_method}) a été enregistré en Caisse.\nTransmis au Bureau de Sortie.",
                 )
                 self.refresh_queue()
@@ -2539,7 +2680,7 @@ class CashierDeskWidget(QWidget):
             QMessageBox.warning(
                 self,
                 "Montant Insuffisant",
-                f"Le total encaissé ({format_money(cash_val + w_ded)} DA) est inférieur au montant du Bon Comptant ({format_money(tot)} DA).",
+                f"Le total encaissé ({format_money(cash_val + w_ded)} DA) est inférieur au montant Paiement complet ({format_money(tot)} DA).",
             )
             return
 
@@ -2560,12 +2701,12 @@ class CashierDeskWidget(QWidget):
             self.orderSettled.emit(order_num, "BON_C_PAID")
             QMessageBox.information(
                 self,
-                "Bon Comptant Validé",
-                f"Le Bon Comptant ({order_num}) a été encaissé et validé.\nTransmis au Bureau de Sortie pour scan du N° de Série.",
+                "Paiement complet Validé",
+                f"Le bon Paiement complet ({order_num}) a été encaissé et validé.\nTransmis au Bureau de Sortie pour scan du N° de Série.",
             )
             self.refresh_queue()
         except Exception as err:
-            QMessageBox.critical(self, "Erreur Validation Bon Comptant", str(err))
+            QMessageBox.critical(self, "Erreur Validation Paiement complet", str(err))
 
     # =========================================================================
     # 2. BON CRÉDIT AUTHORIZATION (بيع بالأجل بموافقة المشرف)
@@ -2583,10 +2724,7 @@ class CashierDeskWidget(QWidget):
         prior_debt = float(self._selected_order.get("Current_Debt") or 0.0)
         credit_limit = float(self._selected_order.get("Credit_Limit") or 500000.0)
 
-        try:
-            dp_cash = float(self.txt_cash.text().strip() or "0")
-        except ValueError:
-            dp_cash = 0.0
+        dp_cash = self._parse_cash_input()
         dp_wallet = self._get_wallet_deduction()
         rem_credit = max(0.0, tot - dp_cash - dp_wallet)
 
@@ -2614,13 +2752,13 @@ class CashierDeskWidget(QWidget):
                 self.orderSettled.emit(order_num, "BON_CREDIT_APPROVED")
                 QMessageBox.information(
                     self,
-                    "Bon Crédit Approuvé",
-                    f"Bon Crédit ({order_num}) autorisé par l'Administrateur.\n"
+                    "Paiement à crédit Approuvé",
+                    f"Paiement à crédit ({order_num}) autorisé par l'Administrateur.\n"
                     f"Acompte : {format_money(dp_cash + dp_wallet)} DA | Crédit inscrit : {format_money(rem_credit)} DA.",
                 )
                 self.refresh_queue()
             except Exception as err:
-                QMessageBox.critical(self, "Refus Bon Crédit", str(err))
+                QMessageBox.critical(self, "Refus Paiement à crédit", str(err))
 
     # =========================================================================
     # 3. BON DE LIVRAISON (توصيل مع تسبيق واستكمال بعد التوصيل)
@@ -2635,10 +2773,7 @@ class CashierDeskWidget(QWidget):
         order_num = str(self._selected_order["Order_Number"])
         status = str(self._selected_order.get("Status") or "")
         w_ded = self._get_wallet_deduction()
-        try:
-            cash_val = float(self.txt_cash.text().strip() or "0")
-        except ValueError:
-            cash_val = 0.0
+        cash_val = self._parse_cash_input()
 
         try:
             uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
@@ -2655,7 +2790,7 @@ class CashierDeskWidget(QWidget):
                 QMessageBox.information(
                     self,
                     "Règlement Livraison Enregistré",
-                    f"Le solde du Bon de Livraison ({order_num}) a été encaissé.",
+                    f"Le solde Paiement à la livraison ({order_num}) a été encaissé.",
                 )
             else:
                 tot_ttc = float(self._selected_order.get("Total_Amount_TTC") or 0.0)
@@ -2663,7 +2798,7 @@ class CashierDeskWidget(QWidget):
                     QMessageBox.warning(
                         self,
                         "Montant Acompte Requis",
-                        "Saisissez un montant d'acompte supérieur à 0 DA, ou cliquez sur « Payer à la Livraison (0 DA) ».",
+                        "Saisissez un montant d'acompte supérieur à 0 DA, ou cliquez sur « Paiement à la livraison (0 DA maintenant) ».",
                     )
                     return
                 adv_res = {}
@@ -2681,16 +2816,16 @@ class CashierDeskWidget(QWidget):
                 change_txt = f"\nMonnaie à rendre : {format_money(change_due)} DA" if change_due > 0.01 else ""
                 QMessageBox.information(
                     self,
-                    "Bon de Livraison Validé (Acompte)",
+                    "Paiement à la livraison Validé (Acompte)",
                     f"Acompte enregistré ({format_money(paid_eff)} DA) pour {order_num}.{change_txt}\n"
-                    "Le BL reste visible jusqu'à sa clôture complète.",
+                    "Le bon reste visible jusqu'à sa clôture complète.",
                 )
             self.refresh_queue()
         except Exception as err:
-            QMessageBox.critical(self, "Erreur Bon de Livraison", str(err))
+            QMessageBox.critical(self, "Erreur Paiement à la livraison", str(err))
 
     def _handle_bon_livraison_cod_later(self) -> None:
-        """Validates a Bon de Livraison with 0 DA upfront (100% payment upon home delivery)."""
+        """Validates a Paiement à la livraison with 0 DA upfront (100% payment upon home delivery)."""
         if not self._selected_order:
             return
         order_id = int(self._selected_order["Order_ID"])
@@ -2708,13 +2843,13 @@ class CashierDeskWidget(QWidget):
             self.orderSettled.emit(order_num, "BON_LIVRAISON_COD_DEFERRED")
             QMessageBox.information(
                 self,
-                "Paiement à la Livraison Activé",
-                f"Bon de Livraison ({order_num}) envoyé en livraison (0 DA maintenant).\n"
+                "Paiement à la livraison Activé",
+                f"Paiement à la livraison ({order_num}) envoyé en livraison (0 DA maintenant).\n"
                 "Il restera affiché jusqu'au règlement final et clôture.",
             )
             self.refresh_queue()
         except Exception as err:
-            QMessageBox.critical(self, "Erreur Bon de Livraison", str(err))
+            QMessageBox.critical(self, "Erreur Paiement à la livraison", str(err))
 
     # =========================================================================
     # 4. VERSEMENT (إيداع مالي فعلي) & 5. BON DE RETOUR (رصيد افتراضي)
