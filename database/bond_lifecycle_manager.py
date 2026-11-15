@@ -2364,6 +2364,712 @@ class BondLifecycleManager:
             logger.error(f"Error fetching Dispatch order queue: {err}")
             return []
 
+    # =========================================================================
+    # 7. VERSEMENT & PAIEMENT LIVRAISON BON MANAGEMENT
+    # =========================================================================
+
+    def get_bons_with_payments(
+        self,
+        bond_type: str = "BON_VERSEMENT",
+        search: str = "",
+        status_filter: str = "ALL",
+    ) -> List[Dict[str, Any]]:
+        """
+        Returns all non-cancelled bons of a specific Bond_Type (e.g. BON_VERSEMENT
+        or BON_LIVRAISON) with aggregated paid amounts, remaining balance, and payment counts.
+        """
+        norm_type = (bond_type or "BON_VERSEMENT").strip().upper()
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT
+                        o.Order_ID, o.Order_Number, o.Client_ID,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
+                        o.Bond_Type, o.Total_Amount_HT, o.Total_Amount_TTC,
+                        o.Status, o.Order_Date, o.Delivery_Address, o.Delivery_Phone,
+                        i.Invoice_ID, i.Invoice_No, i.Invoice_Date, i.Payment_Method,
+                        COALESCE(i.Amount_Paid_Cash, 0.00) AS Amount_Paid_Cash,
+                        COALESCE(i.Amount_Paid_Card, 0.00) AS Amount_Paid_Card,
+                        COALESCE(i.Amount_Paid_Wallet, 0.00) AS Amount_Paid_Wallet,
+                        COALESCE((
+                            SELECT SUM(cp.Amount)
+                            FROM Client_Payments cp
+                            WHERE cp.Invoice_ID = i.Invoice_ID
+                        ), 0.00) AS Subsequent_Paid,
+                        COALESCE((
+                            SELECT COUNT(*)
+                            FROM Client_Payments cp
+                            WHERE cp.Invoice_ID = i.Invoice_ID
+                        ), 0) AS Subsequent_Count
+                    FROM Sales_Orders_Theoretical o
+                    LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID AND i.Status != 'Cancelled'
+                    WHERE o.Bond_Type = %s
+                      AND o.Status != 'CANCELLED'
+                    ORDER BY o.Order_Date DESC, o.Order_ID DESC
+                    LIMIT 400
+                    """,
+                    (norm_type,),
+                )
+                rows = cursor.fetchall() or []
+
+            q = (search or "").strip().lower()
+            sf = (status_filter or "ALL").strip().upper()
+            results: List[Dict[str, Any]] = []
+            for row in rows:
+                item = dict(row)
+                total_ttc = float(item.get("Total_Amount_TTC") or 0.0)
+                paid_cash = float(item.get("Amount_Paid_Cash") or 0.0)
+                paid_card = float(item.get("Amount_Paid_Card") or 0.0)
+                paid_wallet = float(item.get("Amount_Paid_Wallet") or 0.0)
+                initial_paid = round(paid_cash + paid_card + paid_wallet, 2)
+                sub_paid = float(item.get("Subsequent_Paid") or 0.0)
+                total_paid = round(initial_paid + sub_paid, 2)
+                remaining = max(0.0, round(total_ttc - total_paid, 2))
+                sub_count = int(item.get("Subsequent_Count") or 0)
+                has_initial = 1 if (paid_cash + paid_card) > 0.009 else 0
+                has_wallet = 1 if paid_wallet > 0.009 else 0
+                pay_count = sub_count + has_initial + has_wallet
+
+                if total_ttc > 0.0 and remaining <= 0.01:
+                    pay_state = "PAID"
+                elif total_paid > 0.01:
+                    pay_state = "PARTIAL"
+                else:
+                    pay_state = "UNPAID"
+
+                item["Initial_Paid"] = initial_paid
+                item["Subsequent_Paid"] = round(sub_paid, 2)
+                item["Total_Paid"] = total_paid
+                item["Remaining_Amount"] = remaining
+                item["Payments_Count"] = pay_count
+                item["Payment_State"] = pay_state
+
+                if sf == "UNPAID_PARTIAL" and pay_state == "PAID":
+                    continue
+                if sf == "PAID" and pay_state != "PAID":
+                    continue
+
+                if q:
+                    haystack = " ".join(
+                        str(item.get(k) or "")
+                        for k in (
+                            "Order_Number",
+                            "Invoice_No",
+                            "Client_Name",
+                            "Client_Phone",
+                            "Delivery_Address",
+                        )
+                    ).lower()
+                    if q not in haystack:
+                        continue
+
+                results.append(item)
+            return results
+        except Exception as err:
+            logger.error(f"Error fetching {norm_type} bons with payments: {err}")
+            return []
+
+    def get_bon_payments(self, order_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Fetches a single Bon summary along with its normalized list of payment entries
+        (initial invoice payment, optional wallet deduction, and subsequent Client_Payments).
+        """
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT
+                        o.Order_ID, o.Order_Number, o.Client_ID,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
+                        o.Bond_Type, o.Total_Amount_TTC, o.Status, o.Order_Date,
+                        o.Delivery_Address,
+                        i.Invoice_ID, i.Invoice_No, i.Invoice_Date, i.Payment_Method,
+                        COALESCE(i.Amount_Paid_Cash, 0.00) AS Amount_Paid_Cash,
+                        COALESCE(i.Amount_Paid_Card, 0.00) AS Amount_Paid_Card,
+                        COALESCE(i.Amount_Paid_Wallet, 0.00) AS Amount_Paid_Wallet
+                    FROM Sales_Orders_Theoretical o
+                    LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID AND i.Status != 'Cancelled'
+                    WHERE o.Order_ID = %s
+                    LIMIT 1
+                    """,
+                    (int(order_id),),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return None
+                bon = dict(row)
+
+                payments: List[Dict[str, Any]] = []
+                inv_date = str(bon.get("Invoice_Date") or bon.get("Order_Date") or "")[:10]
+                paid_cash = float(bon.get("Amount_Paid_Cash") or 0.0)
+                paid_card = float(bon.get("Amount_Paid_Card") or 0.0)
+                paid_wallet = float(bon.get("Amount_Paid_Wallet") or 0.0)
+                initial_cash_card = round(paid_cash + paid_card, 2)
+
+                if initial_cash_card > 0.009 and bon.get("Invoice_ID"):
+                    default_method = bon.get("Payment_Method") or ("Cash" if paid_cash >= paid_card else "BaridiMob")
+                    payments.append(
+                        {
+                            "entry_type": "INVOICE_INITIAL",
+                            "payment_id": None,
+                            "payment_date": inv_date,
+                            "amount": initial_cash_card,
+                            "payment_method": default_method,
+                            "reference": bon.get("Invoice_No") or "",
+                            "notes": "Paiement initial Caisse",
+                            "editable": True,
+                            "deletable": False,
+                        }
+                    )
+
+                if paid_wallet > 0.009 and bon.get("Invoice_ID"):
+                    payments.append(
+                        {
+                            "entry_type": "INVOICE_WALLET",
+                            "payment_id": None,
+                            "payment_date": inv_date,
+                            "amount": round(paid_wallet, 2),
+                            "payment_method": "Portefeuille",
+                            "reference": bon.get("Invoice_No") or "",
+                            "notes": "Déduction portefeuille client",
+                            "editable": False,
+                            "deletable": False,
+                        }
+                    )
+
+                sub_paid = 0.0
+                if bon.get("Invoice_ID"):
+                    cursor.execute(
+                        """
+                        SELECT Payment_ID, Payment_Date, Amount, Payment_Method, Reference, Notes
+                        FROM Client_Payments
+                        WHERE Invoice_ID = %s
+                        ORDER BY Payment_Date ASC, Payment_ID ASC
+                        """,
+                        (int(bon["Invoice_ID"]),),
+                    )
+                    for cp in cursor.fetchall() or []:
+                        amt = float(cp.get("Amount") or 0.0)
+                        sub_paid += amt
+                        payments.append(
+                            {
+                                "entry_type": "CLIENT_PAYMENT",
+                                "payment_id": int(cp["Payment_ID"]),
+                                "payment_date": str(cp.get("Payment_Date") or "")[:10],
+                                "amount": round(amt, 2),
+                                "payment_method": str(cp.get("Payment_Method") or "Cash"),
+                                "reference": str(cp.get("Reference") or ""),
+                                "notes": str(cp.get("Notes") or ""),
+                                "editable": True,
+                                "deletable": True,
+                            }
+                        )
+
+                total_ttc = float(bon.get("Total_Amount_TTC") or 0.0)
+                total_paid = round(initial_cash_card + paid_wallet + sub_paid, 2)
+                remaining = max(0.0, round(total_ttc - total_paid, 2))
+                bon["Total_Paid"] = total_paid
+                bon["Remaining_Amount"] = remaining
+                return {"bon": bon, "payments": payments}
+        except Exception as err:
+            logger.error(f"Error fetching payments for order #{order_id}: {err}")
+            return None
+
+    def _normalize_bon_payment_method(self, payment_method: str) -> str:
+        allowed = {"Cash", "BaridiMob", "TPE", "CCP", "Espèce"}
+        pm = (payment_method or "Cash").strip()
+        return pm if pm in allowed else "Cash"
+
+    def add_payment_to_bon(
+        self,
+        order_id: int,
+        amount: Decimal,
+        payment_method: str = "Cash",
+        payment_date: Optional[str] = None,
+        notes: str = "",
+        user_id: int = 1,
+        cash_session_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Adds a new payment (Versement / Paiement Livraison installment) directly to a Bon.
+        Creates the backing Sales_Invoices row if none exists yet, otherwise appends a
+        linked row in Client_Payments and recalculates remaining credit and debt.
+        """
+        pay_dec = Decimal(str(amount or "0.00")).quantize(Decimal("0.01"))
+        if pay_dec <= Decimal("0.00"):
+            raise ValueError("Le montant du paiement doit être strictement supérieur à 0 DA.")
+
+        norm_method = self._normalize_bon_payment_method(payment_method)
+        pay_date_str = (payment_date or datetime.now().strftime("%Y-%m-%d")).strip()[:10]
+        note_clean = (notes or "").strip()
+
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            if hasattr(conn, "start_transaction"):
+                conn.start_transaction()
+
+            cursor.execute(
+                """
+                SELECT Order_ID, Order_Number, Client_ID, Bond_Type, Total_Amount_TTC, Status
+                FROM Sales_Orders_Theoretical
+                WHERE Order_ID = %s
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            order = cursor.fetchone()
+            if not order:
+                raise ValueError("Bon introuvable.")
+            if order.get("Status") == "CANCELLED":
+                raise ValueError("Impossible d'ajouter un paiement sur un bon annulé.")
+
+            total_ttc = Decimal(str(order.get("Total_Amount_TTC") or "0.00")).quantize(Decimal("0.01"))
+            total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
+            total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
+            bond_type = str(order.get("Bond_Type") or "BON_VERSEMENT").upper()
+
+            cursor.execute(
+                """
+                SELECT Invoice_ID, Invoice_No, Payment_Method,
+                       COALESCE(Amount_Paid_Cash, 0.00) AS Amount_Paid_Cash,
+                       COALESCE(Amount_Paid_Card, 0.00) AS Amount_Paid_Card,
+                       COALESCE(Amount_Paid_Wallet, 0.00) AS Amount_Paid_Wallet,
+                       Delivery_Status
+                FROM Sales_Invoices
+                WHERE Order_ID = %s AND Status != 'Cancelled'
+                LIMIT 1
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            inv = cursor.fetchone()
+
+            if not inv:
+                if pay_dec > total_ttc + Decimal("0.01"):
+                    raise ValueError(
+                        f"Le montant ({pay_dec} DA) dépasse le total du bon ({total_ttc} DA)."
+                    )
+                applied = min(pay_dec, total_ttc).quantize(Decimal("0.01"))
+                rem = max(Decimal("0.00"), (total_ttc - applied).quantize(Decimal("0.01")))
+                inv_status = "Paid" if rem <= Decimal("0.00") else "Partial"
+
+                prefix_inv = "BL-LIV" if bond_type == "BON_LIVRAISON" else "FAC-VRS"
+                inv_no = f"{prefix_inv}-{datetime.now().strftime('%Y%m%d')}-{order_id}"
+                paid_cash_col = applied if norm_method in ("Cash", "Espèce") else Decimal("0.00")
+                paid_card_col = applied if norm_method not in ("Cash", "Espèce") else Decimal("0.00")
+                deliv_status = "PENDING_DISPATCH" if bond_type == "BON_LIVRAISON" else "NONE"
+                settlement_type = "BON_LIVRAISON" if bond_type == "BON_LIVRAISON" else "BON_VERSEMENT"
+
+                cursor.execute(
+                    """
+                    INSERT INTO Sales_Invoices (
+                        Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
+                        Total_Amount_HT, Total_TVA, Total_Amount_TTC,
+                        Created_By, Cash_Session_ID, Payment_Method,
+                        Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Card,
+                        Amount_Paid_Wallet, Amount_Remaining_Credit, Delivery_Status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0.00, %s, %s)
+                    """,
+                    (
+                        inv_no,
+                        int(order_id),
+                        int(order["Client_ID"]),
+                        pay_date_str,
+                        inv_status,
+                        total_ht,
+                        total_tva,
+                        total_ttc,
+                        int(user_id or 1),
+                        int(cash_session_id) if cash_session_id else None,
+                        norm_method,
+                        settlement_type,
+                        paid_cash_col,
+                        paid_card_col,
+                        rem,
+                        deliv_status,
+                    ),
+                )
+                invoice_id = cursor.lastrowid
+
+                if order.get("Status") == "CONFIRMED_PENDING_PAYMENT":
+                    next_status = (
+                        "APPROVED_LIVRAISON_PENDING_DISPATCH"
+                        if bond_type == "BON_LIVRAISON"
+                        else "PAID_PENDING_DISPATCH"
+                    )
+                    cursor.execute(
+                        "UPDATE Sales_Orders_Theoretical SET Status = %s, Updated_At = NOW() WHERE Order_ID = %s",
+                        (next_status, int(order_id)),
+                    )
+
+                if bond_type != "BON_LIVRAISON" and rem > Decimal("0.00"):
+                    cursor.execute(
+                        "UPDATE Clients SET Current_Debt = COALESCE(Current_Debt, 0.00) + %s WHERE Client_ID = %s",
+                        (rem, int(order["Client_ID"])),
+                    )
+                payment_id = None
+            else:
+                invoice_id = int(inv["Invoice_ID"])
+                cursor.execute(
+                    "SELECT COALESCE(SUM(Amount), 0.00) AS Sub_Total FROM Client_Payments WHERE Invoice_ID = %s",
+                    (invoice_id,),
+                )
+                sub_row = cursor.fetchone() or {}
+                sub_paid = Decimal(str(sub_row.get("Sub_Total") or "0.00")).quantize(Decimal("0.01"))
+                init_paid = (
+                    Decimal(str(inv.get("Amount_Paid_Cash") or "0.00"))
+                    + Decimal(str(inv.get("Amount_Paid_Card") or "0.00"))
+                    + Decimal(str(inv.get("Amount_Paid_Wallet") or "0.00"))
+                ).quantize(Decimal("0.01"))
+                already_paid = (init_paid + sub_paid).quantize(Decimal("0.01"))
+                current_rem = max(Decimal("0.00"), (total_ttc - already_paid).quantize(Decimal("0.01")))
+
+                if current_rem <= Decimal("0.00"):
+                    raise ValueError("Ce bon est déjà intégralement soldé.")
+                if pay_dec > current_rem + Decimal("0.01"):
+                    raise ValueError(
+                        f"Le montant ({pay_dec} DA) dépasse le reste à payer ({current_rem} DA)."
+                    )
+
+                applied = min(pay_dec, current_rem).quantize(Decimal("0.01"))
+                ref = f"VRS-{order_id}-{int(datetime.now().timestamp())}"
+                cursor.execute(
+                    """
+                    INSERT INTO Client_Payments (
+                        Client_ID, Invoice_ID, Payment_Date, Amount,
+                        Payment_Method, Reference, Notes, Created_By
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        int(order["Client_ID"]),
+                        invoice_id,
+                        pay_date_str,
+                        applied,
+                        norm_method,
+                        ref,
+                        note_clean or f"Versement sur {order.get('Order_Number') or order_id}",
+                        int(user_id or 1),
+                    ),
+                )
+                payment_id = cursor.lastrowid
+                rem = max(Decimal("0.00"), (current_rem - applied).quantize(Decimal("0.01")))
+                inv_status = "Paid" if rem <= Decimal("0.00") else "Partial"
+
+                new_deliv_status = inv.get("Delivery_Status") or "NONE"
+                if (
+                    bond_type == "BON_LIVRAISON"
+                    and rem <= Decimal("0.00")
+                    and order.get("Status") == "DISPATCHED_PENDING_COD"
+                ):
+                    new_deliv_status = "DELIVERED_PAID"
+                    cursor.execute(
+                        "UPDATE Sales_Orders_Theoretical SET Status = 'COMPLETED', Updated_At = NOW() WHERE Order_ID = %s",
+                        (int(order_id),),
+                    )
+
+                cursor.execute(
+                    """
+                    UPDATE Sales_Invoices
+                    SET Amount_Remaining_Credit = %s,
+                        Status = %s,
+                        Delivery_Status = %s
+                    WHERE Invoice_ID = %s
+                    """,
+                    (rem, inv_status, new_deliv_status, invoice_id),
+                )
+
+                if bond_type != "BON_LIVRAISON":
+                    cursor.execute(
+                        "UPDATE Clients SET Current_Debt = GREATEST(0.00, COALESCE(Current_Debt, 0.00) - %s) WHERE Client_ID = %s",
+                        (applied, int(order["Client_ID"])),
+                    )
+
+            if cash_session_id and norm_method in ("Cash", "Espèce") and applied > Decimal("0.00"):
+                cursor.execute(
+                    "UPDATE POS_Cash_Sessions SET Expected_Cash = COALESCE(Expected_Cash, 0.00) + %s WHERE Cash_Session_ID = %s",
+                    (applied, int(cash_session_id)),
+                )
+
+            conn.commit()
+            return {
+                "success": True,
+                "order_id": int(order_id),
+                "invoice_id": invoice_id,
+                "payment_id": payment_id,
+                "amount_added": float(applied),
+                "remaining_amount": float(rem),
+                "status": inv_status,
+            }
+        except Exception as err:
+            conn.rollback()
+            logger.error(f"Error adding payment to bon #{order_id}: {err}")
+            raise
+        finally:
+            cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
+    def update_bon_payment(
+        self,
+        order_id: int,
+        entry_type: str,
+        payment_id: Optional[int],
+        new_amount: Decimal,
+        payment_method: str = "Cash",
+        payment_date: Optional[str] = None,
+        notes: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Modifies an existing payment entry on a Bon (either a Client_Payments installment
+        or the initial cash/card payment on Sales_Invoices), recalculating remaining credit.
+        """
+        new_dec = Decimal(str(new_amount or "0.00")).quantize(Decimal("0.01"))
+        if new_dec <= Decimal("0.00"):
+            raise ValueError("Le montant modifié doit être strictement positif.")
+
+        etype = (entry_type or "CLIENT_PAYMENT").strip().upper()
+        norm_method = self._normalize_bon_payment_method(payment_method)
+        pay_date_str = (payment_date or datetime.now().strftime("%Y-%m-%d")).strip()[:10]
+        note_clean = (notes or "").strip()
+
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            if hasattr(conn, "start_transaction"):
+                conn.start_transaction()
+
+            cursor.execute(
+                """
+                SELECT Order_ID, Client_ID, Bond_Type, Total_Amount_TTC, Status
+                FROM Sales_Orders_Theoretical
+                WHERE Order_ID = %s
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            order = cursor.fetchone()
+            if not order:
+                raise ValueError("Bon introuvable.")
+
+            cursor.execute(
+                """
+                SELECT Invoice_ID,
+                       COALESCE(Amount_Paid_Cash, 0.00) AS Amount_Paid_Cash,
+                       COALESCE(Amount_Paid_Card, 0.00) AS Amount_Paid_Card,
+                       COALESCE(Amount_Paid_Wallet, 0.00) AS Amount_Paid_Wallet
+                FROM Sales_Invoices
+                WHERE Order_ID = %s AND Status != 'Cancelled'
+                LIMIT 1
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            inv = cursor.fetchone()
+            if not inv:
+                raise ValueError("Aucune facture associée à ce bon.")
+
+            invoice_id = int(inv["Invoice_ID"])
+            total_ttc = Decimal(str(order.get("Total_Amount_TTC") or "0.00")).quantize(Decimal("0.01"))
+            bond_type = str(order.get("Bond_Type") or "BON_VERSEMENT").upper()
+            init_cash_card = (
+                Decimal(str(inv.get("Amount_Paid_Cash") or "0.00"))
+                + Decimal(str(inv.get("Amount_Paid_Card") or "0.00"))
+            ).quantize(Decimal("0.01"))
+            init_wallet = Decimal(str(inv.get("Amount_Paid_Wallet") or "0.00")).quantize(Decimal("0.01"))
+
+            cursor.execute(
+                "SELECT COALESCE(SUM(Amount), 0.00) AS Sub_Total FROM Client_Payments WHERE Invoice_ID = %s",
+                (invoice_id,),
+            )
+            sub_total = Decimal(str((cursor.fetchone() or {}).get("Sub_Total") or "0.00")).quantize(Decimal("0.01"))
+
+            if etype == "CLIENT_PAYMENT":
+                if not payment_id:
+                    raise ValueError("Identifiant de paiement manquant.")
+                cursor.execute(
+                    "SELECT Payment_ID, Amount FROM Client_Payments WHERE Payment_ID = %s AND Invoice_ID = %s FOR UPDATE",
+                    (int(payment_id), invoice_id),
+                )
+                target = cursor.fetchone()
+                if not target:
+                    raise ValueError("Paiement introuvable pour ce bon.")
+                old_amt = Decimal(str(target.get("Amount") or "0.00")).quantize(Decimal("0.01"))
+                other_paid = (init_cash_card + init_wallet + sub_total - old_amt).quantize(Decimal("0.01"))
+                if other_paid + new_dec > total_ttc + Decimal("0.01"):
+                    max_allowed = max(Decimal("0.00"), (total_ttc - other_paid).quantize(Decimal("0.01")))
+                    raise ValueError(
+                        f"Le nouveau montant dépasse le total du bon (max autorisé : {max_allowed} DA)."
+                    )
+                new_applied = min(new_dec, max(Decimal("0.00"), total_ttc - other_paid)).quantize(Decimal("0.01"))
+                cursor.execute(
+                    """
+                    UPDATE Client_Payments
+                    SET Amount = %s, Payment_Method = %s, Payment_Date = %s, Notes = %s
+                    WHERE Payment_ID = %s
+                    """,
+                    (new_applied, norm_method, pay_date_str, note_clean, int(payment_id)),
+                )
+                delta = (new_applied - old_amt).quantize(Decimal("0.01"))
+                new_rem = max(Decimal("0.00"), (total_ttc - (other_paid + new_applied)).quantize(Decimal("0.01")))
+                inv_status = "Paid" if new_rem <= Decimal("0.00") else "Partial"
+                cursor.execute(
+                    "UPDATE Sales_Invoices SET Amount_Remaining_Credit = %s, Status = %s WHERE Invoice_ID = %s",
+                    (new_rem, inv_status, invoice_id),
+                )
+            elif etype == "INVOICE_INITIAL":
+                old_amt = init_cash_card
+                other_paid = (init_wallet + sub_total).quantize(Decimal("0.01"))
+                if other_paid + new_dec > total_ttc + Decimal("0.01"):
+                    max_allowed = max(Decimal("0.00"), (total_ttc - other_paid).quantize(Decimal("0.01")))
+                    raise ValueError(
+                        f"Le nouveau montant dépasse le total du bon (max autorisé : {max_allowed} DA)."
+                    )
+                new_applied = min(new_dec, max(Decimal("0.00"), total_ttc - other_paid)).quantize(Decimal("0.01"))
+                paid_cash_col = new_applied if norm_method in ("Cash", "Espèce") else Decimal("0.00")
+                paid_card_col = new_applied if norm_method not in ("Cash", "Espèce") else Decimal("0.00")
+                delta = (new_applied - old_amt).quantize(Decimal("0.01"))
+                new_rem = max(Decimal("0.00"), (total_ttc - (other_paid + new_applied)).quantize(Decimal("0.01")))
+                inv_status = "Paid" if new_rem <= Decimal("0.00") else "Partial"
+                cursor.execute(
+                    """
+                    UPDATE Sales_Invoices
+                    SET Amount_Paid_Cash = %s,
+                        Amount_Paid_Card = %s,
+                        Payment_Method = %s,
+                        Amount_Remaining_Credit = %s,
+                        Status = %s
+                    WHERE Invoice_ID = %s
+                    """,
+                    (paid_cash_col, paid_card_col, norm_method, new_rem, inv_status, invoice_id),
+                )
+            else:
+                raise ValueError("Ce type de paiement ne peut pas être modifié.")
+
+            if bond_type != "BON_LIVRAISON" and delta != Decimal("0.00"):
+                cursor.execute(
+                    "UPDATE Clients SET Current_Debt = GREATEST(0.00, COALESCE(Current_Debt, 0.00) - %s) WHERE Client_ID = %s",
+                    (delta, int(order["Client_ID"])),
+                )
+
+            conn.commit()
+            return {
+                "success": True,
+                "order_id": int(order_id),
+                "invoice_id": invoice_id,
+                "new_amount": float(new_applied),
+                "remaining_amount": float(new_rem),
+                "status": inv_status,
+            }
+        except Exception as err:
+            conn.rollback()
+            logger.error(f"Error updating payment on bon #{order_id}: {err}")
+            raise
+        finally:
+            cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
+    def delete_bon_payment(self, order_id: int, payment_id: int) -> Dict[str, Any]:
+        """Deletes a subsequent Client_Payments installment from a Bon and restores remaining balance."""
+        conn = self._get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            if hasattr(conn, "start_transaction"):
+                conn.start_transaction()
+
+            cursor.execute(
+                """
+                SELECT Order_ID, Client_ID, Bond_Type, Total_Amount_TTC
+                FROM Sales_Orders_Theoretical
+                WHERE Order_ID = %s
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            order = cursor.fetchone()
+            if not order:
+                raise ValueError("Bon introuvable.")
+
+            cursor.execute(
+                """
+                SELECT Invoice_ID,
+                       COALESCE(Amount_Paid_Cash, 0.00) AS Amount_Paid_Cash,
+                       COALESCE(Amount_Paid_Card, 0.00) AS Amount_Paid_Card,
+                       COALESCE(Amount_Paid_Wallet, 0.00) AS Amount_Paid_Wallet
+                FROM Sales_Invoices
+                WHERE Order_ID = %s AND Status != 'Cancelled'
+                LIMIT 1
+                FOR UPDATE
+                """,
+                (int(order_id),),
+            )
+            inv = cursor.fetchone()
+            if not inv:
+                raise ValueError("Facture associée introuvable.")
+            invoice_id = int(inv["Invoice_ID"])
+
+            cursor.execute(
+                "SELECT Payment_ID, Amount FROM Client_Payments WHERE Payment_ID = %s AND Invoice_ID = %s FOR UPDATE",
+                (int(payment_id), invoice_id),
+            )
+            target = cursor.fetchone()
+            if not target:
+                raise ValueError("Paiement introuvable.")
+
+            old_amt = Decimal(str(target.get("Amount") or "0.00")).quantize(Decimal("0.01"))
+            cursor.execute("DELETE FROM Client_Payments WHERE Payment_ID = %s", (int(payment_id),))
+
+            cursor.execute(
+                "SELECT COALESCE(SUM(Amount), 0.00) AS Sub_Total FROM Client_Payments WHERE Invoice_ID = %s",
+                (invoice_id,),
+            )
+            sub_total = Decimal(str((cursor.fetchone() or {}).get("Sub_Total") or "0.00")).quantize(Decimal("0.01"))
+            init_paid = (
+                Decimal(str(inv.get("Amount_Paid_Cash") or "0.00"))
+                + Decimal(str(inv.get("Amount_Paid_Card") or "0.00"))
+                + Decimal(str(inv.get("Amount_Paid_Wallet") or "0.00"))
+            ).quantize(Decimal("0.01"))
+            total_ttc = Decimal(str(order.get("Total_Amount_TTC") or "0.00")).quantize(Decimal("0.01"))
+            new_rem = max(Decimal("0.00"), (total_ttc - init_paid - sub_total).quantize(Decimal("0.01")))
+            inv_status = "Paid" if new_rem <= Decimal("0.00") else "Partial"
+
+            cursor.execute(
+                "UPDATE Sales_Invoices SET Amount_Remaining_Credit = %s, Status = %s WHERE Invoice_ID = %s",
+                (new_rem, inv_status, invoice_id),
+            )
+
+            bond_type = str(order.get("Bond_Type") or "BON_VERSEMENT").upper()
+            if bond_type != "BON_LIVRAISON" and old_amt > Decimal("0.00"):
+                cursor.execute(
+                    "UPDATE Clients SET Current_Debt = COALESCE(Current_Debt, 0.00) + %s WHERE Client_ID = %s",
+                    (old_amt, int(order["Client_ID"])),
+                )
+
+            conn.commit()
+            return {
+                "success": True,
+                "order_id": int(order_id),
+                "deleted_payment_id": int(payment_id),
+                "remaining_amount": float(new_rem),
+                "status": inv_status,
+            }
+        except Exception as err:
+            conn.rollback()
+            logger.error(f"Error deleting payment #{payment_id} on bon #{order_id}: {err}")
+            raise
+        finally:
+            cursor.close()
+            if hasattr(self.db, "get_raw_connection"):
+                conn.close()
+
 
 # Aliases matching docs service layer names
 TheoreticalSalesService = BondLifecycleManager

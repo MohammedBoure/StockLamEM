@@ -686,10 +686,10 @@ class MainWindow(QMainWindow):
             from .widgets.clients import ClientsTab
             widget = ClientsTab(self.data_manager)
 
-        # --- 17. Versement (Placeholder dédié) ---
+        # --- 17. Versement ---
         elif page_id == 17:
             from .widgets.versement import VersementTab
-            widget = VersementTab(self.data_manager)
+            widget = VersementTab(self.data_manager, current_user=self.current_user)
 
         # --- 18. Paiement Livraison (Placeholder dédié) ---
         elif page_id == 18:
