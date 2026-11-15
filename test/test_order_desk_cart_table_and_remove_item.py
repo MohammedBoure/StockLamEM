@@ -99,24 +99,26 @@ def mock_data_manager():
     return dm
 
 
-def test_cart_table_structure_and_5_columns(qapp, mock_data_manager):
-    """Verifies that the cart table has exactly 5 configured columns with appropriate widths."""
+def test_cart_table_structure_and_columns(qapp, mock_data_manager):
+    """Verifies that the cart table has the expected 6 configured columns with appropriate widths."""
     desk = OrderDeskWidget(data_manager=mock_data_manager)
 
-    assert desk.cart_table.columnCount() == 5
-    headers = [desk.cart_table.horizontalHeaderItem(c).text() for c in range(5)]
+    assert desk.cart_table.columnCount() == 6
+    headers = [desk.cart_table.horizontalHeaderItem(c).text() for c in range(6)]
     assert headers[0] == "Désignation"
-    assert headers[1] == "Couleur"
+    assert headers[1] == "Réf"
     assert headers[2] == "Qté"
-    assert headers[3] == "Total TTC"
-    assert headers[4] == "Suppr."
+    assert headers[3] == "Prix U."
+    assert headers[4] == "Total TTC"
+    assert headers[5] == "Suppr."
 
-    # Column 0 has min width >= 180, Col 1 is 105, Col 2 is 80, Col 3 is 105, Col 4 is 42
+    # Column 0 has min width >= 180, Col 1 is 95, Col 2 is 80, Col 3 is 105, Col 4 is 100, Col 5 is 42
     assert desk.cart_table.columnWidth(0) >= 180
-    assert desk.cart_table.columnWidth(1) == 105
+    assert desk.cart_table.columnWidth(1) == 95
     assert desk.cart_table.columnWidth(2) == 80
     assert desk.cart_table.columnWidth(3) == 105
-    assert desk.cart_table.columnWidth(4) == 42
+    assert desk.cart_table.columnWidth(4) == 100
+    assert desk.cart_table.columnWidth(5) == 42
 
     # Verify horizontal scroll settings
     assert desk.cart_table.horizontalScrollBarPolicy() == Qt.ScrollBarAsNeeded
@@ -124,41 +126,24 @@ def test_cart_table_structure_and_5_columns(qapp, mock_data_manager):
     assert desk.cart_table.verticalScrollMode() == QAbstractItemView.ScrollPerPixel
 
 
-def test_color_swatch_image_preview_in_cart_row(qapp, mock_data_manager):
-    """Verifies that Color finish in cart table renders a visual circular swatch (ColorBadgeWidget) and not plain text."""
+def test_ref_column_rendered_in_cart_row(qapp, mock_data_manager):
+    """Verifies that Réf renders cleanly in cart table col 1 without overlapping cell widgets."""
     desk = OrderDeskWidget(data_manager=mock_data_manager)
     desk.refresh_catalog()
 
-    # Add product 101 (Bosch - Inox) to cart
+    # Add product 101 (Bosch) and 102 (LG) to cart
     act_w0 = desk.table.cellWidget(0, 7)
     assert isinstance(act_w0, AddActionCellWidget)
     act_w0._trigger_add()
 
-    # Add product 102 (LG - Blanc) to cart
     act_w1 = desk.table.cellWidget(1, 7)
     act_w1._trigger_add()
 
     assert desk.cart_table.rowCount() == 2
-
-    # Row 0: Inox
-    color_w0 = desk.cart_table.cellWidget(0, 1)
-    assert isinstance(color_w0, ColorBadgeWidget)
-    assert color_w0.color_name == "Inox"
-    assert color_w0.hex_code == "#8A9EA7"
-    assert color_w0.swatch.width() >= 13
-    assert "#8A9EA7" in color_w0.swatch.styleSheet().upper() or "#8a9ea7" in color_w0.swatch.styleSheet().lower()
-    assert color_w0.lbl_text.text() == "Inox"
-    # Ensure underlying item has no conflicting raw text that could overlap
-    assert desk.cart_table.item(0, 1).text() == ""
-    assert "Inox" in desk.cart_table.item(0, 1).toolTip()
-
-    # Row 1: Blanc
-    color_w1 = desk.cart_table.cellWidget(1, 1)
-    assert isinstance(color_w1, ColorBadgeWidget)
-    assert color_w1.color_name == "Blanc"
-    assert color_w1.hex_code.upper() == "#FFFFFF"
-    assert color_w1.lbl_text.text() == "Blanc"
-    assert "Blanc" in desk.cart_table.item(1, 1).toolTip()
+    assert desk.cart_table.cellWidget(0, 1) is None
+    assert desk.cart_table.item(0, 1).text() == "4242005198030"
+    assert desk.cart_table.cellWidget(1, 1) is None
+    assert desk.cart_table.item(1, 1).text() == "8806098000000"
 
 
 def test_remove_item_from_cart_button(qapp, mock_data_manager):
@@ -176,8 +161,8 @@ def test_remove_item_from_cart_button(qapp, mock_data_manager):
     # Row 0 total: 100,000 DA, Row 1 total: 75,000 DA, Row 2 total: 120,000 DA -> 295,000 DA
     assert "295 000,00 DA" in desk.lbl_total.text() or "295 000.00 DA" in desk.lbl_total.text() or "295" in desk.lbl_total.text()
 
-    # Check delete button widget in Row 1 (LG Lave-linge)
-    del_w1 = desk.cart_table.cellWidget(1, 4)
+    # Check delete button widget in Row 1 (LG Lave-linge, col 5)
+    del_w1 = desk.cart_table.cellWidget(1, 5)
     assert isinstance(del_w1, CartRemoveCellWidget)
     assert hasattr(del_w1, "btn_delete")
     assert del_w1.btn_delete.icon().isNull() is False
@@ -197,11 +182,11 @@ def test_remove_item_from_cart_button(qapp, mock_data_manager):
     assert "220 000,00 DA" in desk.lbl_total.text() or "220 000.00 DA" in desk.lbl_total.text() or "220" in desk.lbl_total.text()
 
     # Delete remaining 2 rows
-    del_w_first = desk.cart_table.cellWidget(0, 4)
+    del_w_first = desk.cart_table.cellWidget(0, 5)
     del_w_first.btn_delete.click()
     assert desk.cart_table.rowCount() == 1
 
-    del_w_last = desk.cart_table.cellWidget(0, 4)
+    del_w_last = desk.cart_table.cellWidget(0, 5)
     del_w_last.btn_delete.click()
     assert desk.cart_table.rowCount() == 0
     assert len(desk._sessions["SESSION_1"]["cart"]) == 0
@@ -222,9 +207,9 @@ def test_cart_table_horizontal_scroll_and_responsive_metrics(qapp, mock_data_man
     col0_w = desk.cart_table.columnWidth(0)
     assert col0_w >= 180
 
-    # Total width of all columns: >= 180 + 105 + 80 + 105 + 42 = 512px
-    total_cols_w = sum(desk.cart_table.columnWidth(c) for c in range(5))
-    assert total_cols_w >= 512
+    # Total width of all columns: >= 180 + 95 + 80 + 105 + 100 + 42 = 602px
+    total_cols_w = sum(desk.cart_table.columnWidth(c) for c in range(6))
+    assert total_cols_w >= 602
 
     # Viewport is narrower than total columns, scrollbar is required/available
     assert desk.cart_table.horizontalScrollBarPolicy() == Qt.ScrollBarAsNeeded
@@ -235,5 +220,5 @@ def test_cart_table_horizontal_scroll_and_responsive_metrics(qapp, mock_data_man
 
     # Vertical metrics: row height >= 38px (40px) ensuring zero clipping
     assert desk.cart_table.verticalHeader().defaultSectionSize() >= 38
-    del_w = desk.cart_table.cellWidget(0, 4)
+    del_w = desk.cart_table.cellWidget(0, 5)
     assert del_w.btn_delete.height() <= desk.cart_table.verticalHeader().defaultSectionSize() - 10

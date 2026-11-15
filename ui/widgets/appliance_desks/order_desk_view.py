@@ -12,6 +12,7 @@ Provides:
 """
 
 import logging
+import math
 import os
 from decimal import Decimal
 from typing import Any, Callable, Dict, List, Optional
@@ -752,6 +753,141 @@ class CartQtyStepper(QWidget):
             self._qty += 1
             self.lbl_qty.setText(str(self._qty))
             self.qtyChanged.emit(self._qty)
+
+
+class CartPriceEditor(QWidget):
+    """Direct inline unit selling price editor for cart lines with instant margin validation."""
+
+    priceLiveUpdated = Signal(float)
+    priceCommitted = Signal(float)
+    priceRejected = Signal(float, float)
+    liveValidationChanged = Signal(bool, float, float)
+
+    _STYLE_VALID = """
+        QLineEdit {
+            background-color: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #0F172A;
+        }
+        QLineEdit:focus {
+            border: 1.5px solid #007572;
+            background-color: #F0FDFA;
+        }
+    """
+    _STYLE_INVALID = """
+        QLineEdit {
+            background-color: #FEF2F2;
+            border: 1.5px solid #DC2626;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #B91C1C;
+        }
+    """
+
+    def __init__(self, unit_price: float, purchase_price: float = 0.0, parent=None):
+        super().__init__(parent)
+        self._purchase_price = max(0.0, float(purchase_price or 0.0))
+        init_val = max(0.0, float(unit_price or 0.0))
+        if self._purchase_price > 0 and init_val + 1e-6 < self._purchase_price:
+            init_val = self._purchase_price
+        self._last_valid_price = round(init_val, 2)
+        self._init_ui()
+
+    @staticmethod
+    def _format_num(val: float) -> str:
+        rounded = round(float(val or 0.0), 2)
+        if abs(rounded - round(rounded)) < 1e-6:
+            return f"{int(round(rounded))}"
+        return f"{rounded:.2f}"
+
+    @staticmethod
+    def parse_price(raw_text: str) -> Optional[float]:
+        clean = (
+            str(raw_text or "")
+            .replace("DA", "")
+            .replace("da", "")
+            .replace("\u00a0", "")
+            .replace("\u202f", "")
+            .replace(" ", "")
+            .replace(",", ".")
+            .strip()
+        )
+        if not clean:
+            return None
+        try:
+            val = float(clean)
+        except ValueError:
+            return None
+        if not math.isfinite(val) or val < 0:
+            return None
+        return val
+
+    def is_valid_selling_price(self, val: Optional[float]) -> bool:
+        if val is None or val <= 0:
+            return False
+        if self._purchase_price > 0 and (val + 1e-6) < self._purchase_price:
+            return False
+        return True
+
+    def _init_ui(self) -> None:
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(0)
+
+        self.inp_price = QLineEdit(self._format_num(self._last_valid_price))
+        self.inp_price.setFixedHeight(26)
+        self.inp_price.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.inp_price.setStyleSheet(self._STYLE_VALID)
+        if self._purchase_price > 0:
+            self.inp_price.setToolTip(
+                f"Prix de vente TTC modifiable\nPrix d'achat minimum : {format_money(self._purchase_price)} DA"
+            )
+        else:
+            self.inp_price.setToolTip("Prix de vente TTC modifiable")
+        self.inp_price.textChanged.connect(self._on_text_changed)
+        self.inp_price.editingFinished.connect(self.commit_edit)
+        layout.addWidget(self.inp_price)
+
+    def _on_text_changed(self, text: str) -> None:
+        val = self.parse_price(text)
+        valid = self.is_valid_selling_price(val)
+        self.inp_price.setStyleSheet(self._STYLE_VALID if valid else self._STYLE_INVALID)
+        attempted = float(val) if val is not None else 0.0
+        self.liveValidationChanged.emit(valid, attempted, self._purchase_price)
+        if valid:
+            self._last_valid_price = round(float(val), 2)
+            self.priceLiveUpdated.emit(self._last_valid_price)
+
+    def commit_edit(self) -> bool:
+        val = self.parse_price(self.inp_price.text())
+        if not self.is_valid_selling_price(val):
+            attempted = float(val) if val is not None else 0.0
+            self.inp_price.blockSignals(True)
+            self.inp_price.setText(self._format_num(self._last_valid_price))
+            self.inp_price.blockSignals(False)
+            self.inp_price.setStyleSheet(self._STYLE_VALID)
+            self.priceRejected.emit(attempted, self._purchase_price)
+            return False
+
+        self._last_valid_price = round(float(val), 2)
+        self.inp_price.blockSignals(True)
+        self.inp_price.setText(self._format_num(self._last_valid_price))
+        self.inp_price.blockSignals(False)
+        self.inp_price.setStyleSheet(self._STYLE_VALID)
+        self.liveValidationChanged.emit(True, self._last_valid_price, self._purchase_price)
+        self.priceCommitted.emit(self._last_valid_price)
+        return True
+
+    def try_commit_price(self, value: Any) -> bool:
+        """Programmatic helper allowing tests/automation to enter and commit a price."""
+        self.inp_price.setText(str(value))
+        return self.commit_edit()
 
 
 class OrderDeskWidget(QWidget):
@@ -2014,9 +2150,9 @@ class OrderDeskWidget(QWidget):
         self.cbo_client.currentIndexChanged.connect(self._on_client_changed)
         layout.addWidget(self.cbo_client)
 
-        # Cart Items Table (5 columns: Désignation, Couleur, Qté, Total TTC, Suppr.)
-        self.cart_table = QTableWidget(0, 5)
-        self.cart_table.setHorizontalHeaderLabels(["Désignation", "Réf", "Qté", "Total TTC", "Suppr."])
+        # Cart Items Table (6 columns: Désignation, Réf, Qté, Prix U., Total TTC, Suppr.)
+        self.cart_table = QTableWidget(0, 6)
+        self.cart_table.setHorizontalHeaderLabels(["Désignation", "Réf", "Qté", "Prix U.", "Total TTC", "Suppr."])
         self.cart_table.setStyleSheet(TABLE_STYLE)
         self.cart_table.verticalHeader().setVisible(False)
         self.cart_table.verticalHeader().setDefaultSectionSize(40)
@@ -2035,22 +2171,42 @@ class OrderDeskWidget(QWidget):
         ch.setSectionResizeMode(0, QHeaderView.Interactive)
         self.cart_table.setColumnWidth(0, 180)
         ch.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.cart_table.setColumnWidth(1, 105)
+        self.cart_table.setColumnWidth(1, 95)
         ch.setSectionResizeMode(2, QHeaderView.Fixed)
         self.cart_table.setColumnWidth(2, 80)
         ch.setSectionResizeMode(3, QHeaderView.Fixed)
         self.cart_table.setColumnWidth(3, 105)
         ch.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(4, 42)
+        self.cart_table.setColumnWidth(4, 100)
+        ch.setSectionResizeMode(5, QHeaderView.Fixed)
+        self.cart_table.setColumnWidth(5, 42)
 
         self.cart_table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.cart_table.horizontalHeaderItem(1).setTextAlignment(Qt.AlignCenter)
         self.cart_table.horizontalHeaderItem(2).setTextAlignment(Qt.AlignCenter)
         self.cart_table.horizontalHeaderItem(3).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.cart_table.horizontalHeaderItem(4).setTextAlignment(Qt.AlignCenter)
-        self.cart_table.horizontalHeaderItem(4).setToolTip("Supprimer l'article de la commande")
+        self.cart_table.horizontalHeaderItem(3).setToolTip("Prix unitaire TTC modifiable manuellement (supérieur ou égal au prix d'achat)")
+        self.cart_table.horizontalHeaderItem(4).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.cart_table.horizontalHeaderItem(5).setTextAlignment(Qt.AlignCenter)
+        self.cart_table.horizontalHeaderItem(5).setToolTip("Supprimer l'article de la commande")
         ch.sectionResized.connect(self._on_cart_header_section_resized)
         layout.addWidget(self.cart_table, 1)
+
+        self.lbl_cart_price_error = QLabel("")
+        self.lbl_cart_price_error.setWordWrap(True)
+        self.lbl_cart_price_error.setVisible(False)
+        self.lbl_cart_price_error.setStyleSheet("""
+            QLabel {
+                background-color: #FEF2F2;
+                color: #B91C1C;
+                border: 1px solid #FCA5A5;
+                border-radius: 4px;
+                padding: 5px 8px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+        """)
+        layout.addWidget(self.lbl_cart_price_error)
 
         # Delivery info for Bon de Livraison
         self.txt_delivery_addr = QLineEdit()
@@ -2717,13 +2873,13 @@ class OrderDeskWidget(QWidget):
             btn.clicked.connect(lambda checked=False, target_sid=sid: self._close_session_by_id(target_sid))
             self.session_tab_bar.setTabButton(idx, QTabBar.RightSide, btn)
 
-    def _close_session_by_id(self, sid: str) -> None:
-        """Closes session corresponding to the provided ID after user confirmation."""
+    def _close_session_by_id(self, sid: str, force: bool = False) -> None:
+        """Closes session corresponding to the provided ID after user confirmation unless forced."""
         if not hasattr(self, "session_tab_bar"):
             return
         for idx in range(self.session_tab_bar.count()):
             if self.session_tab_bar.tabData(idx) == sid:
-                self._on_session_tab_close_requested(idx)
+                self._on_session_tab_close_requested(idx, force=force)
                 break
 
     def _clear_session_cart(self, sid: str) -> None:
@@ -2837,7 +2993,7 @@ class OrderDeskWidget(QWidget):
         """Legacy compatibility wrapper forwarding to tab switch."""
         self._on_session_tab_switched(idx)
 
-    def _on_session_tab_close_requested(self, index: int) -> None:
+    def _on_session_tab_close_requested(self, index: int, force: bool = False) -> None:
         sid = self.session_tab_bar.tabData(index)
         sdata = self._sessions.get(sid)
         if not sdata:
@@ -2845,7 +3001,7 @@ class OrderDeskWidget(QWidget):
 
         # If it is the last remaining session, clear/reset it rather than destroying the desk
         if self.session_tab_bar.count() <= 1:
-            if sdata.get("cart"):
+            if sdata.get("cart") and not force:
                 reply = QMessageBox.question(
                     self,
                     "Réinitialiser la session",
@@ -2863,7 +3019,7 @@ class OrderDeskWidget(QWidget):
             self._update_tab_close_buttons()
             return
 
-        if sdata.get("cart"):
+        if sdata.get("cart") and not force:
             reply = QMessageBox.question(
                 self,
                 "Confirmer la fermeture",
@@ -3171,6 +3327,22 @@ class OrderDeskWidget(QWidget):
             return p2
         return p1
 
+    @staticmethod
+    def _extract_purchase_price(prod: Dict[str, Any]) -> float:
+        raw = (
+            prod.get("Purchase_Price_TTC")
+            or prod.get("Purchase_Price")
+            or prod.get("Unit_Cost_Landed")
+            or prod.get("Unit_Price_Received")
+            or prod.get("purchase_price")
+            or 0.0
+        )
+        try:
+            val = float(raw or 0.0)
+            return round(val, 2) if val > 0 and math.isfinite(val) else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+
     def _add_product_to_session(self, session_id: str, prod: Dict[str, Any]) -> None:
         if session_id not in self._sessions:
             return
@@ -3198,6 +3370,7 @@ class OrderDeskWidget(QWidget):
             return
 
         unit_price = self._get_client_tiered_price(session_id, prod)
+        purchase_price = self._extract_purchase_price(prod)
         cart.append({
             "product_id": pid,
             "mark": str(prod.get("Brand_Mark") or ""),
@@ -3212,6 +3385,7 @@ class OrderDeskWidget(QWidget):
             ),
             "coloure": str(prod.get("Color_Finish") or "Standard"),
             "unit_price_ttc": unit_price,
+            "purchase_price": purchase_price,
             "quantity": 1,
             "max_avail": avail,
         })
@@ -3355,6 +3529,7 @@ class OrderDeskWidget(QWidget):
             else:
                 unit_price = self._get_client_tiered_price(session_id, prod)
 
+            purchase_price = self._extract_purchase_price(prod)
             cart.append({
                 "product_id": pid,
                 "mark": str(prod.get("Brand_Mark") or ""),
@@ -3369,6 +3544,7 @@ class OrderDeskWidget(QWidget):
                 ),
                 "coloure": str(prod.get("Color_Finish") or "Standard"),
                 "unit_price_ttc": unit_price,
+                "purchase_price": purchase_price,
                 "quantity": qty_to_add,
                 "max_avail": avail,
             })
@@ -3441,9 +3617,71 @@ class OrderDeskWidget(QWidget):
             "session": self._serialize_session_snapshot(session_id),
         }
 
+    def _show_cart_price_error(self, message: str) -> None:
+        if hasattr(self, "lbl_cart_price_error") and self.lbl_cart_price_error is not None:
+            self.lbl_cart_price_error.setText(message)
+            self.lbl_cart_price_error.setVisible(True)
+        if hasattr(self, "lbl_scanner_status") and self.lbl_scanner_status is not None:
+            self.lbl_scanner_status.setText(message)
+
+    def _clear_cart_price_error(self) -> None:
+        if hasattr(self, "lbl_cart_price_error") and self.lbl_cart_price_error is not None:
+            self.lbl_cart_price_error.clear()
+            self.lbl_cart_price_error.setVisible(False)
+
+    def _on_cart_price_live_validation(self, is_valid: bool, attempted: float, floor: float) -> None:
+        if is_valid:
+            self._clear_cart_price_error()
+            return
+        if attempted <= 0:
+            self._show_cart_price_error("⚠️ Le prix unitaire de vente doit être strictement supérieur à 0 DA.")
+        else:
+            self._show_cart_price_error(
+                f"⚠️ Prix refusé : {format_money(attempted)} DA est inférieur au prix d'achat réel ({format_money(floor)} DA)."
+            )
+
+    def _on_cart_price_rejected(self, attempted: float, floor: float) -> None:
+        if attempted <= 0:
+            self._show_cart_price_error("⚠️ Prix invalide rétabli : le prix de vente doit être supérieur à 0 DA.")
+        else:
+            self._show_cart_price_error(
+                f"⚠️ Prix bloqué : {format_money(attempted)} DA < prix d'achat ({format_money(floor)} DA). Ancien prix rétabli."
+            )
+
+    def _update_line_price(self, index: int, new_price: float, *, clear_error: bool = True) -> bool:
+        if self._active_session_id not in self._sessions:
+            return False
+        cart = self._sessions[self._active_session_id]["cart"]
+        if not (0 <= index < len(cart)):
+            return False
+
+        item = cart[index]
+        floor = float(item.get("purchase_price") or 0.0)
+        price_val = round(float(new_price or 0.0), 2)
+        if price_val <= 0 or (floor > 0 and price_val + 1e-6 < floor):
+            self._on_cart_price_rejected(price_val, floor)
+            return False
+
+        item["unit_price_ttc"] = price_val
+        line_tot = price_val * int(item["quantity"])
+        it_tot = self.cart_table.item(index, 4)
+        if it_tot:
+            it_tot.setText(f"{format_money(line_tot)} DA")
+            it_tot.setToolTip(
+                f"Prix unitaire TTC : {format_money(price_val)} DA\nTotal ligne : {format_money(line_tot)} DA"
+            )
+
+        total_ttc = sum(float(it["unit_price_ttc"]) * int(it["quantity"]) for it in cart)
+        self.lbl_total.setText(f"{format_money(total_ttc)} DA")
+        self._update_tab_label(self._active_session_id)
+        if clear_error:
+            self._clear_cart_price_error()
+        return True
+
     def _refresh_cart_ui(self) -> None:
         cart = self._sessions[self._active_session_id]["cart"]
         self.cart_table.setRowCount(0)
+        self._clear_cart_price_error()
         total_ttc = 0.0
 
         for idx, item in enumerate(cart):
@@ -3479,16 +3717,27 @@ class OrderDeskWidget(QWidget):
             stepper.qtyChanged.connect(lambda val, i=idx: self._update_line_qty(i, val))
             self.cart_table.setCellWidget(row, 2, stepper)
 
-            # Col 3: Total TTC (Bold font, right aligned)
+            # Col 3: Prix Unitaire TTC modifiable manuellement + Validation marge
+            price_editor = CartPriceEditor(
+                unit_price=float(item.get("unit_price_ttc") or 0.0),
+                purchase_price=float(item.get("purchase_price") or 0.0),
+            )
+            price_editor.liveValidationChanged.connect(self._on_cart_price_live_validation)
+            price_editor.priceRejected.connect(self._on_cart_price_rejected)
+            price_editor.priceLiveUpdated.connect(lambda val, i=idx: self._update_line_price(i, val, clear_error=True))
+            price_editor.priceCommitted.connect(lambda val, i=idx: self._update_line_price(i, val, clear_error=True))
+            self.cart_table.setCellWidget(row, 3, price_editor)
+
+            # Col 4: Total TTC (Bold font, right aligned)
             it_tot = QTableWidgetItem(f"{format_money(line_tot)} DA")
             it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             it_tot.setFont(QFont("Segoe UI", 10, QFont.Bold))
             it_tot.setToolTip(f"Prix unitaire TTC : {format_money(item['unit_price_ttc'])} DA\nTotal ligne : {format_money(line_tot)} DA")
-            self.cart_table.setItem(row, 3, it_tot)
+            self.cart_table.setItem(row, 4, it_tot)
 
-            # Col 4: Action Supprimer (Dedicated remove button with vector trash icon)
+            # Col 5: Action Supprimer (Dedicated remove button with vector trash icon)
             del_widget = CartRemoveCellWidget(on_remove=lambda i=idx: self._remove_cart_line(i))
-            self.cart_table.setCellWidget(row, 4, del_widget)
+            self.cart_table.setCellWidget(row, 5, del_widget)
 
         self.lbl_total.setText(f"{format_money(total_ttc)} DA")
         self._adjust_cart_column_widths()
@@ -3512,9 +3761,12 @@ class OrderDeskWidget(QWidget):
                 return
             cart[index]["quantity"] = int(new_qty)
             line_tot = cart[index]["unit_price_ttc"] * cart[index]["quantity"]
-            it_tot = self.cart_table.item(index, 3)
+            it_tot = self.cart_table.item(index, 4)
             if it_tot:
                 it_tot.setText(f"{format_money(line_tot)} DA")
+                it_tot.setToolTip(
+                    f"Prix unitaire TTC : {format_money(cart[index]['unit_price_ttc'])} DA\nTotal ligne : {format_money(line_tot)} DA"
+                )
             total_ttc = sum(it["unit_price_ttc"] * it["quantity"] for it in cart)
             self.lbl_total.setText(f"{format_money(total_ttc)} DA")
             self._update_tab_label(self._active_session_id)
@@ -3525,6 +3777,7 @@ class OrderDeskWidget(QWidget):
             self._sessions[self._active_session_id]["delivery_address"] = ""
         if hasattr(self, "txt_delivery_addr"):
             self.txt_delivery_addr.clear()
+        self._clear_cart_price_error()
         self._update_tab_label(self._active_session_id)
         self._refresh_cart_ui()
 
@@ -3538,6 +3791,31 @@ class OrderDeskWidget(QWidget):
         if not cart:
             QMessageBox.warning(self, "Panier Vide", "Veuillez ajouter au moins un produit avant de créer le bon.")
             return
+
+        # Commit any active price editor and enforce margin floor against purchase price
+        if hasattr(self, "cart_table") and self.cart_table is not None:
+            for r in range(self.cart_table.rowCount()):
+                editor = self.cart_table.cellWidget(r, 3)
+                if isinstance(editor, CartPriceEditor):
+                    if not editor.commit_edit():
+                        QMessageBox.warning(
+                            self,
+                            "Prix Non Autorisé",
+                            self.lbl_cart_price_error.text() or "Le prix de vente saisi est inférieur au prix d'achat réel.",
+                        )
+                        return
+
+        for it in cart:
+            p_floor = float(it.get("purchase_price") or 0.0)
+            p_sell = float(it.get("unit_price_ttc") or 0.0)
+            if p_sell <= 0 or (p_floor > 0 and p_sell + 1e-6 < p_floor):
+                msg = (
+                    f"Prix non autorisé pour « {it.get('name', '')} » : "
+                    f"{format_money(p_sell)} DA < prix d'achat réel ({format_money(p_floor)} DA)."
+                )
+                self._show_cart_price_error(msg)
+                QMessageBox.warning(self, "Prix Non Autorisé", msg)
+                return
 
         client_id = int(self.cbo_client.currentData() or 1)
         user_id = 1
@@ -3682,7 +3960,7 @@ class OrderDeskWidget(QWidget):
 
             if edit_meta:
                 if len(self._sessions) > 1:
-                    self._close_session_by_id(self._active_session_id)
+                    self._close_session_by_id(self._active_session_id, force=True)
                 else:
                     sdata["edit_order"] = None
                     sdata["label"] = "Session #1"
@@ -3747,6 +4025,7 @@ class OrderDeskWidget(QWidget):
                 "ref": ref_val,
                 "coloure": str(ln.get("Color_Finish") or ln.get("coloure") or cat_prod.get("Color_Finish") or "Standard"),
                 "unit_price_ttc": float(ln.get("Unit_Price_TTC") or ln.get("unit_price_ttc") or 0.0),
+                "purchase_price": self._extract_purchase_price(ln) or self._extract_purchase_price(cat_prod),
                 "quantity": qty,
                 "max_avail": max(avail, qty),
             })

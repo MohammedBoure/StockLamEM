@@ -165,6 +165,13 @@ class BondLifecycleManager:
                 if req_qty <= 0:
                     raise ValueError("Ordered quantity must be greater than zero.")
                 p_ttc = Decimal(str(item["unit_price_ttc"])).quantize(Decimal("0.01"))
+                raw_cost = item.get("purchase_price")
+                if raw_cost is not None:
+                    cost_floor = Decimal(str(raw_cost)).quantize(Decimal("0.01"))
+                    if cost_floor > 0 and p_ttc < cost_floor:
+                        raise ValueError(
+                            f"Prix de vente refusé ({p_ttc} DA) : inférieur au prix d'achat réel ({cost_floor} DA)."
+                        )
                 p_ht = (p_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
                 line_ttc = (p_ttc * req_qty).quantize(Decimal("0.01"))
                 req_color = item.get("color") or item.get("coloure")
@@ -456,6 +463,13 @@ class BondLifecycleManager:
                 if req_qty <= 0:
                     raise ValueError("La quantité commandée doit être supérieure à zéro.")
                 p_ttc = Decimal(str(it["unit_price_ttc"])).quantize(Decimal("0.01"))
+                raw_cost = it.get("purchase_price")
+                if raw_cost is not None:
+                    cost_floor = Decimal(str(raw_cost)).quantize(Decimal("0.01"))
+                    if cost_floor > 0 and p_ttc < cost_floor:
+                        raise ValueError(
+                            f"Prix de vente refusé ({p_ttc} DA) : inférieur au prix d'achat réel ({cost_floor} DA)."
+                        )
                 p_ht = (p_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
                 line_ttc = (p_ttc * req_qty).quantize(Decimal("0.01"))
                 req_color = it.get("color") or it.get("coloure")

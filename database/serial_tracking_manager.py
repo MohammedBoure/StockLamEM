@@ -327,7 +327,20 @@ class SerialTrackingManager:
                         COALESCE(SUM(CASE WHEN b.Status IN ('Available', 'ACTIVE') THEN COALESCE(b.Theoretical_Reserved_Qty, 0) ELSE 0 END), 0) AS Reserved_Qty,
                         COALESCE(MAX(b.Selling_Price_HT), p.Default_Selling_Price_HT, 0.00) AS Batch_Selling_Price_HT,
                         COALESCE(MAX(b.Selling_Price_HT_2), 0.00) AS Batch_Selling_Price_HT_2,
-                        COALESCE(MAX(b.Selling_Price_HT_3), 0.00) AS Batch_Selling_Price_HT_3
+                        COALESCE(MAX(b.Selling_Price_HT_3), 0.00) AS Batch_Selling_Price_HT_3,
+                        COALESCE(
+                            MAX(
+                                CASE
+                                    WHEN b.Status IN ('Available', 'ACTIVE') AND b.Quantity_Current > 0
+                                    THEN COALESCE(b.Unit_Price_Received, 0.0)
+                                         * (1.0 - COALESCE(b.Discount_Percent, 0.0) / 100.0)
+                                         * (1.0 + COALESCE(b.Tax_Rate_Percent, 0.0) / 100.0)
+                                         + COALESCE(b.Freight_Customs_Allocation, 0.0)
+                                    ELSE 0.0
+                                END
+                            ),
+                            0.00
+                        ) AS Max_Purchase_Price_TTC
                     FROM Products_Master p
                     LEFT JOIN Manufacturers m ON p.Manuf_ID = m.Manuf_ID
                     LEFT JOIN Product_Families pf ON p.Family_ID = pf.Family_ID
@@ -383,6 +396,8 @@ class SerialTrackingManager:
                     r["Physical_Qty"] = phys
                     r["Reserved_Qty"] = res
                     r["Available_Theoretical_Qty"] = avail
+                    purchase_price = Decimal(str(r.get("Max_Purchase_Price_TTC") or r.get("Unit_Price_Received") or "0.00")).quantize(Decimal("0.01"))
+                    r["Purchase_Price_TTC"] = float(max(Decimal("0.00"), purchase_price))
                     r["Unit_Price_HT"] = float(price_ht)
                     r["Unit_Price_TTC"] = float(price_ttc)
                     r["Price_1_TTC"] = float(price_ttc)
