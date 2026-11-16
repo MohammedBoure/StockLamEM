@@ -66,6 +66,51 @@ class BondLifecycleManager:
 
     def __init__(self, db_instance):
         self.db = db_instance
+        self._enum_schema_verified = False
+
+    def _ensure_bond_enum_schema(self, cursor) -> None:
+        """
+        Ensures Sales_Orders_Theoretical.Bond_Type / Payment_Method_Requested and
+        Sales_Invoices.Bond_Settlement_Type ENUMs include BON_VERSEMENT / VERSEMENT.
+        Must be called outside an active transaction (ALTER TABLE causes implicit commit).
+        """
+        if self._enum_schema_verified:
+            return
+        try:
+            checks = [
+                (
+                    "Sales_Orders_Theoretical",
+                    "Bond_Type",
+                    "BON_VERSEMENT",
+                    "ALTER TABLE Sales_Orders_Theoretical MODIFY COLUMN Bond_Type "
+                    "ENUM('BON_C', 'BON_CREDIT', 'BON_LIVRAISON', 'BON_VERSEMENT') NOT NULL DEFAULT 'BON_C'",
+                ),
+                (
+                    "Sales_Orders_Theoretical",
+                    "Payment_Method_Requested",
+                    "VERSEMENT",
+                    "ALTER TABLE Sales_Orders_Theoretical MODIFY COLUMN Payment_Method_Requested "
+                    "ENUM('CASH', 'CREDIT', 'LIVRAISON_COD', 'CARD', 'WALLET_AVOIR', 'MIXED', 'VERSEMENT') NOT NULL DEFAULT 'CASH'",
+                ),
+                (
+                    "Sales_Invoices",
+                    "Bond_Settlement_Type",
+                    "BON_VERSEMENT",
+                    "ALTER TABLE Sales_Invoices MODIFY COLUMN Bond_Settlement_Type "
+                    "ENUM('BON_C_CASH', 'BON_CREDIT', 'BON_LIVRAISON', 'BON_WALLET_AVOIR', 'BON_MIXED', 'BON_VERSEMENT') NULL",
+                ),
+            ]
+            for table_name, col_name, required_val, alter_sql in checks:
+                cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE %s", (col_name,))
+                row = cursor.fetchone()
+                if not isinstance(row, dict):
+                    continue
+                col_type = str(row.get("Type") or "")
+                if col_type and required_val not in col_type:
+                    cursor.execute(alter_sql)
+            self._enum_schema_verified = True
+        except Exception as err:
+            logger.debug(f"Skipping ENUM auto-migration check: {err}")
 
     def _get_connection(self):
         if hasattr(self.db, "get_raw_connection"):
@@ -105,6 +150,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
+            self._ensure_bond_enum_schema(cursor)
             if hasattr(conn, "start_transaction"):
                 conn.start_transaction()
 
@@ -359,6 +405,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
+            self._ensure_bond_enum_schema(cursor)
             if hasattr(conn, "start_transaction"):
                 conn.start_transaction()
 
@@ -939,6 +986,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
+            self._ensure_bond_enum_schema(cursor)
             if hasattr(conn, "start_transaction"):
                 conn.start_transaction()
 
@@ -1073,6 +1121,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
+            self._ensure_bond_enum_schema(cursor)
             if hasattr(conn, "start_transaction"):
                 conn.start_transaction()
 
@@ -1452,6 +1501,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
+            self._ensure_bond_enum_schema(cursor)
             if hasattr(conn, "start_transaction"):
                 conn.start_transaction()
 
@@ -2613,6 +2663,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
+            self._ensure_bond_enum_schema(cursor)
             if hasattr(conn, "start_transaction"):
                 conn.start_transaction()
 

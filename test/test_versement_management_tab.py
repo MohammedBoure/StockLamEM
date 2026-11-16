@@ -448,6 +448,43 @@ class TestVersementManagementTab(unittest.TestCase):
         self.assertEqual(res_del["remaining_amount"], 60000.0)
         self.assertEqual(state["debts"][10], Decimal("60000.00"))
 
+    def test_ensure_bond_enum_schema_adds_bon_versement_when_missing(self):
+        executed = []
+
+        class _EnumCursor:
+            def __init__(self):
+                self._row = None
+
+            def execute(self, sql, params=None):
+                executed.append((sql, params))
+                if sql.startswith("SHOW COLUMNS FROM Sales_Orders_Theoretical LIKE") and params == ("Bond_Type",):
+                    self._row = {"Type": "enum('BON_C','BON_CREDIT','BON_LIVRAISON')"}
+                elif sql.startswith("SHOW COLUMNS FROM Sales_Orders_Theoretical LIKE") and params == ("Payment_Method_Requested",):
+                    self._row = {"Type": "enum('CASH','CREDIT','LIVRAISON_COD','CARD','WALLET_AVOIR','MIXED')"}
+                elif sql.startswith("SHOW COLUMNS FROM Sales_Invoices LIKE") and params == ("Bond_Settlement_Type",):
+                    self._row = {"Type": "enum('BON_C_CASH','BON_CREDIT','BON_LIVRAISON','BON_WALLET_AVOIR','BON_MIXED')"}
+                else:
+                    self._row = None
+
+            def fetchone(self):
+                return self._row
+
+        mgr = BondLifecycleManager(MagicMock())
+        cur = _EnumCursor()
+        mgr._ensure_bond_enum_schema(cur)
+
+        alters = [s for s, _ in executed if s.startswith("ALTER TABLE")]
+        self.assertEqual(len(alters), 3)
+        self.assertTrue(any("Bond_Type" in s and "'BON_VERSEMENT'" in s for s in alters))
+        self.assertTrue(any("Payment_Method_Requested" in s and "'VERSEMENT'" in s for s in alters))
+        self.assertTrue(any("Bond_Settlement_Type" in s and "'BON_VERSEMENT'" in s for s in alters))
+        self.assertTrue(mgr._enum_schema_verified)
+
+        # Cached on subsequent calls
+        before_len = len(executed)
+        mgr._ensure_bond_enum_schema(cur)
+        self.assertEqual(len(executed), before_len)
+
 
 if __name__ == "__main__":
     unittest.main()
