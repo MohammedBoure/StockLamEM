@@ -1331,7 +1331,7 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         l_layout = QVBoxLayout(left_panel)
-        l_layout.setContentsMargins(14, 12, 14, 12)
+        l_layout.setContentsMargins(14, 14, 14, 14)
         l_layout.setSpacing(10)
 
         # 1a. Header Row
@@ -1370,15 +1370,6 @@ class CashierDeskWidget(QWidget):
         self.btn_remove_bon.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_remove_bon.clicked.connect(self._remove_selected_bon)
         top_q.addWidget(self.btn_remove_bon)
-
-        btn_ref = QPushButton("Actualiser")
-        btn_ref.setIcon(get_duotone_icon("refresh", 16))
-        btn_ref.setIconSize(QSize(16, 16))
-        btn_ref.setCursor(Qt.PointingHandCursor)
-        btn_ref.setFixedHeight(32)
-        btn_ref.setStyleSheet(SECONDARY_OUTLINE_QSS)
-        btn_ref.clicked.connect(self.refresh_queue)
-        top_q.addWidget(btn_ref)
         l_layout.addLayout(top_q)
 
         # 1b. Quick Filter Chips + Barcode Scan Bar
@@ -1460,11 +1451,11 @@ class CashierDeskWidget(QWidget):
         scan_layout.addWidget(self.lbl_scan_type_badge)
 
         self.btn_scan_find = QPushButton("Trouver")
-        self.btn_scan_find.setIcon(get_duotone_icon("search_white", 16))
+        self.btn_scan_find.setIcon(get_duotone_icon("search", 16))
         self.btn_scan_find.setIconSize(QSize(16, 16))
         self.btn_scan_find.setCursor(Qt.PointingHandCursor)
         self.btn_scan_find.setFixedHeight(32)
-        self.btn_scan_find.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { font-size: 11.5px; padding: 0 12px; }")
+        self.btn_scan_find.setStyleSheet(SECONDARY_OUTLINE_QSS + "QPushButton { font-size: 11.5px; padding: 0 12px; }")
         self.btn_scan_find.clicked.connect(self._on_bon_scanned)
         scan_layout.addWidget(self.btn_scan_find)
 
@@ -1513,7 +1504,7 @@ class CashierDeskWidget(QWidget):
         self.btn_versement.setIconSize(QSize(16, 16))
         self.btn_versement.setCursor(Qt.PointingHandCursor)
         self.btn_versement.setToolTip("Enregistrer un Versement Client (Dépôt Espèces)")
-        self.btn_versement.setStyleSheet(SECONDARY_OUTLINE_QSS + "QPushButton { min-height: 42px; }")
+        self.btn_versement.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { min-height: 42px; }")
         self.btn_versement.setFixedHeight(44)
         self.btn_versement.clicked.connect(self._open_versement_dialog)
         ops_bar.addWidget(self.btn_versement, 1)
@@ -1533,20 +1524,7 @@ class CashierDeskWidget(QWidget):
         self.btn_wallet_balance.setIconSize(QSize(16, 16))
         self.btn_wallet_balance.setCursor(Qt.PointingHandCursor)
         self.btn_wallet_balance.setToolTip("Consulter le solde et l'historique du portefeuille versement client")
-        self.btn_wallet_balance.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {SUBTLE_BG};
-                color: {BRAND_TEAL};
-                border: 1.5px solid {BRAND_TEAL_BORDER};
-                font-weight: 700;
-                font-size: 12px;
-                min-height: 42px;
-                padding: 0 14px;
-                border-radius: 6px;
-            }}
-            QPushButton:hover {{ background-color: {BRAND_TEAL_TINT}; border-color: {BRAND_TEAL}; }}
-            QPushButton:pressed {{ background-color: #CCEBE6; }}
-        """)
+        self.btn_wallet_balance.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { min-height: 42px; }")
         self.btn_wallet_balance.setFixedHeight(44)
         self.btn_wallet_balance.clicked.connect(self._show_client_wallet_dialog)
         ops_bar.addWidget(self.btn_wallet_balance, 1)
@@ -1571,7 +1549,7 @@ class CashierDeskWidget(QWidget):
             }}
         """)
         r_layout = QVBoxLayout(right_panel)
-        r_layout.setContentsMargins(16, 12, 16, 14)
+        r_layout.setContentsMargins(14, 14, 14, 14)
         r_layout.setSpacing(10)
 
         # 2a. Console Header + Active Bon Type Pill
@@ -1590,13 +1568,13 @@ class CashierDeskWidget(QWidget):
         s_hdr.addStretch()
 
         self.btn_view_articles = QPushButton("Détails Articles")
-        self.btn_view_articles.setIcon(get_duotone_icon("statement", 14))
-        self.btn_view_articles.setIconSize(QSize(14, 14))
+        self.btn_view_articles.setIcon(get_duotone_icon("statement", 16))
+        self.btn_view_articles.setIconSize(QSize(16, 16))
         self.btn_view_articles.setCursor(Qt.PointingHandCursor)
         self.btn_view_articles.setFixedHeight(32)
         self.btn_view_articles.setEnabled(False)
         self.btn_view_articles.setToolTip("Consulter la liste détaillée des articles et produits commandés dans ce bon")
-        self.btn_view_articles.setStyleSheet(SECONDARY_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 10px; }")
+        self.btn_view_articles.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 10px; }")
         self.btn_view_articles.clicked.connect(self._show_order_articles_dialog)
         s_hdr.addWidget(self.btn_view_articles)
         r_layout.addLayout(s_hdr)
@@ -1626,15 +1604,14 @@ class CashierDeskWidget(QWidget):
         sel_layout.addWidget(self.lbl_selected_info)
         r_layout.addWidget(self.selected_card)
 
-        # 2c. Customer Wallet Strip (Flat with Left Teal Accent)
+        # 2c. Customer Wallet Strip (Clean Uniform Card)
         wallet_box = QFrame()
         wallet_box.setObjectName("CustomerWalletCard")
         wallet_box.setStyleSheet(f"""
             QFrame#CustomerWalletCard {{
                 background-color: #F2FBF9;
-                border: none;
-                border-left: 3px solid {BRAND_TEAL};
-                border-radius: 4px;
+                border: 1px solid #CCFBF1;
+                border-radius: 8px;
             }}
             QFrame#CustomerWalletCard QLabel {{
                 border: none;
@@ -1656,12 +1633,12 @@ class CashierDeskWidget(QWidget):
         w_header_row.addWidget(self.lbl_wallet_details, 1)
 
         self.btn_inspect_wallet = QPushButton("Détails Solde")
-        self.btn_inspect_wallet.setIcon(get_duotone_icon("kpi_wallet", 13))
-        self.btn_inspect_wallet.setIconSize(QSize(13, 13))
+        self.btn_inspect_wallet.setIcon(get_duotone_icon("kpi_wallet", 16))
+        self.btn_inspect_wallet.setIconSize(QSize(16, 16))
         self.btn_inspect_wallet.setCursor(Qt.PointingHandCursor)
         self.btn_inspect_wallet.setFixedHeight(30)
         self.btn_inspect_wallet.setToolTip("Consulter le détail du solde versement du client")
-        self.btn_inspect_wallet.setStyleSheet(SECONDARY_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 10px; }")
+        self.btn_inspect_wallet.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 10px; }")
         self.btn_inspect_wallet.clicked.connect(self._show_client_wallet_dialog)
         w_header_row.addWidget(self.btn_inspect_wallet)
         w_layout.addLayout(w_header_row)
@@ -1678,15 +1655,15 @@ class CashierDeskWidget(QWidget):
 
         self.btn_use_versement = QPushButton("Versement")
         self.btn_use_versement.setObjectName("BtnCaisseUseVersement")
-        self.btn_use_versement.setIcon(get_duotone_icon("kpi_wallet", 14))
-        self.btn_use_versement.setIconSize(QSize(14, 14))
+        self.btn_use_versement.setIcon(get_duotone_icon("kpi_wallet", 16))
+        self.btn_use_versement.setIconSize(QSize(16, 16))
         self.btn_use_versement.setCursor(Qt.PointingHandCursor)
         self.btn_use_versement.setFixedHeight(32)
         self.btn_use_versement.setToolTip(
             "Utiliser un solde Versement Réel ou Versement Virtuel pour cette commande"
         )
         self.btn_use_versement.setStyleSheet(
-            SECONDARY_OUTLINE_QSS + "QPushButton { font-size: 11.5px; padding: 0 12px; }"
+            SLATE_OUTLINE_QSS + "QPushButton { font-size: 11.5px; padding: 0 12px; }"
         )
         self.btn_use_versement.clicked.connect(self._open_use_versement_flow)
         wallet_actions_row.addWidget(self.btn_use_versement)
@@ -1714,15 +1691,14 @@ class CashierDeskWidget(QWidget):
         w_layout.addWidget(self.applied_versement_row)
         r_layout.addWidget(wallet_box)
 
-        # 2d. Prominent Montant Hero Display + Live Reste & Change Readout
+        # 2d. Clean Montant Hero Display + Live Reste & Change Readout
         hero_due_card = QFrame()
         hero_due_card.setObjectName("CaisseAmountHeroCard")
         hero_due_card.setStyleSheet(f"""
             QFrame#CaisseAmountHeroCard {{
-                background-color: #F0FDFA;
-                border: none;
-                border-left: 3px solid {BRAND_TEAL};
-                border-radius: 6px;
+                background-color: {SUBTLE_BG};
+                border: 1px solid {BORDER_SUBTLE};
+                border-radius: 8px;
             }}
             QFrame#CaisseAmountHeroCard QLabel {{
                 border: none;
@@ -1877,9 +1853,10 @@ class CashierDeskWidget(QWidget):
         form.addLayout(cash_input_row, 0, 1)
         r_layout.addLayout(form)
 
-        # Quick Cash Tender Chips
+        # Quick Cash Tender Chips (uniform equal-width grid)
         cash_chips_row = QHBoxLayout()
         cash_chips_row.setSpacing(6)
+        self.quick_cash_buttons = []
         for amt_val, lbl_txt in [
             (1000, "+1 000"),
             (2000, "+2 000"),
@@ -1888,21 +1865,25 @@ class CashierDeskWidget(QWidget):
         ]:
             chip = QPushButton(lbl_txt)
             chip.setCursor(Qt.PointingHandCursor)
-            chip.setFixedHeight(28)
-            chip.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 8px; }")
+            chip.setFixedHeight(30)
+            chip.setMinimumWidth(0)
+            chip.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 6px; }")
             chip.clicked.connect(lambda _, a=amt_val: self._add_cash_increment(a))
             cash_chips_row.addWidget(chip, 1)
+            self.quick_cash_buttons.append(chip)
 
         btn_zero_cash = QPushButton("0 DA")
         btn_zero_cash.setCursor(Qt.PointingHandCursor)
-        btn_zero_cash.setFixedHeight(28)
+        btn_zero_cash.setFixedHeight(30)
+        btn_zero_cash.setMinimumWidth(0)
         btn_zero_cash.setToolTip("Réinitialiser le montant reçu à 0")
-        btn_zero_cash.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 8px; }")
+        btn_zero_cash.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 6px; }")
         btn_zero_cash.clicked.connect(lambda: self.txt_cash.setText("0"))
-        cash_chips_row.addWidget(btn_zero_cash)
+        cash_chips_row.addWidget(btn_zero_cash, 1)
+        self.quick_cash_buttons.append(btn_zero_cash)
         r_layout.addLayout(cash_chips_row)
 
-        r_layout.addSpacing(2)
+        r_layout.addStretch(1)
 
         # 2f. Dynamic Primary Settlement CTA Buttons (Unified Commandes labels)
         self.btn_val_bon_c = QPushButton("Valider Paiement complet")
@@ -1943,8 +1924,6 @@ class CashierDeskWidget(QWidget):
         self.btn_val_livraison_cod_later.setFixedHeight(42)
         self.btn_val_livraison_cod_later.clicked.connect(self._handle_bon_livraison_cod_later)
         r_layout.addWidget(self.btn_val_livraison_cod_later)
-
-        r_layout.addStretch()
 
         self.splitter.addWidget(left_panel)
         self.splitter.addWidget(right_panel)

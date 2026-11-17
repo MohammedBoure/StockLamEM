@@ -77,7 +77,9 @@ def test_bureaux_workflow_and_desks_are_flat_and_concise(qapp):
     scan_frame = caisse.findChild(QFrame, "CaisseScanFrame")
     hero_card = caisse.findChild(QFrame, "CaisseAmountHeroCard")
     assert scan_frame is not None and "border-bottom: 1px solid #E2E8F0" in scan_frame.styleSheet()
-    assert hero_card is not None and "border-left: 3px solid #007572" in hero_card.styleSheet()
+    assert hero_card is not None and "border: 1px solid" in hero_card.styleSheet()
+    assert "border-left: 3px" not in hero_card.styleSheet()
+    assert "qlineargradient" not in hero_card.styleSheet()
 
     dispatch = DispatchDeskWidget(data_manager=dm)
     assert dispatch.lbl_status.text() == "Prêt"
