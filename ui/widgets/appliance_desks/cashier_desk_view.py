@@ -16,8 +16,8 @@ import os
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QSettings, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -1290,6 +1290,17 @@ class CashierDeskWidget(QWidget):
         self._init_ui()
         self.refresh_queue()
 
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        QTimer.singleShot(0, self.focus_scan_input)
+
+    def focus_scan_input(self) -> None:
+        """Places keyboard focus on the barcode/bon scan field for rapid POS operation."""
+        if hasattr(self, "txt_scan_bon") and self.txt_scan_bon is not None:
+            self.txt_scan_bon.setFocus()
+            if self.txt_scan_bon.text():
+                self.txt_scan_bon.selectAll()
+
     def _can_do(self, perm_key: str) -> bool:
         """Check if current user has permission; defaults to True if user not set (dev/test)."""
         user = getattr(self.data_manager, "current_user", None)
@@ -1468,11 +1479,17 @@ class CashierDeskWidget(QWidget):
         self.btn_clear_scan.clicked.connect(self._reset_scan_filter)
         scan_layout.addWidget(self.btn_clear_scan)
 
+        self._esc_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self._esc_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self._esc_shortcut.activated.connect(self._reset_scan_filter)
+
         l_layout.addWidget(scan_frame)
 
         # 1c. Queue Table
         self.queue_table = QTableWidget(0, 5)
         self.queue_table.setHorizontalHeaderLabels(["N° Bon", "Client", "Type de Bon", "Montant TTC", "Statut"])
+        if self.queue_table.horizontalHeaderItem(3) is not None:
+            self.queue_table.horizontalHeaderItem(3).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.queue_table.setStyleSheet(BUREAUX_TABLE_QSS)
         self.queue_table.verticalHeader().setVisible(False)
         self.queue_table.verticalHeader().setDefaultSectionSize(42)
@@ -1640,6 +1657,7 @@ class CashierDeskWidget(QWidget):
         self.btn_inspect_wallet.setToolTip("Consulter le détail du solde versement du client")
         self.btn_inspect_wallet.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 10px; }")
         self.btn_inspect_wallet.clicked.connect(self._show_client_wallet_dialog)
+        self.btn_inspect_wallet.setVisible(False)
         w_header_row.addWidget(self.btn_inspect_wallet)
         w_layout.addLayout(w_header_row)
 
@@ -2493,7 +2511,13 @@ class CashierDeskWidget(QWidget):
             if row >= len(self._orders_queue):
                 continue
             ord_num = str(self._orders_queue[row].get("Order_Number") or "").upper()
-            if ord_num == q or ord_num.replace("-", "") == q.replace("-", "") or q in ord_num:
+            client_name = str(self._orders_queue[row].get("Client_Name") or "").upper()
+            if (
+                ord_num == q
+                or ord_num.replace("-", "") == q.replace("-", "")
+                or q in ord_num
+                or q in client_name
+            ):
                 target_row = row
                 break
 
@@ -2563,9 +2587,11 @@ class CashierDeskWidget(QWidget):
 
         reply = QMessageBox.question(
             self,
-            "Marquer le Bon comme Non Valide",
-            f"Êtes-vous sûr de vouloir marquer le bon {order_num} ({client_name}) comme non valide ?\n\n"
-            f"Montant : {tot_str} DA\n"
+            "Confirmer le retrait du bon",
+            f"Voulez-vous vraiment retirer ce bon de la file d'attente ?\n\n"
+            f"N° Bon : {order_num}\n"
+            f"Client : {client_name}\n"
+            f"Montant : {tot_str} DA\n\n"
             "Les données du bon seront conservées dans l'historique (statut Non valide / Annulé) "
             "et le stock théorique réservé sera libéré.",
             QMessageBox.Yes | QMessageBox.No,
@@ -2597,6 +2623,7 @@ class CashierDeskWidget(QWidget):
             )
             self._selected_order = None
             self.refresh_queue()
+            self.focus_scan_input()
         except Exception as err:
             QMessageBox.critical(self, "Erreur lors du retrait", f"Impossible de retirer le bon :\n{err}")
 
@@ -2720,6 +2747,63 @@ class CashierDeskWidget(QWidget):
             return min(tot, avail, max(0.0, float(self._custom_wallet_amount or 0.0)))
         return min(tot, float(self._wallet_info.get("current_balance") or 0.0))
 
+    def _sync_payment_controls_state(self, base_due: float, net_due: float) -> None:
+        """Disables payment inputs/quick chips automatically when Reste == 0,00 DA or bon is settled."""
+        has_order = self._selected_order is not None
+        status = str((self._selected_order or {}).get("Status") or "").upper()
+        b_type = str((self._selected_order or {}).get("Bond_Type") or "BON_C").upper()
+        wallet_bal = max(0.0, float((self._wallet_info or {}).get("current_balance") or 0.0))
+
+        is_settled = (
+            not has_order
+            or status == "PAID_PENDING_DISPATCH"
+            or (b_type == "BON_LIVRAISON" and status != "CONFIRMED_PENDING_PAYMENT" and base_due <= 0.01)
+        )
+        no_cash_needed = is_settled or net_due <= 0.01
+
+        cash_tip = (
+            "Aucun bon sélectionné"
+            if not has_order
+            else ("Bon déjà soldé (Reste : 0,00 DA)" if is_settled else ("Reste à payer : 0,00 DA" if no_cash_needed else ""))
+        )
+
+        if hasattr(self, "txt_cash"):
+            self.txt_cash.setEnabled(not no_cash_needed)
+            self.txt_cash.setToolTip(cash_tip or "Saisir le montant reçu")
+        if hasattr(self, "btn_exact_cash"):
+            self.btn_exact_cash.setEnabled(not no_cash_needed)
+            self.btn_exact_cash.setToolTip(cash_tip or "Remplir exactement le montant Reste à Encaisser")
+        for chip in getattr(self, "quick_cash_buttons", []):
+            chip.setEnabled(not no_cash_needed)
+            chip.setToolTip(cash_tip)
+
+        allow_method = has_order and not is_settled and base_due > 0.01
+        for pm_btn in getattr(self, "payment_method_buttons", {}).values():
+            pm_btn.setEnabled(allow_method)
+            if not allow_method and cash_tip:
+                pm_btn.setToolTip(cash_tip)
+
+        allow_wallet = has_order and not is_settled and base_due > 0.01 and wallet_bal > 0.01
+        if hasattr(self, "cb_wallet"):
+            self.cb_wallet.setEnabled(allow_wallet)
+            if not has_order:
+                self.cb_wallet.setToolTip("Aucun bon sélectionné")
+            elif is_settled or base_due <= 0.01:
+                self.cb_wallet.setToolTip("Aucun montant à déduire (Reste : 0,00 DA)")
+            elif wallet_bal <= 0.01:
+                self.cb_wallet.setToolTip("Solde portefeuille client nul (0,00 DA)")
+            else:
+                self.cb_wallet.setToolTip("Utiliser le solde disponible du portefeuille client")
+
+        if hasattr(self, "btn_use_versement"):
+            self.btn_use_versement.setVisible(allow_wallet)
+            self.btn_use_versement.setEnabled(allow_wallet)
+
+        if hasattr(self, "lbl_change_due") and has_order and is_settled:
+            self.lbl_change_due.setText("Bon déjà soldé (Reste : 0,00 DA) — Aucun encaissement requis")
+            self.lbl_change_due.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {BRAND_TEAL};")
+            self.lbl_change_due.setVisible(True)
+
     def _recalculate_amounts(self) -> None:
         if not self._selected_order:
             self._current_remaining_due = 0.0
@@ -2731,6 +2815,7 @@ class CashierDeskWidget(QWidget):
                 self.lbl_rem_due.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {TEXT_MUTED};")
             if hasattr(self, "lbl_change_due"):
                 self.lbl_change_due.setVisible(False)
+            self._sync_payment_controls_state(0.0, 0.0)
             return
 
         raw_st = str(self._selected_order.get("Status") or "")
@@ -2772,6 +2857,8 @@ class CashierDeskWidget(QWidget):
                 self.lbl_change_due.setVisible(True)
             else:
                 self.lbl_change_due.setVisible(False)
+
+        self._sync_payment_controls_state(base_due, net_due)
 
     # =========================================================================
     # 1. BON C VALIDATION (بيع مباشر)
@@ -2826,6 +2913,7 @@ class CashierDeskWidget(QWidget):
                     f"Le Versement ({order_num}) de {format_money(cash_val + w_ded)} DA ({pay_method}) a été enregistré en Caisse.\nTransmis au Bureau de Sortie.",
                 )
                 self.refresh_queue()
+                self.focus_scan_input()
             except Exception as err:
                 QMessageBox.critical(self, "Erreur Validation Versement", str(err))
             return
@@ -2862,6 +2950,7 @@ class CashierDeskWidget(QWidget):
                 f"Le bon Paiement complet ({order_num}) a été encaissé et validé.\nTransmis au Bureau de Sortie pour scan du N° de Série.",
             )
             self.refresh_queue()
+            self.focus_scan_input()
         except Exception as err:
             QMessageBox.critical(self, "Erreur Validation Paiement complet", str(err))
 
@@ -2917,6 +3006,7 @@ class CashierDeskWidget(QWidget):
                     f"Acompte : {format_money(dp_cash + dp_wallet)} DA | Crédit inscrit : {format_money(rem_credit)} DA.",
                 )
                 self.refresh_queue()
+                self.focus_scan_input()
             except Exception as err:
                 QMessageBox.critical(self, "Refus Paiement à crédit", str(err))
 
@@ -2984,6 +3074,7 @@ class CashierDeskWidget(QWidget):
                     "Le bon reste visible jusqu'à sa clôture complète.",
                 )
             self.refresh_queue()
+            self.focus_scan_input()
         except Exception as err:
             QMessageBox.critical(self, "Erreur Paiement à la livraison", str(err))
 
@@ -3011,6 +3102,7 @@ class CashierDeskWidget(QWidget):
                 "Il restera affiché jusqu'au règlement final et clôture.",
             )
             self.refresh_queue()
+            self.focus_scan_input()
         except Exception as err:
             QMessageBox.critical(self, "Erreur Paiement à la livraison", str(err))
 

@@ -20,6 +20,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Verifies Task #1 (`Global Theme & Navigation`): single sidebar toggle (`btn_sidebar_toggle`) aligned at top in compact mode, `QCheckBox::indicator` visibility with `check_white.svg`, `:disabled` button contrast (`#475569` on `#F1F5F9`), `16x16` white vector icons with `QIcon.Disabled` tinting on primary buttons, and scoped `QFrame#ObjectName` QSS.
 - **`test_task2_caisse_ui_hierarchy.py`**:
   - *Scope*: Verifies Task #2 (`Bureaux - 2. Caisse - UI`): removal of duplicate `Actualiser` inside `CashierDeskWidget`, neutral `#CBD5E1` button hierarchy vs single primary CTA, clean uniform borders on `CaisseAmountHeroCard` & `CustomerWalletCard` without gradients/left-accent strips, and equal-width quick-cash buttons (`+1 000`..`0 DA`).
+- **`test_task3_caisse_ux_workflows.py`**:
+  - *Scope*: Verifies Task #3 (`Bureaux - 2. Caisse - UX`): auto-focus on scan input on show and after payment, `Enter` matching by Bon number or Client name, `Esc` filter reset, automatic disabling of payment controls/chips when `Reste == 0,00 DA`, deduplication of wallet/Versement buttons, `Retirer Bon` confirmation naming Bon and Client, and right-alignment of `Montant TTC`.
 - **`test_reception_no_lot_expiry_tva.py`**:
   - *Scope*: Verifies Task #2 (Achats & Entrées -> Bons de Réceptions): ensures `ReceptionDialog` hides Lot, Expiry Date, and TVA inputs/columns, defaults TVA to 0%, auto-generates `Lot_Number` with `Expiry_Date=None`, and `ReceptionHistoryTab` hides `Total TVA`.
 - **`test_client_unique_code.py`**:
