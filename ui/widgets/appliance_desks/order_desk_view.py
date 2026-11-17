@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QSplitter,
+    QStackedWidget,
     QTabBar,
     QTableWidget,
     QTableWidgetItem,
@@ -962,7 +963,7 @@ class OrderDeskWidget(QWidget):
 
         content_widget = QWidget()
         content_widget.setObjectName("OrderDeskContentWidget")
-        content_widget.setMinimumWidth(1080)
+        content_widget.setMinimumWidth(860)
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(10, 6, 10, 8)
         content_layout.setSpacing(6)
@@ -992,7 +993,7 @@ class OrderDeskWidget(QWidget):
         """)
         self.catalog_panel = self._create_catalog_panel()
         self.cart_panel = self._create_cart_panel()
-        self.catalog_panel.setMinimumWidth(550)
+        self.catalog_panel.setMinimumWidth(500)
         self.cart_panel.setMinimumWidth(320)
         self.splitter.addWidget(self.catalog_panel)
         self.splitter.addWidget(self.cart_panel)
@@ -1728,7 +1729,7 @@ class OrderDeskWidget(QWidget):
         self.table.horizontalHeaderItem(3).setTextAlignment(Qt.AlignCenter)
         self.table.horizontalHeaderItem(4).setTextAlignment(Qt.AlignCenter)
         self.table.horizontalHeaderItem(5).setTextAlignment(Qt.AlignCenter)
-        self.table.horizontalHeaderItem(6).setTextAlignment(Qt.AlignCenter)
+        self.table.horizontalHeaderItem(6).setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table.horizontalHeaderItem(7).setTextAlignment(Qt.AlignCenter)
 
         # Automatic horizontal scrollbar as needed to prevent any clipping
@@ -1738,30 +1739,86 @@ class OrderDeskWidget(QWidget):
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
 
         h = self.table.horizontalHeader()
-        h.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 115)
-        h.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.table.setColumnWidth(1, 280)
-        h.setSectionResizeMode(2, QHeaderView.Interactive)
-        self.table.setColumnWidth(2, 160)
-        h.setSectionResizeMode(3, QHeaderView.Interactive)
-        self.table.setColumnWidth(3, 86)
+        h.setStretchLastSection(False)
+        h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(1, QHeaderView.Stretch)
+        h.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 56)
+        self.table.setColumnWidth(4, 54)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 60)
-        h.setSectionResizeMode(6, QHeaderView.Interactive)
-        self.table.setColumnWidth(6, 150)
+        self.table.setColumnWidth(5, 58)
+        h.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(7, QHeaderView.Fixed)
         self.table.setColumnWidth(7, 62)
 
-        h.sectionResized.connect(self._on_catalog_header_section_resized)
+        self.table.cellClicked.connect(self._on_catalog_cell_clicked)
+        self.table.cellDoubleClicked.connect(self._on_catalog_cell_double_clicked)
         self.table.installEventFilter(self)
 
         # Connect scroll listener for professional lazy loading
         self.table.verticalScrollBar().valueChanged.connect(self._on_catalog_scroll)
 
+        # Empty State when search/filters return 0 matching products
+        self.catalog_empty_state = QFrame()
+        self.catalog_empty_state.setObjectName("CatalogEmptyState")
+        self.catalog_empty_state.setStyleSheet("""
+            QFrame#CatalogEmptyState {
+                background-color: #FFFFFF;
+                border: none;
+            }
+            QFrame#CatalogEmptyState QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        empty_lay = QVBoxLayout(self.catalog_empty_state)
+        empty_lay.setAlignment(Qt.AlignCenter)
+        empty_lay.setSpacing(10)
+
+        empty_icon = QLabel()
+        empty_icon.setAlignment(Qt.AlignCenter)
+        empty_icon.setPixmap(get_duotone_icon("search", 40).pixmap(40, 40))
+        empty_lay.addWidget(empty_icon)
+
+        empty_title = QLabel("Aucun produit trouvé")
+        empty_title.setAlignment(Qt.AlignCenter)
+        empty_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #1E293B;")
+        empty_lay.addWidget(empty_title)
+
+        empty_desc = QLabel("Aucun article ne correspond aux filtres ou à la recherche en cours.")
+        empty_desc.setAlignment(Qt.AlignCenter)
+        empty_desc.setWordWrap(True)
+        empty_desc.setStyleSheet("font-size: 12px; color: #64748B;")
+        empty_lay.addWidget(empty_desc)
+
+        self.btn_empty_reset = QPushButton("Réinitialiser les filtres")
+        self.btn_empty_reset.setObjectName("BtnCatalogEmptyReset")
+        self.btn_empty_reset.setIcon(get_duotone_icon("refresh", 16))
+        self.btn_empty_reset.setIconSize(QSize(16, 16))
+        self.btn_empty_reset.setFixedHeight(34)
+        self.btn_empty_reset.setCursor(Qt.PointingHandCursor)
+        self.btn_empty_reset.setStyleSheet("""
+            QPushButton#BtnCatalogEmptyReset {
+                background-color: #FFFFFF;
+                color: #007572;
+                border: 1.5px solid #007572;
+                border-radius: 6px;
+                padding: 0 16px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QPushButton#BtnCatalogEmptyReset:hover {
+                background-color: #E6F4F1;
+            }
+        """)
         layout.addWidget(self.table, 1)
+
+        self.btn_empty_reset.clicked.connect(self._reset_filters)
+        empty_lay.addWidget(self.btn_empty_reset, alignment=Qt.AlignCenter)
+
+        self.catalog_empty_state.setVisible(False)
+        layout.addWidget(self.catalog_empty_state, 1)
 
         # Bottom summary information bar matching Stock & Magasin -> Stock Actuel
         self.catalog_bottom_bar = self._create_catalog_bottom_bar()
@@ -1937,15 +1994,15 @@ class OrderDeskWidget(QWidget):
 
     def _adjust_catalog_column_widths(self) -> None:
         """
-        Dynamically adjusts 'Désignation Produit' column (index 1) width:
-        - When the catalog table viewport has surplus space, column 1 stretches smoothly to fill it.
-        - When the table is narrowed (e.g. by dragging the splitter or resizing), column 1 is clamped
-          to a minimum of 280px, activating the horizontal scrollbar so product names and details
-          are 100% visible and never clipped.
+        Ensures 'Désignation Produit' (col 1) uses Stretch mode normally and keeps
+        a readable minimum width if column 1 is ever switched to Interactive mode.
         """
         if getattr(self, "_is_adjusting_columns", False):
             return
         if not hasattr(self, "table") or self.table is None:
+            return
+        h = self.table.horizontalHeader()
+        if h.sectionResizeMode(1) == QHeaderView.Stretch:
             return
 
         self._is_adjusting_columns = True
@@ -2474,6 +2531,9 @@ class OrderDeskWidget(QWidget):
             return
 
         total = len(self._catalog_filtered_items)
+        if hasattr(self, "catalog_empty_state") and hasattr(self, "table"):
+            self.table.setVisible(total > 0)
+            self.catalog_empty_state.setVisible(total == 0)
         if self._catalog_loaded_count >= total and total > 0:
             return
 
@@ -2524,6 +2584,7 @@ class OrderDeskWidget(QWidget):
 
         it_mark = QTableWidgetItem(mark)
         it_mark.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        it_mark.setData(Qt.UserRole, prod)
         self.table.setItem(row, 0, it_mark)
 
         it_name = QTableWidgetItem(name)
@@ -2560,23 +2621,30 @@ class OrderDeskWidget(QWidget):
         it_avail.setToolTip(f"Quantité disponible : {avail}")
         self.table.setItem(row, 5, it_avail)
 
-        # Column 6: Dedicated Price Column with interactive dropdown menu
+        # Column 6: Clean right-aligned price text; click cell to change pricing tier on demand
         p1 = float(prod.get("Price_1_TTC") or prod.get("Unit_Price_TTC") or prod.get("Default_Selling_Price_HT") or 0.0)
         p2 = float(prod.get("Price_2_TTC") or (p1 * 0.95))
         p3 = float(prod.get("Price_3_TTC") or (p1 * 0.90))
+        active_tier = str(prod.get("selected_price_tier") or "Prix_1")
+        active_price = float(
+            prod.get("selected_price_ttc")
+            if prod.get("selected_price_ttc") is not None
+            else p1
+        )
+        tier_suffix = " [DG]" if active_tier == "Prix_2" else (" [G]" if active_tier == "Prix_3" else "")
 
-        # Fix: empty text on QTableWidgetItem to prevent double overlapping ghost text
-        it_price = QTableWidgetItem("")
-        it_price.setTextAlignment(Qt.AlignCenter)
+        it_price = QTableWidgetItem(f"{format_money(active_price)} DA{tier_suffix}")
+        it_price.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        it_price.setForeground(QColor("#007572" if active_price > 0 else "#64748B"))
+        it_price.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        it_price.setData(Qt.UserRole, prod)
         it_price.setToolTip(
-            f"Grille Tarifaire (TTC) :\n"
+            f"Grille Tarifaire (TTC) — Cliquez pour changer le tarif :\n"
             f"• Prix 1 (Détail / Comptoir) : {format_money(p1)} DA\n"
             f"• Prix 2 (Demi-Gros / Revendeur) : {format_money(p2)} DA\n"
-            f"• Prix 3 (Grossiste B2B) : {format_money(p3)} DA\n"
-            f"(Cliquez pour afficher la liste déroulante des prix)"
+            f"• Prix 3 (Grossiste B2B) : {format_money(p3)} DA"
         )
         self.table.setItem(row, 6, it_price)
-        self.table.setCellWidget(row, 6, ProductPriceWidget(p1, p2, p3, prod_ref=prod))
 
         # Column 7: Action Cell Slot with borderless '+' button (no button border, framed cell slot)
         it_action = QTableWidgetItem("+" if avail > 0 else "—")
@@ -2587,6 +2655,86 @@ class OrderDeskWidget(QWidget):
             is_available=(avail > 0),
         )
         self.table.setCellWidget(row, 7, action_widget)
+
+    def _on_catalog_cell_clicked(self, row: int, col: int) -> None:
+        """Opens clean tier selector menu only when the user clicks the Prix TTC cell."""
+        if col == 6:
+            self._open_price_tier_menu_for_row(row)
+
+    def _on_catalog_cell_double_clicked(self, row: int, col: int) -> None:
+        if col == 6:
+            self._open_price_tier_menu_for_row(row)
+
+    def _open_price_tier_menu_for_row(self, row: int) -> None:
+        prod = None
+        if hasattr(self, "_catalog_filtered_items") and 0 <= row < len(self._catalog_filtered_items):
+            prod = self._catalog_filtered_items[row]
+        it_price = self.table.item(row, 6)
+        if not isinstance(prod, dict) and it_price is not None:
+            prod = it_price.data(Qt.UserRole)
+        if not isinstance(prod, dict):
+            return
+
+        p1 = float(prod.get("Price_1_TTC") or prod.get("Unit_Price_TTC") or prod.get("Default_Selling_Price_HT") or 0.0)
+        p2 = float(prod.get("Price_2_TTC") or (p1 * 0.95))
+        p3 = float(prod.get("Price_3_TTC") or (p1 * 0.90))
+        active_tier = str(prod.get("selected_price_tier") or "Prix_1")
+
+        menu = QMenu(self)
+        menu.setObjectName("PriceTierMenu")
+        menu.setStyleSheet("""
+            QMenu#PriceTierMenu {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                padding: 4px;
+                font-size: 11.5px;
+            }
+            QMenu#PriceTierMenu::item {
+                padding: 6px 14px;
+                border-radius: 4px;
+                color: #1E293B;
+                font-weight: 600;
+            }
+            QMenu#PriceTierMenu::item:selected {
+                background-color: #E6F4F1;
+                color: #007572;
+                font-weight: 700;
+            }
+            QMenu#PriceTierMenu::separator {
+                height: 1px;
+                background-color: #E2E8F0;
+                margin: 4px 6px;
+            }
+        """)
+
+        header_act = menu.addAction("Tarifs Disponibles (TTC) :")
+        header_act.setEnabled(False)
+        menu.addSeparator()
+
+        for tier_key, label, val in [
+            ("Prix_1", "Prix 1 (Détail / Comptoir)", p1),
+            ("Prix_2", "Prix 2 (Demi-Gros)", p2),
+            ("Prix_3", "Prix 3 (Grossiste B2B)", p3),
+        ]:
+            prefix = "✔ " if active_tier == tier_key else "   "
+            act = menu.addAction(f"{prefix}{label} : {format_money(val)} DA")
+            act.triggered.connect(lambda _=False, r=row, p=prod, tk=tier_key, v=val: self._apply_price_tier_to_row(r, p, tk, v))
+
+        rect = self.table.visualItemRect(it_price) if it_price else self.table.rect()
+        global_pos = self.table.viewport().mapToGlobal(rect.bottomLeft())
+        menu.exec_(global_pos)
+
+    def _apply_price_tier_to_row(self, row: int, prod: Dict[str, Any], tier: str, price: float) -> None:
+        if hasattr(self, "_catalog_filtered_items") and 0 <= row < len(self._catalog_filtered_items):
+            prod = self._catalog_filtered_items[row]
+        prod["selected_price_tier"] = tier
+        prod["selected_price_ttc"] = float(price)
+        it_price = self.table.item(row, 6)
+        if it_price is not None:
+            tier_suffix = " [DG]" if tier == "Prix_2" else (" [G]" if tier == "Prix_3" else "")
+            it_price.setText(f"{format_money(float(price))} DA{tier_suffix}")
+            it_price.setData(Qt.UserRole, prod)
 
     # =========================================================================
     # MULTI-SESSION & MULTI-SCANNER ROUTING (Tabs & HID Isolation)
