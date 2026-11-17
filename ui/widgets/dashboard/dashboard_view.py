@@ -29,7 +29,11 @@ class DashboardTab(QWidget):
 
         # --- Toolbar ---
         toolbar = QFrame()
-        toolbar.setStyleSheet("background-color: white; border-bottom: 1px solid #dcdde1;")
+        toolbar.setObjectName("DashboardToolbar")
+        toolbar.setStyleSheet(
+            "QFrame#DashboardToolbar { background-color: white; border-bottom: 1px solid #dcdde1; }"
+            "QFrame#DashboardToolbar QLabel { border: none; background: transparent; }"
+        )
         toolbar.setFixedHeight(46)
         tool_layout = QHBoxLayout(toolbar)
         tool_layout.setContentsMargins(15, 2, 15, 2)

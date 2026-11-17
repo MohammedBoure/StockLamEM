@@ -16,6 +16,8 @@ This test suite enforces strict software quality gatekeeping across:
 ## 2. Itemized Breakdown of Test Files & Harness Modules
 
 ### 2.1. Specialized Appliance Retail, Concurrency & Security Gatekeeping
+- **`test_task1_global_theme_and_sidebar.py`**:
+  - *Scope*: Verifies Task #1 (`Global Theme & Navigation`): single sidebar toggle (`btn_sidebar_toggle`) aligned at top in compact mode, `QCheckBox::indicator` visibility with `check_white.svg`, `:disabled` button contrast (`#475569` on `#F1F5F9`), `16x16` white vector icons with `QIcon.Disabled` tinting on primary buttons, and scoped `QFrame#ObjectName` QSS.
 - **`test_reception_no_lot_expiry_tva.py`**:
   - *Scope*: Verifies Task #2 (Achats & Entrées -> Bons de Réceptions): ensures `ReceptionDialog` hides Lot, Expiry Date, and TVA inputs/columns, defaults TVA to 0%, auto-generates `Lot_Number` with `Expiry_Date=None`, and `ReceptionHistoryTab` hides `Total TVA`.
 - **`test_client_unique_code.py`**:

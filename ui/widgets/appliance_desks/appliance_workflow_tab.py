@@ -121,14 +121,14 @@ class ApplianceWorkflowTab(QWidget):
 
         corner_frame = QWidget(self.desk_tabs)
         corner_frame.setObjectName("WorkflowCornerWidget")
-        corner_frame.setStyleSheet("background: transparent; border: none; border-color: #DCDFE6;")
+        corner_frame.setStyleSheet("QWidget#WorkflowCornerWidget { background: transparent; border: none; }")
         corner_layout = QHBoxLayout(corner_frame)
         corner_layout.setContentsMargins(0, 0, 2, 5)
         corner_layout.setSpacing(6)
 
         self.refresh_all_btn = QPushButton("Actualiser")
-        self.refresh_all_btn.setIcon(get_duotone_icon("refresh_white", 13))
-        self.refresh_all_btn.setIconSize(QSize(13, 13))
+        self.refresh_all_btn.setIcon(get_duotone_icon("refresh_white", 16))
+        self.refresh_all_btn.setIconSize(QSize(16, 16))
         self.refresh_all_btn.setCursor(Qt.PointingHandCursor)
         self.refresh_all_btn.setFixedHeight(30)
         self.refresh_all_btn.setToolTip("Actualiser tous les bureaux (Commandes, Caisse, Sortie Magasin)")

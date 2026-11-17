@@ -243,7 +243,7 @@ class DispatchDeskWidget(QWidget):
 
         self.btn_emit_sortie = QPushButton("Valider && Imprimer Bon de Sortie")
         self.btn_emit_sortie.setToolTip("Valider la sortie physique et imprimer le Bon de Sortie (0.00 DA impact Caisse)")
-        self.btn_emit_sortie.setIcon(get_duotone_icon("print", 16))
+        self.btn_emit_sortie.setIcon(get_duotone_icon("print_white", 16))
         self.btn_emit_sortie.setIconSize(QSize(16, 16))
         self.btn_emit_sortie.setCursor(Qt.PointingHandCursor)
         self.btn_emit_sortie.setFixedHeight(40)

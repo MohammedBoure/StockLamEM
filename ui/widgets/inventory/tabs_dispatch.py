@@ -76,7 +76,11 @@ class FEFOSelectionDialog(QDialog):
 
         # 1. Header Message With Product Name
         header_frame = QFrame()
-        header_frame.setStyleSheet("background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px;")
+        header_frame.setObjectName("FefoWarningHeader")
+        header_frame.setStyleSheet(
+            "QFrame#FefoWarningHeader { background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px; }"
+            "QFrame#FefoWarningHeader QLabel { border: none; background: transparent; }"
+        )
         header_layout = QVBoxLayout(header_frame)
         
         lbl_title = QLabel(f"📦 Produit : {self.product_name}")
@@ -379,7 +383,10 @@ class DispatchTab(QWidget):
 
         # --- Buttons ---
         btns_frame = QFrame()
-        btns_frame.setStyleSheet("QFrame { background-color: #f8f9fa; border-top: 1px solid #dcdde1; }")
+        btns_frame.setObjectName("DispatchActionFooter")
+        btns_frame.setStyleSheet(
+            "QFrame#DispatchActionFooter { background-color: #f8f9fa; border-top: 1px solid #dcdde1; }"
+        )
         btns_layout = QHBoxLayout(btns_frame)
         btns_layout.setContentsMargins(10, 10, 10, 10)
 

@@ -174,7 +174,11 @@ class CreditNoteForm(QWidget):
 
         # --- Footer ---
         footer_frame = QFrame()
-        footer_frame.setStyleSheet("background-color: #ecf0f1; border-radius: 6px; padding: 5px;")
+        footer_frame.setObjectName("CreditNoteFooter")
+        footer_frame.setStyleSheet(
+            "QFrame#CreditNoteFooter { background-color: #ecf0f1; border-radius: 6px; padding: 5px; }"
+            "QFrame#CreditNoteFooter QLabel { border: none; background: transparent; }"
+        )
         footer_layout = QHBoxLayout(footer_frame)
         
         self.btn_back = QPushButton("⬅ Retour à la liste")

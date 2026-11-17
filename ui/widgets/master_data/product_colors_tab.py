@@ -111,11 +111,19 @@ class ColorDialog(QDialog):
         layout.setSpacing(14)
 
         card = QFrame()
+        card.setObjectName("ColorEditCard")
         card.setStyleSheet("""
-            background-color: #FFFFFF;
-            border: 1px solid #DDE3EA;
-            border-radius: 6px;
-            padding: 12px;
+            QFrame#ColorEditCard {
+                background-color: #FFFFFF;
+                border: 1px solid #DDE3EA;
+                border-radius: 6px;
+                padding: 12px;
+            }
+            QFrame#ColorEditCard QLabel {
+                border: none;
+                background: transparent;
+                padding: 0px;
+            }
         """)
         c_layout = QVBoxLayout(card)
         c_layout.setSpacing(12)

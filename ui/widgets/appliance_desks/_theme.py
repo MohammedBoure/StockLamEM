@@ -6,6 +6,12 @@ Shared Enterprise UI & UX Design System for the Bureaux Opérationnels workspace
 (Commandes, Caisse, Sortie Magasin, and Modal Dialogs).
 """
 
+from pathlib import Path
+
+_CHECK_ICON_PATH = (
+    Path(__file__).resolve().parents[2] / "assets" / "icons" / "check_white.svg"
+).as_posix()
+
 # ---------------------------------------------------------------------------
 # Color & Typography Tokens
 # ---------------------------------------------------------------------------
@@ -236,8 +242,8 @@ PRIMARY_CTA_QSS = f"""
     }}
     QPushButton:disabled {{
         background-color: #F1F5F9;
-        color: #94A3B8;
-        border-color: {BORDER_CONTROL};
+        color: #475569;
+        border: 1px solid {BORDER_CONTROL};
     }}
 """
 
@@ -260,9 +266,9 @@ SECONDARY_OUTLINE_QSS = f"""
         background-color: #CCEBE6;
     }}
     QPushButton:disabled {{
-        background-color: {SUBTLE_BG};
-        color: #94A3B8;
-        border-color: {BORDER_CONTROL};
+        background-color: #F1F5F9;
+        color: #475569;
+        border: 1px solid {BORDER_CONTROL};
     }}
 """
 
@@ -285,8 +291,9 @@ SLATE_OUTLINE_QSS = f"""
         background-color: #E2E8F0;
     }}
     QPushButton:disabled {{
-        background-color: {SUBTLE_BG};
-        color: #94A3B8;
+        background-color: #F1F5F9;
+        color: #475569;
+        border: 1px solid {BORDER_CONTROL};
     }}
 """
 
@@ -309,9 +316,9 @@ DANGER_OUTLINE_QSS = f"""
         background-color: #FEE2E2;
     }}
     QPushButton:disabled {{
-        background-color: {SUBTLE_BG};
-        color: #94A3B8;
-        border-color: {BORDER_CONTROL};
+        background-color: #F1F5F9;
+        color: #475569;
+        border: 1px solid {BORDER_CONTROL};
     }}
 """
 
@@ -333,9 +340,9 @@ AMBER_OUTLINE_QSS = f"""
         background-color: #FDE68A;
     }}
     QPushButton:disabled {{
-        background-color: {SUBTLE_BG};
-        color: #94A3B8;
-        border-color: {BORDER_CONTROL};
+        background-color: #F1F5F9;
+        color: #475569;
+        border: 1px solid {BORDER_CONTROL};
     }}
 """
 
@@ -351,6 +358,46 @@ SPLITTER_QSS = f"""
     }}
 """
 
+CHECKBOX_QSS = f"""
+    QCheckBox {{
+        spacing: 8px;
+        color: {TEXT_PRIMARY};
+        background: transparent;
+    }}
+    QCheckBox:disabled {{
+        color: {TEXT_MUTED};
+    }}
+    QCheckBox::indicator {{
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 1.5px solid {TEXT_MUTED};
+        background-color: {CARD_BG};
+    }}
+    QCheckBox::indicator:hover:enabled {{
+        border-color: {BRAND_TEAL};
+        background-color: #F0FDFA;
+    }}
+    QCheckBox::indicator:checked {{
+        background-color: {BRAND_TEAL};
+        border: 1.5px solid {BRAND_TEAL};
+        image: url({_CHECK_ICON_PATH});
+    }}
+    QCheckBox::indicator:checked:hover:enabled {{
+        background-color: {BRAND_TEAL_HOVER};
+        border-color: {BRAND_TEAL_HOVER};
+    }}
+    QCheckBox::indicator:disabled {{
+        background-color: #F1F5F9;
+        border: 1.5px solid #94A3B8;
+    }}
+    QCheckBox::indicator:checked:disabled {{
+        background-color: #94A3B8;
+        border: 1.5px solid #94A3B8;
+        image: url({_CHECK_ICON_PATH});
+    }}
+"""
+
 DIALOG_BASE_QSS = f"""
     QDialog {{
         background-color: {CARD_BG};
@@ -360,4 +407,5 @@ DIALOG_BASE_QSS = f"""
         border: none;
         background: transparent;
     }}
+    {CHECKBOX_QSS}
 """

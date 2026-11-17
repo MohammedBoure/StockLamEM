@@ -257,6 +257,22 @@ DUOTONE_SVGS: Dict[str, str] = {
         <rect x="6" y="14" width="12" height="8"/>
     </svg>''',
 
+    "print_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+    </svg>''',
+
+    "search": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>''',
+
+    "search_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>''',
+
     "fifo_alloc": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 6h16M4 12h10M4 18h14"/>
         <polyline points="15 9 18 12 15 15"/>
@@ -285,6 +301,17 @@ DUOTONE_SVGS: Dict[str, str] = {
         <line x1="17" y1="8" x2="17" y2="16"/>
     </svg>''',
 
+    "barcode_scan_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+        <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+        <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+        <line x1="7" y1="8" x2="7" y2="16"/>
+        <line x1="10" y1="8" x2="10" y2="16"/>
+        <line x1="14" y1="8" x2="14" y2="16"/>
+        <line x1="17" y1="8" x2="17" y2="16"/>
+    </svg>''',
+
     "wrench_sav": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill="#E6F4F1"/>
     </svg>''',
@@ -296,12 +323,29 @@ DUOTONE_SVGS: Dict[str, str] = {
         <circle cx="18.5" cy="18.5" r="2.5" stroke="#1E293B"/>
     </svg>''',
 
+    "truck_delivery_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="3" width="15" height="13" rx="1"/>
+        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+        <circle cx="5.5" cy="18.5" r="2.5"/>
+        <circle cx="18.5" cy="18.5" r="2.5"/>
+    </svg>''',
+
     "shield_admin": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#E6F4F1"/>
         <polyline points="9 12 11 14 15 10"/>
     </svg>''',
 
+    "shield_admin_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <polyline points="9 12 11 14 15 10"/>
+    </svg>''',
+
     "return_arrow": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 14 4 9 9 4"/>
+        <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+    </svg>''',
+
+    "return_arrow_white": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="9 14 4 9 9 4"/>
         <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
     </svg>''',
@@ -374,8 +418,10 @@ def get_duotone_icon(
     if not svg_content:
         return QIcon()
 
+    # Render at minimum 32px for crisp vector rasterization even at 16x16 logical size
+    render_size = max(int(size), 32)
     renderer = QSvgRenderer(QByteArray(svg_content.encode("utf-8")))
-    pixmap = QPixmap(size, size)
+    pixmap = QPixmap(render_size, render_size)
     pixmap.fill(Qt.transparent)
 
     painter = QPainter(pixmap)
@@ -385,6 +431,17 @@ def get_duotone_icon(
     painter.end()
 
     icon = QIcon(pixmap)
+    # Keep white icons legible (#64748B) when their parent QPushButton is :disabled
+    if name.endswith("_white") or name == "fifo_alloc":
+        disabled_pm = QPixmap(render_size, render_size)
+        disabled_pm.fill(Qt.transparent)
+        dp = QPainter(disabled_pm)
+        dp.drawPixmap(0, 0, pixmap)
+        dp.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        dp.fillRect(disabled_pm.rect(), QColor("#64748B"))
+        dp.end()
+        icon.addPixmap(disabled_pm, QIcon.Disabled, QIcon.Off)
+
     _icon_cache[cache_key] = icon
     return icon
 

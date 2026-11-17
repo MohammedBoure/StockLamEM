@@ -93,7 +93,6 @@ class MainWindow(QMainWindow):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        self._setup_show_sidebar_button()
         self._setup_sidebar()
 
         self.content_area = QStackedWidget()
@@ -197,23 +196,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logging.error(f"Error loading stylesheet: {e}")
 
-    def _setup_show_sidebar_button(self):
-        self.show_sidebar_container = QFrame()
-        self.show_sidebar_container.setObjectName("show_sidebar_container")
-        self.show_sidebar_container.setFixedWidth(0)
-        layout = QVBoxLayout(self.show_sidebar_container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addStretch()
-        self.btn_show_sidebar = QPushButton()
-        self.btn_show_sidebar.setObjectName("btn_show_sidebar")
-        self.btn_show_sidebar.setIcon(get_duotone_icon("expand", size=48))
-        self.btn_show_sidebar.setIconSize(QSize(20, 20))
-        self.btn_show_sidebar.setCursor(Qt.PointingHandCursor)
-        self.btn_show_sidebar.clicked.connect(self.toggle_sidebar_visibility)
-        layout.addWidget(self.btn_show_sidebar)
-        layout.addStretch()
-        self.main_layout.addWidget(self.show_sidebar_container)
-
     def update_header_layout(self, compact):
         if self.header_container.layout():
             old_layout = self.header_container.layout()
@@ -227,9 +209,9 @@ class MainWindow(QMainWindow):
 
         if compact:
             layout = QVBoxLayout(self.header_container)
-            layout.setContentsMargins(5, 10, 5, 5)
-            layout.setSpacing(5)
-            self.header_container.setFixedHeight(90)
+            layout.setContentsMargins(0, 8, 0, 6)
+            layout.setSpacing(6)
+            self.header_container.setFixedHeight(84)
             layout.addWidget(self.btn_toggle, alignment=Qt.AlignHCenter)
             layout.addWidget(self.logo_label, alignment=Qt.AlignHCenter)
             self.text_container.hide()
@@ -237,9 +219,9 @@ class MainWindow(QMainWindow):
             self.logo_label.show()
         else:
             layout = QHBoxLayout(self.header_container)
-            layout.setContentsMargins(15, 15, 15, 15)
+            layout.setContentsMargins(14, 8, 12, 8)
             layout.setSpacing(10)
-            self.header_container.setFixedHeight(80)
+            self.header_container.setFixedHeight(68)
             layout.addWidget(self.logo_label)
             layout.addWidget(self.text_container)
             layout.addStretch()
@@ -283,11 +265,12 @@ class MainWindow(QMainWindow):
         text_layout.addWidget(lbl_sub)
 
         self.btn_toggle = QPushButton()
-        self.btn_toggle.setIcon(get_duotone_icon("menu", size=48))
-        self.btn_toggle.setIconSize(QSize(22, 22))
-        self.btn_toggle.setFixedSize(35, 35)
+        self.btn_toggle.setObjectName("btn_sidebar_toggle")
+        self.btn_toggle.setIcon(get_duotone_icon("collapse", size=18))
+        self.btn_toggle.setIconSize(QSize(18, 18))
+        self.btn_toggle.setFixedSize(34, 34)
         self.btn_toggle.setCursor(Qt.PointingHandCursor)
-        self.btn_toggle.setFlat(True)
+        self.btn_toggle.setToolTip("Réduire la barre latérale")
         self.btn_toggle.clicked.connect(self.toggle_sidebar_compact)
 
         self.update_header_layout(compact=False)
@@ -329,7 +312,7 @@ class MainWindow(QMainWindow):
 
         nav_widget = QWidget()
         nav_widget.setObjectName("sidebar_nav_widget")
-        nav_widget.setStyleSheet("background: transparent; border: none;")
+        nav_widget.setStyleSheet("QWidget#sidebar_nav_widget { background: transparent; border: none; }")
         nav_layout = QVBoxLayout(nav_widget)
         nav_layout.setContentsMargins(0, 0, 0, 0)
         nav_layout.setSpacing(2)
@@ -361,18 +344,11 @@ class MainWindow(QMainWindow):
         self.button_texts[self.btn_logout] = "Déconnexion"
         sidebar_layout.addWidget(self.btn_logout)
 
-        self.btn_hide_sidebar = QPushButton()
-        self.btn_hide_sidebar.setIcon(get_duotone_icon("collapse", size=48))
-        self.btn_hide_sidebar.setIconSize(QSize(20, 20))
-        self.btn_hide_sidebar.setProperty("class", "hide_button")
-        self.btn_hide_sidebar.setCursor(Qt.PointingHandCursor)
-        self.btn_hide_sidebar.clicked.connect(self.toggle_sidebar_visibility)
-        sidebar_layout.addWidget(self.btn_hide_sidebar)
-
         self.main_layout.addWidget(self.sidebar_container)
 
     def toggle_sidebar_compact(self):
-        if self.sidebar_container.width() == 0: return
+        if self.sidebar_container.width() == 0:
+            return
         target_width = self.sidebar_compact_width if self.is_sidebar_expanded else self.sidebar_full_width
         self.anim = QPropertyAnimation(self.sidebar_container, b"minimumWidth")
         self.anim.setDuration(250)
@@ -389,6 +365,8 @@ class MainWindow(QMainWindow):
         if self.is_sidebar_expanded:
             self.sidebar_container.setProperty("state", "compact")
             self.update_header_layout(compact=True)
+            self.btn_toggle.setIcon(get_duotone_icon("expand", size=18))
+            self.btn_toggle.setToolTip("Développer la barre latérale")
             for btn in self.nav_group.buttons() + [self.btn_logout]:
                 btn.setText("")
                 btn_id = self.nav_group.id(btn)
@@ -399,6 +377,8 @@ class MainWindow(QMainWindow):
         else:
             self.sidebar_container.setProperty("state", "expanded")
             self.update_header_layout(compact=False)
+            self.btn_toggle.setIcon(get_duotone_icon("collapse", size=18))
+            self.btn_toggle.setToolTip("Réduire la barre latérale")
             for btn in self.nav_group.buttons() + [self.btn_logout]:
                 btn.setText(self.button_texts[btn])
                 btn_id = self.nav_group.id(btn)
@@ -410,33 +390,6 @@ class MainWindow(QMainWindow):
         self.is_sidebar_expanded = not self.is_sidebar_expanded
         self.sidebar_container.style().unpolish(self.sidebar_container)
         self.sidebar_container.style().polish(self.sidebar_container)
-
-    def toggle_sidebar_visibility(self):
-        current_width = self.sidebar_container.width()
-        if current_width > 0:
-            start_val = current_width
-            end_val = 0
-            self.show_sidebar_container.setFixedWidth(30)
-        else:
-            start_val = 0
-            end_val = self.sidebar_full_width if self.is_sidebar_expanded else self.sidebar_compact_width
-            self.show_sidebar_container.setFixedWidth(0)
-
-        self.anim_vis = QPropertyAnimation(self.sidebar_container, b"maximumWidth")
-        self.anim_vis.setDuration(300)
-        self.anim_vis.setStartValue(start_val)
-        self.anim_vis.setEndValue(end_val)
-        self.anim_vis.setEasingCurve(QEasingCurve.InOutSine)
-
-        self.anim_vis_min = QPropertyAnimation(self.sidebar_container, b"minimumWidth")
-        self.anim_vis_min.setDuration(300)
-        self.anim_vis_min.setStartValue(start_val)
-        self.anim_vis_min.setEndValue(end_val)
-
-        group = QParallelAnimationGroup(self)
-        group.addAnimation(self.anim_vis)
-        group.addAnimation(self.anim_vis_min)
-        group.start()
 
     def closeEvent(self, event):
         """تأكيد الخروج وإيقاف المهام الخلفية قبل إغلاق التطبيق."""

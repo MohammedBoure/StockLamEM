@@ -8,3 +8,4 @@ Vector icons (SVG) used by Qt Style Sheets (QSS) and UI components.
 - **`chevron_up.svg`**: Modern chevron-up vector icon for `QDateEdit` and `QAbstractSpinBox` up arrows.
 - **`chevron_left.svg`**: Modern chevron-left vector icon for `QCalendarWidget` previous-month navigation.
 - **`chevron_right.svg`**: Modern chevron-right vector icon for `QCalendarWidget` next-month navigation.
+- **`check_white.svg`**: Crisp white checkmark vector icon for checked `QCheckBox::indicator` states.

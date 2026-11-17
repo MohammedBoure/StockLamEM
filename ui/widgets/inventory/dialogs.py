@@ -365,7 +365,11 @@ class InventoryDispatchDialog(BaseDialog):
 
         # 1. منطقة المسح الضوئي
         search_frame = QFrame()
-        search_frame.setStyleSheet("background: #ecf0f1; border-radius: 8px; padding: 10px;")
+        search_frame.setObjectName("QuickScanSearchFrame")
+        search_frame.setStyleSheet(
+            "QFrame#QuickScanSearchFrame { background: #ecf0f1; border-radius: 8px; padding: 10px; }"
+            "QFrame#QuickScanSearchFrame QLabel { border: none; background: transparent; }"
+        )
         search_layout = QHBoxLayout(search_frame)
         
         self.item_search = BarcodeLineEdit()
@@ -1579,8 +1583,10 @@ class AdminStockAuthDialog(QDialog):
         layout.addWidget(lbl_title)
 
         card = QFrame()
+        card.setObjectName("AdminAuthSummaryCard")
         card.setStyleSheet(
-            "QFrame { background-color: #F8FAFC; border: 1px solid #DDE3EA; border-radius: 6px; }"
+            "QFrame#AdminAuthSummaryCard { background-color: #F8FAFC; border: 1px solid #DDE3EA; border-radius: 6px; }"
+            "QFrame#AdminAuthSummaryCard QLabel { border: none; background: transparent; }"
         )
         card_form = QFormLayout(card)
         card_form.setContentsMargins(12, 8, 12, 8)
@@ -1677,8 +1683,10 @@ class DirectBonRetourDialog(QDialog):
         layout.addWidget(lbl_title)
 
         card = QFrame()
+        card.setObjectName("AdminAuthSummaryCard")
         card.setStyleSheet(
-            "QFrame { background-color: #F8FAFC; border: 1px solid #DDE3EA; border-radius: 6px; }"
+            "QFrame#AdminAuthSummaryCard { background-color: #F8FAFC; border: 1px solid #DDE3EA; border-radius: 6px; }"
+            "QFrame#AdminAuthSummaryCard QLabel { border: none; background: transparent; }"
         )
         form = QFormLayout(card)
         form.setContentsMargins(12, 10, 12, 10)

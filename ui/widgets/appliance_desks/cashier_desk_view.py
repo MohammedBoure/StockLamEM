@@ -56,6 +56,7 @@ from ui.widgets.appliance_desks._theme import (
     BUREAUX_TABLE_QSS,
     CANVAS_BG,
     CARD_BG,
+    CHECKBOX_QSS,
     COMBO_QSS,
     DANGER_OUTLINE_QSS,
     DIALOG_BASE_QSS,
@@ -195,8 +196,8 @@ class AdminAuthModal(QDialog):
         btn_box.addWidget(btn_cancel)
 
         btn_auth = QPushButton("Autoriser le Bon Crédit")
-        btn_auth.setIcon(get_duotone_icon("shield_admin", 15))
-        btn_auth.setIconSize(QSize(15, 15))
+        btn_auth.setIcon(get_duotone_icon("shield_admin_white", 16))
+        btn_auth.setIconSize(QSize(16, 16))
         btn_auth.setCursor(Qt.PointingHandCursor)
         btn_auth.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { min-height: 38px; padding: 0 16px; }")
         btn_auth.setFixedHeight(40)
@@ -341,8 +342,8 @@ class BonRetourDialog(QDialog):
         btn_row.addWidget(btn_cancel)
 
         btn_ok = QPushButton("Valider Bon de Retour (Versement Virtuel)")
-        btn_ok.setIcon(get_duotone_icon("return_arrow", 15))
-        btn_ok.setIconSize(QSize(15, 15))
+        btn_ok.setIcon(get_duotone_icon("return_arrow_white", 16))
+        btn_ok.setIconSize(QSize(16, 16))
         btn_ok.setCursor(Qt.PointingHandCursor)
         btn_ok.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { min-height: 38px; padding: 0 16px; }")
         btn_ok.setFixedHeight(40)
@@ -1299,7 +1300,9 @@ class CashierDeskWidget(QWidget):
 
     def _init_ui(self) -> None:
         self.setObjectName("CashierDeskRoot")
-        self.setStyleSheet(f"QWidget#CashierDeskRoot {{ background-color: {CANVAS_BG}; }}")
+        self.setStyleSheet(
+            f"QWidget#CashierDeskRoot {{ background-color: {CANVAS_BG}; }}\n{CHECKBOX_QSS}"
+        )
 
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(6, 4, 6, 6)
@@ -1357,8 +1360,8 @@ class CashierDeskWidget(QWidget):
 
         self.btn_remove_bon = QPushButton("Retirer Bon")
         self.btn_remove_bon.setObjectName("BtnRemoveBon")
-        self.btn_remove_bon.setIcon(get_duotone_icon("trash", 13))
-        self.btn_remove_bon.setIconSize(QSize(13, 13))
+        self.btn_remove_bon.setIcon(get_duotone_icon("trash", 16))
+        self.btn_remove_bon.setIconSize(QSize(16, 16))
         self.btn_remove_bon.setCursor(Qt.PointingHandCursor)
         self.btn_remove_bon.setFixedHeight(32)
         self.btn_remove_bon.setToolTip(
@@ -1369,8 +1372,8 @@ class CashierDeskWidget(QWidget):
         top_q.addWidget(self.btn_remove_bon)
 
         btn_ref = QPushButton("Actualiser")
-        btn_ref.setIcon(get_duotone_icon("refresh", 13))
-        btn_ref.setIconSize(QSize(13, 13))
+        btn_ref.setIcon(get_duotone_icon("refresh", 16))
+        btn_ref.setIconSize(QSize(16, 16))
         btn_ref.setCursor(Qt.PointingHandCursor)
         btn_ref.setFixedHeight(32)
         btn_ref.setStyleSheet(SECONDARY_OUTLINE_QSS)
@@ -1457,8 +1460,8 @@ class CashierDeskWidget(QWidget):
         scan_layout.addWidget(self.lbl_scan_type_badge)
 
         self.btn_scan_find = QPushButton("Trouver")
-        self.btn_scan_find.setIcon(get_duotone_icon("barcode_scan", 13))
-        self.btn_scan_find.setIconSize(QSize(13, 13))
+        self.btn_scan_find.setIcon(get_duotone_icon("search_white", 16))
+        self.btn_scan_find.setIconSize(QSize(16, 16))
         self.btn_scan_find.setCursor(Qt.PointingHandCursor)
         self.btn_scan_find.setFixedHeight(32)
         self.btn_scan_find.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { font-size: 11.5px; padding: 0 12px; }")
@@ -1466,8 +1469,8 @@ class CashierDeskWidget(QWidget):
         scan_layout.addWidget(self.btn_scan_find)
 
         self.btn_clear_scan = QPushButton("Effacer")
-        self.btn_clear_scan.setIcon(get_duotone_icon("refresh", 13))
-        self.btn_clear_scan.setIconSize(QSize(13, 13))
+        self.btn_clear_scan.setIcon(get_duotone_icon("refresh", 16))
+        self.btn_clear_scan.setIconSize(QSize(16, 16))
         self.btn_clear_scan.setCursor(Qt.PointingHandCursor)
         self.btn_clear_scan.setFixedHeight(32)
         self.btn_clear_scan.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11.5px; padding: 0 10px; }")
@@ -1904,8 +1907,8 @@ class CashierDeskWidget(QWidget):
         # 2f. Dynamic Primary Settlement CTA Buttons (Unified Commandes labels)
         self.btn_val_bon_c = QPushButton("Valider Paiement complet")
         self.btn_val_bon_c.setToolTip("Valider Paiement complet (Encaissement Direct -> Sortie)")
-        self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 18))
-        self.btn_val_bon_c.setIconSize(QSize(18, 18))
+        self.btn_val_bon_c.setIcon(get_duotone_icon("payment_white", 16))
+        self.btn_val_bon_c.setIconSize(QSize(16, 16))
         self.btn_val_bon_c.setCursor(Qt.PointingHandCursor)
         self.btn_val_bon_c.setFixedHeight(46)
         self.btn_val_bon_c.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { font-size: 13px; }")
@@ -1923,7 +1926,7 @@ class CashierDeskWidget(QWidget):
 
         self.btn_val_livraison = QPushButton("Valider Paiement à la livraison")
         self.btn_val_livraison.setToolTip("Valider Paiement à la livraison (Acompte maintenant / Solde après livraison)")
-        self.btn_val_livraison.setIcon(get_duotone_icon("truck_delivery", 16))
+        self.btn_val_livraison.setIcon(get_duotone_icon("truck_delivery_white", 16))
         self.btn_val_livraison.setIconSize(QSize(16, 16))
         self.btn_val_livraison.setCursor(Qt.PointingHandCursor)
         self.btn_val_livraison.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { min-height: 40px; font-size: 12.5px; }")

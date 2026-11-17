@@ -103,7 +103,11 @@ class LocationsTab(QWidget):
         self.details_layout.addWidget(self.lbl_selected_name)
         
         info_frame = QFrame()
-        info_frame.setStyleSheet("background-color: #f8f9fa; border-radius: 6px; padding: 10px;")
+        info_frame.setObjectName("LocationInfoCard")
+        info_frame.setStyleSheet(
+            "QFrame#LocationInfoCard { background-color: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; }"
+            "QFrame#LocationInfoCard QLabel { border: none; background: transparent; padding: 0px; }"
+        )
         info_layout = QFormLayout(info_frame)
         self.lbl_id = QLabel("-")
         self.lbl_type = QLabel("-")

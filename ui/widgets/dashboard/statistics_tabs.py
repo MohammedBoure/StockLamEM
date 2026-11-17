@@ -338,7 +338,11 @@ class WasteAnalysisTab(QWidget):
 
         # --- Panneau Gauche : Répartition par Motif ---
         left_container = QFrame()
-        left_container.setStyleSheet("background: white; border-radius: 8px; border: 1px solid #eef2f5;")
+        left_container.setObjectName("WasteLeftPanel")
+        left_container.setStyleSheet(
+            "QFrame#WasteLeftPanel { background: white; border-radius: 8px; border: 1px solid #eef2f5; }"
+            "QFrame#WasteLeftPanel QLabel { border: none; background: transparent; }"
+        )
         left_layout = QVBoxLayout(left_container)
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(8)
@@ -381,7 +385,11 @@ class WasteAnalysisTab(QWidget):
 
         # --- Panneau Droit : Tableau Détaillé par Produit Unique ---
         right_container = QFrame()
-        right_container.setStyleSheet("background: white; border-radius: 8px; border: 1px solid #eef2f5;")
+        right_container.setObjectName("WasteRightPanel")
+        right_container.setStyleSheet(
+            "QFrame#WasteRightPanel { background: white; border-radius: 8px; border: 1px solid #eef2f5; }"
+            "QFrame#WasteRightPanel QLabel { border: none; background: transparent; }"
+        )
         right_layout = QVBoxLayout(right_container)
         right_layout.setContentsMargins(10, 10, 10, 10)
         right_layout.setSpacing(8)

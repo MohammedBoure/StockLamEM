@@ -285,10 +285,16 @@ class CashSessionsAnalysisTab(QWidget):
 
     def _create_kpi_card(self, title, default_val, color):
         frame = QFrame()
+        frame.setObjectName("AnalysisKpiCard")
         frame.setStyleSheet(f"""
-            QFrame {{
+            QFrame#AnalysisKpiCard {{
                 background-color: #ffffff; border: 1px solid #cbd5e1;
                 border-top: 3px solid {color}; border-radius: 4px; padding: 6px;
+            }}
+            QFrame#AnalysisKpiCard QLabel {{
+                border: none;
+                background: transparent;
+                padding: 0px;
             }}
         """)
         l = QVBoxLayout(frame)
@@ -477,7 +483,11 @@ class AnalysisView(QWidget):
         
         # --- 1. Top Toolbar (Controls) ---
         toolbar = QFrame()
-        toolbar.setStyleSheet("background-color: white; border-bottom: 1px solid #dcdde1;")
+        toolbar.setObjectName("AnalysisToolbar")
+        toolbar.setStyleSheet(
+            "QFrame#AnalysisToolbar { background-color: white; border-bottom: 1px solid #dcdde1; }"
+            "QFrame#AnalysisToolbar QLabel { border: none; background: transparent; }"
+        )
         toolbar.setFixedHeight(70)
         tool_layout = QHBoxLayout(toolbar)
         

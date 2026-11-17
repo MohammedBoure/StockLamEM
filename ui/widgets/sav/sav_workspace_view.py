@@ -421,8 +421,9 @@ class SAVWorkspaceTab(QWidget):
 
     def _create_kpi_bar(self) -> QWidget:
         kpi_frame = QFrame()
+        kpi_frame.setObjectName("SavHeaderKpiStrip")
         kpi_frame.setFixedHeight(38)
-        kpi_frame.setStyleSheet("QFrame { background: transparent; border: none; }")
+        kpi_frame.setStyleSheet("QFrame#SavHeaderKpiStrip { background: transparent; border: none; }")
         layout = QHBoxLayout(kpi_frame)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)

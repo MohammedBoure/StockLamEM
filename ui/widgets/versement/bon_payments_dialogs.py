@@ -337,7 +337,7 @@ class BonPaymentAddDialog(QDialog):
                 padding: 0 18px;
             }
             QPushButton:hover { background-color: #0A5C59; }
-            QPushButton:disabled { background-color: #94A3B8; }
+            QPushButton:disabled { background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
             """
         )
         self.btn_save.clicked.connect(self._on_save)
@@ -526,7 +526,7 @@ class BonPaymentsManageDialog(QDialog):
                 padding: 0 14px;
             }
             QPushButton:hover { background-color: #0A5C59; }
-            QPushButton:disabled { background-color: #94A3B8; }
+            QPushButton:disabled { background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
             """
         )
         self.btn_add_payment.clicked.connect(self._open_add_dialog)

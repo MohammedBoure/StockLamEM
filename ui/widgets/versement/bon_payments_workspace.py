@@ -463,8 +463,8 @@ class BonPaymentsWorkspaceWidget(QWidget):
             btn_add.setObjectName("btn_row_add")
             btn_add.setFixedHeight(30)
             btn_add.setCursor(Qt.PointingHandCursor)
-            btn_add.setIcon(get_duotone_icon("payment_white", 14))
-            btn_add.setIconSize(QSize(14, 14))
+            btn_add.setIcon(get_duotone_icon("payment_white", 16))
+            btn_add.setIconSize(QSize(16, 16))
             btn_add.setEnabled(remaining > 0.01)
             btn_add.setToolTip(
                 "Ajouter une nouvelle tranche de paiement sur ce bon"
@@ -483,7 +483,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
                     padding: 0 10px;
                 }
                 QPushButton:hover { background-color: #0A5C59; }
-                QPushButton:disabled { background-color: #CBD5E1; color: #64748B; }
+                QPushButton:disabled { background-color: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
                 """
             )
             btn_add.clicked.connect(lambda _=False, b=bon: self.open_add_payment_for_bon(b))

@@ -34,7 +34,11 @@ class FamilyReceptionTab(QWidget):
         
         # --- 1. شريط الفلاتر ---
         filter_frame = QFrame()
-        filter_frame.setStyleSheet("background-color: white; border-radius: 5px; border: 1px solid #ddd;")
+        filter_frame.setObjectName("FamilyReceptionFilterBar")
+        filter_frame.setStyleSheet(
+            "QFrame#FamilyReceptionFilterBar { background-color: white; border-radius: 5px; border: 1px solid #ddd; }"
+            "QFrame#FamilyReceptionFilterBar QLabel { border: none; background: transparent; }"
+        )
         filter_layout = QHBoxLayout(filter_frame)
         
         self.combo_family = QComboBox()
