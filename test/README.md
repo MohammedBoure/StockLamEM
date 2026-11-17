@@ -26,6 +26,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Verifies Task #4 (`Bureaux - 1. Commandes`): removal of per-row dropdown widget in `Prix TTC` in favor of right-aligned text + on-click `PriceTierMenu`, `ResizeToContents` (`Marque`, `Catégorie`, `Réf`, `Prix TTC`) & `Stretch` (`Désignation Produit`), no right-edge clipping, and catalog Empty State with quick filter reset.
 - **`test_task5_paiement_livraison_ui.py`**:
   - *Scope*: Verifies Task #5 (`Paiement Livraison`): `defaultSectionSize >= 44px` (`46px`) and `28px` unclipped action buttons, high-contrast `:disabled` `+ Paiement` styling with descriptive tooltips, and compact proportional KPI cards (`<= 72px` height, `<= 250px` width).
+- **`test_task6_cross_screen_ux_consistency.py`**:
+  - *Scope*: Verifies Task #6 (`3. Sortie Magasin`, `Versement`, `Stock & Magasin`): right-aligned monetary columns across `BatchesTab` and `BonPaymentsWorkspace`, `F5`/`Ctrl+R` and `Esc` keyboard shortcuts, empty states with quick filter reset, `BonPaymentsManageDialog` `46px` row height with `28px` buttons, and descriptive disabled `ToolTip`s.
 - **`test_reception_no_lot_expiry_tva.py`**:
   - *Scope*: Verifies Task #2 (Achats & Entrées -> Bons de Réceptions): ensures `ReceptionDialog` hides Lot, Expiry Date, and TVA inputs/columns, defaults TVA to 0%, auto-generates `Lot_Number` with `Expiry_Date=None`, and `ReceptionHistoryTab` hides `Total TVA`.
 - **`test_client_unique_code.py`**:

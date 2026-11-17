@@ -181,6 +181,10 @@ def on_scroll_value_changed(self, value):
 def load_more_data(self):
     """إضافة الدفعة التالية من الصفوف للجدول"""
     total = len(self.filtered_data)
+    if hasattr(self, "batches_empty_state"):
+        has_rows = total > 0
+        self.table.setVisible(has_rows)
+        self.batches_empty_state.setVisible(not has_rows)
     if self.loaded_count >= total:
         return
 
@@ -213,6 +217,11 @@ def populate_table(self, data):
     """عرض شريحة محددة مع حساب المجموع الكلي من filtered_data"""
     self.table.setSortingEnabled(False)
     self.table.setRowCount(0)
+
+    if hasattr(self, "batches_empty_state"):
+        has_rows = len(data) > 0
+        self.table.setVisible(has_rows)
+        self.batches_empty_state.setVisible(not has_rows)
 
     hide_fin = not _can_view_financials(self)
 
@@ -304,13 +313,13 @@ def _fill_row(table, r, b, hide_fin):
         sv1 = float(b.get('Selling_Price_HT') or 0)
 
         # 3. Prix U. HT
-        table.setItem(r, 3, _make_item(format_money(p), bg_color=bg_color))
+        table.setItem(r, 3, _make_item(format_money(p), align=Qt.AlignRight | Qt.AlignVCenter, bg_color=bg_color))
         # 4. Prix U. TTC
-        table.setItem(r, 4, _make_item(format_money(p_ttc), bg_color=bg_color))
+        table.setItem(r, 4, _make_item(format_money(p_ttc), align=Qt.AlignRight | Qt.AlignVCenter, bg_color=bg_color))
         # 5. Valeur (DA)
-        table.setItem(r, 5, _make_item(format_money(lv), bg_color=bg_color))
+        table.setItem(r, 5, _make_item(format_money(lv), align=Qt.AlignRight | Qt.AlignVCenter, bg_color=bg_color))
         # 6. Prix Vente 1
-        table.setItem(r, 6, _make_item(format_money(sv1), bg_color=bg_color))
+        table.setItem(r, 6, _make_item(format_money(sv1), align=Qt.AlignRight | Qt.AlignVCenter, bg_color=bg_color))
     else:
         for col in range(3, 7):
             table.setItem(r, col, _make_item('', bg_color=bg_color))
@@ -352,9 +361,9 @@ def _fill_row(table, r, b, hide_fin):
         sv2 = float(b.get('Selling_Price_HT_2') or 0)
         sv3 = float(b.get('Selling_Price_HT_3') or 0)
         sv4 = float(b.get('Selling_Price_HT_4') or 0)
-        table.setItem(r, 19, _make_item(format_money(sv2), bg_color=bg_color))
-        table.setItem(r, 20, _make_item(format_money(sv3), bg_color=bg_color))
-        table.setItem(r, 21, _make_item(format_money(sv4), bg_color=bg_color))
+        table.setItem(r, 19, _make_item(format_money(sv2), align=Qt.AlignRight | Qt.AlignVCenter, bg_color=bg_color))
+        table.setItem(r, 20, _make_item(format_money(sv3), align=Qt.AlignRight | Qt.AlignVCenter, bg_color=bg_color))
+        table.setItem(r, 21, _make_item(format_money(sv4), align=Qt.AlignRight | Qt.AlignVCenter, bg_color=bg_color))
     else:
         for col in (19, 20, 21):
             table.setItem(r, col, _make_item('', bg_color=bg_color))

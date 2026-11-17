@@ -29,14 +29,14 @@
 - إعادة ضبط عرض الأعمدة (`ResizeToContents` لـ `MARQUE` و`CATÉGORIE` و`RÉF`، و`Stretch` لـ `DÉSIGNATION PRODUIT`) لمنع اقتطاع أسماء الماركات (`LIOFILCHEM ...`) ومعالجة أي قصّ في الحافة اليمنى.
 - إضافة حالة فارغة (Empty State) عند عدم وجود نتائج بحث مع زر سريع لإعادة تعيين الفلاتر.
 
-# 5 : high [COMPLETED]
+# 5 : high [COMPLETED] [COMPLETED]
 **إصلاح قصّ أزرار الجدول وتحسين بطاقات الإحصائيات (Paiement Livraison)**
 في قسم **Paiement Livraison**:
 - رفع ارتفاع صفوف الجدول (`defaultSectionSize >= 44px`) وضبط ارتفاع أزرار الخلايا (`28px`) بهوامش مناسبة لمنع قصّ حدود أزرار `+ Paiement` و`Modifier`.
 - تحسين تباين زر `+ Paiement` في حالة `:disabled` مع إضافة `ToolTip` يوضح سبب التعطيل (مثل: *"Ce bon est déjà soldé"*).
 - تقليص ارتفاع وعرض بطاقات KPI العلوية (`Nombre de Bons`, `Total TTC`, `Total Versé`, `Reste à Payer`) وتحسين تدرجها الخطي لتجنب المساحات الفارغة الواسعة.
 
-# 6 : medium
+# 6 : medium [COMPLETED]
 **تعميم معايير UI/UX على بقية الشاشات والمراجعة النهائية**
 مراجعة بقية الأقسام (**3. Sortie Magasin**، **Versement**، **Stock & Magasin**) وفق مهارتي `pyside6-human-ui` و`desktop-erp-ux`:
 - توحيد محاذاة جميع الأعمدة المالية لليمين وضبط ارتفاعات الصفوف التي تحتوي أزراراً.

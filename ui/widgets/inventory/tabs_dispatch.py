@@ -532,8 +532,10 @@ class DispatchTab(QWidget):
 
         # 5. Delete
         btn_del = QPushButton("✕")
+        btn_del.setFixedSize(28, 28)
         btn_del.setCursor(Qt.PointingHandCursor)
-        btn_del.setStyleSheet("color: #e74c3c; font-weight: bold; border: none; font-size: 18px; background: transparent;")
+        btn_del.setToolTip("Retirer cette ligne")
+        btn_del.setStyleSheet("color: #e74c3c; font-weight: bold; border: none; font-size: 16px; background: transparent; padding: 0px;")
         btn_del.clicked.connect(self.remove_clicked_row) # Updated connection
         self.table.setCellWidget(row, 5, btn_del)
         

@@ -12,8 +12,8 @@ Responsible exclusively for:
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
@@ -45,6 +45,7 @@ from ui.widgets.appliance_desks._theme import (
     INPUT_QSS,
     PRIMARY_CTA_QSS,
     SECONDARY_OUTLINE_QSS,
+    SLATE_OUTLINE_QSS,
     TEXT_BODY,
     TEXT_PRIMARY,
 )
@@ -80,6 +81,24 @@ class DispatchDeskWidget(QWidget):
         self._expected_items: List[Dict[str, Any]] = []
         self._init_ui()
         self.refresh_dispatch_queue()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        QTimer.singleShot(0, self._focus_primary_input)
+
+    def _focus_primary_input(self) -> None:
+        if self._active_order and hasattr(self, "txt_scan"):
+            self.txt_scan.setFocus()
+        elif hasattr(self, "txt_order_search"):
+            self.txt_order_search.setFocus()
+
+    def _reset_order_filters(self) -> None:
+        if hasattr(self, "btn_filter_all"):
+            self.btn_filter_all.setChecked(True)
+        if hasattr(self, "txt_order_search"):
+            self.txt_order_search.clear()
+        self._apply_order_filters()
+        self._focus_primary_input()
 
     def _init_ui(self) -> None:
         self.setObjectName("DispatchDeskRoot")
@@ -126,11 +145,12 @@ class DispatchDeskWidget(QWidget):
         h_layout.addWidget(self.cbo_orders, stretch=1)
 
         btn_refresh = QPushButton("Actualiser")
-        btn_refresh.setIcon(get_duotone_icon("refresh", 14))
-        btn_refresh.setIconSize(QSize(14, 14))
+        btn_refresh.setIcon(get_duotone_icon("refresh", 16))
+        btn_refresh.setIconSize(QSize(16, 16))
         btn_refresh.setCursor(Qt.PointingHandCursor)
         btn_refresh.setFixedHeight(34)
-        btn_refresh.setStyleSheet(SECONDARY_OUTLINE_QSS)
+        btn_refresh.setToolTip("Actualiser la file d'attente (F5 / Ctrl+R)")
+        btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.refresh_dispatch_queue)
         h_layout.addWidget(btn_refresh)
 
@@ -211,6 +231,55 @@ class DispatchDeskWidget(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
         layout.addWidget(self.table, 1)
+
+        # Empty State when no orders / items match
+        self.dispatch_empty_state = QFrame()
+        self.dispatch_empty_state.setObjectName("DispatchEmptyState")
+        self.dispatch_empty_state.setStyleSheet(
+            f"QFrame#DispatchEmptyState {{ background-color: {CARD_BG}; border: 1px solid {BORDER_SUBTLE}; border-radius: 6px; }}"
+            "QFrame#DispatchEmptyState QLabel { border: none; background: transparent; }"
+        )
+        de_lay = QVBoxLayout(self.dispatch_empty_state)
+        de_lay.setAlignment(Qt.AlignCenter)
+        de_lay.setSpacing(10)
+
+        de_icon = QLabel()
+        de_icon.setAlignment(Qt.AlignCenter)
+        de_icon.setPixmap(get_duotone_icon("truck_delivery", 40).pixmap(40, 40))
+        de_lay.addWidget(de_icon)
+
+        self.lbl_dispatch_empty_title = QLabel("Aucun bon en attente de sortie")
+        self.lbl_dispatch_empty_title.setAlignment(Qt.AlignCenter)
+        self.lbl_dispatch_empty_title.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {TEXT_PRIMARY};")
+        de_lay.addWidget(self.lbl_dispatch_empty_title)
+
+        self.lbl_dispatch_empty_desc = QLabel("Aucun bon prêt pour expédition ne correspond aux filtres actifs.")
+        self.lbl_dispatch_empty_desc.setAlignment(Qt.AlignCenter)
+        self.lbl_dispatch_empty_desc.setStyleSheet("font-size: 12px; color: #64748B;")
+        de_lay.addWidget(self.lbl_dispatch_empty_desc)
+
+        self.btn_empty_reset = QPushButton("Réinitialiser les filtres")
+        self.btn_empty_reset.setIcon(get_duotone_icon("refresh", 16))
+        self.btn_empty_reset.setIconSize(QSize(16, 16))
+        self.btn_empty_reset.setFixedHeight(34)
+        self.btn_empty_reset.setCursor(Qt.PointingHandCursor)
+        self.btn_empty_reset.setStyleSheet(SLATE_OUTLINE_QSS)
+        self.btn_empty_reset.clicked.connect(self._reset_order_filters)
+        de_lay.addWidget(self.btn_empty_reset, alignment=Qt.AlignCenter)
+        self.dispatch_empty_state.setVisible(False)
+        layout.addWidget(self.dispatch_empty_state, 1)
+
+        self._shortcut_f5 = QShortcut(QKeySequence(Qt.Key_F5), self)
+        self._shortcut_f5.setContext(Qt.WidgetWithChildrenShortcut)
+        self._shortcut_f5.activated.connect(self.refresh_dispatch_queue)
+
+        self._shortcut_ctrl_r = QShortcut(QKeySequence("Ctrl+R"), self)
+        self._shortcut_ctrl_r.setContext(Qt.WidgetWithChildrenShortcut)
+        self._shortcut_ctrl_r.activated.connect(self.refresh_dispatch_queue)
+
+        self._shortcut_esc = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self._shortcut_esc.setContext(Qt.WidgetWithChildrenShortcut)
+        self._shortcut_esc.activated.connect(self._reset_order_filters)
 
         # 3. Flat Bottom Scanner Console
         scan_box = QFrame()
@@ -335,6 +404,10 @@ class DispatchDeskWidget(QWidget):
             self._expected_items = []
             self.table.setRowCount(0)
             self.btn_emit_sortie.setEnabled(False)
+            self.btn_emit_sortie.setToolTip("Sélectionnez un bon en attente de sortie avant d'émettre le Bon de Sortie")
+            if hasattr(self, "dispatch_empty_state"):
+                self.table.setVisible(False)
+                self.dispatch_empty_state.setVisible(True)
 
     def _on_order_changed(self, idx: int) -> None:
         if idx < 0 or idx >= len(self._dispatch_orders):
@@ -393,6 +466,17 @@ class DispatchDeskWidget(QWidget):
             self.table.setItem(row, 5, it_ts)
 
         self.btn_emit_sortie.setEnabled(all_verified)
+        if all_verified:
+            self.btn_emit_sortie.setToolTip("Valider la sortie physique et imprimer le Bon de Sortie (0.00 DA impact Caisse)")
+        elif not self._active_order:
+            self.btn_emit_sortie.setToolTip("Sélectionnez un bon en attente de sortie")
+        else:
+            self.btn_emit_sortie.setToolTip("Scannez tous les N° de Série attendus avant d'émettre le Bon de Sortie")
+
+        if hasattr(self, "dispatch_empty_state"):
+            has_rows = len(self._expected_items) > 0
+            self.table.setVisible(has_rows)
+            self.dispatch_empty_state.setVisible(not has_rows)
 
     def _on_manual_scan_submit(self) -> None:
         raw = self.txt_scan.text().strip()

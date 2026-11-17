@@ -358,19 +358,23 @@ class BonPaymentAddDialog(QDialog):
             self.lbl_error.setText("Le montant doit être supérieur à 0 DA.")
             self.lbl_error.setVisible(True)
             self.btn_save.setEnabled(False)
+            self.btn_save.setToolTip("Saisissez un montant valide supérieur à 0,00 DA")
             return
         if self._remaining > 0.0 and val > self._remaining + 0.01:
             self.lbl_error.setText(f"Le montant dépasse le reste à payer ({format_money(self._remaining)}).")
             self.lbl_error.setVisible(True)
             self.btn_save.setEnabled(False)
+            self.btn_save.setToolTip(f"Le montant saisi dépasse le reste à payer ({format_money(self._remaining)})")
             return
         if self._remaining <= 0.01:
             self.lbl_error.setText("Ce bon est déjà intégralement soldé.")
             self.lbl_error.setVisible(True)
             self.btn_save.setEnabled(False)
+            self.btn_save.setToolTip("Ce bon est déjà intégralement soldé")
             return
         self.lbl_error.setVisible(False)
         self.btn_save.setEnabled(True)
+        self.btn_save.setToolTip("Enregistrer cette tranche de paiement")
 
     def _on_save(self) -> None:
         if self._bonds_mgr is None:
@@ -558,7 +562,7 @@ class BonPaymentsManageDialog(QDialog):
         self.table.setObjectName("BonPaymentsTable")
         self.table.setHorizontalHeaderLabels(["Date", "Source", "Mode", "Montant", "Notes", "Actions"])
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(42)
+        self.table.verticalHeader().setDefaultSectionSize(46)
         self.table.horizontalHeader().setFixedHeight(36)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -715,6 +719,11 @@ class BonPaymentsManageDialog(QDialog):
         self.lbl_sum_rem.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {rem_color};")
 
         self.btn_add_payment.setEnabled(remaining > 0.01)
+        self.btn_add_payment.setToolTip(
+            "Ajouter une nouvelle tranche de paiement"
+            if remaining > 0.01
+            else "Ce bon est déjà soldé (aucun reste à payer)"
+        )
         self.lbl_count.setText(f"{len(self._payments)} paiement(s) enregistré(s)")
 
         self._populate_table()
@@ -723,7 +732,7 @@ class BonPaymentsManageDialog(QDialog):
         self.table.setRowCount(0)
         for row_idx, entry in enumerate(self._payments):
             self.table.insertRow(row_idx)
-            self.table.setRowHeight(row_idx, 42)
+            self.table.setRowHeight(row_idx, 46)
 
             src_map = {
                 "INVOICE_INITIAL": "Initial Caisse",
@@ -754,12 +763,12 @@ class BonPaymentsManageDialog(QDialog):
             action_cell = QWidget()
             action_cell.setStyleSheet("background: transparent;")
             a_lay = QHBoxLayout(action_cell)
-            a_lay.setContentsMargins(6, 4, 6, 4)
+            a_lay.setContentsMargins(6, 8, 6, 8)
             a_lay.setSpacing(6)
 
             if entry.get("editable"):
                 btn_edit = QPushButton("Modifier")
-                btn_edit.setFixedHeight(30)
+                btn_edit.setFixedHeight(28)
                 btn_edit.setCursor(Qt.PointingHandCursor)
                 btn_edit.setIcon(get_duotone_icon("edit", 14))
                 btn_edit.setIconSize(QSize(14, 14))
@@ -772,7 +781,7 @@ class BonPaymentsManageDialog(QDialog):
                         color: #0F172A;
                         font-size: 11px;
                         font-weight: 600;
-                        padding: 0 8px;
+                        padding: 2px 8px;
                     }
                     QPushButton:hover {
                         border-color: #0E7471;
@@ -786,7 +795,7 @@ class BonPaymentsManageDialog(QDialog):
 
             if entry.get("deletable") and entry.get("payment_id"):
                 btn_del = QPushButton()
-                btn_del.setFixedSize(30, 30)
+                btn_del.setFixedSize(28, 28)
                 btn_del.setCursor(Qt.PointingHandCursor)
                 btn_del.setToolTip("Supprimer ce paiement")
                 btn_del.setIcon(get_duotone_icon("trash", 14))

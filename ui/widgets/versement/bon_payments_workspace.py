@@ -9,7 +9,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QButtonGroup,
@@ -159,6 +159,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
         self.btn_refresh.setIcon(get_duotone_icon("refresh", 16))
         self.btn_refresh.setIconSize(QSize(16, 16))
+        self.btn_refresh.setToolTip("Actualiser la liste des bons (F5 / Ctrl+R)")
         self.btn_refresh.setStyleSheet(
             """
             QPushButton {
@@ -242,6 +243,12 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.bons_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.bons_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
+        for col_idx in (4, 5, 6):
+            if self.bons_table.horizontalHeaderItem(col_idx) is not None:
+                self.bons_table.horizontalHeaderItem(col_idx).setTextAlignment(
+                    Qt.AlignRight | Qt.AlignVCenter
+                )
+
         hdr = self.bons_table.horizontalHeader()
         hdr.setMinimumSectionSize(75)
         hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
@@ -258,6 +265,75 @@ class BonPaymentsWorkspaceWidget(QWidget):
 
         self.bons_table.cellDoubleClicked.connect(self._on_row_double_clicked)
         root.addWidget(self.bons_table, 1)
+
+        # Empty State when search/filters return 0 bons
+        self.bons_empty_state = QFrame()
+        self.bons_empty_state.setObjectName("BonsEmptyState")
+        self.bons_empty_state.setStyleSheet(
+            """
+            QFrame#BonsEmptyState {
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+            }
+            QFrame#BonsEmptyState QLabel { border: none; background: transparent; }
+            """
+        )
+        es_lay = QVBoxLayout(self.bons_empty_state)
+        es_lay.setAlignment(Qt.AlignCenter)
+        es_lay.setSpacing(10)
+
+        es_icon = QLabel()
+        es_icon.setAlignment(Qt.AlignCenter)
+        es_icon.setPixmap(get_duotone_icon(self._icon_name, 40).pixmap(40, 40))
+        es_lay.addWidget(es_icon)
+
+        es_title = QLabel("Aucun bon trouvé")
+        es_title.setAlignment(Qt.AlignCenter)
+        es_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #0F172A;")
+        es_lay.addWidget(es_title)
+
+        es_desc = QLabel("Aucun bon ne correspond à votre recherche ou aux filtres sélectionnés.")
+        es_desc.setAlignment(Qt.AlignCenter)
+        es_desc.setStyleSheet("font-size: 12px; color: #64748B;")
+        es_lay.addWidget(es_desc)
+
+        self.btn_empty_reset = QPushButton("Réinitialiser les filtres")
+        self.btn_empty_reset.setObjectName("BtnBonsEmptyReset")
+        self.btn_empty_reset.setIcon(get_duotone_icon("refresh", 16))
+        self.btn_empty_reset.setIconSize(QSize(16, 16))
+        self.btn_empty_reset.setFixedHeight(34)
+        self.btn_empty_reset.setCursor(Qt.PointingHandCursor)
+        self.btn_empty_reset.setStyleSheet(
+            """
+            QPushButton#BtnBonsEmptyReset {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                color: #334155;
+                font-size: 12px;
+                font-weight: 700;
+                padding: 0 14px;
+            }
+            QPushButton#BtnBonsEmptyReset:hover { background-color: #F8FAFC; border-color: #94A3B8; }
+            """
+        )
+        self.btn_empty_reset.clicked.connect(self._reset_filters)
+        es_lay.addWidget(self.btn_empty_reset, alignment=Qt.AlignCenter)
+        self.bons_empty_state.setVisible(False)
+        root.addWidget(self.bons_empty_state, 1)
+
+        self._shortcut_f5 = QShortcut(QKeySequence(Qt.Key_F5), self)
+        self._shortcut_f5.setContext(Qt.WidgetWithChildrenShortcut)
+        self._shortcut_f5.activated.connect(self.refresh_bons)
+
+        self._shortcut_ctrl_r = QShortcut(QKeySequence("Ctrl+R"), self)
+        self._shortcut_ctrl_r.setContext(Qt.WidgetWithChildrenShortcut)
+        self._shortcut_ctrl_r.activated.connect(self.refresh_bons)
+
+        self._shortcut_esc = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        self._shortcut_esc.setContext(Qt.WidgetWithChildrenShortcut)
+        self._shortcut_esc.activated.connect(self._reset_filters)
 
         # Empty/footer info label
         self.lbl_footer_info = QLabel("0 bon(s) affiché(s)")
@@ -318,6 +394,16 @@ class BonPaymentsWorkspaceWidget(QWidget):
     def _set_status_filter(self, code: str) -> None:
         self._active_status_filter = code
         self._apply_filters()
+
+    def _reset_filters(self) -> None:
+        self._active_status_filter = "ALL"
+        if hasattr(self, "btn_filter_all"):
+            self.btn_filter_all.setChecked(True)
+        if hasattr(self, "txt_search"):
+            self.txt_search.clear()
+        self._apply_filters()
+        if hasattr(self, "txt_search"):
+            self.txt_search.setFocus()
 
     def refresh_bons(self) -> None:
         """Reloads bons of the configured Bond_Type from BondLifecycleManager."""
@@ -391,6 +477,10 @@ class BonPaymentsWorkspaceWidget(QWidget):
 
     def _populate_table(self) -> None:
         self.bons_table.setRowCount(0)
+        has_rows = len(self._filtered_bons) > 0
+        if hasattr(self, "bons_empty_state"):
+            self.bons_table.setVisible(has_rows)
+            self.bons_empty_state.setVisible(not has_rows)
         bold_font = QFont()
         bold_font.setBold(True)
 

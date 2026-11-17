@@ -8,9 +8,10 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QLineEdit, QPushButton, QHBoxLayout,
     QGroupBox, QComboBox, QDateEdit, QCheckBox, QAbstractItemView
 )
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QDate, QSize
+from PySide6.QtGui import QFont, QKeySequence, QShortcut
 
+from ui.icons import get_duotone_icon
 from ..location_tree_combo import LocationTreeComboBox
 from ._table import BatchesVerticalHeader
 
@@ -88,8 +89,21 @@ def build_ui(self):
     layout.setContentsMargins(6, 6, 6, 6)
 
     layout.addWidget(_build_filter_group(self))
-    layout.addWidget(_build_table(self))
+    layout.addWidget(_build_table(self), 1)
+    layout.addWidget(_build_empty_state(self), 1)
     layout.addWidget(_build_bottom_bar(self))
+
+    self._shortcut_f5 = QShortcut(QKeySequence(Qt.Key_F5), self)
+    self._shortcut_f5.setContext(Qt.WidgetWithChildrenShortcut)
+    self._shortcut_f5.activated.connect(self.load_data)
+
+    self._shortcut_ctrl_r = QShortcut(QKeySequence("Ctrl+R"), self)
+    self._shortcut_ctrl_r.setContext(Qt.WidgetWithChildrenShortcut)
+    self._shortcut_ctrl_r.activated.connect(self.load_data)
+
+    self._shortcut_esc = QShortcut(QKeySequence(Qt.Key_Escape), self)
+    self._shortcut_esc.setContext(Qt.WidgetWithChildrenShortcut)
+    self._shortcut_esc.activated.connect(self.reset_filters)
 
     self.table.doubleClicked.connect(self.show_batch_details)
 
@@ -308,6 +322,10 @@ def _build_table(self):
     ]
     self.table.setColumnCount(len(cols))
     self.table.setHorizontalHeaderLabels(cols)
+    for m_col in (3, 4, 5, 6, 19, 20, 21):
+        hdr_it = self.table.horizontalHeaderItem(m_col)
+        if hdr_it is not None:
+            hdr_it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
     self.table.setColumnHidden(3, True)   # Prix U. HT non requis
     self.table.setColumnHidden(8, True)   # Date Exp. non requise
     self.table.setColumnHidden(15, True)  # Automate non requis
@@ -421,6 +439,69 @@ def _build_table(self):
     self.table.cellClicked.connect(self.on_cell_clicked)
 
     return self.table
+
+
+def _build_empty_state(self):
+    empty_frame = QFrame()
+    empty_frame.setObjectName("BatchesEmptyState")
+    empty_frame.setStyleSheet(
+        """
+        QFrame#BatchesEmptyState {
+            background-color: #FFFFFF;
+            border: 1px solid #DCDFE6;
+            border-radius: 6px;
+        }
+        QFrame#BatchesEmptyState QLabel {
+            border: none;
+            background: transparent;
+        }
+        """
+    )
+    lay = QVBoxLayout(empty_frame)
+    lay.setAlignment(Qt.AlignCenter)
+    lay.setSpacing(10)
+
+    icon_lbl = QLabel()
+    icon_lbl.setAlignment(Qt.AlignCenter)
+    icon_lbl.setPixmap(get_duotone_icon("inventory", 40).pixmap(40, 40))
+    lay.addWidget(icon_lbl)
+
+    title = QLabel("Aucun lot trouvé")
+    title.setAlignment(Qt.AlignCenter)
+    title.setStyleSheet("font-size: 14px; font-weight: 800; color: #1E293B;")
+    lay.addWidget(title)
+
+    desc = QLabel("Aucun lot en stock ne correspond aux filtres ou à la recherche en cours.")
+    desc.setAlignment(Qt.AlignCenter)
+    desc.setStyleSheet("font-size: 12px; color: #64748B;")
+    lay.addWidget(desc)
+
+    self.btn_empty_reset = QPushButton("Réinitialiser les filtres")
+    self.btn_empty_reset.setObjectName("BtnBatchesEmptyReset")
+    self.btn_empty_reset.setIcon(get_duotone_icon("refresh", 16))
+    self.btn_empty_reset.setIconSize(QSize(16, 16))
+    self.btn_empty_reset.setFixedHeight(32)
+    self.btn_empty_reset.setCursor(Qt.PointingHandCursor)
+    self.btn_empty_reset.setStyleSheet(
+        """
+        QPushButton#BtnBatchesEmptyReset {
+            background-color: #FFFFFF;
+            color: #334155;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            padding: 0 14px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        QPushButton#BtnBatchesEmptyReset:hover { background-color: #F8FAFC; border-color: #94A3B8; }
+        """
+    )
+    self.btn_empty_reset.clicked.connect(self.reset_filters)
+    lay.addWidget(self.btn_empty_reset, alignment=Qt.AlignCenter)
+
+    empty_frame.setVisible(False)
+    self.batches_empty_state = empty_frame
+    return empty_frame
 
 
 # ---------------------------------------------------------------------------
