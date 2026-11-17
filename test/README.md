@@ -24,6 +24,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Verifies Task #3 (`Bureaux - 2. Caisse - UX`): auto-focus on scan input on show and after payment, `Enter` matching by Bon number or Client name, `Esc` filter reset, automatic disabling of payment controls/chips when `Reste == 0,00 DA`, deduplication of wallet/Versement buttons, `Retirer Bon` confirmation naming Bon and Client, and right-alignment of `Montant TTC`.
 - **`test_task4_order_desk_catalog_table.py`**:
   - *Scope*: Verifies Task #4 (`Bureaux - 1. Commandes`): removal of per-row dropdown widget in `Prix TTC` in favor of right-aligned text + on-click `PriceTierMenu`, `ResizeToContents` (`Marque`, `Catégorie`, `Réf`, `Prix TTC`) & `Stretch` (`Désignation Produit`), no right-edge clipping, and catalog Empty State with quick filter reset.
+- **`test_task5_paiement_livraison_ui.py`**:
+  - *Scope*: Verifies Task #5 (`Paiement Livraison`): `defaultSectionSize >= 44px` (`46px`) and `28px` unclipped action buttons, high-contrast `:disabled` `+ Paiement` styling with descriptive tooltips, and compact proportional KPI cards (`<= 72px` height, `<= 250px` width).
 - **`test_reception_no_lot_expiry_tva.py`**:
   - *Scope*: Verifies Task #2 (Achats & Entrées -> Bons de Réceptions): ensures `ReceptionDialog` hides Lot, Expiry Date, and TVA inputs/columns, defaults TVA to 0%, auto-generates `Lot_Number` with `Expiry_Date=None`, and `ReceptionHistoryTab` hides `Total TVA`.
 - **`test_client_unique_code.py`**:
