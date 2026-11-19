@@ -8,18 +8,21 @@ add & edit payment actions.
 import logging
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QRect, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QKeySequence, QPainter, QPen, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QBoxLayout,
     QButtonGroup,
     QDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
     QStyledItemDelegate,
     QStyle,
     QTableWidget,
@@ -220,34 +223,36 @@ class BonPaymentsWorkspaceWidget(QWidget):
             """
         )
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(18, 16, 18, 16)
-        root.setSpacing(12)
+        self._root_layout = QVBoxLayout(self)
+        self._root_layout.setContentsMargins(16, 14, 16, 14)
+        self._root_layout.setSpacing(10)
 
         # 1. Header Card
-        header_card = QFrame()
-        header_card.setObjectName("WorkspaceHeaderCard")
-        hdr_lay = QHBoxLayout(header_card)
-        hdr_lay.setContentsMargins(16, 12, 16, 12)
-        hdr_lay.setSpacing(12)
+        self.header_card = QFrame()
+        self.header_card.setObjectName("WorkspaceHeaderCard")
+        self._hdr_lay = QHBoxLayout(self.header_card)
+        self._hdr_lay.setContentsMargins(14, 10, 14, 10)
+        self._hdr_lay.setSpacing(10)
 
         icon_lbl = QLabel()
-        icon_lbl.setPixmap(get_duotone_icon(self._icon_name, 28).pixmap(28, 28))
-        hdr_lay.addWidget(icon_lbl)
+        icon_lbl.setPixmap(get_duotone_icon(self._icon_name, 26).pixmap(26, 26))
+        self._hdr_lay.addWidget(icon_lbl)
 
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
         self.lbl_title = QLabel(self._title_text)
-        self.lbl_title.setStyleSheet("font-size: 18px; font-weight: 700; color: #0F172A;")
+        self.lbl_title.setStyleSheet("font-size: 17px; font-weight: 700; color: #0F172A;")
+        self.lbl_title.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         self.lbl_subtitle = QLabel(self._subtitle_text)
         self.lbl_subtitle.setStyleSheet("font-size: 12px; color: #64748B;")
+        self.lbl_subtitle.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         title_col.addWidget(self.lbl_title)
         title_col.addWidget(self.lbl_subtitle)
-        hdr_lay.addLayout(title_col, 1)
+        self._hdr_lay.addLayout(title_col, 1)
 
         self.btn_refresh = QPushButton("Actualiser")
         self.btn_refresh.setObjectName("BtnBonsRefresh")
-        self.btn_refresh.setFixedHeight(36)
+        self.btn_refresh.setFixedHeight(34)
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
         self.btn_refresh.setIcon(get_duotone_icon("refresh", 16))
         self.btn_refresh.setIconSize(QSize(16, 16))
@@ -261,7 +266,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
                 color: #334155;
                 font-size: 12px;
                 font-weight: 600;
-                padding: 0 14px;
+                padding: 0 12px;
             }
             QPushButton#BtnBonsRefresh:hover {
                 background-color: #F8FAFC;
@@ -272,21 +277,20 @@ class BonPaymentsWorkspaceWidget(QWidget):
             """
         )
         self.btn_refresh.clicked.connect(self.refresh_bons)
-        hdr_lay.addWidget(self.btn_refresh)
-        root.addWidget(header_card)
+        self._hdr_lay.addWidget(self.btn_refresh)
+        self._root_layout.addWidget(self.header_card)
 
-        # 2. Balanced Equal-Stretch KPI Summary Strip
-        kpi_row = QHBoxLayout()
-        kpi_row.setSpacing(12)
-        self.lbl_kpi_count, card_count = self._build_stat_card("Nombre de Bons", "0", "#0F172A")
-        self.lbl_kpi_total, card_total = self._build_stat_card("Total TTC", "0,00 DA", "#0F172A")
-        self.lbl_kpi_paid, card_paid = self._build_stat_card("Total Versé", "0,00 DA", "#0E7471")
-        self.lbl_kpi_rem, card_rem = self._build_stat_card("Reste à Payer", "0,00 DA", "#D97706")
-        kpi_row.addWidget(card_count, 1)
-        kpi_row.addWidget(card_total, 1)
-        kpi_row.addWidget(card_paid, 1)
-        kpi_row.addWidget(card_rem, 1)
-        root.addLayout(kpi_row)
+        # 2. Responsive KPI Summary Grid (4x1 on wide screens, 2x2 on narrow screens)
+        self.kpi_grid = QGridLayout()
+        self.kpi_grid.setSpacing(10)
+        self.lbl_kpi_count, self.card_count = self._build_stat_card("Nombre de Bons", "0", "#0F172A")
+        self.lbl_kpi_total, self.card_total = self._build_stat_card("Total TTC", "0,00 DA", "#0F172A")
+        self.lbl_kpi_paid, self.card_paid = self._build_stat_card("Total Versé", "0,00 DA", "#0E7471")
+        self.lbl_kpi_rem, self.card_rem = self._build_stat_card("Reste à Payer", "0,00 DA", "#D97706")
+        self._kpi_cards = [self.card_count, self.card_total, self.card_paid, self.card_rem]
+        self._kpi_is_grid_2x2: Optional[bool] = None
+        self._apply_kpi_grid_layout(two_by_two=False)
+        self._root_layout.addLayout(self.kpi_grid)
 
         # 3. Unified Table Card (Toolbar + Table/EmptyState + Footer)
         table_card = QFrame()
@@ -297,20 +301,24 @@ class BonPaymentsWorkspaceWidget(QWidget):
 
         toolbar = QFrame()
         toolbar.setObjectName("ToolbarCard")
-        tb_lay = QHBoxLayout(toolbar)
-        tb_lay.setContentsMargins(14, 10, 14, 10)
-        tb_lay.setSpacing(10)
+        self._tb_lay = QBoxLayout(QBoxLayout.LeftToRight, toolbar)
+        self._tb_lay.setContentsMargins(12, 8, 12, 8)
+        self._tb_lay.setSpacing(8)
 
         self.txt_search = QLineEdit()
         self.txt_search.setObjectName("SearchBonsInput")
         self.txt_search.setFixedHeight(36)
+        self.txt_search.setMinimumWidth(160)
         self.txt_search.setClearButtonEnabled(True)
         self.txt_search.setPlaceholderText("Rechercher par N° Bon, client, téléphone, facture...")
         if qta:
             self.txt_search.addAction(qta.icon("fa5s.search", color="#94A3B8"), QLineEdit.LeadingPosition)
         self.txt_search.textChanged.connect(self._apply_filters)
-        tb_lay.addWidget(self.txt_search, 1)
+        self._tb_lay.addWidget(self.txt_search, 1)
 
+        chips_row = QHBoxLayout()
+        chips_row.setContentsMargins(0, 0, 0, 0)
+        chips_row.setSpacing(6)
         self.filter_group = QButtonGroup(self)
         self.filter_group.setExclusive(True)
 
@@ -318,9 +326,10 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.btn_filter_pending = self._create_filter_chip("Reste à payer", "UNPAID_PARTIAL")
         self.btn_filter_paid = self._create_filter_chip("Soldés", "PAID")
 
-        tb_lay.addWidget(self.btn_filter_all)
-        tb_lay.addWidget(self.btn_filter_pending)
-        tb_lay.addWidget(self.btn_filter_paid)
+        chips_row.addWidget(self.btn_filter_all)
+        chips_row.addWidget(self.btn_filter_pending)
+        chips_row.addWidget(self.btn_filter_paid)
+        self._tb_lay.addLayout(chips_row)
         tc_lay.addWidget(toolbar)
 
         # 4. Bons Table
@@ -348,9 +357,11 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.bons_table.setWordWrap(False)
         self.bons_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.bons_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.bons_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.bons_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.bons_table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.bons_table.setItemDelegateForColumn(7, BonStatusBadgeDelegate(self.bons_table))
+        self.bons_table.installEventFilter(self)
 
         header_alignments = {
             0: Qt.AlignLeft | Qt.AlignVCenter,
@@ -369,20 +380,21 @@ class BonPaymentsWorkspaceWidget(QWidget):
                 self.bons_table.horizontalHeaderItem(col_idx).setTextAlignment(align)
 
         hdr = self.bons_table.horizontalHeader()
-        hdr.setMinimumSectionSize(80)
+        hdr.setMinimumSectionSize(60)
         hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        hdr.setSectionResizeMode(2, QHeaderView.Stretch)
+        hdr.setSectionResizeMode(2, QHeaderView.Interactive)
+        self.bons_table.setColumnWidth(2, 180)
         hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.bons_table.setColumnWidth(7, 112)
+        self.bons_table.setColumnWidth(7, 102)
         hdr.setSectionResizeMode(8, QHeaderView.Fixed)
-        self.bons_table.setColumnWidth(8, 92)
+        self.bons_table.setColumnWidth(8, 84)
         hdr.setSectionResizeMode(9, QHeaderView.Fixed)
-        self.bons_table.setColumnWidth(9, 268)
+        self.bons_table.setColumnWidth(9, 260)
 
         self.bons_table.cellDoubleClicked.connect(self._on_row_double_clicked)
         tc_lay.addWidget(self.bons_table, 1)
@@ -446,20 +458,21 @@ class BonPaymentsWorkspaceWidget(QWidget):
         footer_bar = QFrame()
         footer_bar.setObjectName("BonsTableFooter")
         f_lay = QHBoxLayout(footer_bar)
-        f_lay.setContentsMargins(14, 8, 14, 8)
-        f_lay.setSpacing(12)
+        f_lay.setContentsMargins(14, 6, 14, 6)
+        f_lay.setSpacing(10)
 
         self.lbl_footer_info = QLabel("0 bon(s) affiché(s)")
         self.lbl_footer_info.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
         f_lay.addWidget(self.lbl_footer_info)
         f_lay.addStretch(1)
 
-        lbl_hints = QLabel("Double-clic : détails  •  F5 : actualiser  •  Échap : réinitialiser")
-        lbl_hints.setStyleSheet("font-size: 11px; color: #94A3B8;")
-        f_lay.addWidget(lbl_hints)
+        self.lbl_hints = QLabel("Double-clic : détails  •  F5 : actualiser  •  Échap : réinitialiser")
+        self.lbl_hints.setStyleSheet("font-size: 11px; color: #94A3B8;")
+        self.lbl_hints.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        f_lay.addWidget(self.lbl_hints, 1, Qt.AlignRight)
         tc_lay.addWidget(footer_bar)
 
-        root.addWidget(table_card, 1)
+        self._root_layout.addWidget(table_card, 1)
 
         self._shortcut_f5 = QShortcut(QKeySequence(Qt.Key_F5), self)
         self._shortcut_f5.setContext(Qt.WidgetWithChildrenShortcut)
@@ -473,21 +486,114 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self._shortcut_esc.setContext(Qt.WidgetWithChildrenShortcut)
         self._shortcut_esc.activated.connect(self._reset_filters)
 
+    def _apply_kpi_grid_layout(self, two_by_two: bool) -> None:
+        if self._kpi_is_grid_2x2 is two_by_two:
+            return
+        self._kpi_is_grid_2x2 = two_by_two
+        for card in self._kpi_cards:
+            self.kpi_grid.removeWidget(card)
+        for col in range(4):
+            self.kpi_grid.setColumnStretch(col, 0)
+        if two_by_two:
+            positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
+            for idx, (r, c) in enumerate(positions):
+                self.kpi_grid.addWidget(self._kpi_cards[idx], r, c)
+            self.kpi_grid.setColumnStretch(0, 1)
+            self.kpi_grid.setColumnStretch(1, 1)
+        else:
+            for idx, card in enumerate(self._kpi_cards):
+                self.kpi_grid.addWidget(card, 0, idx)
+                self.kpi_grid.setColumnStretch(idx, 1)
+
+    def _apply_responsive_layout(self) -> None:
+        """Adapts KPI grid, toolbar wrapping, chrome density, and visible table columns to viewport size."""
+        w = self.width()
+        h = self.height()
+        if w <= 0 or h <= 0:
+            return
+
+        compact_h = h < 680
+        narrow_w = w < 880
+
+        self._root_layout.setContentsMargins(
+            10 if narrow_w else 16,
+            8 if compact_h else 14,
+            10 if narrow_w else 16,
+            8 if compact_h else 14,
+        )
+        self._root_layout.setSpacing(8 if (compact_h or narrow_w) else 10)
+        self._hdr_lay.setContentsMargins(
+            12 if narrow_w else 14,
+            7 if compact_h else 10,
+            12 if narrow_w else 14,
+            7 if compact_h else 10,
+        )
+        self.lbl_subtitle.setVisible(not (compact_h or narrow_w))
+        self.lbl_hints.setVisible(w >= 1120)
+
+        card_h = 58 if compact_h else 72
+        for card in self._kpi_cards:
+            card.setFixedHeight(card_h)
+
+        self._apply_kpi_grid_layout(two_by_two=(w < 860))
+        self._tb_lay.setDirection(QBoxLayout.TopToBottom if w < 900 else QBoxLayout.LeftToRight)
+
+        self._adjust_table_columns()
+
+    def _adjust_table_columns(self) -> None:
+        """Hides low-priority columns on small screens and stretches Client without crushing it."""
+        if not hasattr(self, "bons_table") or self.bons_table is None:
+            return
+        vp_w = self.bons_table.viewport().width()
+        if vp_w <= 0:
+            return
+
+        # Progressive disclosure of secondary columns based on available table width
+        self.bons_table.setColumnHidden(3, vp_w < 1220)  # Facture
+        self.bons_table.setColumnHidden(8, vp_w < 1220)  # Paiements
+        self.bons_table.setColumnHidden(1, vp_w < 1120)  # Date
+        self.bons_table.setColumnHidden(5, vp_w < 1120)  # Payé
+        self.bons_table.setColumnHidden(4, vp_w < 840)   # Total TTC (Reste remains visible)
+
+        other_w = sum(
+            self.bons_table.columnWidth(c)
+            for c in range(self.bons_table.columnCount())
+            if c != 2 and not self.bons_table.isColumnHidden(c)
+        )
+        min_client_w = 130 if vp_w < 1080 else 160
+        target_client_w = max(min_client_w, vp_w - other_w)
+        if self.bons_table.columnWidth(2) != target_client_w:
+            self.bons_table.setColumnWidth(2, target_client_w)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if watched is getattr(self, "bons_table", None) and event.type() == QEvent.Resize:
+            self._adjust_table_columns()
+        return super().eventFilter(watched, event)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._apply_responsive_layout()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._apply_responsive_layout()
+
     def _build_stat_card(self, label_text: str, value_text: str, color_hex: str):
         card = QFrame()
         card.setObjectName("SummaryStatCard")
-        card.setMinimumWidth(165)
+        card.setMinimumWidth(120)
         card.setFixedHeight(72)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(16, 10, 16, 10)
-        lay.setSpacing(3)
+        lay.setContentsMargins(14, 8, 14, 8)
+        lay.setSpacing(2)
 
         lbl_name = QLabel(label_text)
         lbl_name.setStyleSheet(
             "font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 0.3px;"
         )
         lbl_val = QLabel(value_text)
-        lbl_val.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {color_hex};")
+        lbl_val.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {color_hex};")
 
         lay.addWidget(lbl_name)
         lay.addWidget(lbl_val)
@@ -710,17 +816,28 @@ class BonPaymentsWorkspaceWidget(QWidget):
             self.bons_table.setItem(row_idx, 7, it_status)
             self.bons_table.setItem(row_idx, 8, it_count)
 
+            # Rich tooltip exposes full details even when secondary columns hide on small screens
+            row_tooltip = (
+                f"Bon : {ord_num}  |  Date : {date_str}\n"
+                f"Client : {client_display}\n"
+                f"Facture : {inv_no}  |  Paiements : {pay_count}\n"
+                f"Total TTC : {format_money(total_ttc)} DA  |  Payé : {format_money(total_paid)} DA  |  Reste : {format_money(remaining)} DA"
+            )
+            for item in (it_num, it_date, it_client, it_inv, it_tot, it_paid, it_rem, it_status, it_count):
+                item.setToolTip(row_tooltip)
+
             # Direct per-row action buttons: '+ <Versement>' and 'Modifier'
             action_cell = QWidget()
             action_cell.setStyleSheet("background: transparent;")
             a_lay = QHBoxLayout(action_cell)
-            a_lay.setContentsMargins(6, 4, 6, 4)
-            a_lay.setSpacing(8)
+            a_lay.setContentsMargins(4, 4, 4, 4)
+            a_lay.setSpacing(6)
             a_lay.setAlignment(Qt.AlignVCenter)
 
             btn_add = QPushButton(f"+ {self._add_button_text}")
             btn_add.setObjectName("btn_row_add")
             btn_add.setFixedHeight(28)
+            btn_add.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn_add.setCursor(Qt.PointingHandCursor)
             btn_add.setIcon(get_duotone_icon("payment_white", 16))
             btn_add.setIconSize(QSize(14, 14))
@@ -740,7 +857,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
                     color: #FFFFFF;
                     font-size: 11px;
                     font-weight: 700;
-                    padding: 0px 12px;
+                    padding: 0px 10px;
                     min-height: 26px;
                     max-height: 26px;
                 }
@@ -757,6 +874,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
             btn_edit = QPushButton("Modifier")
             btn_edit.setObjectName("btn_row_edit")
             btn_edit.setFixedHeight(28)
+            btn_edit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             btn_edit.setCursor(Qt.PointingHandCursor)
             btn_edit.setIcon(get_duotone_icon("edit", 14))
             btn_edit.setIconSize(QSize(14, 14))
@@ -770,7 +888,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
                     color: #334155;
                     font-size: 11px;
                     font-weight: 600;
-                    padding: 0px 12px;
+                    padding: 0px 10px;
                     min-height: 26px;
                     max-height: 26px;
                 }
@@ -786,6 +904,8 @@ class BonPaymentsWorkspaceWidget(QWidget):
             a_lay.addWidget(btn_add)
             a_lay.addWidget(btn_edit)
             self.bons_table.setCellWidget(row_idx, 9, action_cell)
+
+        self._adjust_table_columns()
 
     def _on_row_double_clicked(self, row: int, _col: int) -> None:
         if 0 <= row < len(self._filtered_bons):
