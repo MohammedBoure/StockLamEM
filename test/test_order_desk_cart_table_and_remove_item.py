@@ -112,13 +112,16 @@ def test_cart_table_structure_and_columns(qapp, mock_data_manager):
     assert headers[4] == "Total TTC"
     assert headers[5] == "Suppr."
 
-    # Column 0 has min width >= 180, Col 1 is 95, Col 2 is 80, Col 3 is 105, Col 4 is 100, Col 5 is 42
+    # Column 0 has min width >= 180, Col 1 is 80, Col 2 is 80, Col 3 is 102, Col 4 is 142, Col 5 is 68
     assert desk.cart_table.columnWidth(0) >= 180
-    assert desk.cart_table.columnWidth(1) == 95
+    assert desk.cart_table.columnWidth(1) == 80
     assert desk.cart_table.columnWidth(2) == 80
-    assert desk.cart_table.columnWidth(3) == 105
-    assert desk.cart_table.columnWidth(4) == 100
-    assert desk.cart_table.columnWidth(5) == 42
+    assert desk.cart_table.columnWidth(3) == 102
+    assert desk.cart_table.columnWidth(4) == 142
+    assert desk.cart_table.columnWidth(5) == 68
+    assert desk.cart_table.wordWrap() is False
+    assert desk.cart_table.verticalHeader().defaultSectionSize() >= 44
+    assert desk.cart_table.horizontalHeader().height() >= 38
 
     # Verify horizontal scroll settings
     assert desk.cart_table.horizontalScrollBarPolicy() == Qt.ScrollBarAsNeeded
@@ -207,9 +210,9 @@ def test_cart_table_horizontal_scroll_and_responsive_metrics(qapp, mock_data_man
     col0_w = desk.cart_table.columnWidth(0)
     assert col0_w >= 180
 
-    # Total width of all columns: >= 180 + 95 + 80 + 105 + 100 + 42 = 602px
+    # Total width of all columns: >= 180 + 80 + 80 + 102 + 142 + 68 = 652px
     total_cols_w = sum(desk.cart_table.columnWidth(c) for c in range(6))
-    assert total_cols_w >= 602
+    assert total_cols_w >= 652
 
     # Viewport is narrower than total columns, scrollbar is required/available
     assert desk.cart_table.horizontalScrollBarPolicy() == Qt.ScrollBarAsNeeded
@@ -218,7 +221,10 @@ def test_cart_table_horizontal_scroll_and_responsive_metrics(qapp, mock_data_man
     desk._on_cart_header_section_resized(0, 180, 50)
     assert desk.cart_table.columnWidth(0) >= 160
 
-    # Vertical metrics: row height >= 38px (40px) ensuring zero clipping
-    assert desk.cart_table.verticalHeader().defaultSectionSize() >= 38
+    # Vertical metrics: row height >= 44px ensuring zero clipping for cell widgets & price editor
+    assert desk.cart_table.verticalHeader().defaultSectionSize() >= 44
     del_w = desk.cart_table.cellWidget(0, 5)
     assert del_w.btn_delete.height() <= desk.cart_table.verticalHeader().defaultSectionSize() - 10
+    price_w = desk.cart_table.cellWidget(0, 3)
+    assert price_w.inp_price.objectName() == "CartPriceInput"
+    assert "QLineEdit#CartPriceInput" in price_w.inp_price.styleSheet()

@@ -508,7 +508,9 @@ class CartRemoveCellWidget(QWidget):
                 color: #C0392B;
                 border: 1px solid #CED4DA;
                 border-radius: 4px;
-                padding: 0;
+                padding: 0px;
+                min-height: 0px;
+                min-width: 0px;
             }
             QPushButton#BtnCartRemove:hover {
                 background-color: #FDF2F2;
@@ -685,24 +687,26 @@ class CartQtyStepper(QWidget):
         layout.setAlignment(Qt.AlignCenter)
 
         self.btn_minus = QPushButton("−")
+        self.btn_minus.setObjectName("BtnCartQtyMinus")
         self.btn_minus.setFixedSize(22, 22)
         self.btn_minus.setCursor(Qt.PointingHandCursor)
         self.btn_minus.setStyleSheet("""
-            QPushButton {
+            QPushButton#BtnCartQtyMinus {
                 background-color: #FFFFFF;
                 color: #495057;
                 font-weight: bold;
                 font-size: 13px;
                 border: 1px solid #CED4DA;
                 border-radius: 4px;
-                padding: 0;
+                padding: 0px;
+                min-height: 0px;
             }
-            QPushButton:hover {
+            QPushButton#BtnCartQtyMinus:hover {
                 background-color: #F8FAFC;
                 color: #212529;
                 border-color: #ADB5BD;
             }
-            QPushButton:pressed {
+            QPushButton#BtnCartQtyMinus:pressed {
                 background-color: #E9ECEF;
             }
         """)
@@ -718,23 +722,25 @@ class CartQtyStepper(QWidget):
         layout.addWidget(self.lbl_qty)
 
         self.btn_plus = QPushButton("+")
+        self.btn_plus.setObjectName("BtnCartQtyPlus")
         self.btn_plus.setFixedSize(22, 22)
         self.btn_plus.setCursor(Qt.PointingHandCursor)
         self.btn_plus.setStyleSheet("""
-            QPushButton {
+            QPushButton#BtnCartQtyPlus {
                 background-color: #E8F8F5;
                 color: #007572;
                 font-weight: bold;
                 font-size: 13px;
                 border: 1px solid #A3E4D7;
                 border-radius: 4px;
-                padding: 0;
+                padding: 0px;
+                min-height: 0px;
             }
-            QPushButton:hover {
+            QPushButton#BtnCartQtyPlus:hover {
                 background-color: #CCEBE5;
                 border-color: #007572;
             }
-            QPushButton:pressed {
+            QPushButton#BtnCartQtyPlus:pressed {
                 background-color: #B2DFDB;
             }
         """)
@@ -765,26 +771,32 @@ class CartPriceEditor(QWidget):
     liveValidationChanged = Signal(bool, float, float)
 
     _STYLE_VALID = """
-        QLineEdit {
+        QLineEdit#CartPriceInput {
             background-color: #FFFFFF;
             border: 1px solid #CBD5E1;
             border-radius: 4px;
             padding: 2px 6px;
+            margin: 0px;
+            min-height: 26px;
+            max-height: 28px;
             font-size: 12px;
             font-weight: 600;
             color: #0F172A;
         }
-        QLineEdit:focus {
+        QLineEdit#CartPriceInput:focus {
             border: 1.5px solid #007572;
             background-color: #F0FDFA;
         }
     """
     _STYLE_INVALID = """
-        QLineEdit {
+        QLineEdit#CartPriceInput {
             background-color: #FEF2F2;
             border: 1.5px solid #DC2626;
             border-radius: 4px;
             padding: 2px 6px;
+            margin: 0px;
+            min-height: 26px;
+            max-height: 28px;
             font-size: 12px;
             font-weight: 600;
             color: #B91C1C;
@@ -838,11 +850,13 @@ class CartPriceEditor(QWidget):
 
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setContentsMargins(2, 0, 2, 0)
         layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignVCenter)
 
         self.inp_price = QLineEdit(self._format_num(self._last_valid_price))
-        self.inp_price.setFixedHeight(26)
+        self.inp_price.setObjectName("CartPriceInput")
+        self.inp_price.setFixedHeight(28)
         self.inp_price.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.inp_price.setStyleSheet(self._STYLE_VALID)
         if self._purchase_price > 0:
@@ -2145,13 +2159,19 @@ class OrderDeskWidget(QWidget):
 
         # Cart Items Table (6 columns: Désignation, Réf, Qté, Prix U., Total TTC, Suppr.)
         self.cart_table = QTableWidget(0, 6)
+        self.cart_table.setObjectName("OrderCartTable")
         self.cart_table.setHorizontalHeaderLabels(["Désignation", "Réf", "Qté", "Prix U.", "Total TTC", "Suppr."])
-        self.cart_table.setStyleSheet(TABLE_STYLE)
+        self.cart_table.setStyleSheet(
+            TABLE_STYLE
+            + "\nQTableWidget#OrderCartTable::item { padding: 4px 6px; }"
+        )
         self.cart_table.verticalHeader().setVisible(False)
-        self.cart_table.verticalHeader().setDefaultSectionSize(40)
-        self.cart_table.horizontalHeader().setFixedHeight(34)
+        self.cart_table.verticalHeader().setDefaultSectionSize(44)
+        self.cart_table.horizontalHeader().setFixedHeight(38)
+        self.cart_table.horizontalHeader().setMinimumSectionSize(45)
         self.cart_table.setShowGrid(True)
         self.cart_table.setAlternatingRowColors(True)
+        self.cart_table.setWordWrap(False)
         self.cart_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.cart_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.cart_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -2164,15 +2184,15 @@ class OrderDeskWidget(QWidget):
         ch.setSectionResizeMode(0, QHeaderView.Interactive)
         self.cart_table.setColumnWidth(0, 180)
         ch.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.cart_table.setColumnWidth(1, 95)
+        self.cart_table.setColumnWidth(1, 80)
         ch.setSectionResizeMode(2, QHeaderView.Fixed)
         self.cart_table.setColumnWidth(2, 80)
         ch.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(3, 105)
+        self.cart_table.setColumnWidth(3, 102)
         ch.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(4, 100)
+        self.cart_table.setColumnWidth(4, 142)
         ch.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(5, 42)
+        self.cart_table.setColumnWidth(5, 68)
 
         self.cart_table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.cart_table.horizontalHeaderItem(1).setTextAlignment(Qt.AlignCenter)
@@ -3746,7 +3766,7 @@ class OrderDeskWidget(QWidget):
             # Col 4: Total TTC (Bold font, right aligned)
             it_tot = QTableWidgetItem(f"{format_money(line_tot)} DA")
             it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            it_tot.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            it_tot.setFont(QFont("Segoe UI", 9, QFont.Bold))
             it_tot.setToolTip(f"Prix unitaire TTC : {format_money(item['unit_price_ttc'])} DA\nTotal ligne : {format_money(line_tot)} DA")
             self.cart_table.setItem(row, 4, it_tot)
 
