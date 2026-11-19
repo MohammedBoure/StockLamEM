@@ -491,33 +491,35 @@ class CartRemoveCellWidget(QWidget):
         self.on_remove = on_remove
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(0)
         layout.setAlignment(Qt.AlignCenter)
 
         self.btn_delete = QPushButton()
         self.btn_delete.setObjectName("BtnCartRemove")
-        self.btn_delete.setFixedSize(26, 26)
+        self.btn_delete.setFixedSize(32, 30)
         self.btn_delete.setCursor(Qt.PointingHandCursor)
-        self.btn_delete.setIcon(get_trash_icon(14))
-        self.btn_delete.setIconSize(QSize(14, 14))
+        self.btn_delete.setIcon(get_trash_icon(16))
+        self.btn_delete.setIconSize(QSize(16, 16))
         self.btn_delete.setToolTip("Supprimer cet article de la commande")
         self.btn_delete.setStyleSheet("""
             QPushButton#BtnCartRemove {
                 background-color: #FFFFFF;
-                color: #C0392B;
-                border: 1px solid #CED4DA;
-                border-radius: 4px;
+                color: #DC2626;
+                border: 1px solid #FCA5A5;
+                border-radius: 5px;
                 padding: 0px;
-                min-height: 0px;
-                min-width: 0px;
+                min-width: 32px;
+                max-width: 32px;
+                min-height: 30px;
+                max-height: 30px;
             }
             QPushButton#BtnCartRemove:hover {
-                background-color: #FDF2F2;
-                border-color: #C0392B;
+                background-color: #FEE2E2;
+                border-color: #DC2626;
             }
             QPushButton#BtnCartRemove:pressed {
-                background-color: #FCE8E6;
+                background-color: #FECACA;
             }
         """)
         self.btn_delete.clicked.connect(self._trigger_remove)
@@ -682,66 +684,74 @@ class CartQtyStepper(QWidget):
 
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(4)
         layout.setAlignment(Qt.AlignCenter)
 
         self.btn_minus = QPushButton("−")
         self.btn_minus.setObjectName("BtnCartQtyMinus")
-        self.btn_minus.setFixedSize(22, 22)
+        self.btn_minus.setFixedSize(28, 28)
         self.btn_minus.setCursor(Qt.PointingHandCursor)
+        self.btn_minus.setToolTip("Diminuer la quantité")
         self.btn_minus.setStyleSheet("""
             QPushButton#BtnCartQtyMinus {
                 background-color: #FFFFFF;
-                color: #495057;
-                font-weight: bold;
-                font-size: 13px;
-                border: 1px solid #CED4DA;
-                border-radius: 4px;
+                color: #334155;
+                font-weight: 700;
+                font-size: 16px;
+                border: 1px solid #CBD5E1;
+                border-radius: 5px;
                 padding: 0px;
-                min-height: 0px;
+                min-width: 28px;
+                max-width: 28px;
+                min-height: 28px;
+                max-height: 28px;
             }
             QPushButton#BtnCartQtyMinus:hover {
                 background-color: #F8FAFC;
-                color: #212529;
-                border-color: #ADB5BD;
+                color: #0F172A;
+                border-color: #94A3B8;
             }
             QPushButton#BtnCartQtyMinus:pressed {
-                background-color: #E9ECEF;
+                background-color: #E2E8F0;
             }
         """)
         self.btn_minus.clicked.connect(self._decrement)
         layout.addWidget(self.btn_minus)
 
         self.lbl_qty = QLabel(str(self._qty))
-        self.lbl_qty.setFixedWidth(24)
+        self.lbl_qty.setFixedWidth(28)
         self.lbl_qty.setAlignment(Qt.AlignCenter)
         self.lbl_qty.setStyleSheet(
-            "font-size: 12px; font-weight: bold; color: #2C3E50; background: transparent; border: none;"
+            "font-size: 13px; font-weight: 700; color: #0F172A; background: transparent; border: none;"
         )
         layout.addWidget(self.lbl_qty)
 
         self.btn_plus = QPushButton("+")
         self.btn_plus.setObjectName("BtnCartQtyPlus")
-        self.btn_plus.setFixedSize(22, 22)
+        self.btn_plus.setFixedSize(28, 28)
         self.btn_plus.setCursor(Qt.PointingHandCursor)
+        self.btn_plus.setToolTip("Augmenter la quantité")
         self.btn_plus.setStyleSheet("""
             QPushButton#BtnCartQtyPlus {
-                background-color: #E8F8F5;
+                background-color: #F0FDFA;
                 color: #007572;
-                font-weight: bold;
-                font-size: 13px;
-                border: 1px solid #A3E4D7;
-                border-radius: 4px;
+                font-weight: 700;
+                font-size: 16px;
+                border: 1px solid #99F6E4;
+                border-radius: 5px;
                 padding: 0px;
-                min-height: 0px;
+                min-width: 28px;
+                max-width: 28px;
+                min-height: 28px;
+                max-height: 28px;
             }
             QPushButton#BtnCartQtyPlus:hover {
-                background-color: #CCEBE5;
+                background-color: #CCFBF1;
                 border-color: #007572;
             }
             QPushButton#BtnCartQtyPlus:pressed {
-                background-color: #B2DFDB;
+                background-color: #99F6E4;
             }
         """)
         self.btn_plus.clicked.connect(self._increment)
@@ -774,11 +784,11 @@ class CartPriceEditor(QWidget):
         QLineEdit#CartPriceInput {
             background-color: #FFFFFF;
             border: 1px solid #CBD5E1;
-            border-radius: 4px;
+            border-radius: 5px;
             padding: 2px 6px;
             margin: 0px;
-            min-height: 26px;
-            max-height: 28px;
+            min-height: 28px;
+            max-height: 30px;
             font-size: 12px;
             font-weight: 600;
             color: #0F172A;
@@ -792,11 +802,11 @@ class CartPriceEditor(QWidget):
         QLineEdit#CartPriceInput {
             background-color: #FEF2F2;
             border: 1.5px solid #DC2626;
-            border-radius: 4px;
+            border-radius: 5px;
             padding: 2px 6px;
             margin: 0px;
-            min-height: 26px;
-            max-height: 28px;
+            min-height: 28px;
+            max-height: 30px;
             font-size: 12px;
             font-weight: 600;
             color: #B91C1C;
@@ -856,7 +866,7 @@ class CartPriceEditor(QWidget):
 
         self.inp_price = QLineEdit(self._format_num(self._last_valid_price))
         self.inp_price.setObjectName("CartPriceInput")
-        self.inp_price.setFixedHeight(28)
+        self.inp_price.setFixedHeight(30)
         self.inp_price.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.inp_price.setStyleSheet(self._STYLE_VALID)
         if self._purchase_price > 0:
@@ -1366,25 +1376,26 @@ class OrderDeskWidget(QWidget):
         btn_refresh = QPushButton("")
         btn_refresh.setObjectName("BtnRefreshCatalog")
         if qta:
-            btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color="#FFFFFF"))
+            btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color="#475569"))
         else:
-            btn_refresh.setIcon(get_duotone_icon("refresh_white", 14))
+            btn_refresh.setIcon(get_duotone_icon("refresh", 14))
         btn_refresh.setIconSize(QSize(14, 14))
         btn_refresh.setCursor(Qt.PointingHandCursor)
         btn_refresh.setFixedSize(32, 32)
         btn_refresh.setStyleSheet("""
             QPushButton#BtnRefreshCatalog {
-                background-color: #007572;
-                color: #FFFFFF;
-                border: none;
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1px solid #CED4DA;
                 border-radius: 4px;
                 padding: 0px;
             }
             QPushButton#BtnRefreshCatalog:hover {
-                background-color: #005A57;
+                background-color: #F8FAFC;
+                border-color: #94A3B8;
             }
             QPushButton#BtnRefreshCatalog:pressed {
-                background-color: #004543;
+                background-color: #E2E8F0;
             }
         """)
         btn_refresh.setToolTip("Actualiser / Recharger le catalogue")
@@ -2142,7 +2153,7 @@ class OrderDeskWidget(QWidget):
         self.btn_daily_bons.setIconSize(QSize(14, 14))
         self.btn_daily_bons.setCursor(Qt.PointingHandCursor)
         self.btn_daily_bons.setFixedHeight(28)
-        self.btn_daily_bons.setStyleSheet(OUTLINE_BTN_STYLE)
+        self.btn_daily_bons.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         self.btn_daily_bons.setToolTip("Afficher, modifier ou exporter en PDF les bons du jour et les BL non clôturés")
         self.btn_daily_bons.clicked.connect(self._open_daily_bons_dialog)
         header_row.addWidget(self.btn_daily_bons)
@@ -2166,7 +2177,7 @@ class OrderDeskWidget(QWidget):
             + "\nQTableWidget#OrderCartTable::item { padding: 4px 6px; }"
         )
         self.cart_table.verticalHeader().setVisible(False)
-        self.cart_table.verticalHeader().setDefaultSectionSize(44)
+        self.cart_table.verticalHeader().setDefaultSectionSize(48)
         self.cart_table.horizontalHeader().setFixedHeight(38)
         self.cart_table.horizontalHeader().setMinimumSectionSize(45)
         self.cart_table.setShowGrid(True)
@@ -2184,13 +2195,13 @@ class OrderDeskWidget(QWidget):
         ch.setSectionResizeMode(0, QHeaderView.Interactive)
         self.cart_table.setColumnWidth(0, 180)
         ch.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.cart_table.setColumnWidth(1, 80)
+        self.cart_table.setColumnWidth(1, 95)
         ch.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(2, 80)
+        self.cart_table.setColumnWidth(2, 112)
         ch.setSectionResizeMode(3, QHeaderView.Fixed)
         self.cart_table.setColumnWidth(3, 102)
         ch.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.cart_table.setColumnWidth(4, 142)
+        self.cart_table.setColumnWidth(4, 138)
         ch.setSectionResizeMode(5, QHeaderView.Fixed)
         self.cart_table.setColumnWidth(5, 68)
 
@@ -2306,7 +2317,7 @@ class OrderDeskWidget(QWidget):
         self.btn_versement.setToolTip(
             "Enregistrer les produits comme Versement — le montant versé est saisi uniquement au Bureau Caisse"
         )
-        self.btn_versement.setStyleSheet(OUTLINE_BTN_STYLE)
+        self.btn_versement.setStyleSheet(SLATE_OUTLINE_BTN_STYLE)
         self.btn_versement.clicked.connect(lambda: self._submit_order("BON_VERSEMENT"))
         layout.addWidget(self.btn_versement)
         return panel
