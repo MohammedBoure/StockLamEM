@@ -561,10 +561,19 @@ class BonPaymentsManageDialog(QDialog):
         self.table = QTableWidget(0, 6)
         self.table.setObjectName("BonPaymentsTable")
         self.table.setHorizontalHeaderLabels(["Date", "Source", "Mode", "Montant", "Notes", "Actions"])
+        self.table.setStyleSheet(
+            """
+            QTableWidget#BonPaymentsTable::item {
+                padding: 4px 8px;
+                border-bottom: 1px solid #F1F5F9;
+            }
+            """
+        )
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(46)
-        self.table.horizontalHeader().setFixedHeight(36)
+        self.table.verticalHeader().setDefaultSectionSize(48)
+        self.table.horizontalHeader().setFixedHeight(38)
         self.table.setAlternatingRowColors(True)
+        self.table.setWordWrap(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
@@ -732,7 +741,7 @@ class BonPaymentsManageDialog(QDialog):
         self.table.setRowCount(0)
         for row_idx, entry in enumerate(self._payments):
             self.table.insertRow(row_idx)
-            self.table.setRowHeight(row_idx, 46)
+            self.table.setRowHeight(row_idx, 48)
 
             src_map = {
                 "INVOICE_INITIAL": "Initial Caisse",
@@ -763,27 +772,31 @@ class BonPaymentsManageDialog(QDialog):
             action_cell = QWidget()
             action_cell.setStyleSheet("background: transparent;")
             a_lay = QHBoxLayout(action_cell)
-            a_lay.setContentsMargins(6, 8, 6, 8)
+            a_lay.setContentsMargins(6, 4, 6, 4)
             a_lay.setSpacing(6)
+            a_lay.setAlignment(Qt.AlignVCenter)
 
             if entry.get("editable"):
                 btn_edit = QPushButton("Modifier")
+                btn_edit.setObjectName("BtnDialogPaymentEdit")
                 btn_edit.setFixedHeight(28)
                 btn_edit.setCursor(Qt.PointingHandCursor)
                 btn_edit.setIcon(get_duotone_icon("edit", 14))
                 btn_edit.setIconSize(QSize(14, 14))
                 btn_edit.setStyleSheet(
                     """
-                    QPushButton {
+                    QPushButton#BtnDialogPaymentEdit {
                         background-color: #FFFFFF;
                         border: 1px solid #CBD5E1;
                         border-radius: 5px;
                         color: #0F172A;
                         font-size: 11px;
                         font-weight: 600;
-                        padding: 2px 8px;
+                        padding: 0px 8px;
+                        min-height: 26px;
+                        max-height: 26px;
                     }
-                    QPushButton:hover {
+                    QPushButton#BtnDialogPaymentEdit:hover {
                         border-color: #0E7471;
                         color: #0E7471;
                         background-color: #E6F4F1;
@@ -795,6 +808,7 @@ class BonPaymentsManageDialog(QDialog):
 
             if entry.get("deletable") and entry.get("payment_id"):
                 btn_del = QPushButton()
+                btn_del.setObjectName("BtnDialogPaymentDelete")
                 btn_del.setFixedSize(28, 28)
                 btn_del.setCursor(Qt.PointingHandCursor)
                 btn_del.setToolTip("Supprimer ce paiement")
@@ -802,12 +816,17 @@ class BonPaymentsManageDialog(QDialog):
                 btn_del.setIconSize(QSize(14, 14))
                 btn_del.setStyleSheet(
                     """
-                    QPushButton {
+                    QPushButton#BtnDialogPaymentDelete {
                         background-color: #FFFFFF;
                         border: 1px solid #FECACA;
                         border-radius: 5px;
+                        padding: 0px;
+                        min-width: 26px;
+                        max-width: 26px;
+                        min-height: 26px;
+                        max-height: 26px;
                     }
-                    QPushButton:hover { background-color: #FEE2E2; }
+                    QPushButton#BtnDialogPaymentDelete:hover { background-color: #FEE2E2; }
                     """
                 )
                 btn_del.clicked.connect(lambda _=False, pid=int(entry["payment_id"]): self._delete_payment(pid))

@@ -8,7 +8,7 @@
 ## 2. Scannability & Row Actions
 - **Right-Align All Monetary Columns**: `TOTAL TTC`, `PAYÉ`, `RESTE`, `PRIX TTC`, `PRIX U.` must always be right-aligned and consistently formatted (`16 660,00 DA`) for rapid vertical comparison.
 - **No Permanent Per-Row `QComboBox` or `QLineEdit` Clutter**: Never place permanent `QComboBox` or raw unformatted `QLineEdit` widgets inside every table row; keep cells scannable as formatted text and open an inline `QStyledItemDelegate` editor on click/double-click, or use a single `+` / `Modifier` action.
-- **Readable Row Actions**: Ensure row height (`>= 44px`), `setWordWrap(False)`, and column widths fit headers and cell buttons cleanly (`Suppr.` >= `64px`, `Total TTC` >= `135px`) using `#ObjectName` QSS scoping (`QTableWidget#Id::item { padding: 4px 6px; }`) with zero border clipping, and set `setToolTip(...)` on disabled row actions.
+- **Readable Row Actions**: Ensure row height (`>= 48px`), `setWordWrap(False)`, ergonomic cell button sizes (`>= 28x28px` for `+/-`, `>= 32x30px` for delete/action buttons with `16px` icons), and column widths where `columnWidth >= widgetWidth + horizontalItemPadding` (`Qté` >= `112px`, `Suppr.` >= `68px`, `Total TTC` >= `138px`) using `#ObjectName` QSS with **explicit** `min-width`/`max-width`/`min-height`/`max-height` (never `min-height: 0px; min-width: 0px;`, which resets `setFixedSize()`) and `QTableWidget#Id::item { padding: 4px 6px; }` with zero border clipping, and set `setToolTip(...)` on disabled row actions.
 
 ## 3. Empty & Filtered-Out States
 - When search/filters match 0 rows, display a centered message (`"Aucun résultat pour les filtres actuels"`) with a single `"Réinitialiser les filtres"` button so the user is never stuck looking at a blank table.

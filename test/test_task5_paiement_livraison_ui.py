@@ -117,9 +117,11 @@ def test_paiement_livraison_compact_kpi_cards(qapp):
 
     cards = tab.findChildren(QFrame, "SummaryStatCard")
     assert len(cards) == 4
+    widths = [card.width() for card in cards]
     for card in cards:
-        assert card.height() <= 72
-        assert card.width() <= 250
+        assert card.height() <= 76
+        assert card.width() >= 250
+    assert max(widths) - min(widths) <= 4
     assert "DA" in tab.lbl_kpi_total.text()
     assert "DA" in tab.lbl_kpi_paid.text()
     assert "DA" in tab.lbl_kpi_rem.text()

@@ -8,8 +8,8 @@ add & edit payment actions.
 import logging
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QKeySequence, QShortcut
+from PySide6.QtCore import QRect, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QKeySequence, QPainter, QPen, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QButtonGroup,
@@ -20,6 +20,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QStyledItemDelegate,
+    QStyle,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -34,7 +36,76 @@ from .bon_payments_dialogs import (
     _resolve_bonds_manager,
 )
 
+try:
+    import qtawesome as qta
+except ImportError:
+    qta = None
+
 logger = logging.getLogger("StockLam.UI.BonPaymentsWorkspace")
+
+
+class BonStatusBadgeDelegate(QStyledItemDelegate):
+    """Content-fitted status indicator preserving row selection and hairline dividers."""
+
+    _PILL_STYLES = {
+        "Partiel": (QColor("#FEF3C7"), QColor("#B45309")),
+        "Non payé": (QColor("#FEE2E2"), QColor("#B91C1C")),
+    }
+
+    def paint(self, painter: QPainter, option, index) -> None:
+        text = str(index.data(Qt.DisplayRole) or "").strip()
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        if option.state & QStyle.State_Selected:
+            bg = QColor("#E6F4F1")
+        elif index.row() % 2 == 1:
+            bg = QColor("#F8FAFC")
+        else:
+            bg = QColor("#FFFFFF")
+        painter.fillRect(option.rect, bg)
+
+        # Preserve row bottom hairline divider
+        painter.setPen(QPen(QColor("#F1F5F9"), 1))
+        painter.drawLine(option.rect.bottomLeft(), option.rect.bottomRight())
+
+        if text:
+            font = QFont(option.font)
+            font.setPointSize(9)
+            font.setBold(True)
+            painter.setFont(font)
+            fm = QFontMetrics(font)
+
+            if text == "Soldé":
+                dot_d = 7
+                gap = 6
+                content_w = dot_d + gap + fm.horizontalAdvance(text)
+                start_x = option.rect.x() + max(6, (option.rect.width() - content_w) // 2)
+                cy = option.rect.center().y()
+
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor("#16A34A"))
+                painter.drawEllipse(start_x, cy - dot_d // 2, dot_d, dot_d)
+
+                painter.setPen(QColor("#15803D"))
+                text_rect = QRect(start_x + dot_d + gap, option.rect.y(), fm.horizontalAdvance(text) + 4, option.rect.height())
+                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, text)
+            else:
+                fill_col, text_col = self._PILL_STYLES.get(text, (QColor("#F1F5F9"), QColor("#475569")))
+                pill_w = min(option.rect.width() - 12, fm.horizontalAdvance(text) + 20)
+                pill_h = 22
+                pill_x = option.rect.x() + (option.rect.width() - pill_w) // 2
+                pill_y = option.rect.y() + (option.rect.height() - pill_h) // 2
+                pill_rect = QRect(pill_x, pill_y, pill_w, pill_h)
+
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(fill_col)
+                painter.drawRoundedRect(pill_rect, 11, 11)
+
+                painter.setPen(text_col)
+                painter.drawText(pill_rect, Qt.AlignCenter, text)
+
+        painter.restore()
 
 
 class BonPaymentsWorkspaceWidget(QWidget):
@@ -88,20 +159,35 @@ class BonPaymentsWorkspaceWidget(QWidget):
                 background-color: #F8FAFC;
                 color: #0F172A;
             }
-            QLabel {
+            QWidget#BonPaymentsWorkspace QLabel {
                 border: none;
                 background: transparent;
             }
-            QFrame#WorkspaceHeaderCard, QFrame#SummaryStatCard, QFrame#ToolbarCard {
+            QFrame#WorkspaceHeaderCard, QFrame#SummaryStatCard, QFrame#BonsTableCard {
                 background-color: #FFFFFF;
                 border: 1px solid #E2E8F0;
                 border-radius: 10px;
+            }
+            QFrame#ToolbarCard {
+                background-color: #FFFFFF;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+            }
+            QFrame#BonsTableFooter {
+                background-color: #F8FAFC;
+                border: none;
+                border-top: 1px solid #E2E8F0;
+                border-bottom-left-radius: 10px;
+                border-bottom-right-radius: 10px;
             }
             QLineEdit#SearchBonsInput {
                 background-color: #FFFFFF;
                 border: 1px solid #CBD5E1;
                 border-radius: 6px;
                 padding: 4px 12px;
+                min-height: 28px;
                 font-size: 13px;
                 color: #0F172A;
             }
@@ -110,21 +196,26 @@ class BonPaymentsWorkspaceWidget(QWidget):
             }
             QTableWidget#BonsPaymentsTable {
                 background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 8px;
-                gridline-color: #F1F5F9;
+                border: none;
+                gridline-color: transparent;
                 alternate-background-color: #F8FAFC;
                 selection-background-color: #E6F4F1;
                 selection-color: #0F172A;
             }
+            QTableWidget#BonsPaymentsTable::item {
+                padding: 4px 10px;
+                border-bottom: 1px solid #F1F5F9;
+                color: #0F172A;
+            }
             QTableWidget#BonsPaymentsTable QHeaderView::section {
                 background-color: #F8FAFC;
-                color: #0F172A;
+                color: #475569;
                 font-weight: 700;
-                font-size: 12px;
+                font-size: 11px;
                 padding: 6px 10px;
                 border: none;
                 border-bottom: 2px solid #0E7471;
+                border-right: 1px solid #F1F5F9;
             }
             """
         )
@@ -155,6 +246,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
         hdr_lay.addLayout(title_col, 1)
 
         self.btn_refresh = QPushButton("Actualiser")
+        self.btn_refresh.setObjectName("BtnBonsRefresh")
         self.btn_refresh.setFixedHeight(36)
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
         self.btn_refresh.setIcon(get_duotone_icon("refresh", 16))
@@ -162,41 +254,51 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.btn_refresh.setToolTip("Actualiser la liste des bons (F5 / Ctrl+R)")
         self.btn_refresh.setStyleSheet(
             """
-            QPushButton {
+            QPushButton#BtnBonsRefresh {
                 background-color: #FFFFFF;
-                border: 1.5px solid #0E7471;
+                border: 1px solid #CBD5E1;
                 border-radius: 6px;
-                color: #0E7471;
+                color: #334155;
                 font-size: 12px;
-                font-weight: 700;
+                font-weight: 600;
                 padding: 0 14px;
             }
-            QPushButton:hover { background-color: #E6F4F1; }
+            QPushButton#BtnBonsRefresh:hover {
+                background-color: #F8FAFC;
+                border-color: #94A3B8;
+                color: #0F172A;
+            }
+            QPushButton#BtnBonsRefresh:pressed { background-color: #F1F5F9; }
             """
         )
         self.btn_refresh.clicked.connect(self.refresh_bons)
         hdr_lay.addWidget(self.btn_refresh)
         root.addWidget(header_card)
 
-        # 2. Compact Proportional KPI Summary Strip
+        # 2. Balanced Equal-Stretch KPI Summary Strip
         kpi_row = QHBoxLayout()
         kpi_row.setSpacing(12)
         self.lbl_kpi_count, card_count = self._build_stat_card("Nombre de Bons", "0", "#0F172A")
         self.lbl_kpi_total, card_total = self._build_stat_card("Total TTC", "0,00 DA", "#0F172A")
         self.lbl_kpi_paid, card_paid = self._build_stat_card("Total Versé", "0,00 DA", "#0E7471")
         self.lbl_kpi_rem, card_rem = self._build_stat_card("Reste à Payer", "0,00 DA", "#D97706")
-        kpi_row.addWidget(card_count)
-        kpi_row.addWidget(card_total)
-        kpi_row.addWidget(card_paid)
-        kpi_row.addWidget(card_rem)
-        kpi_row.addStretch(1)
+        kpi_row.addWidget(card_count, 1)
+        kpi_row.addWidget(card_total, 1)
+        kpi_row.addWidget(card_paid, 1)
+        kpi_row.addWidget(card_rem, 1)
         root.addLayout(kpi_row)
 
-        # 3. Filter & Search Toolbar
+        # 3. Unified Table Card (Toolbar + Table/EmptyState + Footer)
+        table_card = QFrame()
+        table_card.setObjectName("BonsTableCard")
+        tc_lay = QVBoxLayout(table_card)
+        tc_lay.setContentsMargins(0, 0, 0, 0)
+        tc_lay.setSpacing(0)
+
         toolbar = QFrame()
         toolbar.setObjectName("ToolbarCard")
         tb_lay = QHBoxLayout(toolbar)
-        tb_lay.setContentsMargins(12, 10, 12, 10)
+        tb_lay.setContentsMargins(14, 10, 14, 10)
         tb_lay.setSpacing(10)
 
         self.txt_search = QLineEdit()
@@ -204,6 +306,8 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.txt_search.setFixedHeight(36)
         self.txt_search.setClearButtonEnabled(True)
         self.txt_search.setPlaceholderText("Rechercher par N° Bon, client, téléphone, facture...")
+        if qta:
+            self.txt_search.addAction(qta.icon("fa5s.search", color="#94A3B8"), QLineEdit.LeadingPosition)
         self.txt_search.textChanged.connect(self._apply_filters)
         tb_lay.addWidget(self.txt_search, 1)
 
@@ -217,7 +321,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
         tb_lay.addWidget(self.btn_filter_all)
         tb_lay.addWidget(self.btn_filter_pending)
         tb_lay.addWidget(self.btn_filter_paid)
-        root.addWidget(toolbar)
+        tc_lay.addWidget(toolbar)
 
         # 4. Bons Table
         self.bons_table = QTableWidget(0, 10)
@@ -237,20 +341,35 @@ class BonPaymentsWorkspaceWidget(QWidget):
             ]
         )
         self.bons_table.verticalHeader().setVisible(False)
-        self.bons_table.verticalHeader().setDefaultSectionSize(46)
+        self.bons_table.verticalHeader().setDefaultSectionSize(50)
         self.bons_table.horizontalHeader().setFixedHeight(38)
         self.bons_table.setAlternatingRowColors(True)
+        self.bons_table.setShowGrid(False)
+        self.bons_table.setWordWrap(False)
         self.bons_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.bons_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.bons_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.bons_table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.bons_table.setItemDelegateForColumn(7, BonStatusBadgeDelegate(self.bons_table))
 
-        for col_idx in (4, 5, 6):
+        header_alignments = {
+            0: Qt.AlignLeft | Qt.AlignVCenter,
+            1: Qt.AlignCenter,
+            2: Qt.AlignLeft | Qt.AlignVCenter,
+            3: Qt.AlignLeft | Qt.AlignVCenter,
+            4: Qt.AlignRight | Qt.AlignVCenter,
+            5: Qt.AlignRight | Qt.AlignVCenter,
+            6: Qt.AlignRight | Qt.AlignVCenter,
+            7: Qt.AlignCenter,
+            8: Qt.AlignCenter,
+            9: Qt.AlignCenter,
+        }
+        for col_idx, align in header_alignments.items():
             if self.bons_table.horizontalHeaderItem(col_idx) is not None:
-                self.bons_table.horizontalHeaderItem(col_idx).setTextAlignment(
-                    Qt.AlignRight | Qt.AlignVCenter
-                )
+                self.bons_table.horizontalHeaderItem(col_idx).setTextAlignment(align)
 
         hdr = self.bons_table.horizontalHeader()
-        hdr.setMinimumSectionSize(75)
+        hdr.setMinimumSectionSize(80)
         hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(2, QHeaderView.Stretch)
@@ -258,13 +377,15 @@ class BonPaymentsWorkspaceWidget(QWidget):
         hdr.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(6, QHeaderView.ResizeToContents)
-        hdr.setSectionResizeMode(7, QHeaderView.ResizeToContents)
-        hdr.setSectionResizeMode(8, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(7, QHeaderView.Fixed)
+        self.bons_table.setColumnWidth(7, 112)
+        hdr.setSectionResizeMode(8, QHeaderView.Fixed)
+        self.bons_table.setColumnWidth(8, 92)
         hdr.setSectionResizeMode(9, QHeaderView.Fixed)
-        self.bons_table.setColumnWidth(9, 230)
+        self.bons_table.setColumnWidth(9, 268)
 
         self.bons_table.cellDoubleClicked.connect(self._on_row_double_clicked)
-        root.addWidget(self.bons_table, 1)
+        tc_lay.addWidget(self.bons_table, 1)
 
         # Empty State when search/filters return 0 bons
         self.bons_empty_state = QFrame()
@@ -273,8 +394,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
             """
             QFrame#BonsEmptyState {
                 background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 8px;
+                border: none;
             }
             QFrame#BonsEmptyState QLabel { border: none; background: transparent; }
             """
@@ -321,7 +441,25 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.btn_empty_reset.clicked.connect(self._reset_filters)
         es_lay.addWidget(self.btn_empty_reset, alignment=Qt.AlignCenter)
         self.bons_empty_state.setVisible(False)
-        root.addWidget(self.bons_empty_state, 1)
+        tc_lay.addWidget(self.bons_empty_state, 1)
+
+        footer_bar = QFrame()
+        footer_bar.setObjectName("BonsTableFooter")
+        f_lay = QHBoxLayout(footer_bar)
+        f_lay.setContentsMargins(14, 8, 14, 8)
+        f_lay.setSpacing(12)
+
+        self.lbl_footer_info = QLabel("0 bon(s) affiché(s)")
+        self.lbl_footer_info.setStyleSheet("font-size: 12px; font-weight: 600; color: #475569;")
+        f_lay.addWidget(self.lbl_footer_info)
+        f_lay.addStretch(1)
+
+        lbl_hints = QLabel("Double-clic : détails  •  F5 : actualiser  •  Échap : réinitialiser")
+        lbl_hints.setStyleSheet("font-size: 11px; color: #94A3B8;")
+        f_lay.addWidget(lbl_hints)
+        tc_lay.addWidget(footer_bar)
+
+        root.addWidget(table_card, 1)
 
         self._shortcut_f5 = QShortcut(QKeySequence(Qt.Key_F5), self)
         self._shortcut_f5.setContext(Qt.WidgetWithChildrenShortcut)
@@ -335,27 +473,21 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self._shortcut_esc.setContext(Qt.WidgetWithChildrenShortcut)
         self._shortcut_esc.activated.connect(self._reset_filters)
 
-        # Empty/footer info label
-        self.lbl_footer_info = QLabel("0 bon(s) affiché(s)")
-        self.lbl_footer_info.setStyleSheet("font-size: 12px; color: #64748B;")
-        root.addWidget(self.lbl_footer_info)
-
     def _build_stat_card(self, label_text: str, value_text: str, color_hex: str):
         card = QFrame()
         card.setObjectName("SummaryStatCard")
         card.setMinimumWidth(165)
-        card.setMaximumWidth(250)
-        card.setFixedHeight(68)
+        card.setFixedHeight(72)
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(14, 8, 14, 8)
-        lay.setSpacing(2)
+        lay.setContentsMargins(16, 10, 16, 10)
+        lay.setSpacing(3)
 
         lbl_name = QLabel(label_text)
         lbl_name.setStyleSheet(
-            "font-size: 10.5px; font-weight: 700; color: #64748B; letter-spacing: 0.3px;"
+            "font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 0.3px;"
         )
         lbl_val = QLabel(value_text)
-        lbl_val.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {color_hex};")
+        lbl_val.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {color_hex};")
 
         lay.addWidget(lbl_name)
         lay.addWidget(lbl_val)
@@ -363,28 +495,34 @@ class BonPaymentsWorkspaceWidget(QWidget):
 
     def _create_filter_chip(self, label: str, code: str, checked: bool = False) -> QPushButton:
         btn = QPushButton(label)
+        btn.setObjectName("BonsFilterChip")
         btn.setCheckable(True)
         btn.setChecked(checked)
         btn.setFixedHeight(36)
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(
             """
-            QPushButton {
+            QPushButton#BonsFilterChip {
                 background-color: #FFFFFF;
                 border: 1px solid #CBD5E1;
                 border-radius: 6px;
                 color: #334155;
                 font-size: 12px;
                 font-weight: 600;
-                padding: 0 12px;
+                padding: 0px 14px;
+                min-height: 36px;
+                max-height: 36px;
             }
-            QPushButton:checked {
-                background-color: #E6F4F1;
+            QPushButton#BonsFilterChip:checked {
+                background-color: #CCFBF1;
                 border: 1.5px solid #0E7471;
                 color: #0E7471;
                 font-weight: 700;
             }
-            QPushButton:hover:!checked { background-color: #F8FAFC; }
+            QPushButton#BonsFilterChip:hover:!checked {
+                background-color: #F8FAFC;
+                border-color: #94A3B8;
+            }
             """
         )
         btn.clicked.connect(lambda _=False, c=code: self._set_status_filter(c))
@@ -475,6 +613,25 @@ class BonPaymentsWorkspaceWidget(QWidget):
         self.lbl_kpi_rem.setText(f"{format_money(sum_rem)} DA")
         self.lbl_footer_info.setText(f"{count} bon(s) affiché(s)")
 
+        # Update segmented filter chip counts across all loaded bons
+        total_all = len(self._all_bons)
+        pending_count = 0
+        paid_count = 0
+        for bon in self._all_bons:
+            state = str(bon.get("Payment_State") or "").upper()
+            if not state:
+                rem = float(bon.get("Remaining_Amount") or 0.0)
+                paid = float(bon.get("Total_Paid") or 0.0)
+                tot = float(bon.get("Total_Amount_TTC") or 0.0)
+                state = "PAID" if (tot > 0 and rem <= 0.01) else ("PARTIAL" if paid > 0.01 else "UNPAID")
+            if state == "PAID":
+                paid_count += 1
+            else:
+                pending_count += 1
+        self.btn_filter_all.setText(f"Tous ({total_all})")
+        self.btn_filter_pending.setText(f"Reste à payer ({pending_count})")
+        self.btn_filter_paid.setText(f"Soldés ({paid_count})")
+
     def _populate_table(self) -> None:
         self.bons_table.setRowCount(0)
         has_rows = len(self._filtered_bons) > 0
@@ -486,7 +643,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
 
         for row_idx, bon in enumerate(self._filtered_bons):
             self.bons_table.insertRow(row_idx)
-            self.bons_table.setRowHeight(row_idx, 46)
+            self.bons_table.setRowHeight(row_idx, 50)
 
             ord_num = str(bon.get("Order_Number") or f"#{bon.get('Order_ID', '')}")
             date_str = str(bon.get("Order_Date") or "")[:10]
@@ -502,38 +659,43 @@ class BonPaymentsWorkspaceWidget(QWidget):
 
             if total_ttc > 0.0 and remaining <= 0.01:
                 status_text = "Soldé"
-                status_color = QColor("#16A34A")
             elif total_paid > 0.01:
                 status_text = "Partiel"
-                status_color = QColor("#D97706")
             else:
                 status_text = "Non payé"
-                status_color = QColor("#DC2626")
 
             it_num = QTableWidgetItem(ord_num)
+            it_num.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             it_num.setFont(bold_font)
-            it_date = QTableWidgetItem(date_str)
-            it_client = QTableWidgetItem(client_display)
-            it_inv = QTableWidgetItem(inv_no)
 
-            it_tot = QTableWidgetItem(format_money(total_ttc))
+            it_date = QTableWidgetItem(date_str)
+            it_date.setTextAlignment(Qt.AlignCenter)
+            it_date.setForeground(QColor("#475569"))
+
+            it_client = QTableWidgetItem(client_display)
+            it_client.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+            it_inv = QTableWidgetItem(inv_no)
+            it_inv.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            if inv_no == "En attente":
+                it_inv.setForeground(QColor("#64748B"))
+
+            it_tot = QTableWidgetItem(f"{format_money(total_ttc)} DA")
             it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             it_tot.setFont(bold_font)
 
-            it_paid = QTableWidgetItem(format_money(total_paid))
+            it_paid = QTableWidgetItem(f"{format_money(total_paid)} DA")
             it_paid.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             it_paid.setFont(bold_font)
             it_paid.setForeground(QColor("#0E7471"))
 
-            it_rem = QTableWidgetItem(format_money(remaining))
+            it_rem = QTableWidgetItem(f"{format_money(remaining)} DA")
             it_rem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             it_rem.setFont(bold_font)
             it_rem.setForeground(QColor("#D97706") if remaining > 0.01 else QColor("#16A34A"))
 
             it_status = QTableWidgetItem(status_text)
             it_status.setTextAlignment(Qt.AlignCenter)
-            it_status.setFont(bold_font)
-            it_status.setForeground(status_color)
 
             it_count = QTableWidgetItem(f"{pay_count}")
             it_count.setTextAlignment(Qt.AlignCenter)
@@ -552,8 +714,9 @@ class BonPaymentsWorkspaceWidget(QWidget):
             action_cell = QWidget()
             action_cell.setStyleSheet("background: transparent;")
             a_lay = QHBoxLayout(action_cell)
-            a_lay.setContentsMargins(6, 8, 6, 8)
-            a_lay.setSpacing(6)
+            a_lay.setContentsMargins(6, 4, 6, 4)
+            a_lay.setSpacing(8)
+            a_lay.setAlignment(Qt.AlignVCenter)
 
             btn_add = QPushButton(f"+ {self._add_button_text}")
             btn_add.setObjectName("btn_row_add")
@@ -570,17 +733,19 @@ class BonPaymentsWorkspaceWidget(QWidget):
                 btn_add.setToolTip("Montant du bon nul (0,00 DA) — aucun paiement requis")
             btn_add.setStyleSheet(
                 """
-                QPushButton {
+                QPushButton#btn_row_add {
                     background-color: #0E7471;
                     border: 1px solid #0E7471;
                     border-radius: 5px;
                     color: #FFFFFF;
                     font-size: 11px;
                     font-weight: 700;
-                    padding: 2px 10px;
+                    padding: 0px 12px;
+                    min-height: 26px;
+                    max-height: 26px;
                 }
-                QPushButton:hover:enabled { background-color: #0A5C59; border-color: #0A5C59; }
-                QPushButton:disabled {
+                QPushButton#btn_row_add:hover:enabled { background-color: #0A5C59; border-color: #0A5C59; }
+                QPushButton#btn_row_add:disabled {
                     background-color: #F1F5F9;
                     color: #475569;
                     border: 1px solid #CBD5E1;
@@ -598,19 +763,21 @@ class BonPaymentsWorkspaceWidget(QWidget):
             btn_edit.setToolTip("Voir et modifier les versements de ce bon")
             btn_edit.setStyleSheet(
                 """
-                QPushButton {
+                QPushButton#btn_row_edit {
                     background-color: #FFFFFF;
                     border: 1px solid #CBD5E1;
                     border-radius: 5px;
-                    color: #0F172A;
+                    color: #334155;
                     font-size: 11px;
                     font-weight: 600;
-                    padding: 2px 10px;
+                    padding: 0px 12px;
+                    min-height: 26px;
+                    max-height: 26px;
                 }
-                QPushButton:hover {
-                    border-color: #0E7471;
-                    color: #0E7471;
-                    background-color: #E6F4F1;
+                QPushButton#btn_row_edit:hover {
+                    border-color: #94A3B8;
+                    color: #0F172A;
+                    background-color: #F8FAFC;
                 }
                 """
             )
