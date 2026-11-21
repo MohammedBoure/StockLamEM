@@ -21,9 +21,10 @@ class StockValuationTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
+        from ui.theme_tokens import CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, STATUS_SUCCESS, TEXT_PRIMARY
         # ملخص سريع في الأعلى
-        self.lbl_summary = QLabel("Valeur Totale: 0,00 DA")
-        self.lbl_summary.setStyleSheet("font-size: 16px; font-weight: bold; color: #27ae60; margin-bottom: 10px;")
+        self.lbl_summary = QLabel("Valeur Totale : 0,00 DA")
+        self.lbl_summary.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {STATUS_SUCCESS}; margin-bottom: 10px;")
         layout.addWidget(self.lbl_summary)
 
         # الجدول
@@ -37,7 +38,7 @@ class StockValuationTab(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents) # اسم المنتج
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
-        self.table.setStyleSheet("border: 1px solid #dcdde1; gridline-color: #ecf0f1;")
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         
         layout.addWidget(self.table)
 
@@ -76,7 +77,7 @@ class StockValuationTab(QWidget):
                 item_val.setForeground(QColor("#27ae60")) # أخضر
                 self.table.setItem(row, 3, item_val)
 
-            self.lbl_summary.setText(f"💰 Valeur Totale du Stock : {format_money(total_value, 'DA')}")
+            self.lbl_summary.setText(f"Valeur Totale du Stock : {format_money(total_value, 'DA')}")
             self.table.setSortingEnabled(True)
             
         except Exception as e:
@@ -384,7 +385,7 @@ class CashSessionsAnalysisTab(QWidget):
             self.table.setItem(r, 1, QTableWidgetItem(sess_no))
             self.table.setItem(r, 2, QTableWidgetItem(caisse_name))
 
-            st_item = QTableWidgetItem("🟢 Ouverte" if is_open else "🔒 Clôturée")
+            st_item = QTableWidgetItem("Ouverte" if is_open else "Clôturée")
             st_item.setTextAlignment(Qt.AlignCenter)
             st_item.setForeground(QBrush(QColor("#27ae60" if is_open else "#64748b")))
             st_item.setFont(QFont("Segoe UI", 9, QFont.Bold))
@@ -436,7 +437,10 @@ class CashSessionsAnalysisTab(QWidget):
             caisse_name = session_data.get('Terminal_Name') or session_data.get('Terminal_Code') or "Caisse"
             session_no = session_data.get('Session_No') or f"#{sess_id}"
             dlg = QDialog(self)
-            dlg.setWindowTitle(f"📋 Détails de la Session : {session_no} - {caisse_name}")
+            dlg.setObjectName("CashSessionDetailsDialog")
+            dlg.setWindowTitle(f"Détails de la Session : {session_no} - {caisse_name}")
+            from ui.theme_tokens import CLEAN_TABLE_QSS, scoped_dialog_qss
+            dlg.setStyleSheet(scoped_dialog_qss("CashSessionDetailsDialog"))
             dlg.resize(700, 480)
             lay = QVBoxLayout(dlg)
             lbl_info = QLabel(
@@ -446,6 +450,7 @@ class CashSessionsAnalysisTab(QWidget):
             )
             lay.addWidget(lbl_info)
             tbl = QTableWidget()
+            tbl.setStyleSheet(CLEAN_TABLE_QSS)
             cols = ["N° Facture", "Date", "Client", "Statut", "Mode Règlement", "Total TTC"]
             tbl.setColumnCount(len(cols))
             tbl.setHorizontalHeaderLabels(cols)
@@ -484,33 +489,31 @@ class AnalysisView(QWidget):
         # --- 1. Top Toolbar (Controls) ---
         toolbar = QFrame()
         toolbar.setObjectName("AnalysisToolbar")
+        from ui.theme_tokens import (
+            CARD_BG, BORDER_HAIRLINE, BORDER_CONTROL, TEXT_PRIMARY, PRIMARY_CTA_QSS, FLAT_SUBTABS_QSS,
+        )
         toolbar.setStyleSheet(
-            "QFrame#AnalysisToolbar { background-color: white; border-bottom: 1px solid #dcdde1; }"
+            f"QFrame#AnalysisToolbar {{ background-color: {CARD_BG}; border-bottom: 1px solid {BORDER_HAIRLINE}; }}"
             "QFrame#AnalysisToolbar QLabel { border: none; background: transparent; }"
         )
-        toolbar.setFixedHeight(70)
+        toolbar.setFixedHeight(64)
         tool_layout = QHBoxLayout(toolbar)
         
-        lbl_title = QLabel("📊 ANALYSE & RAPPORTS")
-        lbl_title.setStyleSheet("font-size: 18px; font-weight: 900; color: #2c3e50;")
+        lbl_title = QLabel("ANALYSE & RAPPORTS")
+        lbl_title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {TEXT_PRIMARY};")
         
         self.date_from = QDateEdit(QDate.currentDate().addDays(-30))
         self.date_to = QDateEdit(QDate.currentDate())
         for d in [self.date_from, self.date_to]:
             d.setCalendarPopup(True)
             d.setFixedWidth(120)
-            d.setStyleSheet("padding: 5px; border: 1px solid #bdc3c7; border-radius: 4px;")
+            d.setStyleSheet(f"padding: 4px 6px; border: 1px solid {BORDER_CONTROL}; border-radius: 6px;")
 
-        btn_refresh = QPushButton("ACTUALISER LES DONNÉES")
+        btn_refresh = QPushButton("Actualiser les données")
         btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_refresh.setIcon(qta.icon('fa5s.sync-alt', color='white') if 'qta' in globals() else None)
-        btn_refresh.setStyleSheet("""
-            QPushButton { 
-                background-color: #2c3e50; color: white; font-weight: bold; 
-                border-radius: 4px; padding: 8px 20px; border: none;
-            }
-            QPushButton:hover { background-color: #34495e; }
-        """)
+        btn_refresh.setMinimumHeight(34)
+        btn_refresh.setStyleSheet(PRIMARY_CTA_QSS)
         btn_refresh.clicked.connect(self.refresh_all)
 
         tool_layout.addWidget(lbl_title)
@@ -527,18 +530,7 @@ class AnalysisView(QWidget):
         # --- 2. Content Tabs ---
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: none; border-top: 1px solid #E2E8F0; background: #FFFFFF; }
-            QTabBar::tab {
-                background: transparent; color: #64748B; border: none;
-                border-bottom: 2px solid transparent;
-                padding: 10px 20px; font-weight: 600; margin-right: 4px;
-            }
-            QTabBar::tab:selected {
-                background: transparent; color: #007572; border-bottom: 2px solid #007572; font-weight: 700;
-            }
-            QTabBar::tab:hover:!selected { background: #F8FAFC; color: #1E293B; }
-        """)
+        self.tabs.setStyleSheet(FLAT_SUBTABS_QSS)
         
         # إنشاء التبويبات
         from ui.widgets.dashboard.ai_analytics_tab import AiAnalyticsTab

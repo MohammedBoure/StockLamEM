@@ -74,16 +74,19 @@ class OrderPaymentConfirmationDialog(QDialog):
             self.move(geo.center() - self.rect().center())
 
     def _init_ui(self) -> None:
+        self.setObjectName("OrderPaymentDialog")
         self.setStyleSheet("""
-            QDialog {
+            QDialog#OrderPaymentDialog {
                 background-color: #FFFFFF;
             }
-            QLabel {
+            QDialog#OrderPaymentDialog QLabel {
                 font-size: 12px;
                 font-weight: 600;
                 color: #2C3E50;
+                border: none;
+                background: transparent;
             }
-            QLineEdit {
+            QDialog#OrderPaymentDialog QLineEdit {
                 background-color: #FFFFFF;
                 border: 1px solid #CED4DA;
                 border-radius: 4px;

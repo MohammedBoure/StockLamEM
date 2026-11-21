@@ -28,11 +28,15 @@ class ExternalPartnersTab(QWidget):
         layout.setContentsMargins(5, 5, 5, 5)
 
         # --- Recherche & Filtres ---
-        filter_group = QGroupBox("🔎 Recherche & Filtres")
+        from ui.theme_tokens import (
+            PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS,
+            CLEAN_TABLE_QSS, set_enabled_with_reason,
+        )
+        filter_group = QGroupBox("Recherche & Filtres")
         filter_layout = QHBoxLayout(filter_group)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔎 Rechercher par nom, agrément, ville...")
+        self.search_input.setPlaceholderText("Rechercher par nom, agrément, ville...")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.textChanged.connect(self.apply_filters_local)
 
@@ -58,6 +62,7 @@ class ExternalPartnersTab(QWidget):
 
         # --- Table ---
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         headers = ["Nom Partenaire", "Type", "Agrément", "Contact", "Téléphone", "Email", "Ville", "Adresse"]
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
@@ -78,16 +83,22 @@ class ExternalPartnersTab(QWidget):
         # --- Actions ---
         actions = QHBoxLayout()
 
-        self.btn_add = QPushButton("➕ Nouveau Partenaire")
+        self.btn_add = QPushButton("+ Nouveau Partenaire")
+        self.btn_add.setMinimumHeight(34)
+        self.btn_add.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_add.clicked.connect(self.add_partner)
 
-        self.btn_edit = QPushButton("✏️ Modifier")
+        self.btn_edit = QPushButton("Modifier")
+        self.btn_edit.setMinimumHeight(34)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.clicked.connect(self.edit_partner)
-        self.btn_edit.setEnabled(False)
+        set_enabled_with_reason(self.btn_edit, False, "Sélectionnez un partenaire dans le tableau pour modifier.")
 
         self.btn_delete = QPushButton("Supprimer")
+        self.btn_delete.setMinimumHeight(34)
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_delete.clicked.connect(self.delete_partner)
-        self.btn_delete.setEnabled(False)
+        set_enabled_with_reason(self.btn_delete, False, "Sélectionnez un partenaire dans le tableau pour supprimer.")
 
         actions.addWidget(self.btn_add)
         actions.addWidget(self.btn_edit)
@@ -163,9 +174,10 @@ class ExternalPartnersTab(QWidget):
     # Actions
     # ------------------------------------------------------------------
     def update_action_buttons_state(self):
+        from ui.theme_tokens import set_enabled_with_reason
         selected = self.table.currentRow() >= 0
-        self.btn_edit.setEnabled(selected)
-        self.btn_delete.setEnabled(selected)
+        set_enabled_with_reason(self.btn_edit, selected, "Sélectionnez un partenaire dans le tableau pour modifier.", "Modifier le partenaire sélectionné")
+        set_enabled_with_reason(self.btn_delete, selected, "Sélectionnez un partenaire dans le tableau pour supprimer.", "Supprimer le partenaire sélectionné")
 
     def add_partner(self):
         dialog = PartnerDialog(self)

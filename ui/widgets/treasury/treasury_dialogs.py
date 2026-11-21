@@ -114,11 +114,11 @@ def _build_payment_strip(
 
 
 _DIALOG_BASE_QSS = """
-QDialog {
+QDialog#TreasuryModalDialog {
     background-color: #F8FAFC;
     color: #0F172A;
 }
-QDialog QLabel {
+QDialog#TreasuryModalDialog QLabel {
     border: none;
     background: transparent;
 }
@@ -127,7 +127,10 @@ QFrame#DialogCard {
     border: 1px solid #E2E8F0;
     border-radius: 10px;
 }
-QLineEdit, QComboBox, QDoubleSpinBox, QDateEdit {
+QDialog#TreasuryModalDialog QLineEdit,
+QDialog#TreasuryModalDialog QComboBox,
+QDialog#TreasuryModalDialog QDoubleSpinBox,
+QDialog#TreasuryModalDialog QDateEdit {
     background-color: #FFFFFF;
     border: 1px solid #CBD5E1;
     border-radius: 6px;
@@ -181,6 +184,7 @@ class TreasuryOperationDialog(QDialog):
         return str(btn.property("payment_code") or "Cash") if btn else "Cash"
 
     def _init_ui(self) -> None:
+        self.setObjectName("TreasuryModalDialog")
         self.setStyleSheet(_DIALOG_BASE_QSS)
         is_in = self.direction == "IN"
         accent = "#0E7471" if is_in else "#DC2626"
@@ -432,6 +436,7 @@ class TreasuryOperationDialog(QDialog):
                 return
 
         self.btn_submit.setEnabled(False)
+        self.btn_submit.setToolTip("Enregistrement en cours...")
         try:
             uid = int(self.current_user.get("User_ID") or 1) if isinstance(self.current_user, dict) else 1
             dt_val = self.dt_movement.date().toString("yyyy-MM-dd")
@@ -478,6 +483,7 @@ class TreasuryTransferDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self) -> None:
+        self.setObjectName("TreasuryModalDialog")
         self.setStyleSheet(_DIALOG_BASE_QSS)
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
@@ -619,6 +625,7 @@ class TreasuryTransferDialog(QDialog):
         if src == dst or amt <= 0 or not reason:
             return
         self.btn_submit.setEnabled(False)
+        self.btn_submit.setToolTip("Enregistrement en cours...")
         try:
             uid = int(self.current_user.get("User_ID") or 1) if isinstance(self.current_user, dict) else 1
             self.result_data = self._treasury_mgr.record_transfer(
@@ -647,6 +654,7 @@ class TreasuryMovementDetailsDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self) -> None:
+        self.setObjectName("TreasuryModalDialog")
         self.setStyleSheet(_DIALOG_BASE_QSS)
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)

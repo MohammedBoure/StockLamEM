@@ -5,7 +5,7 @@ from datetime import datetime, date
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
                                QTableWidgetItem, QPushButton, QHeaderView, 
                                QComboBox, QLabel, QLineEdit, QMessageBox, 
-                               QGroupBox, QAbstractItemView, QStyle)
+                               QGroupBox, QAbstractItemView, QStyle, QFrame)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QColor
 
@@ -13,6 +13,10 @@ from PySide6.QtGui import QColor
 from .dialogs import BarcodeLineEdit, NumericSpinBox
 from .location_tree_combo import LocationTreeComboBox
 from ui.formatting import format_quantity, quantity_to_int
+from ui.theme_tokens import (
+    BRAND_TEAL, CARD_BG, BORDER_CONTROL, BORDER_HAIRLINE, TEXT_PRIMARY, TEXT_MUTED,
+    STATUS_DANGER, CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, scoped_card_qss,
+)
 
 class ConsumptionTab(QWidget):
     data_changed = Signal()
@@ -30,23 +34,39 @@ class ConsumptionTab(QWidget):
         layout.setContentsMargins(15, 15, 15, 15)
 
         # --- 1. منطقة الإدخال ---
-        input_group = QGroupBox("🚀 TERMINAL DE SCAN (Prêt pour la saisie)")
-        input_group.setStyleSheet("""
-            QGroupBox { font-weight: bold; font-size: 14px; color: #1e3799; border: 2px solid #1e3799; border-radius: 10px; padding-top: 20px; }
-            QGroupBox::title { subcontrol-origin: margin; left: 15px; padding: 0 5px; }
+        input_group = QGroupBox("Terminal de scan (Prêt pour la saisie)")
+        input_group.setObjectName("ConsumptionScanGroup")
+        input_group.setStyleSheet(f"""
+            QGroupBox#ConsumptionScanGroup {{
+                background-color: {CARD_BG};
+                font-weight: 700;
+                font-size: 13px;
+                color: {BRAND_TEAL};
+                border: 1px solid {BORDER_HAIRLINE};
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 14px;
+            }}
+            QGroupBox#ConsumptionScanGroup::title {{
+                subcontrol-origin: margin;
+                left: 12px;
+                padding: 0 6px;
+            }}
         """)
         input_layout = QHBoxLayout(input_group)
 
         self.barcode_input = BarcodeLineEdit()
-        self.barcode_input.setPlaceholderText("SCANNEZ LE PRODUIT ICI...")
-        self.barcode_input.setMinimumHeight(65)
-        self.barcode_input.setStyleSheet("""
-            QLineEdit { 
-                font-size: 24px; font-weight: bold; background-color: #f8f9fa; 
-                border: 1px solid #dcdde1; border-radius: 5px; padding-left: 10px; color: #2f3640;
-            }
-            QLineEdit:focus { border: 2px solid #1e3799; background-color: #ffffff; }
-        """)
+        self.barcode_input.setPlaceholderText("Scannez ou saisissez le code-barres / N° de lot ici...")
+        self.barcode_input.setMinimumHeight(48)
+        self._barcode_base_qss = f"""
+            QLineEdit {{
+                font-size: 18px; font-weight: 700; background-color: #F8FAFC;
+                border: 1px solid {BORDER_CONTROL}; border-radius: 6px;
+                padding-left: 12px; color: {TEXT_PRIMARY};
+            }}
+            QLineEdit:focus {{ border: 1.5px solid {BRAND_TEAL}; background-color: {CARD_BG}; }}
+        """
+        self.barcode_input.setStyleSheet(self._barcode_base_qss)
         self.barcode_input.returnPressed.connect(self.process_scan)
 
         input_layout.addWidget(self.barcode_input)
@@ -58,27 +78,23 @@ class ConsumptionTab(QWidget):
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels(cols)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.verticalHeader().setDefaultSectionSize(55)
+        self.table.verticalHeader().setDefaultSectionSize(44)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setStyleSheet("QTableWidget { background-color: white; border-radius: 5px; }")
+        self.table.setAlternatingRowColors(True)
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         layout.addWidget(self.table)
 
         # --- 3. شريط التحكم ---
         bottom_layout = QHBoxLayout()
-        self.btn_clear = QPushButton("🗑️ Vider la liste")
-        self.btn_clear.setFixedWidth(120)
+        self.btn_clear = QPushButton("Vider la liste")
+        self.btn_clear.setMinimumHeight(36)
+        self.btn_clear.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_clear.clicked.connect(lambda: self.table.setRowCount(0))
         
-        self.btn_execute = QPushButton("⚡ CONFIRMER ET EXÉCUTER TOUT")
-        self.btn_execute.setMinimumHeight(60)
-        self.btn_execute.setStyleSheet("""
-            QPushButton { 
-                background-color: #27ae60; color: white; font-weight: bold; 
-                font-size: 18px; border-radius: 8px; padding: 0 40px; 
-            }
-            QPushButton:hover { background-color: #219150; }
-        """)
+        self.btn_execute = QPushButton("Confirmer et exécuter tout")
+        self.btn_execute.setMinimumHeight(42)
+        self.btn_execute.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_execute.clicked.connect(self.execute_all)
 
         bottom_layout.addWidget(self.btn_clear)
@@ -115,16 +131,14 @@ class ConsumptionTab(QWidget):
         if found_item:
             self.add_item_to_table(found_item)
             self.barcode_input.clear()
-            # وميض أزرق عند النجاح
-            self.barcode_input.setStyleSheet(self.barcode_input.styleSheet().replace("#f8f9fa", "#dff9fb")) 
+            self.barcode_input.setStyleSheet(self._barcode_base_qss.replace("#F8FAFC", "#E6F4F1")) 
             QTimer.singleShot(300, lambda: self.reset_input_style())
         else:
-            # وميض أحمر عند الفشل
-            self.barcode_input.setStyleSheet(self.barcode_input.styleSheet().replace("#f8f9fa", "#fab1a0"))
+            self.barcode_input.setStyleSheet(self._barcode_base_qss.replace("#F8FAFC", "#FEF2F2"))
             QTimer.singleShot(500, lambda: self.reset_input_style())
 
     def reset_input_style(self):
-        self.barcode_input.setStyleSheet(self.barcode_input.styleSheet().replace("#dff9fb", "#f8f9fa").replace("#fab1a0", "#f8f9fa"))
+        self.barcode_input.setStyleSheet(self._barcode_base_qss)
 
     def add_item_to_table(self, batch):
         """إضافة السلعة للجدول"""
@@ -155,15 +169,21 @@ class ConsumptionTab(QWidget):
         self.table.setItem(row, 2, QTableWidgetItem(str(batch.get('Location_Name', '---'))))
 
         combo_action = QComboBox()
-        combo_action.addItems(["📉 Consommer (Sortie)", "🚚 Transférer (Lieu)"])
-        combo_action.setStyleSheet("font-weight: bold; color: #2980b9;")
+        combo_action.addItems(["Consommer (Sortie)", "Transférer (Lieu)"])
+        combo_action.setStyleSheet(f"font-weight: 700; color: {BRAND_TEAL};")
         self.table.setCellWidget(row, 3, combo_action)
 
         dest_picker = LocationTreeComboBox(self.location_manager)
         dest_picker.setEnabled(False)
+        dest_picker.setToolTip("Sélectionnez « Transférer (Lieu) » dans Action pour choisir une destination.")
         self.table.setCellWidget(row, 4, dest_picker)
 
-        combo_action.currentTextChanged.connect(lambda t, p=dest_picker: p.setEnabled("Transférer" in t))
+        def _on_action_changed(t, p=dest_picker):
+            is_tr = "Transférer" in t
+            p.setEnabled(is_tr)
+            p.setToolTip("" if is_tr else "Sélectionnez « Transférer (Lieu) » dans Action pour choisir une destination.")
+
+        combo_action.currentTextChanged.connect(_on_action_changed)
 
         # إعداد حد الكمية
         try:
@@ -177,7 +197,8 @@ class ConsumptionTab(QWidget):
         self.table.setCellWidget(row, 5, qty_spin)
 
         btn_del = QPushButton("✕")
-        btn_del.setStyleSheet("color: red; font-weight: bold; border: none;")
+        btn_del.setToolTip("Retirer cette ligne")
+        btn_del.setStyleSheet(f"color: {STATUS_DANGER}; font-weight: 700; border: none; background: transparent;")
         btn_del.clicked.connect(lambda: self.table.removeRow(self.table.currentRow()))
         self.table.setCellWidget(row, 6, btn_del)
 
@@ -286,23 +307,23 @@ class ConsumptionTab(QWidget):
                 old_str = oldest_date_obj.strftime("%d/%m/%Y")
                 
                 msg = QMessageBox(self)
-                msg.setWindowTitle("⚠️ Alerte FEFO (Péremption)")
+                msg.setWindowTitle("Alerte FEFO (Péremption)")
                 msg.setIcon(QMessageBox.Warning)
                 
-                msg.setText(f"<b>Attention : Respect du FEFO !</b>")
+                msg.setText("<b>Attention : Respect du FEFO</b>")
                 info_text = (
-                    f"⛔ <b>Lot Scanné (Plus Récent):</b><br>"
-                    f"Lot : {current_batch.get('Lot_Number')} | Exp : <span style='color:red'>{cur_str}</span><br><br>"
+                    f"<b>Lot scanné (plus récent) :</b><br>"
+                    f"Lot : {current_batch.get('Lot_Number')} | Exp : <span style='color:{STATUS_DANGER}'>{cur_str}</span><br><br>"
                     
-                    f"✅ <b>Lot Recommandé (Expire Bientôt):</b><br>"
-                    f"Lot : {oldest_batch.get('Lot_Number')} | Exp : <span style='color:green'>{old_str}</span><br>"
+                    f"<b>Lot recommandé (expire bientôt) :</b><br>"
+                    f"Lot : {oldest_batch.get('Lot_Number')} | Exp : <span style='color:{BRAND_TEAL}'>{old_str}</span><br>"
                     f"Emplacement : <b>{oldest_batch.get('Location_Name')}</b><br>"
                     f"Qté Dispo : {format_quantity(oldest_batch.get('Quantity_Current'))}"
                 )
                 msg.setInformativeText(info_text)
                 
-                btn_swap = msg.addButton("🔄 Utiliser le lot ancien (Recommandé)", QMessageBox.AcceptRole)
-                btn_force = msg.addButton("⚠️ Forcer ce lot", QMessageBox.ActionRole)
+                btn_swap = msg.addButton("Utiliser le lot ancien (Recommandé)", QMessageBox.AcceptRole)
+                btn_force = msg.addButton("Forcer ce lot", QMessageBox.ActionRole)
                 btn_cancel = msg.addButton("Annuler", QMessageBox.RejectRole)
                 
                 msg.exec()
@@ -383,13 +404,13 @@ class ConsumptionTab(QWidget):
 
         # عرض التقرير النهائي
         summary = []
-        if success_count > 0: summary.append(f"✅ {success_count} opérations réussies.")
-        if swapped_count > 0: summary.append(f"🔄 {swapped_count} lots échangés (FEFO).")
-        if skipped_count > 0: summary.append(f"⛔ {skipped_count} opérations annulées.")
+        if success_count > 0: summary.append(f"{success_count} opérations réussies.")
+        if swapped_count > 0: summary.append(f"{swapped_count} lots échangés (FEFO).")
+        if skipped_count > 0: summary.append(f"{skipped_count} opérations annulées.")
         
         final_msg = "\n".join(summary)
         if errors:
-            final_msg += "\n\n❌ Erreurs :\n" + "\n".join(errors)
+            final_msg += "\n\nErreurs :\n" + "\n".join(errors)
             QMessageBox.warning(self, "Résultat Partiel", final_msg)
         else:
             QMessageBox.information(self, "Succès", final_msg if final_msg else "Aucune opération.")

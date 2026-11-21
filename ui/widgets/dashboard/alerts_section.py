@@ -18,28 +18,22 @@ def is_stock_alert(alert_data):
 class AlertDetailDialog(QDialog):
     def __init__(self, alert_data, math_explanation, parent=None):
         super().__init__(parent)
+        self.setObjectName("AlertDetailDialog")
         self.setWindowTitle(f"Détails de l'alerte : {alert_data.get('Product', 'Inconnu')}")
         self.setMinimumSize(500, 400)
-        self.setStyleSheet("""
-            QDialog { background-color: #ffffff; }
-            QLabel { font-size: 14px; color: #2c3e50; }
-            QTextEdit { 
-                background-color: #f8f9fa; 
-                border: 1px solid #dcdde1; 
-                border-radius: 8px; 
-                padding: 10px; 
+        from ui.theme_tokens import CARD_BG, SUBTLE_BG, BORDER_HAIRLINE, TEXT_PRIMARY, TEXT_BODY, PRIMARY_CTA_QSS
+        self.setStyleSheet(f"""
+            QDialog#AlertDetailDialog {{ background-color: {CARD_BG}; }}
+            QDialog#AlertDetailDialog QLabel {{ font-size: 13px; color: {TEXT_PRIMARY}; border: none; background: transparent; }}
+            QDialog#AlertDetailDialog QTextEdit {{
+                background-color: {SUBTLE_BG};
+                border: 1px solid {BORDER_HAIRLINE};
+                border-radius: 8px;
+                padding: 10px;
                 font-family: Consolas, 'Courier New', monospace;
-                font-size: 13px;
-                color: #34495e;
-            }
-            QPushButton { 
-                padding: 8px 15px; 
-                border-radius: 6px; 
-                background: #007572; 
-                color: white; 
-                font-weight: bold;
-            }
-            QPushButton:hover { background: #005a58; }
+                font-size: 12.5px;
+                color: {TEXT_BODY};
+            }}
         """)
 
         layout = QVBoxLayout(self)
@@ -73,6 +67,9 @@ class AlertDetailDialog(QDialog):
         btn_box.rejected.connect(self.reject)
         close_btn = btn_box.button(QDialogButtonBox.Close)
         close_btn.setText("Fermer")
+        from ui.theme_tokens import PRIMARY_CTA_QSS
+        close_btn.setMinimumHeight(34)
+        close_btn.setStyleSheet(PRIMARY_CTA_QSS)
         close_btn.setCursor(QCursor(Qt.PointingHandCursor))
         layout.addWidget(btn_box)
 
@@ -88,11 +85,10 @@ class AlertsSection(QFrame):
 
     def init_ui(self):
         self.setObjectName("AlertsSection")
-        self.setStyleSheet("""
-            #AlertsSection { background: white; border-radius: 12px; border: 1px solid #ecf0f1; }
-            QTableWidget { border: none; gridline-color: #f8f9fa; selection-background-color: #e0f2f1; selection-color: #000; }
-            QHeaderView::section { background-color: #f8f9fa; border: none; font-weight: bold; color: #7f8c8d; padding: 10px; }
-            QLineEdit, QComboBox { border: 1px solid #dcdde1; border-radius: 6px; padding: 6px; background: #fdfdfd; }
+        from ui.theme_tokens import CARD_BG, BORDER_HAIRLINE, INPUT_QSS, COMBO_QSS, CLEAN_TABLE_QSS
+        self.setStyleSheet(f"""
+            QFrame#AlertsSection {{ background: {CARD_BG}; border-radius: 10px; border: 1px solid {BORDER_HAIRLINE}; }}
+            QFrame#AlertsSection QLabel {{ border: none; background: transparent; }}
         """)
 
         layout = QVBoxLayout(self)
@@ -103,18 +99,24 @@ class AlertsSection(QFrame):
 
         filters_layout = QHBoxLayout()
         self.search_box = QLineEdit()
-        self.search_box.setPlaceholderText("🔍 Recherche par nom...")
-        self.search_box.setFixedWidth(200)
+        self.search_box.setPlaceholderText("Rechercher par nom...")
+        self.search_box.setFixedWidth(210)
+        self.search_box.setMinimumHeight(34)
+        self.search_box.setStyleSheet(INPUT_QSS)
         self.search_box.textChanged.connect(self.refresh_table_view)
         
         self.combo_fam = QComboBox()
         self.combo_fam.addItem("Toutes Familles")
         self.combo_fam.setFixedWidth(180)
+        self.combo_fam.setMinimumHeight(34)
+        self.combo_fam.setStyleSheet(COMBO_QSS)
         self.combo_fam.currentTextChanged.connect(self.refresh_table_view)
         
         self.combo_brand = QComboBox()
         self.combo_brand.addItem("Toutes Marques")
         self.combo_brand.setFixedWidth(180)
+        self.combo_brand.setMinimumHeight(34)
+        self.combo_brand.setStyleSheet(COMBO_QSS)
         self.combo_brand.currentTextChanged.connect(self.refresh_table_view)
 
         filters_layout.addWidget(self.search_box)

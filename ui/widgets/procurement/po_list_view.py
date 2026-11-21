@@ -39,7 +39,7 @@ class PurchaseOrderListView(QWidget):
         filter_layout = QHBoxLayout()
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Rechercher (ID)...")
+        self.search_input.setPlaceholderText("Rechercher (ID)...")
         self.search_input.textChanged.connect(self.refresh_data)
         
         filter_layout.addWidget(QLabel("Fournisseur:"))
@@ -86,22 +86,28 @@ class PurchaseOrderListView(QWidget):
         layout.addWidget(self.table)
 
         # --- أزرار الإجراءات ---
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SECONDARY_OUTLINE_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS
         actions_layout = QHBoxLayout()
         
-        self.btn_receive = QPushButton("📥 Réceptionner")
-        self.btn_receive.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        self.btn_receive = QPushButton("Réceptionner")
+        self.btn_receive.setMinimumHeight(34)
+        self.btn_receive.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_receive.clicked.connect(self.create_reception_for_selected)
 
         # [جديد] زر عرض الأرشيف
-        self.btn_history = QPushButton("📜 Voir Historique")
-        self.btn_history.setStyleSheet("background-color: #3498db; color: white; font-weight: bold;")
+        self.btn_history = QPushButton("Voir Historique")
+        self.btn_history.setMinimumHeight(34)
+        self.btn_history.setStyleSheet(SECONDARY_OUTLINE_QSS)
         self.btn_history.clicked.connect(self.trigger_view_history)
 
-        self.btn_edit = QPushButton("✏️ Modifier la Commande")
+        self.btn_edit = QPushButton("Modifier la Commande")
+        self.btn_edit.setMinimumHeight(34)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.clicked.connect(self.edit_selected_po)
         
-        self.btn_delete = QPushButton("🗑️ Supprimer la Commande")
-        self.btn_delete.setStyleSheet("color: #c0392b;")
+        self.btn_delete = QPushButton("Supprimer la Commande")
+        self.btn_delete.setMinimumHeight(34)
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_delete.clicked.connect(self.delete_selected_po)
         
         actions_layout.addWidget(self.btn_receive)
@@ -129,24 +135,24 @@ class PurchaseOrderListView(QWidget):
         menu = QMenu(self)
         
         # 1. خيار إنشاء استلام
-        action_receive = QAction("📥 Créer Bon de Réception", self)
+        action_receive = QAction("Créer Bon de Réception", self)
         action_receive.triggered.connect(self.create_reception_for_selected)
         menu.addAction(action_receive)
         
         # [جديد] خيار عرض الأرشيف في القائمة
-        action_history = QAction("📜 Voir les Réceptions associées", self)
+        action_history = QAction("Voir les Réceptions associées", self)
         action_history.triggered.connect(self.trigger_view_history)
         menu.addAction(action_history)
 
         menu.addSeparator()
 
         # 2. خيار التعديل
-        action_edit = QAction("✏️ Modifier", self)
+        action_edit = QAction("Modifier", self)
         action_edit.triggered.connect(self.edit_selected_po)
         menu.addAction(action_edit)
 
         # 3. خيار الحذف
-        action_delete = QAction("🗑️ Supprimer", self)
+        action_delete = QAction("Supprimer", self)
         action_delete.triggered.connect(self.delete_selected_po)
         menu.addAction(action_delete)
 

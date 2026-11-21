@@ -17,7 +17,7 @@ class LocationTreeDialog(QDialog):
         
         # شريط بحث سريع
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Filtrer (ex: Frigo, Salle A)...")
+        self.search_input.setPlaceholderText("Filtrer (ex: Frigo, Salle A)...")
         self.search_input.textChanged.connect(self.filter_tree)
         layout.addWidget(self.search_input)
 

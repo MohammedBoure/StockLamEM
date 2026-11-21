@@ -6,12 +6,17 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QTableWidget, QTableWidgetI
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont
 import logging
+from ui.theme_tokens import (
+    STATUS_SUCCESS, STATUS_WARN, PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, CLEAN_TABLE_QSS, scoped_dialog_qss,
+)
 
 class BarcodeSummaryDialog(QDialog):
     def __init__(self, batches_data, manager, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🏷️ Étiquettes de Code-barres Générées")
+        self.setObjectName("BarcodeSummaryDialog")
+        self.setWindowTitle("Étiquettes de Code-barres Générées")
         self.resize(900, 600)
+        self.setStyleSheet(scoped_dialog_qss("BarcodeSummaryDialog"))
         self.batches_data = batches_data
         self.manager = manager # نحتاج المدير للوصول للطابعة
         self.init_ui()
@@ -20,13 +25,14 @@ class BarcodeSummaryDialog(QDialog):
         layout = QVBoxLayout(self)
         
         # --- Header ---
-        lbl_info = QLabel("✅ Réception enregistrée avec succès!\n"
+        lbl_info = QLabel("Réception enregistrée avec succès.\n"
                           "Voici les codes-barres internes générés. Vérifiez le nombre de copies et imprimez.")
-        lbl_info.setStyleSheet("font-size: 14px; font-weight: bold; color: #27ae60; margin-bottom: 10px;")
+        lbl_info.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {STATUS_SUCCESS}; margin-bottom: 10px;")
         layout.addWidget(lbl_info)
 
         # --- Table ---
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         # الأعمدة: المنتج، الوت، الباركود، الكمية المستلمة، عدد النسخ للطباعة
         cols = ["Produit", "Lot", "Code-barres (Interne)", "Qté Reçue", "Copies à Imprimer"]
         self.table.setColumnCount(len(cols))
@@ -85,14 +91,14 @@ class BarcodeSummaryDialog(QDialog):
         # --- Buttons ---
         btn_layout = QHBoxLayout()
         
-        btn_print = QPushButton("🖨️ Imprimer Étiquettes")
-        btn_print.setStyleSheet("""
-            QPushButton { background-color: #2980b9; color: white; font-weight: bold; padding: 10px; border-radius: 6px; }
-            QPushButton:hover { background-color: #3498db; }
-        """)
+        btn_print = QPushButton("Imprimer Étiquettes")
+        btn_print.setMinimumHeight(36)
+        btn_print.setStyleSheet(PRIMARY_CTA_QSS)
         btn_print.clicked.connect(self.print_labels)
         
         btn_close = QPushButton("Fermer")
+        btn_close.setMinimumHeight(34)
+        btn_close.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_close.clicked.connect(self.accept)
         
         btn_layout.addStretch()

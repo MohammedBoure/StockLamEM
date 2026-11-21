@@ -199,8 +199,10 @@ class VisualPdfEditorDialog(QDialog):
         form.addRow("Sig. Droite X:", self.lbl_sig_r_x)
         form.addRow(QLabel("<br><i>Note : La position Y des signatures dépend de la taille du tableau (dynamique).</i>"))
 
+        from ui.theme_tokens import PRIMARY_CTA_QSS
         btn_close = QPushButton("Valider et Fermer")
-        btn_close.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; padding: 10px; font-size: 14px;")
+        btn_close.setMinimumHeight(38)
+        btn_close.setStyleSheet(PRIMARY_CTA_QSS)
         btn_close.clicked.connect(self.accept)
         form.addRow(QLabel("<br>"))
         form.addRow(btn_close)

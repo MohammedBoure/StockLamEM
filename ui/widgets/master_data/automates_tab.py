@@ -26,13 +26,15 @@ class AutomatesTab(QWidget):
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_data)
         
-        btn_add = QPushButton("➕ Ajouter un Automate")
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS
+        btn_add = QPushButton("+ Ajouter un Automate")
         btn_add.setMinimumHeight(35)
-        btn_add.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        btn_add.setStyleSheet(PRIMARY_CTA_QSS)
         btn_add.clicked.connect(self.open_add_dialog)
         
         btn_refresh = QPushButton("Actualiser")
         btn_refresh.setMinimumHeight(35)
+        btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.load_data)
         
         toolbar.addWidget(self.search_input, 1)
@@ -42,6 +44,7 @@ class AutomatesTab(QWidget):
 
         # --- Tableau (Table) ---
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         # "ID" موجود برمجياً ولكن سيتم إخفاؤه عن المستخدم
         columns = ["ID", "Nom de l'Automate", "Modèle", "N° S/N", "Emplacement"]
         self.table.setColumnCount(len(columns))
@@ -67,11 +70,14 @@ class AutomatesTab(QWidget):
 
         # --- Actions Inferieures ---
         actions = QHBoxLayout()
-        self.btn_edit = QPushButton("✏️ Modifier l'Automate")
+        self.btn_edit = QPushButton("Modifier l'Automate")
+        self.btn_edit.setMinimumHeight(34)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.clicked.connect(self.open_edit_dialog)
         
         self.btn_delete = QPushButton("Supprimer")
-        self.btn_delete.setStyleSheet("color: #c0392b;")
+        self.btn_delete.setMinimumHeight(34)
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_delete.clicked.connect(self.delete_automate)
         
         actions.addStretch()

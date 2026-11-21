@@ -67,10 +67,10 @@ class ChartHoverCard(QFrame):
 
         # Ligne Entrées (Achats)
         self.row_in = QHBoxLayout()
-        self.lbl_in_title = QLabel("📥 Entrées (Achats) :", self)
+        self.lbl_in_title = QLabel("Entrées (Achats) :", self)
         self.lbl_in_title.setStyleSheet("font-size: 11px; font-weight: 600; color: #64748b;")
         self.lbl_in_val = QLabel("0,00 DA", self)
-        self.lbl_in_val.setStyleSheet("font-size: 11px; font-weight: 800; color: #1e824c;")
+        self.lbl_in_val.setStyleSheet("font-size: 11px; font-weight: 800; color: #047857;")
         self.row_in.addWidget(self.lbl_in_title)
         self.row_in.addStretch()
         self.row_in.addWidget(self.lbl_in_val)
@@ -78,10 +78,10 @@ class ChartHoverCard(QFrame):
 
         # Ligne Sorties (Consommation)
         self.row_out = QHBoxLayout()
-        self.lbl_out_title = QLabel("📤 Sorties (Consommation) :", self)
+        self.lbl_out_title = QLabel("Sorties (Consommation) :", self)
         self.lbl_out_title.setStyleSheet("font-size: 11px; font-weight: 600; color: #64748b;")
         self.lbl_out_val = QLabel("0,00 DA", self)
-        self.lbl_out_val.setStyleSheet("font-size: 11px; font-weight: 800; color: #c0392b;")
+        self.lbl_out_val.setStyleSheet("font-size: 11px; font-weight: 800; color: #DC2626;")
         self.row_out.addWidget(self.lbl_out_title)
         self.row_out.addStretch()
         self.row_out.addWidget(self.lbl_out_val)
@@ -89,7 +89,7 @@ class ChartHoverCard(QFrame):
 
         # Ligne Solde Net
         self.row_net = QHBoxLayout()
-        self.lbl_net_title = QLabel("⚖️ Solde Net (Flux) :", self)
+        self.lbl_net_title = QLabel("Solde Net (Flux) :", self)
         self.lbl_net_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #334155;")
         self.lbl_net_val = QLabel("0,00 DA", self)
         self.lbl_net_val.setStyleSheet("font-size: 11px; font-weight: 800; color: #007572;")
@@ -121,7 +121,7 @@ class ChartHoverCard(QFrame):
         cnt_out = data.get('count_out', 0)
 
         # 1. Période
-        self.lbl_period.setText(f"📅 {data.get('detail', '')}")
+        self.lbl_period.setText(f"{data.get('detail', '')}")
 
         # 2. Valeurs formatées
         self.lbl_in_val.setText(format_money(val_in, 'DA'))
@@ -138,7 +138,7 @@ class ChartHoverCard(QFrame):
 
         # 3. Détail des transactions
         if cnt_in > 0 or cnt_out > 0:
-            self.lbl_tx.setText(f"📋 {cnt_in} réception(s) / {cnt_out} sortie(s)")
+            self.lbl_tx.setText(f"{cnt_in} réception(s) / {cnt_out} sortie(s)")
             self.lbl_tx.setVisible(True)
         else:
             self.lbl_tx.setVisible(False)
@@ -288,7 +288,7 @@ class ChartsSection(QWidget):
         self.hover_card = ChartHoverCard(parent=self.chart_view)
 
         # Message d'état vide
-        self.empty_state_label = QLabel("📭 Aucune transaction enregistrée pour la période sélectionnée.")
+        self.empty_state_label = QLabel("Aucune transaction enregistrée pour la période sélectionnée.")
         self.empty_state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_state_label.setStyleSheet(f"""
             color: {self.COLOR_TEXT_MUTED};
@@ -365,9 +365,9 @@ class ChartsSection(QWidget):
                 padding: 4px;
             }}
         """)
-        self.combo_view_mode.addItem("📊 Groupées", self.VIEW_GROUPED)
-        self.combo_view_mode.addItem("🥞 Empilées", self.VIEW_STACKED)
-        self.combo_view_mode.addItem("⚖️ Solde Net", self.VIEW_NET_FLOW)
+        self.combo_view_mode.addItem("Groupées", self.VIEW_GROUPED)
+        self.combo_view_mode.addItem("Empilées", self.VIEW_STACKED)
+        self.combo_view_mode.addItem("Solde Net", self.VIEW_NET_FLOW)
         self.combo_view_mode.currentIndexChanged.connect(self._on_view_mode_changed)
         layout.addWidget(self.combo_view_mode)
 
@@ -395,16 +395,16 @@ class ChartsSection(QWidget):
                 padding: 4px;
             }}
         """)
-        self.combo_preset.addItem("🔗 Synchronisé", "SYNC")
-        self.combo_preset.addItem("📅 7 Jours", "7D")
-        self.combo_preset.addItem("📅 14 Jours", "14D")
-        self.combo_preset.addItem("📅 30 Jours", "30D")
-        self.combo_preset.addItem("📆 Ce Mois-ci", "THIS_MONTH")
-        self.combo_preset.addItem("🗓️ 3 Mois", "3M")
-        self.combo_preset.addItem("🗓️ 6 Mois", "6M")
-        self.combo_preset.addItem("📈 Année (YTD)", "YTD")
-        self.combo_preset.addItem("📊 12 Mois", "12M")
-        self.combo_preset.addItem("⚙️ Personnalisé...", "CUSTOM")
+        self.combo_preset.addItem("Synchronisé", "SYNC")
+        self.combo_preset.addItem("7 Jours", "7D")
+        self.combo_preset.addItem("14 Jours", "14D")
+        self.combo_preset.addItem("30 Jours", "30D")
+        self.combo_preset.addItem("Ce Mois-ci", "THIS_MONTH")
+        self.combo_preset.addItem("3 Mois", "3M")
+        self.combo_preset.addItem("6 Mois", "6M")
+        self.combo_preset.addItem("Année (YTD)", "YTD")
+        self.combo_preset.addItem("12 Mois", "12M")
+        self.combo_preset.addItem("Personnalisé...", "CUSTOM")
         
         # Par défaut : 12 Mois (Dernière Année)
         idx_12m = self.combo_preset.findData("12M")
@@ -483,7 +483,7 @@ class ChartsSection(QWidget):
         self.badge_net = self._create_compact_metric_pill(
             title="Solde :", 
             value="0,00 DA", 
-            icon="⚖️", 
+            icon="", 
             bg_color="#f8fafc", 
             text_color=self.COLOR_TEXT_MAIN,
             border_color="#e2e8f0"
@@ -931,12 +931,12 @@ class ChartsSection(QWidget):
 
     def _render_net_flow_chart(self, buckets: List[Dict[str, Any]], categories: List[str], max_val: float):
         """Construit le graphique de solde net (Vert si positif, Rouge si négatif)"""
-        set_pos = QBarSet("🟩 Solde Positif (Entrées > Sorties)")
+        set_pos = QBarSet("Solde Positif (Entrées > Sorties)")
         set_pos.setColor(QColor(self.COLOR_IN))
         set_pos.setBorderColor(QColor(self.COLOR_IN_BORDER))
         set_pos.setBrush(QBrush(QColor(self.COLOR_IN)))
 
-        set_neg = QBarSet("🟥 Solde Négatif (Sorties > Entrées)")
+        set_neg = QBarSet("Solde Négatif (Sorties > Entrées)")
         set_neg.setColor(QColor(self.COLOR_OUT))
         set_neg.setBorderColor(QColor(self.COLOR_OUT_BORDER))
         set_neg.setBrush(QBrush(QColor(self.COLOR_OUT)))

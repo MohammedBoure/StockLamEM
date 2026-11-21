@@ -14,6 +14,14 @@ from PySide6.QtGui import QColor, QFont
 # استيراد BaseDialog
 from ui.widgets.master_data.dialogs import BaseDialog
 from ui.formatting import format_money, format_quantity, quantity_to_int
+from ui.theme_tokens import (
+    BRAND_TEAL, BRAND_TEAL_ALT, BRAND_TEAL_TINT, BRAND_TEAL_BORDER,
+    CARD_BG, SUBTLE_BG, BORDER_CONTROL, BORDER_HAIRLINE, TEXT_PRIMARY, TEXT_MUTED,
+    STATUS_SUCCESS, STATUS_INFO, STATUS_INFO_BG, STATUS_INFO_BORDER,
+    STATUS_WARN, STATUS_DANGER,
+    CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, INPUT_QSS,
+    scoped_dialog_qss, scoped_card_qss, set_enabled_with_reason,
+)
 from decimal import Decimal
 
 # استيراد LocationTreeComboBox
@@ -84,7 +92,7 @@ class OpenPackDialog(BaseDialog):
             calc_open_expiry = original_expiry
             
         self.lbl_open_expiry = QLabel(calc_open_expiry.toString("yyyy-MM-dd"))
-        self.lbl_open_expiry.setStyleSheet("color: blue; font-weight: bold; font-size: 14px;")
+        self.lbl_open_expiry.setStyleSheet(f"color: {STATUS_INFO}; font-weight: 700; font-size: 14px;")
 
         self.qty_spin = QSpinBox()
         max_qty = quantity_to_int(self.batch.get('Quantity_Current', 0))
@@ -114,7 +122,7 @@ class OpenPackDialog(BaseDialog):
         layout.addRow("Date d'Expiration Calculée:", self.lbl_open_expiry)
         layout.addRow("----------", QLabel())
         layout.addRow(f"Nombre à ouvrir (Max: {max_qty}):", self.qty_spin)
-        layout.addRow("📍 Emplacement d'Utilisation:", loc_container)
+        layout.addRow("Emplacement d'Utilisation:", loc_container)
 
     def open_location_picker(self):
         dlg = LocationTreeComboBox(self.location_manager, self)
@@ -285,25 +293,27 @@ class BatchDetailsDialog(BaseDialog):
             layout.addRow(lbl_key, lbl_val)
 
         # 1. قسم المعلومات الأساسية
-        grp_basic = QGroupBox("📦 Informations Produit")
-        grp_basic.setStyleSheet("QGroupBox { font-weight: bold; color: #2c3e50; border: 1px solid #bdc3c7; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }")
+        grp_basic = QGroupBox("Informations Produit")
+        grp_basic.setObjectName("BatchDetailBasicGroup")
+        grp_basic.setStyleSheet(f"QGroupBox#BatchDetailBasicGroup {{ font-weight: 700; color: {TEXT_PRIMARY}; border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; margin-top: 10px; background: {CARD_BG}; }} QGroupBox#BatchDetailBasicGroup::title {{ subcontrol-origin: margin; left: 10px; padding: 0 6px; }}")
         layout_basic = QFormLayout(grp_basic)
         
-        add_row(layout_basic, "Produit", self.batch.get('Product_Name', '---'), True, "#2c3e50")
+        add_row(layout_basic, "Produit", self.batch.get('Product_Name', '---'), True, TEXT_PRIMARY)
         add_row(layout_basic, "Marque", self.batch.get('Manuf_Name') or self.batch.get('Brand_Name', '---'))
         add_row(layout_basic, "Code-Barres", self.batch.get('Internal_Barcode') or self.batch.get('Barcode', '---'))
         main_layout.addWidget(grp_basic)
 
         # 2. قسم المخزون والموقع
-        grp_stock = QGroupBox("📍 Stock & Emplacement")
-        grp_stock.setStyleSheet("QGroupBox { font-weight: bold; color: #007572; border: 1px solid #007572; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }")
+        grp_stock = QGroupBox("Stock & Emplacement")
+        grp_stock.setObjectName("BatchDetailStockGroup")
+        grp_stock.setStyleSheet(f"QGroupBox#BatchDetailStockGroup {{ font-weight: 700; color: {BRAND_TEAL}; border: 1px solid {BRAND_TEAL_BORDER}; border-radius: 8px; margin-top: 10px; background: {CARD_BG}; }} QGroupBox#BatchDetailStockGroup::title {{ subcontrol-origin: margin; left: 10px; padding: 0 6px; }}")
         layout_stock = QFormLayout(grp_stock)
 
         lbl_loc = QLabel(str(self.batch.get('Location_Name', 'Non défini')))
-        lbl_loc.setStyleSheet("font-size: 16px; font-weight: bold; color: #2980b9; background-color: #eaf2f8; padding: 5px; border-radius: 4px;")
+        lbl_loc.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {BRAND_TEAL}; background-color: {BRAND_TEAL_TINT}; padding: 5px 8px; border-radius: 6px;")
         layout_stock.addRow(QLabel("<b>EMPLACEMENT :</b>"), lbl_loc)
 
-        add_row(layout_stock, "Quantite Actuelle", format_quantity(self.batch.get('Quantity_Current', 0)), True, "#27ae60")
+        add_row(layout_stock, "Quantite Actuelle", format_quantity(self.batch.get('Quantity_Current', 0)), True, STATUS_SUCCESS)
         add_row(layout_stock, "Quantite Initiale", format_quantity(self.batch.get('Quantity_Initial', 0)))
         add_row(layout_stock, "N° Lot", self.batch.get('Lot_Number', '---'), True)
         
@@ -313,16 +323,17 @@ class BatchDetailsDialog(BaseDialog):
             try:
                 ed = datetime.datetime.strptime(exp_date[:10], "%Y-%m-%d").date()
                 today = datetime.date.today()
-                if ed < today: color_exp = "#c0392b"
-                elif (ed - today).days <= 30: color_exp = "#e67e22"
+                if ed < today: color_exp = STATUS_DANGER
+                elif (ed - today).days <= 30: color_exp = STATUS_WARN
             except: pass
             
         add_row(layout_stock, "Date Entrée (Système)", str(self.batch.get('Created_At', '---'))[:16])
         main_layout.addWidget(grp_stock)
 
         # 3. قسم المعلومات المالية والمراجع
-        grp_financial = QGroupBox("💰 Données Financières & Références")
-        grp_financial.setStyleSheet("QGroupBox { font-weight: bold; color: #7f8c8d; border: 1px solid #bdc3c7; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }")
+        grp_financial = QGroupBox("Données Financières & Références")
+        grp_financial.setObjectName("BatchDetailFinGroup")
+        grp_financial.setStyleSheet(f"QGroupBox#BatchDetailFinGroup {{ font-weight: 700; color: {TEXT_MUTED}; border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; margin-top: 10px; background: {CARD_BG}; }} QGroupBox#BatchDetailFinGroup::title {{ subcontrol-origin: margin; left: 10px; padding: 0 6px; }}")
         layout_fin = QFormLayout(grp_financial)
         
         price_u = float(self.batch.get('Unit_Price_Received', 0))
@@ -330,7 +341,7 @@ class BatchDetailsDialog(BaseDialog):
         total_val = price_u * qty_curr
 
         add_row(layout_fin, "Prix d'Achat", format_money(price_u, 'DA'))
-        add_row(layout_fin, "Valeur Totale (Stock Actuel)", format_money(total_val, 'DA'), True, "#2c3e50")
+        add_row(layout_fin, "Valeur Totale (Stock Actuel)", format_money(total_val, 'DA'), True, TEXT_PRIMARY)
 
         layout_fin.addRow(QLabel("----------"), QLabel(""))
         add_row(layout_fin, "Réf. Bon de Commande (PO)", self.batch.get('PO_ID', '---'))
@@ -366,28 +377,27 @@ class InventoryDispatchDialog(BaseDialog):
         # 1. منطقة المسح الضوئي
         search_frame = QFrame()
         search_frame.setObjectName("QuickScanSearchFrame")
-        search_frame.setStyleSheet(
-            "QFrame#QuickScanSearchFrame { background: #ecf0f1; border-radius: 8px; padding: 10px; }"
-            "QFrame#QuickScanSearchFrame QLabel { border: none; background: transparent; }"
-        )
+        search_frame.setStyleSheet(scoped_card_qss("QuickScanSearchFrame", bg=SUBTLE_BG, border=BORDER_HAIRLINE, radius=8))
         search_layout = QHBoxLayout(search_frame)
+        search_layout.setContentsMargins(12, 10, 12, 10)
         
         self.item_search = BarcodeLineEdit()
-        self.item_search.setPlaceholderText("🔴 Scannez le code-barres ici (Entrée Auto)...")
-        self.item_search.setMinimumHeight(60)
-        self.item_search.setStyleSheet("""
-            QLineEdit { 
-                font-size: 22px; font-weight: bold; border: 2px solid #bdc3c7; 
-                border-radius: 5px; padding-left: 10px; color: #2c3e50; background-color: white;
-            }
-            QLineEdit:focus { border: 2px solid #27ae60; background-color: #e8f8f5; }
-        """)
+        self.item_search.setPlaceholderText("Scannez le code-barres ici (Entrée Auto)...")
+        self.item_search.setMinimumHeight(48)
+        self._item_search_base_qss = f"""
+            QLineEdit {{
+                font-size: 18px; font-weight: 700; border: 1px solid {BORDER_CONTROL};
+                border-radius: 6px; padding-left: 12px; color: {TEXT_PRIMARY}; background-color: {CARD_BG};
+            }}
+            QLineEdit:focus {{ border: 1.5px solid {BRAND_TEAL}; background-color: #F0FDFA; }}
+        """
+        self.item_search.setStyleSheet(self._item_search_base_qss)
         
         self.item_search.textChanged.connect(self.on_text_changed)
         
-        btn_manual = QPushButton("🔎")
-        btn_manual.setFixedWidth(50)
-        btn_manual.setMinimumHeight(60)
+        btn_manual = QPushButton("Chercher")
+        btn_manual.setMinimumHeight(48)
+        btn_manual.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_manual.clicked.connect(self.process_scan_buffer)
 
         search_layout.addWidget(QLabel("<b>SCANNER :</b>"))
@@ -407,20 +417,17 @@ class InventoryDispatchDialog(BaseDialog):
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         
-        self.stack_table.verticalHeader().setDefaultSectionSize(50)
+        self.stack_table.verticalHeader().setDefaultSectionSize(44)
         self.stack_table.setAlternatingRowColors(True)
-        self.stack_table.setStyleSheet("QTableWidget::item { padding: 5px; font-size: 13px; }")
+        self.stack_table.setStyleSheet(CLEAN_TABLE_QSS)
         
         layout.addWidget(self.stack_table)
 
         # 3. الأزرار السفلية
         btn_layout = QHBoxLayout()
-        self.btn_process = QPushButton("🚀 Exécuter les opérations")
-        self.btn_process.setMinimumHeight(55)
-        self.btn_process.setStyleSheet("""
-            QPushButton { background-color: #27ae60; color: white; font-weight: bold; font-size: 16px; border-radius: 8px; }
-            QPushButton:hover { background-color: #219150; }
-        """)
+        self.btn_process = QPushButton("Exécuter les opérations")
+        self.btn_process.setMinimumHeight(42)
+        self.btn_process.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_process.clicked.connect(self.process_all)
         
         btn_layout.addStretch()
@@ -489,13 +496,20 @@ class InventoryDispatchDialog(BaseDialog):
         self.stack_table.setCellWidget(row, 4, combo_action)
 
         loc_picker = LocationTreeComboBox(self.location_manager)
-        loc_picker.setEnabled(False)
+        set_enabled_with_reason(
+            loc_picker, False,
+            "Sélectionnez « Transfert » dans Action pour choisir un emplacement de destination."
+        )
         loc_picker.setStyleSheet("border: none; background: transparent; color: transparent;")
         self.stack_table.setCellWidget(row, 5, loc_picker)
 
         def toggle_loc(idx):
             is_transfer = (idx == 1)
-            loc_picker.setEnabled(is_transfer)
+            set_enabled_with_reason(
+                loc_picker, is_transfer,
+                "Sélectionnez « Transfert » dans Action pour choisir un emplacement de destination.",
+                "Choisir l'emplacement de destination"
+            )
             loc_picker.setStyleSheet("" if is_transfer else "border: none; background: transparent; color: transparent;")
         
         combo_action.currentIndexChanged.connect(toggle_loc)
@@ -506,8 +520,9 @@ class InventoryDispatchDialog(BaseDialog):
         spin_qty.setValue(1)
         self.stack_table.setCellWidget(row, 6, spin_qty)
 
-        btn_del = QPushButton("✖")
-        btn_del.setStyleSheet("color: red; border: none; font-weight: bold; font-size: 16px; background: transparent;")
+        btn_del = QPushButton("✕")
+        btn_del.setToolTip("Retirer cette ligne")
+        btn_del.setStyleSheet(f"color: {STATUS_DANGER}; border: none; font-weight: 700; font-size: 15px; background: transparent;")
         btn_del.clicked.connect(lambda: self.stack_table.removeRow(self.stack_table.currentRow()))
         self.stack_table.setCellWidget(row, 7, btn_del)
 
@@ -515,10 +530,9 @@ class InventoryDispatchDialog(BaseDialog):
         self.stack_table.selectRow(row)
 
     def flash_feedback(self, success=True):
-        color = "#d5f5e3" if success else "#fadbd8"
-        orig = self.item_search.styleSheet()
-        self.item_search.setStyleSheet(orig + f" background-color: {color};")
-        QTimer.singleShot(300, lambda: self.item_search.setStyleSheet(orig))
+        color = "#E6F4F1" if success else "#FEF2F2"
+        self.item_search.setStyleSheet(self._item_search_base_qss + f" QLineEdit {{ background-color: {color}; }}")
+        QTimer.singleShot(300, lambda: self.item_search.setStyleSheet(self._item_search_base_qss))
 
     def process_all(self):
         if self.stack_table.rowCount() == 0:
@@ -620,62 +634,24 @@ class UnpackTransferDialog(BaseDialog):
         }
 
     def init_ui(self):
-        # Appliquer un thème blanc pur, épuré et moderne à l'ensemble du dialogue
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #ffffff;
-            }
-            QScrollArea {
-                background-color: #ffffff;
-                border: none;
-            }
-            QScrollArea > QWidget > QWidget {
-                background-color: #ffffff;
-            }
-            QGroupBox {
-                font-weight: bold;
-                font-size: 12px;
-                color: #007572;
-                border: 1px solid #dcdfe6;
-                border-radius: 6px;
-                margin-top: 8px;
-                padding-top: 14px;
-                padding-bottom: 8px;
-                padding-left: 10px;
-                padding-right: 10px;
-                background-color: #ffffff;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                left: 10px;
-                padding: 0 6px;
-                background-color: #ffffff;
-                color: #007572;
-            }
-            QLabel {
-                font-size: 12px;
-                color: #2c3e50;
-                background-color: transparent;
-            }
-            QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
-                min-height: 34px;
-                font-size: 12px;
-                padding: 2px 8px;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                background-color: #ffffff;
-                color: #2c3e50;
-            }
-            QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
-                border: 1.5px solid #007572;
-                background-color: #ffffff;
-            }
-            QCheckBox {
-                background-color: transparent;
-                font-size: 12px;
-                color: #2c3e50;
-            }
+        self.setObjectName("UnpackTransferDialog")
+        self.setStyleSheet(f"""
+            {scoped_dialog_qss("UnpackTransferDialog", bg=CARD_BG)}
+            QDialog#UnpackTransferDialog QScrollArea {{ background-color: {CARD_BG}; border: none; }}
+            QDialog#UnpackTransferDialog QLineEdit,
+            QDialog#UnpackTransferDialog QComboBox,
+            QDialog#UnpackTransferDialog QSpinBox,
+            QDialog#UnpackTransferDialog QDoubleSpinBox {{
+                min-height: 34px; font-size: 12px; padding: 2px 8px;
+                border: 1px solid {BORDER_CONTROL}; border-radius: 6px;
+                background-color: {CARD_BG}; color: {TEXT_PRIMARY};
+            }}
+            QDialog#UnpackTransferDialog QLineEdit:focus,
+            QDialog#UnpackTransferDialog QComboBox:focus,
+            QDialog#UnpackTransferDialog QSpinBox:focus,
+            QDialog#UnpackTransferDialog QDoubleSpinBox:focus {{
+                border: 1.5px solid {BRAND_TEAL};
+            }}
         """)
 
         self.form_widget.setStyleSheet("background-color: #ffffff;")
@@ -709,18 +685,18 @@ class UnpackTransferDialog(BaseDialog):
         left_layout.setSpacing(10)
 
         # 1. Lot Source & Référentiel Produit
-        src_group = QGroupBox("📦 Informations du Lot Source")
+        src_group = QGroupBox("Informations du Lot Source")
         src_layout = QFormLayout(src_group)
         src_layout.setVerticalSpacing(8)
         src_layout.setHorizontalSpacing(10)
 
         self.lbl_prod = QLabel(f"<b>{self.batch.get('Product_Name', '---')}</b>")
         self.lbl_lot = QLabel(f"{self.batch.get('Lot_Number', '---')} (Exp: {str(self.batch.get('Expiry_Date', '---'))[:10]})")
-        self.lbl_curr_loc = QLabel(f"📍 {self.batch.get('Location_Name', 'Inconnu')}")
+        self.lbl_curr_loc = QLabel(f"{self.batch.get('Location_Name', 'Inconnu')}")
 
         self.current_source_unit = self.batch.get('Stock_Unit') or self.prod_units['Stock_Unit'] or 'Boîte'
         curr_stock = quantity_to_int(self.batch.get('Quantity_Current', 0))
-        self.lbl_stock_avail = QLabel(f"<b style='color: #27ae60; font-size: 13px;'>{format_quantity(curr_stock)} {self.current_source_unit}</b>")
+        self.lbl_stock_avail = QLabel(f"<b style='color: {STATUS_SUCCESS}; font-size: 13px;'>{format_quantity(curr_stock)} {self.current_source_unit}</b>")
 
         src_layout.addRow("Produit :", self.lbl_prod)
         src_layout.addRow("N° de Lot :", self.lbl_lot)
@@ -735,14 +711,14 @@ class UnpackTransferDialog(BaseDialog):
         uq = self.prod_units['Usage_Qty_Per_Stock_Unit']
 
         ref_badge = QLabel(
-            f"ℹ️ <b>Référentiel :</b> 1 {ou} = {sq:g} {su} &nbsp;|&nbsp; 1 {su} = {uq:g} {uu}"
+            f"<b>Référentiel :</b> 1 {ou} = {sq:g} {su} &nbsp;|&nbsp; 1 {su} = {uq:g} {uu}"
         )
-        ref_badge.setStyleSheet("background-color: #f0f7fb; border: 1px solid #d4e6f1; border-radius: 4px; padding: 5px 8px; color: #2471a3; font-size: 11px;")
+        ref_badge.setStyleSheet(f"background-color: {STATUS_INFO_BG}; border: 1px solid {STATUS_INFO_BORDER}; border-radius: 6px; padding: 5px 8px; color: {STATUS_INFO}; font-size: 11px;")
         src_layout.addRow("", ref_badge)
         left_layout.addWidget(src_group)
 
         # 2. Emplacement Destination & Traçabilité
-        dest_group = QGroupBox("📍 Destination et Traçabilité")
+        dest_group = QGroupBox("Destination et Traçabilité")
         dest_layout = QFormLayout(dest_group)
         dest_layout.setVerticalSpacing(8)
         dest_layout.setHorizontalSpacing(10)
@@ -759,30 +735,18 @@ class UnpackTransferDialog(BaseDialog):
         self.inp_barcode.setPlaceholderText("Laisser vide pour auto-générer (EAN-13) ou saisir")
         self.inp_barcode.textChanged.connect(self._on_barcode_text_changed)
 
-        self.btn_gen_barcode = QPushButton("⚡ Générer")
+        self.btn_gen_barcode = QPushButton("Générer")
         self.btn_gen_barcode.setCursor(Qt.PointingHandCursor)
         self.btn_gen_barcode.setToolTip("Générer un code-barres EAN-13 interne unique")
-        self.btn_gen_barcode.setStyleSheet("""
-            QPushButton {
-                min-height: 32px;
-                padding: 0 12px;
-                background-color: #007572;
-                color: #ffffff;
-                font-weight: bold;
-                border-radius: 4px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #005a57;
-            }
-        """)
+        self.btn_gen_barcode.setMinimumHeight(34)
+        self.btn_gen_barcode.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_gen_barcode.clicked.connect(self._on_generate_barcode)
 
         bc_layout.addWidget(self.inp_barcode, 1)
         bc_layout.addWidget(self.btn_gen_barcode)
 
-        self.lbl_barcode_status = QLabel("ℹ️ Un code EAN-13 unique sera généré automatiquement si vide.")
-        self.lbl_barcode_status.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        self.lbl_barcode_status = QLabel("Un code EAN-13 unique sera généré automatiquement si vide.")
+        self.lbl_barcode_status.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
 
         # Options d'impression
         print_container = QWidget()
@@ -790,15 +754,21 @@ class UnpackTransferDialog(BaseDialog):
         print_layout.setContentsMargins(0, 0, 0, 0)
         print_layout.setSpacing(8)
 
-        self.cb_print = QCheckBox("🖨️ Imprimer l'étiquette")
+        self.cb_print = QCheckBox("Imprimer l'étiquette")
         self.cb_print.setChecked(True)
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 100)
         self.spin_copies.setValue(1)
         self.spin_copies.setSuffix(" copie(s)")
-        self.spin_copies.setEnabled(self.cb_print.isChecked())
-        self.cb_print.toggled.connect(self.spin_copies.setEnabled)
+        set_enabled_with_reason(self.spin_copies, self.cb_print.isChecked(), "Cochez « Imprimer l'étiquette » pour définir le nombre de copies.")
+        self.cb_print.toggled.connect(
+            lambda checked: set_enabled_with_reason(
+                self.spin_copies, checked,
+                "Cochez « Imprimer l'étiquette » pour définir le nombre de copies.",
+                "Nombre d'étiquettes à imprimer",
+            )
+        )
 
         print_layout.addWidget(self.cb_print)
         print_layout.addWidget(self.spin_copies)
@@ -823,7 +793,7 @@ class UnpackTransferDialog(BaseDialog):
         right_layout.setSpacing(10)
 
         # 3. Paramètres de Déconditionnement
-        decond_group = QGroupBox("⚙️ Ordre de Déconditionnement")
+        decond_group = QGroupBox("Ordre de Déconditionnement")
         decond_layout = QVBoxLayout(decond_group)
         decond_layout.setSpacing(8)
 
@@ -835,21 +805,21 @@ class UnpackTransferDialog(BaseDialog):
         self.combo_preset = QComboBox()
 
         self.combo_preset.addItem(
-            f"🧪 Vers Unité Détail ({uu}) — Ratio : 1 {su} = {uq:g} {uu}",
+            f"Vers Unité Détail ({uu}) — Ratio : 1 {su} = {uq:g} {uu}",
             {"target_unit": uu, "factor": uq, "source_unit": su}
         )
         if sq > 1 and su.lower() != ou.lower():
             self.combo_preset.addItem(
-                f"📦 Vers Unité Stockage ({su}) — Ratio : 1 {ou} = {sq:g} {su}",
+                f"Vers Unité Stockage ({su}) — Ratio : 1 {ou} = {sq:g} {su}",
                 {"target_unit": su, "factor": sq, "source_unit": ou}
             )
         if sq > 1 and uq > 1:
             direct_ratio = sq * uq
             self.combo_preset.addItem(
-                f"⚡ Direct Commande ➔ Détail ({uu}) — Ratio : 1 {ou} = {direct_ratio:g} {uu}",
+                f"Direct Commande -> Détail ({uu}) — Ratio : 1 {ou} = {direct_ratio:g} {uu}",
                 {"target_unit": uu, "factor": direct_ratio, "source_unit": ou}
             )
-        self.combo_preset.addItem("✏️ Saisie Personnalisée (Libre)", None)
+        self.combo_preset.addItem("Saisie Personnalisée (Libre)", None)
         self.combo_preset.currentIndexChanged.connect(self._on_preset_changed)
 
         preset_row.addWidget(lbl_preset)
@@ -937,8 +907,8 @@ class UnpackTransferDialog(BaseDialog):
         pf_layout.addWidget(self.lbl_result_remain)
         prev_layout.addWidget(prev_frame)
 
-        lbl_note = QLabel("ℹ️ <i>Le coût et le prix de vente unitaire sont automatiquement calculés et rattachés au nouveau lot magasin.</i>")
-        lbl_note.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        lbl_note = QLabel("<i>Le coût et le prix de vente unitaire sont automatiquement calculés et rattachés au nouveau lot magasin.</i>")
+        lbl_note.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
         lbl_note.setWordWrap(True)
         prev_layout.addWidget(lbl_note)
 
@@ -973,22 +943,22 @@ class UnpackTransferDialog(BaseDialog):
     def _on_barcode_text_changed(self, text):
         clean_code = text.strip()
         if not clean_code:
-            self.lbl_barcode_status.setText("ℹ️ Un code EAN-13 unique sera généré automatiquement si vide.")
-            self.lbl_barcode_status.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+            self.lbl_barcode_status.setText("Un code EAN-13 unique sera généré automatiquement si vide.")
+            self.lbl_barcode_status.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px;")
             return
 
         if self.batch_manager and hasattr(self.batch_manager, 'is_barcode_available'):
             try:
                 is_avail, err = self.batch_manager.is_barcode_available(clean_code)
                 if is_avail:
-                    self.lbl_barcode_status.setText("✅ Code-barres valide et disponible.")
-                    self.lbl_barcode_status.setStyleSheet("color: #27ae60; font-size: 11px; font-weight: bold;")
+                    self.lbl_barcode_status.setText("Code-barres valide et disponible.")
+                    self.lbl_barcode_status.setStyleSheet(f"color: {STATUS_SUCCESS}; font-size: 11px; font-weight: 700;")
                 else:
-                    self.lbl_barcode_status.setText(f"❌ {err}")
-                    self.lbl_barcode_status.setStyleSheet("color: #c0392b; font-size: 11px; font-weight: bold;")
+                    self.lbl_barcode_status.setText(f"{err}")
+                    self.lbl_barcode_status.setStyleSheet(f"color: {STATUS_DANGER}; font-size: 11px; font-weight: 700;")
             except Exception as e:
-                self.lbl_barcode_status.setText(f"⚠️ Erreur de validation: {e}")
-                self.lbl_barcode_status.setStyleSheet("color: #e67e22; font-size: 11px;")
+                self.lbl_barcode_status.setText(f"Erreur de validation : {e}")
+                self.lbl_barcode_status.setStyleSheet(f"color: {STATUS_WARN}; font-size: 11px;")
 
     def _on_preset_changed(self, index):
         data = self.combo_preset.currentData()
@@ -1019,9 +989,9 @@ class UnpackTransferDialog(BaseDialog):
         curr_stock = quantity_to_int(self.batch.get('Quantity_Current', 0))
         remaining = max(0, curr_stock - qty_src)
 
-        self.lbl_result_qty.setText(f"🎯 <b>Nouveau Stock Détail :</b> {format_quantity(target_total_qty)} {unit_tgt} <i>(depuis {format_quantity(qty_src)} {src_unit})</i>")
-        self.lbl_result_cost.setText(f"💰 <b>Coût Unitaire Déconditionné :</b> {format_money(target_unit_cost, 'DA')} / {unit_tgt}")
-        self.lbl_result_remain.setText(f"📦 <b>Stock Restant Lot Parent :</b> {format_quantity(remaining)} {src_unit}")
+        self.lbl_result_qty.setText(f"<b>Nouveau Stock Détail :</b> {format_quantity(target_total_qty)} {unit_tgt} <i>(depuis {format_quantity(qty_src)} {src_unit})</i>")
+        self.lbl_result_cost.setText(f"<b>Coût Unitaire Déconditionné :</b> {format_money(target_unit_cost, 'DA')} / {unit_tgt}")
+        self.lbl_result_remain.setText(f"<b>Stock Restant Lot Parent :</b> {format_quantity(remaining)} {src_unit}")
 
     def accept(self):
         # 1. Validation de la quantité
@@ -1091,10 +1061,11 @@ class PriceHistoryDialog(QDialog):
         self.product_id = product_id
         self.product_name = product_name or "Produit"
 
+        self.setObjectName("PriceHistoryDialog")
         self.setWindowTitle(f"Historique des Prix - {self.product_name}")
         self.setModal(True)
         self.resize(880, 500)
-        self.setStyleSheet("background-color: #ffffff;")
+        self.setStyleSheet(scoped_dialog_qss("PriceHistoryDialog", bg=CARD_BG))
 
         self.init_ui()
         self.load_history()
@@ -1104,8 +1075,8 @@ class PriceHistoryDialog(QDialog):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(10)
 
-        lbl_title = QLabel(f"📈 Historique des modifications de prix : <b>{self.product_name}</b>")
-        lbl_title.setStyleSheet("font-size: 14px; color: #007572; padding: 4px 0;")
+        lbl_title = QLabel(f"Historique des modifications de prix : <b>{self.product_name}</b>")
+        lbl_title.setStyleSheet(f"font-size: 14px; color: {BRAND_TEAL}; padding: 4px 0;")
         layout.addWidget(lbl_title)
 
         self.table = QTableWidget()
@@ -1119,25 +1090,7 @@ class PriceHistoryDialog(QDialog):
             header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(7, QHeaderView.Stretch)
 
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background-color: #ffffff;
-                border: 1px solid #dcdfe6;
-                gridline-color: #f1f5f9;
-                font-size: 12px;
-                color: #2c3e50;
-            }
-            QHeaderView::section {
-                background-color: #f8fafc;
-                color: #2c3e50;
-                font-weight: bold;
-                font-size: 12px;
-                border: none;
-                border-bottom: 2px solid #007572;
-                border-right: 1px solid #e2e8f0;
-                padding: 6px 8px;
-            }
-        """)
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -1147,20 +1100,8 @@ class PriceHistoryDialog(QDialog):
         btn_box.addStretch()
         btn_close = QPushButton("Fermer")
         btn_close.setCursor(Qt.PointingHandCursor)
-        btn_close.setStyleSheet("""
-            QPushButton {
-                background-color: #007572;
-                color: #ffffff;
-                font-weight: bold;
-                border-radius: 4px;
-                padding: 6px 20px;
-                min-height: 30px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #005a57;
-            }
-        """)
+        btn_close.setMinimumHeight(34)
+        btn_close.setStyleSheet(PRIMARY_CTA_QSS)
         btn_close.clicked.connect(self.accept)
         btn_box.addWidget(btn_close)
         layout.addLayout(btn_box)
@@ -1235,10 +1176,11 @@ class ModifySalesPricesDialog(QDialog):
         self.current_user = getattr(parent, 'current_user', None) if parent else None
 
         prod_name = batch_data.get('Product_Name', 'Produit')
+        self.setObjectName("ModifySalesPricesDialog")
         self.setWindowTitle(f"Ajustement des Prix de Vente - {prod_name}")
         self.setModal(True)
         self.resize(650, 520)
-        self.setStyleSheet("background-color: #ffffff;")
+        self.setStyleSheet(scoped_dialog_qss("ModifySalesPricesDialog", bg=CARD_BG))
 
         self.init_ui()
 
@@ -1298,35 +1240,40 @@ class ModifySalesPricesDialog(QDialog):
         main_layout.addWidget(card)
 
         # 2. Formulaire des Prix de Vente
-        group_prices = QGroupBox("💲 Tarification et Prix de Vente (DA)")
-        group_prices.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                color: #007572;
-                border: 1px solid #dcdfe6;
-                border-radius: 6px;
+        group_prices = QGroupBox("Tarification et Prix de Vente (DA)")
+        group_prices.setObjectName("ModifyPricesGroup")
+        group_prices.setStyleSheet(f"""
+            QGroupBox#ModifyPricesGroup {{
+                font-weight: 700;
+                color: {BRAND_TEAL};
+                border: 1px solid {BORDER_HAIRLINE};
+                border-radius: 8px;
                 margin-top: 6px;
                 padding-top: 14px;
-                background-color: #ffffff;
-            }
-            QGroupBox::title {
+                background-color: {CARD_BG};
+            }}
+            QGroupBox#ModifyPricesGroup::title {{
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 6px;
-                background-color: #ffffff;
-            }
-            QDoubleSpinBox, QComboBox, QLineEdit {
-                background-color: #ffffff;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
+                background-color: {CARD_BG};
+            }}
+            QGroupBox#ModifyPricesGroup QDoubleSpinBox,
+            QGroupBox#ModifyPricesGroup QComboBox,
+            QGroupBox#ModifyPricesGroup QLineEdit {{
+                background-color: {CARD_BG};
+                border: 1px solid {BORDER_CONTROL};
+                border-radius: 6px;
                 padding: 4px 8px;
                 min-height: 28px;
                 font-size: 12px;
-                color: #2c3e50;
-            }
-            QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {
-                border: 1.5px solid #007572;
-            }
+                color: {TEXT_PRIMARY};
+            }}
+            QGroupBox#ModifyPricesGroup QDoubleSpinBox:focus,
+            QGroupBox#ModifyPricesGroup QComboBox:focus,
+            QGroupBox#ModifyPricesGroup QLineEdit:focus {{
+                border: 1.5px solid {BRAND_TEAL};
+            }}
         """)
 
         form_layout = QGridLayout(group_prices)
@@ -1389,23 +1336,24 @@ class ModifySalesPricesDialog(QDialog):
         main_layout.addWidget(group_prices)
 
         # 3. Scope & Audit Reason
-        group_audit = QGroupBox("📝 Audit & Portée de la Modification")
-        group_audit.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                color: #2c3e50;
-                border: 1px solid #dcdfe6;
-                border-radius: 6px;
+        group_audit = QGroupBox("Audit & Portée de la Modification")
+        group_audit.setObjectName("ModifyAuditGroup")
+        group_audit.setStyleSheet(f"""
+            QGroupBox#ModifyAuditGroup {{
+                font-weight: 700;
+                color: {TEXT_PRIMARY};
+                border: 1px solid {BORDER_HAIRLINE};
+                border-radius: 8px;
                 margin-top: 6px;
                 padding-top: 14px;
-                background-color: #ffffff;
-            }
-            QGroupBox::title {
+                background-color: {CARD_BG};
+            }}
+            QGroupBox#ModifyAuditGroup::title {{
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 6px;
-                background-color: #ffffff;
-            }
+                background-color: {CARD_BG};
+            }}
         """)
         audit_layout = QVBoxLayout(group_audit)
         audit_layout.setContentsMargins(12, 12, 12, 12)
@@ -1427,7 +1375,7 @@ class ModifySalesPricesDialog(QDialog):
         audit_layout.addLayout(reason_layout)
 
         self.cb_all_batches = QCheckBox("Appliquer également ces nouveaux prix à TOUS les lots actifs de ce produit")
-        self.cb_all_batches.setStyleSheet("font-weight: bold; color: #d35400; padding-top: 4px;")
+        self.cb_all_batches.setStyleSheet(f"font-weight: 700; color: {STATUS_WARN}; padding-top: 4px;")
         audit_layout.addWidget(self.cb_all_batches)
 
         main_layout.addWidget(group_audit)
@@ -1437,22 +1385,10 @@ class ModifySalesPricesDialog(QDialog):
         # 4. Action Buttons
         btn_bar = QHBoxLayout()
 
-        btn_history = QPushButton("🕒 Historique des prix")
+        btn_history = QPushButton("Historique des prix")
         btn_history.setCursor(Qt.PointingHandCursor)
-        btn_history.setStyleSheet("""
-            QPushButton {
-                background-color: #f8fafc;
-                color: #2c3e50;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                padding: 6px 14px;
-                font-size: 12px;
-                min-height: 28px;
-            }
-            QPushButton:hover {
-                background-color: #e2e8f0;
-            }
-        """)
+        btn_history.setMinimumHeight(34)
+        btn_history.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_history.clicked.connect(self.open_history_view)
         btn_bar.addWidget(btn_history)
 
@@ -1460,40 +1396,15 @@ class ModifySalesPricesDialog(QDialog):
 
         btn_cancel = QPushButton("Annuler")
         btn_cancel.setCursor(Qt.PointingHandCursor)
-        btn_cancel.setStyleSheet("""
-            QPushButton {
-                background-color: #ffffff;
-                color: #495057;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                padding: 6px 16px;
-                font-size: 12px;
-                min-height: 28px;
-            }
-            QPushButton:hover {
-                background-color: #f8f9fa;
-            }
-        """)
+        btn_cancel.setMinimumHeight(34)
+        btn_cancel.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_cancel.clicked.connect(self.reject)
         btn_bar.addWidget(btn_cancel)
 
-        btn_save = QPushButton("💾 Enregistrer les prix")
+        btn_save = QPushButton("Enregistrer les prix")
         btn_save.setCursor(Qt.PointingHandCursor)
-        btn_save.setStyleSheet("""
-            QPushButton {
-                background-color: #007572;
-                color: #ffffff;
-                font-weight: bold;
-                border-radius: 4px;
-                padding: 6px 20px;
-                font-size: 12px;
-                min-height: 28px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #005a57;
-            }
-        """)
+        btn_save.setMinimumHeight(36)
+        btn_save.setStyleSheet(PRIMARY_CTA_QSS)
         btn_save.clicked.connect(self.save_prices)
         btn_bar.addWidget(btn_save)
 
@@ -1562,12 +1473,10 @@ class AdminStockAuthDialog(QDialog):
 
     def __init__(self, action_label: str, item_summary: str, data_manager=None, parent=None):
         super().__init__(parent)
+        self.setObjectName("AdminStockAuthDialog")
         self.setWindowTitle(f"Autorisation Administrateur — {action_label}")
         self.setFixedSize(440, 320)
-        self.setStyleSheet("""
-            QDialog { background-color: #FFFFFF; color: #1E293B; }
-            QLabel { border: none; background: transparent; }
-        """)
+        self.setStyleSheet(scoped_dialog_qss("AdminStockAuthDialog", bg=CARD_BG))
         self.data_manager = data_manager
         self.approved = False
         self.admin_user_id = None
@@ -1664,13 +1573,11 @@ class DirectBonRetourDialog(QDialog):
 
     def __init__(self, batch_data: dict, parent=None):
         super().__init__(parent)
+        self.setObjectName("DirectBonRetourDialog")
         self.batch_data = batch_data or {}
         self.setWindowTitle("Créer un Bon de Retour / Avoir")
         self.setFixedSize(430, 260)
-        self.setStyleSheet("""
-            QDialog { background-color: #FFFFFF; color: #1E293B; }
-            QLabel { border: none; background: transparent; }
-        """)
+        self.setStyleSheet(scoped_dialog_qss("DirectBonRetourDialog", bg=CARD_BG))
         self._init_ui()
 
     def _init_ui(self) -> None:

@@ -94,16 +94,20 @@ class OrderClientDialog(QDialog):
         self.clients_cache = loaded
 
     def _init_ui(self) -> None:
+        self.setObjectName("OrderClientDialog")
         self.setStyleSheet("""
-            QDialog {
+            QDialog#OrderClientDialog {
                 background-color: #FFFFFF;
             }
-            QLabel {
+            QDialog#OrderClientDialog QLabel {
                 font-size: 12px;
                 font-weight: 600;
                 color: #2C3E50;
+                border: none;
+                background: transparent;
             }
-            QLineEdit, QComboBox {
+            QDialog#OrderClientDialog QLineEdit,
+            QDialog#OrderClientDialog QComboBox {
                 background-color: #FFFFFF;
                 border: 1px solid #CED4DA;
                 border-radius: 4px;

@@ -96,23 +96,28 @@ class CaissesTab(QWidget):
         actions = QHBoxLayout()
         actions.setSpacing(10)
 
+        from ui.theme_tokens import (
+            SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, TEXT_MUTED, set_enabled_with_reason,
+        )
         self.btn_edit = QPushButton("Modifier la Caisse")
-        self.btn_edit.setEnabled(False)
         self.btn_edit.setMinimumHeight(34)
         self.btn_edit.setCursor(Qt.PointingHandCursor)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
+        set_enabled_with_reason(self.btn_edit, False, "Sélectionnez une caisse dans le tableau pour modifier.")
         self.btn_edit.clicked.connect(self.open_edit_dialog)
 
         self.btn_toggle_active = QPushButton("Activer / Desactiver")
-        self.btn_toggle_active.setEnabled(False)
         self.btn_toggle_active.setMinimumHeight(34)
         self.btn_toggle_active.setCursor(Qt.PointingHandCursor)
+        self.btn_toggle_active.setStyleSheet(SLATE_OUTLINE_QSS)
+        set_enabled_with_reason(self.btn_toggle_active, False, "Sélectionnez une caisse dans le tableau pour changer son statut.")
         self.btn_toggle_active.clicked.connect(self.toggle_active)
 
         self.btn_delete = QPushButton("Supprimer")
-        self.btn_delete.setEnabled(False)
         self.btn_delete.setMinimumHeight(34)
         self.btn_delete.setCursor(Qt.PointingHandCursor)
-        self.btn_delete.setStyleSheet("color: #c0392b;")
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
+        set_enabled_with_reason(self.btn_delete, False, "Sélectionnez une caisse dans le tableau pour supprimer.")
         self.btn_delete.clicked.connect(self.delete_caisse)
 
         actions.addWidget(self.btn_edit)
@@ -121,7 +126,7 @@ class CaissesTab(QWidget):
         actions.addStretch()
 
         self.lbl_count = QLabel("Total: 0 caisse(s)")
-        self.lbl_count.setStyleSheet("font-weight: bold; color: #64748b;")
+        self.lbl_count.setStyleSheet(f"font-weight: 700; color: {TEXT_MUTED};")
         actions.addWidget(self.lbl_count)
 
         layout.addLayout(actions)
@@ -199,10 +204,11 @@ class CaissesTab(QWidget):
         return None
 
     def on_selection_changed(self):
+        from ui.theme_tokens import set_enabled_with_reason
         has_sel = self.get_selected_data() is not None
-        self.btn_edit.setEnabled(has_sel)
-        self.btn_toggle_active.setEnabled(has_sel)
-        self.btn_delete.setEnabled(has_sel)
+        set_enabled_with_reason(self.btn_edit, has_sel, "Sélectionnez une caisse dans le tableau pour modifier.", "Modifier la caisse sélectionnée")
+        set_enabled_with_reason(self.btn_toggle_active, has_sel, "Sélectionnez une caisse dans le tableau pour changer son statut.", "Activer ou désactiver la caisse sélectionnée")
+        set_enabled_with_reason(self.btn_delete, has_sel, "Sélectionnez une caisse dans le tableau pour supprimer.", "Supprimer la caisse sélectionnée")
 
     def open_add_dialog(self):
         dlg = CaisseDialog(parent=self)

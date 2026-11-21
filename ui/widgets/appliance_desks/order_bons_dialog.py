@@ -162,6 +162,7 @@ class OrderBonEditDialog(QDialog):
         # Lock type change if an invoice already exists
         if self.order_data.get("Invoice_ID"):
             self.cbo_type.setEnabled(False)
+            self.cbo_type.setToolTip("Type verrouillé car une facture a déjà été émise pour ce bon.")
         self.cbo_type.currentIndexChanged.connect(self._on_type_changed)
         top_row.addWidget(self.cbo_type, 1)
         layout.addLayout(top_row)
@@ -500,6 +501,7 @@ class OrderDeskBonsDialog(QDialog):
         self.btn_edit.setFixedHeight(38)
         self.btn_edit.setCursor(Qt.PointingHandCursor)
         self.btn_edit.setEnabled(False)
+        self.btn_edit.setToolTip("Sélectionnez un bon dans la liste pour le modifier.")
         self.btn_edit.setStyleSheet("""
             QPushButton {
                 background-color: #FFFFFF; color: #007572; border: 1.5px solid #007572;
@@ -517,6 +519,7 @@ class OrderDeskBonsDialog(QDialog):
         self.btn_pdf.setFixedHeight(38)
         self.btn_pdf.setCursor(Qt.PointingHandCursor)
         self.btn_pdf.setEnabled(False)
+        self.btn_pdf.setToolTip("Sélectionnez un bon dans la liste pour exporter son PDF.")
         self.btn_pdf.setStyleSheet("""
             QPushButton {
                 background-color: #007572; color: #FFFFFF; border: none;

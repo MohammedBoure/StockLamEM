@@ -22,9 +22,10 @@ class OverviewTab(QWidget):
         layout.addWidget(self.kpi_section)
 
         # خط فاصل (اختياري)
+        from ui.theme_tokens import BORDER_HAIRLINE
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet("color: #ecf0f1;")
+        line.setStyleSheet(f"color: {BORDER_HAIRLINE};")
         layout.addWidget(line)
 
         # 2. قسم المبيان (Charts)

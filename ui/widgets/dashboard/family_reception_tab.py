@@ -32,13 +32,14 @@ class FamilyReceptionTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         
+        from ui.theme_tokens import (
+            CARD_BG, BORDER_HAIRLINE, STATUS_SUCCESS,
+            PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS, scoped_card_qss,
+        )
         # --- 1. شريط الفلاتر ---
         filter_frame = QFrame()
         filter_frame.setObjectName("FamilyReceptionFilterBar")
-        filter_frame.setStyleSheet(
-            "QFrame#FamilyReceptionFilterBar { background-color: white; border-radius: 5px; border: 1px solid #ddd; }"
-            "QFrame#FamilyReceptionFilterBar QLabel { border: none; background: transparent; }"
-        )
+        filter_frame.setStyleSheet(scoped_card_qss("FamilyReceptionFilterBar", bg=CARD_BG, border=BORDER_HAIRLINE, radius=8))
         filter_layout = QHBoxLayout(filter_frame)
         
         self.combo_family = QComboBox()
@@ -56,9 +57,9 @@ class FamilyReceptionTab(QWidget):
             
         self.combo_unit = QComboBox()
         self.combo_unit.addItems([
-            "📦 Unité de Stockage (Défaut)", 
-            "🚚 Unité de Commande (Achat)", 
-            "🧪 Unité d'Usage (Test/Unitaire)"
+            "Unité de Stockage (Défaut)", 
+            "Unité de Commande (Achat)", 
+            "Unité d'Usage (Test/Unitaire)"
         ])
         self.combo_unit.setItemData(0, "stock")
         self.combo_unit.setItemData(1, "order")
@@ -67,18 +68,21 @@ class FamilyReceptionTab(QWidget):
 
         btn_refresh = QPushButton("Afficher Rapport")
         btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.setStyleSheet("background-color: #2980b9; color: white; font-weight: bold; padding: 5px 15px;")
+        btn_refresh.setMinimumHeight(34)
+        btn_refresh.setStyleSheet(PRIMARY_CTA_QSS)
         btn_refresh.clicked.connect(self.load_data)
         
         # أزرار التصدير
         btn_excel = QPushButton("Excel")
-        btn_excel.setIcon(qta.icon('fa5s.file-excel', color='white'))
-        btn_excel.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; padding: 5px 10px;")
+        btn_excel.setMinimumHeight(34)
+        btn_excel.setIcon(qta.icon('fa5s.file-excel', color='#047857'))
+        btn_excel.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_excel.clicked.connect(self.export_to_excel)
 
         btn_pdf = QPushButton("PDF")
-        btn_pdf.setIcon(qta.icon('fa5s.file-pdf', color='white'))
-        btn_pdf.setStyleSheet("background-color: #c0392b; color: white; font-weight: bold; padding: 5px 10px;")
+        btn_pdf.setMinimumHeight(34)
+        btn_pdf.setIcon(qta.icon('fa5s.file-pdf', color='#DC2626'))
+        btn_pdf.setStyleSheet(DANGER_OUTLINE_QSS)
         btn_pdf.clicked.connect(self.export_to_pdf)
 
         filter_layout.addWidget(QLabel("Famille:"))
@@ -97,8 +101,8 @@ class FamilyReceptionTab(QWidget):
         layout.addWidget(filter_frame)
         
         # --- 2. ملخص إجمالي ---
-        self.lbl_summary = QLabel("Total Reçu: 0")
-        self.lbl_summary.setStyleSheet("font-size: 16px; font-weight: bold; color: #27ae60; margin: 10px 0;")
+        self.lbl_summary = QLabel("Total Reçu : 0")
+        self.lbl_summary.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {STATUS_SUCCESS}; margin: 8px 0;")
         self.lbl_summary.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.lbl_summary)
 
@@ -111,10 +115,7 @@ class FamilyReceptionTab(QWidget):
         self.table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         
-        self.table.setStyleSheet("""
-            QTableWidget { gridline-color: #ecf0f1; } 
-            QHeaderView::section { background-color: #f8f9fa; font-weight: bold; padding: 5px; }
-        """)
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         layout.addWidget(self.table)
 
     def showEvent(self, event):

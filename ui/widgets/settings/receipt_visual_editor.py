@@ -141,7 +141,7 @@ class ReceiptVisualEditor(QWidget):
         form_layout = QVBoxLayout(content)
 
         # 0. Template Management
-        grp_tpl = QGroupBox("📋 0. Modèles (Templates)")
+        grp_tpl = QGroupBox("0. Modèles (Templates)")
         v_tpl = QVBoxLayout(grp_tpl)
         
         h_combo = QHBoxLayout()
@@ -151,10 +151,10 @@ class ReceiptVisualEditor(QWidget):
         h_combo.addWidget(self.cmb_template, 1)
         
         h_btn = QHBoxLayout()
-        btn_new = QPushButton("➕ Nouveau")
-        btn_save = QPushButton("💾 Enregistrer")
-        btn_ren = QPushButton("✏️ Renommer")
-        btn_del = QPushButton("🗑️ Supprimer")
+        btn_new = QPushButton("+ Nouveau")
+        btn_save = QPushButton("Enregistrer")
+        btn_ren = QPushButton("Renommer")
+        btn_del = QPushButton("Supprimer")
         
         btn_new.clicked.connect(self.new_template)
         btn_save.clicked.connect(self.save_template)
@@ -171,7 +171,7 @@ class ReceiptVisualEditor(QWidget):
         form_layout.addWidget(grp_tpl)
 
         # 1. Dimensions
-        grp_gen = QGroupBox("📄 1. Papier et Dimensions")
+        grp_gen = QGroupBox("1. Papier et Dimensions")
         f_gen = QFormLayout(grp_gen)
         self.cmb_width = QComboBox()
         self.cmb_width.addItems(["80mm", "58mm"])
@@ -262,7 +262,7 @@ class ReceiptVisualEditor(QWidget):
         form_layout.addWidget(grp_items)
 
         # 2. En-tête (Header)
-        grp_header = QGroupBox("🏢 2. En-tête (Header)")
+        grp_header = QGroupBox("2. En-tête (Header)")
         v_head = QVBoxLayout(grp_header)
         self.chk_head = QCheckBox("Afficher l'En-tête")
         self.chk_head.setChecked(self.receipt_config["header"]["show"])
@@ -287,7 +287,7 @@ class ReceiptVisualEditor(QWidget):
         form_layout.addWidget(grp_header)
 
         # 3. Informations
-        grp_info = QGroupBox("🧾 3. Informations Facture")
+        grp_info = QGroupBox("3. Informations Facture")
         f_info = QFormLayout(grp_info)
         self.chk_date = QCheckBox("Afficher Date"); self.chk_date.setChecked(self.receipt_config["info"]["show_date"])
         self.chk_client = QCheckBox("Afficher Client"); self.chk_client.setChecked(self.receipt_config["info"]["show_client"])
@@ -304,7 +304,7 @@ class ReceiptVisualEditor(QWidget):
         form_layout.addWidget(grp_info)
 
         # 4. Pied de page & Code-barres
-        grp_foot = QGroupBox("📝 4. Pied de page & Code-barres")
+        grp_foot = QGroupBox("4. Pied de page & Code-barres")
         v_foot = QVBoxLayout(grp_foot)
         
         self.chk_foot = QCheckBox("Afficher Pied de page")
@@ -348,13 +348,13 @@ class ReceiptVisualEditor(QWidget):
         # Preview Panel
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
-        grp_prev = QGroupBox("👁️ Aperçu (Prévisualisation)")
+        grp_prev = QGroupBox("Aperçu (Prévisualisation)")
         l_prev = QVBoxLayout(grp_prev)
         
         tools_h = QHBoxLayout()
-        btn_zout = QPushButton("➖ Zoom Out"); btn_zout.clicked.connect(self.zoom_out)
-        btn_zres = QPushButton("🔄 Reset Zoom"); btn_zres.clicked.connect(self.zoom_reset)
-        btn_zin = QPushButton("➕ Zoom In"); btn_zin.clicked.connect(self.zoom_in)
+        btn_zout = QPushButton("- Zoom Out"); btn_zout.clicked.connect(self.zoom_out)
+        btn_zres = QPushButton("Reset Zoom"); btn_zres.clicked.connect(self.zoom_reset)
+        btn_zin = QPushButton("+ Zoom In"); btn_zin.clicked.connect(self.zoom_in)
         tools_h.addWidget(btn_zout); tools_h.addWidget(btn_zres); tools_h.addWidget(btn_zin)
         l_prev.addLayout(tools_h)
 

@@ -8,6 +8,12 @@ from PySide6.QtGui import QFont, QBrush, QColor
 
 from ui.widgets.master_data.dialogs import BaseDialog
 from ui.formatting import format_money
+from ui.theme_tokens import (
+    BRAND_TEAL, CARD_BG, SUBTLE_BG, BORDER_HAIRLINE, TEXT_PRIMARY, TEXT_MUTED,
+    STATUS_SUCCESS, STATUS_WARN, STATUS_WARN_BG, STATUS_WARN_BORDER,
+    CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, AMBER_OUTLINE_QSS, DANGER_OUTLINE_QSS, SLATE_OUTLINE_QSS,
+    set_enabled_with_reason,
+)
 
 class StockAlertDialog(QDialog):
     def __init__(self, parent=None, alerts_data=None):
@@ -151,9 +157,10 @@ class PurchaseOrderDialog(BaseDialog):
 
         # === 1. Informations Générales (En-tête) ===
         top_section = QGroupBox("Informations Générales")
-        top_section.setStyleSheet("""
-            QGroupBox { font-weight: bold; font-size: 13px; border: 1px solid #dcdcdc; border-radius: 8px; margin-top: 10px; padding-top: 5px; }
-            QGroupBox::title { subcontrol-origin: margin; left: 15px; padding: 0 5px; }
+        top_section.setObjectName("PODialogHeaderGroup")
+        top_section.setStyleSheet(f"""
+            QGroupBox#PODialogHeaderGroup {{ font-weight: 700; font-size: 13px; background: {CARD_BG}; border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; margin-top: 10px; padding-top: 8px; }}
+            QGroupBox#PODialogHeaderGroup::title {{ subcontrol-origin: margin; left: 15px; padding: 0 5px; color: {BRAND_TEAL}; }}
         """)
         top_grid = QGridLayout(top_section)
         top_grid.setContentsMargins(15, 10, 15, 10)
@@ -193,14 +200,14 @@ class PurchaseOrderDialog(BaseDialog):
         
         self.btn_validate_header = QPushButton("Valider & Verrouiller")
         self.btn_validate_header.setCursor(Qt.PointingHandCursor)
-        self.btn_validate_header.setMinimumHeight(38)
-        self.btn_validate_header.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold; border-radius: 4px; padding: 0 15px;")
+        self.btn_validate_header.setMinimumHeight(36)
+        self.btn_validate_header.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_validate_header.clicked.connect(self.validate_header)
         
-        self.btn_unlock_header = QPushButton("✏️ Modifier l'en-tête")
+        self.btn_unlock_header = QPushButton("Modifier l'en-tête")
         self.btn_unlock_header.setCursor(Qt.PointingHandCursor)
-        self.btn_unlock_header.setMinimumHeight(38)
-        self.btn_unlock_header.setStyleSheet("background-color: #f39c12; color: white; font-weight: bold; border-radius: 4px; padding: 0 15px;")
+        self.btn_unlock_header.setMinimumHeight(36)
+        self.btn_unlock_header.setStyleSheet(AMBER_OUTLINE_QSS)
         self.btn_unlock_header.setVisible(False)
         self.btn_unlock_header.clicked.connect(self.unlock_header)
 
@@ -214,15 +221,17 @@ class PurchaseOrderDialog(BaseDialog):
 
         # === 2. Section Ajout / Modification (Groupée) ===
         self.add_group = QGroupBox("Ajout d'un Article")
-        self.add_group.setStyleSheet("""
-            QGroupBox { font-weight: bold; font-size: 13px; border: 1px solid #dcdcdc; border-radius: 8px; margin-top: 5px; padding-top: 5px; }
+        self.add_group.setObjectName("PODialogAddGroup")
+        self.add_group.setStyleSheet(f"""
+            QGroupBox#PODialogAddGroup {{ font-weight: 700; font-size: 13px; background: {CARD_BG}; border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; margin-top: 5px; padding-top: 8px; }}
+            QGroupBox#PODialogAddGroup::title {{ subcontrol-origin: margin; left: 15px; padding: 0 5px; color: {BRAND_TEAL}; }}
         """)
         add_layout = QVBoxLayout(self.add_group)
         
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("Produit :"))
         self.product_search = QLineEdit()
-        self.product_search.setPlaceholderText("🔍 Rechercher un produit...")
+        self.product_search.setPlaceholderText("Rechercher un produit...")
         self.product_search.setMinimumHeight(38)
         row1.addWidget(self.product_search, stretch=4)
 
@@ -230,7 +239,7 @@ class PurchaseOrderDialog(BaseDialog):
         self.unit_combo = QComboBox()
         self.unit_combo.setMinimumHeight(38)
         self.unit_combo.setFixedWidth(120)
-        self.unit_combo.setEnabled(False)
+        set_enabled_with_reason(self.unit_combo, False, "Sélectionnez d'abord un produit.")
         row1.addWidget(self.unit_combo)
 
         row1.addWidget(QLabel("Qté :"))
@@ -246,15 +255,18 @@ class PurchaseOrderDialog(BaseDialog):
         row1.addWidget(self.item_note_input, stretch=2)
 
         # أزرار الإضافة والتحكم
-        self.btn_show_alerts = QPushButton("⚠️ Alertes")
-        self.btn_show_alerts.setStyleSheet("background-color: #e74c3c; color: white; font-weight: bold; border-radius: 4px;")
+        self.btn_show_alerts = QPushButton("Alertes")
+        self.btn_show_alerts.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_show_alerts.setMinimumHeight(38)
         self.btn_show_alerts.setFixedWidth(100)
         row1.addWidget(self.btn_show_alerts)
         
-        self.add_or_save_btn = QPushButton("➕ Ajouter")
-        self.btn_edit_line = QPushButton("✏️ Modifier")
-        self.btn_delete_line = QPushButton("🗑️ Supprimer")
+        self.add_or_save_btn = QPushButton("+ Ajouter")
+        self.add_or_save_btn.setStyleSheet(PRIMARY_CTA_QSS)
+        self.btn_edit_line = QPushButton("Modifier")
+        self.btn_edit_line.setStyleSheet(SLATE_OUTLINE_QSS)
+        self.btn_delete_line = QPushButton("Supprimer")
+        self.btn_delete_line.setStyleSheet(DANGER_OUTLINE_QSS)
         
         for btn in [self.add_or_save_btn, self.btn_edit_line, self.btn_delete_line]:
             btn.setMinimumHeight(38)
@@ -266,10 +278,12 @@ class PurchaseOrderDialog(BaseDialog):
 
         # === 3. Tableau des Articles (Groupé) ===
         self.table_group = QGroupBox("Liste des Articles Commandés")
-        self.table_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #dcdcdc; border-radius: 8px; }")
+        self.table_group.setObjectName("PODialogTableGroup")
+        self.table_group.setStyleSheet(f"QGroupBox#PODialogTableGroup {{ font-weight: 700; background: {CARD_BG}; border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; padding-top: 8px; }}")
         table_layout = QVBoxLayout(self.table_group)
 
         self.lines_table = QTableWidget()
+        self.lines_table.setStyleSheet(CLEAN_TABLE_QSS)
         cols = ["Désignation", "Marque", "Unité", "Qté", "P.U Estimé (TTC)", "Total Estimé (TTC)", "Observation"]
         self.lines_table.setColumnCount(len(cols))
         self.lines_table.setHorizontalHeaderLabels(cols)
@@ -294,18 +308,12 @@ class PurchaseOrderDialog(BaseDialog):
         
         table_layout.addWidget(self.lines_table)
 
-        self.lbl_estimated_total = QLabel("💰 Montant Total Estimé (TTC) : ---")
-        self.lbl_estimated_total.setStyleSheet("""
-            QLabel {
-                font-weight: bold;
-                font-size: 13px;
-                color: #7f8c8d;
-                background-color: #f8f9fa;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                padding: 8px 15px;
-            }
-        """)
+        self.lbl_estimated_total = QLabel("Montant Total Estimé (TTC) : ---")
+        self.lbl_estimated_total.setStyleSheet(
+            f"font-weight: 700; font-size: 13px; color: {TEXT_MUTED}; "
+            f"background-color: {SUBTLE_BG}; border: 1px solid {BORDER_HAIRLINE}; "
+            "border-radius: 6px; padding: 8px 15px;"
+        )
         self.lbl_estimated_total.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         table_layout.addWidget(self.lbl_estimated_total)
         
@@ -533,10 +541,10 @@ class PurchaseOrderDialog(BaseDialog):
                 
             self.unit_combo.addItems(units)
             self.unit_combo.setCurrentIndex(0)
-            self.unit_combo.setEnabled(True)
+            set_enabled_with_reason(self.unit_combo, True, "", "Choisir l'unité de commande")
             self.qty_spin.setValue(1)
             self.item_note_input.clear()
-            self.add_or_save_btn.setText("➕ Ajouter")
+            self.add_or_save_btn.setText("+ Ajouter")
             self.editing_row = -1
 
     def handle_add_or_save(self):
@@ -570,10 +578,10 @@ class PurchaseOrderDialog(BaseDialog):
     def reset_input_fields(self):
         self.product_search.clear()
         self.unit_combo.clear()
-        self.unit_combo.setEnabled(False)
+        set_enabled_with_reason(self.unit_combo, False, "Sélectionnez d'abord un produit.")
         self.qty_spin.setValue(1)
         self.item_note_input.clear()
-        self.add_or_save_btn.setText("➕ Ajouter")
+        self.add_or_save_btn.setText("+ Ajouter")
         self.editing_row = -1
 
     def reload_details_from_db(self):
@@ -630,34 +638,28 @@ class PurchaseOrderDialog(BaseDialog):
                 total_amount += line_total
                 
         if total_rows == 0 or known_count == 0:
-            self.lbl_estimated_total.setText("💰 Montant Total Estimé (TTC) : ---")
-            self.lbl_estimated_total.setStyleSheet("""
-                QLabel {
-                    font-weight: bold; font-size: 13px; color: #7f8c8d;
-                    background-color: #f8f9fa; border: 1px solid #e0e0e0;
-                    border-radius: 6px; padding: 8px 15px;
-                }
-            """)
+            self.lbl_estimated_total.setText("Montant Total Estimé (TTC) : ---")
+            self.lbl_estimated_total.setStyleSheet(
+                f"font-weight: 700; font-size: 13px; color: {TEXT_MUTED}; "
+                f"background-color: {SUBTLE_BG}; border: 1px solid {BORDER_HAIRLINE}; "
+                "border-radius: 6px; padding: 8px 15px;"
+            )
             self.lbl_estimated_total.setToolTip("Aucun prix d'achat enregistré dans le stock pour les articles actuels.")
         elif known_count < total_rows:
-            self.lbl_estimated_total.setText(f"💰 Montant Total Estimé (TTC) : > {format_money(total_amount, 'DA')}")
-            self.lbl_estimated_total.setStyleSheet("""
-                QLabel {
-                    font-weight: bold; font-size: 13px; color: #d35400;
-                    background-color: #fef5e7; border: 1px solid #f39c12;
-                    border-radius: 6px; padding: 8px 15px;
-                }
-            """)
+            self.lbl_estimated_total.setText(f"Montant Total Estimé (TTC) : > {format_money(total_amount, 'DA')}")
+            self.lbl_estimated_total.setStyleSheet(
+                f"font-weight: 700; font-size: 13px; color: {STATUS_WARN}; "
+                f"background-color: {STATUS_WARN_BG}; border: 1px solid {STATUS_WARN_BORDER}; "
+                "border-radius: 6px; padding: 8px 15px;"
+            )
             self.lbl_estimated_total.setToolTip(f"Estimation partielle ({known_count}/{total_rows} articles ont un prix en stock). Le montant final sera supérieur.")
         else:
-            self.lbl_estimated_total.setText(f"💰 Montant Total Estimé (TTC) : {format_money(total_amount, 'DA')}")
-            self.lbl_estimated_total.setStyleSheet("""
-                QLabel {
-                    font-weight: bold; font-size: 13px; color: #27ae60;
-                    background-color: #eafaf1; border: 1px solid #2ecc71;
-                    border-radius: 6px; padding: 8px 15px;
-                }
-            """)
+            self.lbl_estimated_total.setText(f"Montant Total Estimé (TTC) : {format_money(total_amount, 'DA')}")
+            self.lbl_estimated_total.setStyleSheet(
+                f"font-weight: 700; font-size: 13px; color: {STATUS_SUCCESS}; "
+                "background-color: #ECFDF5; border: 1px solid #A7F3D0; "
+                "border-radius: 6px; padding: 8px 15px;"
+            )
             self.lbl_estimated_total.setToolTip("Montant estimé calculé d'après les derniers prix d'achat enregistrés dans le stock (TVA et remises incluses).")
 
     def _add_line_to_ui(self, product_data, qty, final_unit_text, item_note, detail_id=None):
@@ -789,7 +791,7 @@ class PurchaseOrderDialog(BaseDialog):
         self.qty_spin.setValue(int(self.lines_table.item(row, 3).text() or 1))
         self.item_note_input.setText(self.lines_table.item(row, 6).text() or "")
 
-        self.add_or_save_btn.setText("💾 Enregistrer")
+        self.add_or_save_btn.setText("Enregistrer")
         self.editing_row = row
 
     def update_line(self, row, qty, unit, note):

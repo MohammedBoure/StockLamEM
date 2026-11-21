@@ -17,7 +17,7 @@ def _adjust_combo_view_width(combo):
 
 def populate_families(self):
     self.combo_family.clear()
-    self.combo_family.addItem("📁 Familles", None)
+    self.combo_family.addItem("Toutes les Familles", None)
     try:
         if hasattr(self.manager, 'families'):
             for f in self.manager.families.get_all_families():
@@ -29,7 +29,7 @@ def populate_families(self):
 
 def populate_manufacturers(self):
     self.combo_manuf.clear()
-    self.combo_manuf.addItem("🏭 Marques", None)
+    self.combo_manuf.addItem("Toutes les Marques", None)
     try:
         if hasattr(self.manager, 'manufacturers'):
             for m in self.manager.manufacturers.get_all_manufacturers():
@@ -41,7 +41,7 @@ def populate_manufacturers(self):
 
 def populate_automates(self):
     self.combo_automate.clear()
-    self.combo_automate.addItem("⚙️ Automates", None)
+    self.combo_automate.addItem("Tous les Automates", None)
     try:
         if hasattr(self.manager, 'automates'):
             for a in self.manager.automates.get_all_automates():
@@ -55,7 +55,7 @@ def populate_suppliers(self):
     if not hasattr(self, 'combo_supplier'):
         return
     self.combo_supplier.clear()
-    self.combo_supplier.addItem("🚚 Fournisseurs", None)
+    self.combo_supplier.addItem("Tous les Fournisseurs", None)
     try:
         conn = self.manager.db.get_raw_connection()
         cursor = conn.cursor(dictionary=True)
@@ -74,8 +74,8 @@ def populate_priority_groups(self):
     curr_data = self.combo_priority_group.currentData()
     self.combo_priority_group.blockSignals(True)
     self.combo_priority_group.clear()
-    self.combo_priority_group.addItem("⭐ Groupes Vente", None)
-    self.combo_priority_group.addItem("⭐ Tous Prioritaires", "ALL_PRIORITY")
+    self.combo_priority_group.addItem("Groupes Vente", None)
+    self.combo_priority_group.addItem("Tous Prioritaires", "ALL_PRIORITY")
 
     groups = set()
     if hasattr(self.manager, 'products') and hasattr(self.manager.products, 'get_assigned_pos_priority_groups'):
@@ -94,7 +94,7 @@ def populate_priority_groups(self):
                 pass
 
     for g in sorted(list(groups)):
-        self.combo_priority_group.addItem(f"⭐ Groupe {g}", g)
+        self.combo_priority_group.addItem(f"Groupe {g}", g)
 
     idx = self.combo_priority_group.findData(curr_data)
     if idx >= 0:

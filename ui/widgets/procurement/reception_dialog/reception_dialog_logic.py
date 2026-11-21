@@ -191,15 +191,22 @@ class ReceptionDialogLogicMixin:
         if not product_data:
             self.cb_ref.addItem("--- Réf ---", "")
             self.cb_ref.setEnabled(False)
+            self.cb_ref.setToolTip("Sélectionnez d'abord un produit.")
             if hasattr(self, 'btn_add_ref'):
                 self.btn_add_ref.setEnabled(False)
+                self.btn_add_ref.setToolTip("Sélectionnez d'abord un produit pour définir sa Réf.")
             self.cb_ref.blockSignals(False)
             return
 
         inputs_unlocked = self.cb_product.isEnabled()
         self.cb_ref.setEnabled(inputs_unlocked)
+        self.cb_ref.setToolTip("" if inputs_unlocked else "Validez d'abord l'en-tête de réception.")
         if hasattr(self, 'btn_add_ref'):
             self.btn_add_ref.setEnabled(inputs_unlocked)
+            self.btn_add_ref.setToolTip(
+                "Définir ou modifier l'unique Réf du produit sélectionné"
+                if inputs_unlocked else "Validez d'abord l'en-tête de réception."
+            )
 
         direct_ref = str(
             selected_ref
@@ -328,10 +335,10 @@ class ReceptionDialogLogicMixin:
                 p_data  = self.cb_product.currentData()
                 stock_u = p_data.get('Stock_Unit', 'U') if p_data else 'U'
                 self.lbl_conversion_logic.setText(
-                    f"💡 {format_quantity(qty)} {self.cb_unit_type.currentText()} = {format_quantity(qty * factor)} {stock_u} en stock."
+                    f"{format_quantity(qty)} {self.cb_unit_type.currentText()} = {format_quantity(qty * factor)} {stock_u} en stock."
                 )
             else:
-                self.lbl_conversion_logic.setText("💡 Saisie directe en unité de stockage.")
+                self.lbl_conversion_logic.setText("Saisie directe en unité de stockage.")
         except RuntimeError:
             pass
 
@@ -346,18 +353,11 @@ class ReceptionDialogLogicMixin:
         if hasattr(self, 'cb_supplier') and not self.po_data.get('PO_ID'):
             self.cb_supplier.setEnabled(True)
 
+        from ui.theme_tokens import PRIMARY_CTA_QSS, AMBER_OUTLINE_QSS
         self.btn_validate_ref.setText(" Enregistrer")
         self.btn_validate_ref.setEnabled(True)
-        self.btn_validate_ref.setStyleSheet("""
-            QPushButton {
-                background-color: #2980b9;
-                color: white;
-                font-weight: bold;
-                padding: 6px 15px;
-                border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #3498db; }
-        """)
+        self.btn_validate_ref.setToolTip("Enregistrer et verrouiller l'en-tête")
+        self.btn_validate_ref.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_unlock_header.setVisible(False)
         self.toggle_inputs_state(False)
         self.invoice_ref.setFocus()
@@ -420,11 +420,12 @@ class ReceptionDialogLogicMixin:
             self.reception_date.setReadOnly(True)
             if hasattr(self, 'cb_supplier'):
                 self.cb_supplier.setEnabled(False)
+                self.cb_supplier.setToolTip("Fournisseur verrouillé après validation de l'en-tête.")
 
+            from ui.theme_tokens import SECONDARY_OUTLINE_QSS
             self.btn_validate_ref.setText(" Validé")
-            self.btn_validate_ref.setStyleSheet(
-                "background-color: #27ae60; color: white; font-weight: bold; border: none;"
-            )
+            self.btn_validate_ref.setToolTip("En-tête validé (cliquez sur l'icône d'édition pour modifier).")
+            self.btn_validate_ref.setStyleSheet(SECONDARY_OUTLINE_QSS)
             self.btn_unlock_header.setVisible(True)
             self.toggle_inputs_state(True)
             self.cb_product.setFocus()
@@ -529,12 +530,13 @@ class ReceptionDialogLogicMixin:
             self.reception_date.setReadOnly(True)
             if hasattr(self, 'cb_supplier'):
                 self.cb_supplier.setEnabled(False)
+                self.cb_supplier.setToolTip("Fournisseur verrouillé sur une réception existante.")
 
+            from ui.theme_tokens import SECONDARY_OUTLINE_QSS
             self.btn_validate_ref.setText(" Validé")
             self.btn_validate_ref.setEnabled(False)
-            self.btn_validate_ref.setStyleSheet(
-                "background-color: #27ae60; color: white; font-weight: bold; border: none;"
-            )
+            self.btn_validate_ref.setToolTip("En-tête validé (cliquez sur le bouton d'édition pour déverrouiller).")
+            self.btn_validate_ref.setStyleSheet(SECONDARY_OUTLINE_QSS)
             self.btn_unlock_header.setVisible(True)
 
         self.table_items.setSortingEnabled(False)
@@ -823,9 +825,10 @@ class ReceptionDialogLogicMixin:
 
             self.inp_observation.setText(str(meta.get('Line_Note', '')))
 
+            from ui.theme_tokens import AMBER_OUTLINE_QSS
             self.current_editing_row = row
-            self.btn_add.setText("💾 Enregistrer Modif.")
-            self.btn_add.setStyleSheet("background-color: #f39c12; color: white; font-weight: bold;")
+            self.btn_add.setText(" Enregistrer Modif.")
+            self.btn_add.setStyleSheet(AMBER_OUTLINE_QSS)
             self.calculate_live_item_ttc()
 
         except Exception as e:

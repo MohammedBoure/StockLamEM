@@ -28,24 +28,31 @@ class AutoBackupTab(QWidget):
         left_col = QVBoxLayout()
         right_col = QVBoxLayout()
 
+        from ui.theme_tokens import (
+            PRIMARY_CTA_QSS, SECONDARY_OUTLINE_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS,
+            CARD_BG, BORDER_HAIRLINE, TEXT_MUTED, BRAND_TEAL,
+        )
         # =========================================================================
         # 1. Sauvegarde Automatique (Arrière-plan)
         # =========================================================================
-        grp_auto_backup = QGroupBox("⏱️ Sauvegarde Automatique (Arrière-plan)")
-        grp_auto_backup.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                font-size: 14px;
-                border: 1px solid #cfd8dc;
+        grp_auto_backup = QGroupBox("Sauvegarde Automatique (Arrière-plan)")
+        grp_auto_backup.setObjectName("AutoBackupGroup")
+        grp_auto_backup.setStyleSheet(f"""
+            QGroupBox#AutoBackupGroup {{
+                background-color: {CARD_BG};
+                font-weight: 700;
+                font-size: 13.5px;
+                color: {BRAND_TEAL};
+                border: 1px solid {BORDER_HAIRLINE};
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 15px;
-            }
-            QGroupBox::title {
+            }}
+            QGroupBox#AutoBackupGroup::title {{
                 subcontrol-origin: margin;
                 left: 15px;
-                padding: 0 5px;
-            }
+                padding: 0 6px;
+            }}
         """)
         auto_backup_layout = QVBoxLayout()
         auto_backup_layout.setSpacing(10)
@@ -70,9 +77,9 @@ class AutoBackupTab(QWidget):
         self.spin_max_backups.setValue(int(self.settings.get("auto_backup_max_files", 5)))
 
         form_auto.addRow("", self.chk_auto_backup)
-        form_auto.addRow("⏱️ Intervalle (Minutes) :", self.spin_auto_interval)
-        form_auto.addRow("🔐 Mot de passe ZIP :", self.txt_auto_pwd)
-        form_auto.addRow("📁 Nbre max de sauvegardes :", self.spin_max_backups)
+        form_auto.addRow("Intervalle (Minutes) :", self.spin_auto_interval)
+        form_auto.addRow("Mot de passe ZIP :", self.txt_auto_pwd)
+        form_auto.addRow("Nbre max de sauvegardes :", self.spin_max_backups)
         auto_backup_layout.addLayout(form_auto)
 
         auto_backup_layout.addWidget(QLabel("Dossiers de destination (Cibles multiples) :"))
@@ -85,9 +92,13 @@ class AutoBackupTab(QWidget):
             self.list_backup_paths.addItem(str(p))
 
         path_btns_layout = QHBoxLayout()
-        btn_add_path = QPushButton("➕ Ajouter un dossier")
+        btn_add_path = QPushButton("+ Ajouter un dossier")
+        btn_add_path.setMinimumHeight(32)
+        btn_add_path.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_add_path.clicked.connect(self.add_backup_path)
-        btn_rem_path = QPushButton("❌ Supprimer sélection")
+        btn_rem_path = QPushButton("Supprimer sélection")
+        btn_rem_path.setMinimumHeight(32)
+        btn_rem_path.setStyleSheet(DANGER_OUTLINE_QSS)
         btn_rem_path.clicked.connect(self.remove_backup_path)
         path_btns_layout.addWidget(btn_add_path)
         path_btns_layout.addWidget(btn_rem_path)
@@ -95,8 +106,9 @@ class AutoBackupTab(QWidget):
         auto_backup_layout.addWidget(self.list_backup_paths)
         auto_backup_layout.addLayout(path_btns_layout)
 
-        self.btn_force_auto = QPushButton("▶️ Forcer la sauvegarde maintenant")
-        self.btn_force_auto.setStyleSheet("background-color: #8e44ad; color: white; font-weight: bold; padding: 10px; border-radius: 4px;")
+        self.btn_force_auto = QPushButton("Forcer la sauvegarde maintenant")
+        self.btn_force_auto.setMinimumHeight(38)
+        self.btn_force_auto.setStyleSheet(SECONDARY_OUTLINE_QSS)
         self.btn_force_auto.clicked.connect(self.force_manual_backup)
         auto_backup_layout.addWidget(self.btn_force_auto)
 
@@ -107,39 +119,42 @@ class AutoBackupTab(QWidget):
         # =========================================================================
         # 2. Sauvegarde & Restauration Manuelle
         # =========================================================================
-        grp_manual = QGroupBox("💾 Sauvegarde & Restauration Manuelle")
-        grp_manual.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                font-size: 14px;
-                border: 1px solid #cfd8dc;
+        grp_manual = QGroupBox("Sauvegarde & Restauration Manuelle")
+        grp_manual.setObjectName("ManualBackupGroup")
+        grp_manual.setStyleSheet(f"""
+            QGroupBox#ManualBackupGroup {{
+                background-color: {CARD_BG};
+                font-weight: 700;
+                font-size: 13.5px;
+                color: {BRAND_TEAL};
+                border: 1px solid {BORDER_HAIRLINE};
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 15px;
-            }
-            QGroupBox::title {
+            }}
+            QGroupBox#ManualBackupGroup::title {{
                 subcontrol-origin: margin;
                 left: 15px;
-                padding: 0 5px;
-            }
+                padding: 0 6px;
+            }}
         """)
         manual_layout = QVBoxLayout()
         manual_layout.setSpacing(12)
 
         lbl_desc = QLabel("Effectuez des sauvegardes complètes ponctuelles ou restaurez vos données à partir d'une sauvegarde existante.")
         lbl_desc.setWordWrap(True)
-        lbl_desc.setStyleSheet("color: #555; font-size: 12px; margin-bottom: 5px;")
+        lbl_desc.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 12px; margin-bottom: 5px;")
         manual_layout.addWidget(lbl_desc)
 
         btn_backup = QPushButton("Sauvegarde complète (Excel)")
-        btn_backup.setMinimumHeight(42)
-        btn_backup.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; font-size: 13px; border-radius: 4px;")
+        btn_backup.setMinimumHeight(40)
+        btn_backup.setStyleSheet(PRIMARY_CTA_QSS)
         btn_backup.clicked.connect(self.perform_backup)
         manual_layout.addWidget(btn_backup)
 
-        btn_restore = QPushButton("♻️ Restauration complète")
-        btn_restore.setMinimumHeight(42)
-        btn_restore.setStyleSheet("background-color: #c0392b; color: white; font-weight: bold; font-size: 13px; border-radius: 4px;")
+        btn_restore = QPushButton("Restauration complète")
+        btn_restore.setMinimumHeight(40)
+        btn_restore.setStyleSheet(DANGER_OUTLINE_QSS)
         btn_restore.clicked.connect(self.perform_restore)
         manual_layout.addWidget(btn_restore)
 

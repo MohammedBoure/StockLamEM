@@ -266,7 +266,7 @@ class UserDialog(BaseDialog):
             group_item.setCheckState(0, Qt.Unchecked)
             group_item.setFont(0, header_font)
             group_item.setForeground(0, QBrush(QColor("#2c3e50")))
-            group_item.setBackground(0, QBrush(QColor("#f4f7fa")))
+            group_item.setBackground(0, QBrush(QColor("#F8FAFC")))
 
             if "perms" in content:
                 for key, label in content["perms"].items():
@@ -393,24 +393,31 @@ class UserManagementTab(QWidget):
         # --- Barre d'outils ---
         toolbar = QHBoxLayout()
         
+        from ui.theme_tokens import (
+            PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, SECONDARY_OUTLINE_QSS, BRAND_TEAL,
+        )
         self.btn_add = QPushButton(" Ajouter")
         self.btn_add.setIcon(qta.icon("fa5s.plus", color="white"))
-        self.btn_add.setStyleSheet("background-color: #28a745; color: white; padding: 8px 15px; font-weight: bold;")
+        self.btn_add.setMinimumHeight(36)
+        self.btn_add.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_add.clicked.connect(self.add_user)
         
         self.btn_edit = QPushButton(" Modifier")
-        self.btn_edit.setIcon(qta.icon("fa5s.edit", color="white"))
-        self.btn_edit.setStyleSheet("background-color: #007bff; color: white; padding: 8px 15px; font-weight: bold;")
+        self.btn_edit.setIcon(qta.icon("fa5s.edit", color="#334155"))
+        self.btn_edit.setMinimumHeight(36)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.clicked.connect(self.edit_selected_user)
         
         self.btn_delete = QPushButton(" Supprimer")
-        self.btn_delete.setIcon(qta.icon("fa5s.trash-alt", color="white"))
-        self.btn_delete.setStyleSheet("background-color: #dc3545; color: white; padding: 8px 15px; font-weight: bold;")
+        self.btn_delete.setIcon(qta.icon("fa5s.trash-alt", color="#DC2626"))
+        self.btn_delete.setMinimumHeight(36)
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_delete.clicked.connect(self.delete_selected_user)
 
         self.btn_refresh = QPushButton(" Actualiser")
-        self.btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color="white"))
-        self.btn_refresh.setStyleSheet("background-color: #17a2b8; color: white; padding: 8px 15px; font-weight: bold;") 
+        self.btn_refresh.setIcon(qta.icon("fa5s.sync-alt", color=BRAND_TEAL))
+        self.btn_refresh.setMinimumHeight(36)
+        self.btn_refresh.setStyleSheet(SECONDARY_OUTLINE_QSS) 
         self.btn_refresh.clicked.connect(self.load_users)
 
         toolbar.addWidget(self.btn_add)

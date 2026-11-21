@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QTreeView, QPushButton,
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QStyle
+from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, INPUT_QSS, scoped_dialog_qss
 
 class LocationPickerDialog(QDialog):
     """
@@ -12,8 +13,10 @@ class LocationPickerDialog(QDialog):
     """
     def __init__(self, location_manager, parent=None):
         super().__init__(parent)
+        self.setObjectName("LocationPickerDialog")
         self.setWindowTitle("Sélectionner un Emplacement")
         self.resize(600, 700)
+        self.setStyleSheet(scoped_dialog_qss("LocationPickerDialog"))
         self.manager = location_manager
         self.selected_id = None
         self.selected_name = None
@@ -23,11 +26,15 @@ class LocationPickerDialog(QDialog):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
         
         search_layout = QHBoxLayout()
-        lbl_search = QLabel("🔍 Rechercher:")
+        lbl_search = QLabel("Rechercher :")
+        lbl_search.setStyleSheet("font-weight: 600;")
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Tapez le nom de l'emplacement...")
+        self.search_input.setStyleSheet(INPUT_QSS)
         self.search_input.textChanged.connect(self.filter_tree) # ربط البحث
         
         search_layout.addWidget(lbl_search)
@@ -47,13 +54,18 @@ class LocationPickerDialog(QDialog):
         btn_layout = QHBoxLayout()
         
         btn_clear = QPushButton("Tout Afficher / Désélectionner")
+        btn_clear.setStyleSheet(SLATE_OUTLINE_QSS)
+        btn_clear.setMinimumHeight(34)
         btn_clear.clicked.connect(self.clear_selection)
         
         btn_cancel = QPushButton("Annuler")
+        btn_cancel.setStyleSheet(SLATE_OUTLINE_QSS)
+        btn_cancel.setMinimumHeight(34)
         btn_cancel.clicked.connect(self.reject)
         
         btn_select = QPushButton("Sélectionner")
-        btn_select.setStyleSheet("background-color: #2980b9; color: white; font-weight: bold;")
+        btn_select.setStyleSheet(PRIMARY_CTA_QSS)
+        btn_select.setMinimumHeight(34)
         btn_select.clicked.connect(self.accept_selection)
 
         btn_layout.addWidget(btn_clear)

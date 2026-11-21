@@ -111,15 +111,14 @@ class PurchaseOrdersTab(QWidget):
     data_changed = Signal() 
     def __init__(self, manager):
         super().__init__()
-        self.manager = manager 
-        self.btn_style = """
-            QPushButton {
-                background-color: #1abc9c; color: white; font-weight: bold; 
-                border-radius: 4px; padding: 8px 15px; border: none;
-            }
-            QPushButton:hover { background-color: #16a085; }
-        """
-        self.sent_btn_style = self.btn_style.replace("#1abc9c", "#e67e22").replace("#16a085", "#d35400")
+        self.manager = manager
+        from ui.theme_tokens import (
+            PRIMARY_CTA_QSS, AMBER_OUTLINE_QSS, SLATE_OUTLINE_QSS, TEXT_BODY,
+        )
+        self.btn_style = SLATE_OUTLINE_QSS
+        self.primary_btn_style = PRIMARY_CTA_QSS
+        self.sent_btn_style = AMBER_OUTLINE_QSS
+        self._label_color = TEXT_BODY
         self.init_ui()
 
     def init_ui(self):
@@ -140,7 +139,7 @@ class PurchaseOrdersTab(QWidget):
         end_of_year = QDate(today.year(), 12, 31)
 
         lbl_du = QLabel("Du:")
-        lbl_du.setStyleSheet("font-weight: bold; color: #555;")
+        lbl_du.setStyleSheet(f"font-weight: 600; color: {self._label_color};")
         
         self.date_from = QDateEdit()
         self.date_from.setCalendarPopup(True)
@@ -150,7 +149,7 @@ class PurchaseOrdersTab(QWidget):
         self.date_from.dateChanged.connect(self.refresh_orders)
 
         lbl_au = QLabel("Au:")
-        lbl_au.setStyleSheet("font-weight: bold; color: #555;")
+        lbl_au.setStyleSheet(f"font-weight: 600; color: {self._label_color};")
 
         self.date_to = QDateEdit()
         self.date_to.setCalendarPopup(True)
@@ -160,18 +159,22 @@ class PurchaseOrdersTab(QWidget):
         self.date_to.dateChanged.connect(self.refresh_orders)
 
         btn_add = QPushButton("+ Créer Commande")
+        btn_add.setMinimumHeight(34)
         btn_add.clicked.connect(self.open_add_dialog)
-        btn_add.setStyleSheet(self.btn_style)
+        btn_add.setStyleSheet(self.primary_btn_style)
 
         btn_mark_sent = QPushButton("Soumettre la demande")
+        btn_mark_sent.setMinimumHeight(34)
         btn_mark_sent.setStyleSheet(self.sent_btn_style)
         btn_mark_sent.clicked.connect(self.confirm_order_sent)
 
         btn_pdf = QPushButton("Bon de Commande (PDF)")
+        btn_pdf.setMinimumHeight(34)
         btn_pdf.clicked.connect(self.export_po_pdf)
         btn_pdf.setStyleSheet(self.btn_style)
 
         btn_refresh = QPushButton("Actualiser")
+        btn_refresh.setMinimumHeight(34)
         btn_refresh.clicked.connect(self.refresh_orders)
         btn_refresh.setStyleSheet(self.btn_style)
         

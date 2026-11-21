@@ -13,15 +13,19 @@ class BaseDialog(QDialog):
     """Fenêtre de dialogue de base unifiée avec thème blanc épuré"""
     def __init__(self, title, parent=None):
         super().__init__(parent)
+        self.setObjectName("MasterBaseDialog")
         self.setWindowTitle(title)
         self.setModal(True)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #ffffff;
-            }
-            QWidget {
-                color: #2c3e50;
-            }
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, CARD_BG, TEXT_PRIMARY
+        self.setStyleSheet(f"""
+            QDialog#MasterBaseDialog {{
+                background-color: {CARD_BG};
+            }}
+            QDialog#MasterBaseDialog QLabel {{
+                color: {TEXT_PRIMARY};
+                border: none;
+                background: transparent;
+            }}
         """)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(12, 12, 12, 12)
@@ -41,48 +45,17 @@ class BaseDialog(QDialog):
         if save_btn:
             save_btn.setText("Enregistrer")
             save_btn.setCursor(Qt.PointingHandCursor)
-            save_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #007572;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 6px 20px;
-                    font-weight: bold;
-                    min-height: 32px;
-                    min-width: 95px;
-                }
-                QPushButton:hover {
-                    background-color: #005a57;
-                }
-                QPushButton:pressed {
-                    background-color: #004543;
-                }
-            """)
+            save_btn.setMinimumHeight(34)
+            save_btn.setMinimumWidth(100)
+            save_btn.setStyleSheet(PRIMARY_CTA_QSS)
 
         cancel_btn = self.buttons.button(QDialogButtonBox.Cancel)
         if cancel_btn:
             cancel_btn.setText("Annuler")
             cancel_btn.setCursor(Qt.PointingHandCursor)
-            cancel_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffffff;
-                    color: #495057;
-                    border: 1px solid #ced4da;
-                    border-radius: 4px;
-                    padding: 6px 20px;
-                    font-weight: 500;
-                    min-height: 32px;
-                    min-width: 95px;
-                }
-                QPushButton:hover {
-                    background-color: #f8f9fa;
-                    border-color: #adb5bd;
-                }
-                QPushButton:pressed {
-                    background-color: #e9ecef;
-                }
-            """)
+            cancel_btn.setMinimumHeight(34)
+            cancel_btn.setMinimumWidth(100)
+            cancel_btn.setStyleSheet(SLATE_OUTLINE_QSS)
 
     def make_combo_searchable(self, combo):
         """Rendre un QComboBox filtrable par recherche"""
@@ -592,11 +565,11 @@ class SupplierDialog(BaseDialog):
         gb = QGroupBox(title)
         gb.setStyleSheet(f"""
             QGroupBox {{ 
-                font-weight: bold; border: 1px solid #bdc3c7; 
-                border-radius: 6px; margin-top: 10px; padding-top: 12px; 
+                font-weight: 700; border: 1px solid #E2E8F0; 
+                border-radius: 8px; margin-top: 10px; padding-top: 12px; 
             }}
             QGroupBox::title {{ 
-                subcontrol-origin: margin; left: 10px; padding: 0 5px; color: {color}; 
+                subcontrol-origin: margin; left: 10px; padding: 0 6px; color: {color}; 
             }}
         """)
         return gb
@@ -762,6 +735,7 @@ class LocationDialog(BaseDialog):
         # Autorisation POS
         self.allow_pos_cb = QCheckBox("Autoriser la vente en caisse (POS)")
         self.allow_pos_cb.setEnabled(False)
+        self.allow_pos_cb.setToolTip("Disponible uniquement lorsque la visibilité est « Public ».")
 
         self.visibility_combo.currentIndexChanged.connect(self._on_visibility_changed)
 
@@ -1140,11 +1114,11 @@ class PartnerDialog(BaseDialog):
         gb = QGroupBox(title)
         gb.setStyleSheet(f"""
             QGroupBox {{ 
-                font-weight: bold; border: 1px solid #bdc3c7; 
-                border-radius: 6px; margin-top: 10px; padding-top: 12px; 
+                font-weight: 700; border: 1px solid #E2E8F0; 
+                border-radius: 8px; margin-top: 10px; padding-top: 12px; 
             }}
             QGroupBox::title {{ 
-                subcontrol-origin: margin; left: 10px; padding: 0 5px; color: {color}; 
+                subcontrol-origin: margin; left: 10px; padding: 0 6px; color: {color}; 
             }}
         """)
         return gb

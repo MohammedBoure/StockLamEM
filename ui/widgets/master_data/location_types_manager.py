@@ -21,9 +21,10 @@ class LocationTypesManagerDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Header
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, TEXT_MUTED
         lbl_info = QLabel("Définissez ici les types d'emplacements (ex: Bâtiment, Salle, Frigo, Etagère).")
         lbl_info.setWordWrap(True)
-        lbl_info.setStyleSheet("color: #555; font-style: italic; margin-bottom: 10px;")
+        lbl_info.setStyleSheet(f"color: {TEXT_MUTED}; font-style: italic; margin-bottom: 10px;")
         layout.addWidget(lbl_info)
 
         # List
@@ -34,9 +35,15 @@ class LocationTypesManagerDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         
-        self.btn_add = QPushButton("➕ Ajouter")
-        self.btn_edit = QPushButton("✏️ Modifier")
+        self.btn_add = QPushButton("+ Ajouter")
+        self.btn_add.setMinimumHeight(34)
+        self.btn_add.setStyleSheet(PRIMARY_CTA_QSS)
+        self.btn_edit = QPushButton("Modifier")
+        self.btn_edit.setMinimumHeight(34)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_delete = QPushButton("Supprimer")
+        self.btn_delete.setMinimumHeight(34)
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         
         self.btn_add.clicked.connect(self.add_type)
         self.btn_edit.clicked.connect(self.edit_type)

@@ -53,15 +53,17 @@ class StockValuationTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
+        from ui.theme_tokens import CLEAN_TABLE_QSS, INPUT_QSS, STATUS_SUCCESS
         # Header with Search
         top_layout = QHBoxLayout()
-        self.lbl_summary = QLabel("Valeur Totale: 0,00 DA")
-        self.lbl_summary.setStyleSheet("font-size: 16px; font-weight: bold; color: #27ae60;")
+        self.lbl_summary = QLabel("Valeur Totale : 0,00 DA")
+        self.lbl_summary.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {STATUS_SUCCESS};")
         
         self.txt_search = QLineEdit()
-        self.txt_search.setPlaceholderText("🔍 Rechercher un produit / code...")
+        self.txt_search.setPlaceholderText("Rechercher un produit / code...")
         self.txt_search.setFixedWidth(300)
-        self.txt_search.setStyleSheet("padding: 5px; border-radius: 5px; border: 1px solid #ccc;")
+        self.txt_search.setMinimumHeight(32)
+        self.txt_search.setStyleSheet(INPUT_QSS)
         self.txt_search.textChanged.connect(lambda text: filter_table_rows(self.table, text))
         
         top_layout.addWidget(self.lbl_summary)
@@ -80,7 +82,7 @@ class StockValuationTab(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setStyleSheet("border: 1px solid #dcdde1; gridline-color: #f0f0f0;")
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         
         layout.addWidget(self.table)
 
@@ -117,7 +119,7 @@ class StockValuationTab(QWidget):
                 item_val.setForeground(QColor("#27ae60"))
                 self.table.setItem(row, 3, item_val)
 
-            self.lbl_summary.setText(f"💰 Valeur Totale : {format_money(total_value, 'DA')}")
+            self.lbl_summary.setText(f"Valeur Totale : {format_money(total_value, 'DA')}")
             self.table.setSortingEnabled(True)
             
             if self.txt_search.text():
@@ -138,10 +140,12 @@ class FullConsumptionTab(QWidget):
         # Search Bar
         search_layout = QHBoxLayout()
         search_layout.addStretch()
+        from ui.theme_tokens import CLEAN_TABLE_QSS, INPUT_QSS
         self.txt_search = QLineEdit()
-        self.txt_search.setPlaceholderText("🔍 Filtrer les résultats...")
+        self.txt_search.setPlaceholderText("Filtrer les résultats...")
         self.txt_search.setFixedWidth(300)
-        self.txt_search.setStyleSheet("padding: 5px; border-radius: 5px; border: 1px solid #ccc;")
+        self.txt_search.setMinimumHeight(32)
+        self.txt_search.setStyleSheet(INPUT_QSS)
         self.txt_search.textChanged.connect(lambda text: filter_table_rows(self.table, text))
         search_layout.addWidget(self.txt_search)
         layout.addLayout(search_layout)
@@ -155,7 +159,7 @@ class FullConsumptionTab(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet("border: 1px solid #dcdde1;")
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         
         layout.addWidget(self.table)
 
@@ -195,9 +199,10 @@ class DeletedProductsAuditTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
         
+        from ui.theme_tokens import STATUS_DANGER, TEXT_MUTED, INPUT_QSS
         # --- Section 1: Stock Fantôme (Zombie Stock) ---
-        lbl_zombie = QLabel("⚠️ STOCK FANTÔME (Produits supprimés avec stock positif)")
-        lbl_zombie.setStyleSheet("color: #c0392b; font-weight: bold; font-size: 14px;")
+        lbl_zombie = QLabel("STOCK FANTÔME (Produits supprimés avec stock positif)")
+        lbl_zombie.setStyleSheet(f"color: {STATUS_DANGER}; font-weight: 700; font-size: 13.5px;")
         layout.addWidget(lbl_zombie)
         
         self.table_zombie = QTableWidget()
@@ -205,17 +210,19 @@ class DeletedProductsAuditTab(QWidget):
         self.table_zombie.setHorizontalHeaderLabels(["Produit", "Lot", "Qté Restante", "Emplacement", "Action Requise"])
         self.table_zombie.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_zombie.setFixedHeight(180) 
-        self.table_zombie.setStyleSheet("border: 2px solid #e74c3c;")
+        self.table_zombie.setStyleSheet(f"border: 1.5px solid {STATUS_DANGER};")
         layout.addWidget(self.table_zombie)
 
         # --- Section 2: Consommation des produits supprimés ---
         header_hist = QHBoxLayout()
-        lbl_hist = QLabel("📜 Historique de consommation des produits supprimés")
-        lbl_hist.setStyleSheet("color: #7f8c8d; font-weight: bold; font-size: 14px;")
+        lbl_hist = QLabel("Historique de consommation des produits supprimés")
+        lbl_hist.setStyleSheet(f"color: {TEXT_MUTED}; font-weight: 700; font-size: 13.5px;")
         
         self.txt_search_audit = QLineEdit()
-        self.txt_search_audit.setPlaceholderText("🔍 Filtrer l'historique...")
+        self.txt_search_audit.setPlaceholderText("Filtrer l'historique...")
         self.txt_search_audit.setFixedWidth(250)
+        self.txt_search_audit.setMinimumHeight(32)
+        self.txt_search_audit.setStyleSheet(INPUT_QSS)
         self.txt_search_audit.textChanged.connect(lambda text: filter_table_rows(self.table_hist, text))
         
         header_hist.addWidget(lbl_hist)
@@ -347,7 +354,7 @@ class WasteAnalysisTab(QWidget):
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(8)
 
-        lbl_left_title = QLabel("📊 Répartition par Motif de Perte")
+        lbl_left_title = QLabel("Répartition par Motif de Perte")
         lbl_left_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #2c3e50;")
         left_layout.addWidget(lbl_left_title)
 
@@ -395,7 +402,7 @@ class WasteAnalysisTab(QWidget):
         right_layout.setSpacing(8)
 
         right_header = QHBoxLayout()
-        lbl_right_title = QLabel("📋 Détail des Produits Mis au Rebut (Unicité par Produit)")
+        lbl_right_title = QLabel("Détail des Produits Mis au Rebut (Unicité par Produit)")
         lbl_right_title.setStyleSheet("font-size: 13px; font-weight: 800; color: #2c3e50;")
         
         self.lbl_products_summary = QLabel("0 produit(s)")
@@ -534,7 +541,7 @@ class WasteAnalysisTab(QWidget):
             if not reasons_data or total_loss == 0:
                 series.append("Aucune Perte", 1)
                 sl = series.slices()[0]
-                sl.setBrush(QColor("#ecf0f1"))
+                sl.setBrush(QColor("#E2E8F0"))
                 self.chart.setTitle("Aucun rebut sur cette période")
             else:
                 self.chart.setTitle(f"Total Pertes : {format_money(total_loss, 'DA')}")

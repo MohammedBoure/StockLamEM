@@ -202,7 +202,7 @@ class SettingsTab(QWidget):
         grp_conn.setLayout(form_conn)
         layout.addWidget(grp_conn)
 
-        btn_test = QPushButton("🔌 Tester la connexion")
+        btn_test = QPushButton("Tester la connexion")
         btn_test.clicked.connect(self.test_db_connection)
         layout.addWidget(btn_test)
 

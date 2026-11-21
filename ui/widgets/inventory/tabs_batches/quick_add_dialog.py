@@ -13,10 +13,15 @@ from ui.widgets.procurement.reception_dialog.auto_select_widgets import (
     AutoSelectSpinBox, AutoSelectDoubleSpinBox, AutoSelectLineEdit
 )
 from ui.widgets.inventory.location_tree_combo import LocationTreeComboBox
+from ui.theme_tokens import (
+    BRAND_TEAL, TEXT_MUTED, STATUS_DANGER, STATUS_SUCCESS,
+    PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, scoped_dialog_qss, set_enabled_with_reason,
+)
 
 class QuickAddDialog(QDialog):
     def __init__(self, manager, parent=None, batch_data=None):
         super().__init__(parent)
+        self.setObjectName("QuickAddDialog")
         self.manager = manager
         self.batch_data = batch_data
 
@@ -111,12 +116,13 @@ class QuickAddDialog(QDialog):
         self.calculate_live_sell_ttc()
 
     def _build_ui(self):
+        self.setStyleSheet(scoped_dialog_qss("QuickAddDialog"))
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(12)
 
         lbl_header = QLabel("Ajout Rapide d'un Produit")
         lbl_header.setFont(QFont("Arial", 14, QFont.Bold))
-        lbl_header.setStyleSheet("color: #2980b9; padding-bottom: 5px;")
+        lbl_header.setStyleSheet(f"color: {BRAND_TEAL}; padding-bottom: 4px;")
         lbl_header.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(lbl_header)
 
@@ -124,7 +130,6 @@ class QuickAddDialog(QDialog):
         # Product & Location Group
         # ---------------------------------------------------------
         grp_prod = QGroupBox("Produit et Emplacement")
-        grp_prod.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #bdc3c7; border-radius: 4px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; }")
         lay_prod = QGridLayout(grp_prod)
         lay_prod.setSpacing(10)
 
@@ -186,14 +191,14 @@ class QuickAddDialog(QDialog):
 
         # Row 2 (right): Réf du produit + bouton '+'
         self.cb_ref = QComboBox()
-        self.cb_ref.setEnabled(False)
+        set_enabled_with_reason(self.cb_ref, False, "Sélectionnez d'abord un produit.")
         self.cb_ref.addItem("--- Sélectionnez un produit ---", "")
 
         self.btn_add_ref = QPushButton("+")
         self.btn_add_ref.setFixedSize(28, 26)
         self.btn_add_ref.setCursor(Qt.PointingHandCursor)
         self.btn_add_ref.setEnabled(False)
-        self.btn_add_ref.setToolTip("Définir ou modifier l'unique Réf du produit sélectionné")
+        self.btn_add_ref.setToolTip("Sélectionnez d'abord un produit pour définir sa Réf.")
         self.btn_add_ref.setStyleSheet(
             "QPushButton { background-color: #e6f4f1; color: #007572; border: 1px solid #007572; "
             "border-radius: 4px; font-weight: bold; font-size: 14px; padding: 0px; margin: 0px; }"
@@ -211,7 +216,7 @@ class QuickAddDialog(QDialog):
         lay_prod.addLayout(lay_ref, 2, 4, 1, 2)
 
         lbl_color_hint = QLabel("Finition électroménager (Inox, Blanc, Noir, Silver...)")
-        lbl_color_hint.setStyleSheet("color: #7f8c8d; font-size: 11px; font-style: italic;")
+        lbl_color_hint.setStyleSheet(f"color: {TEXT_MUTED}; font-size: 11px; font-style: italic;")
         lay_prod.addWidget(lbl_color_hint, 3, 1, 1, 5)
 
         main_layout.addWidget(grp_prod)
@@ -220,7 +225,6 @@ class QuickAddDialog(QDialog):
         # Quantities & Dates Group
         # ---------------------------------------------------------
         grp_qty = QGroupBox("Quantité, Lot et Validité")
-        grp_qty.setStyleSheet(grp_prod.styleSheet())
         lay_qty = QHBoxLayout(grp_qty)
         lay_qty.setSpacing(15)
 
@@ -255,7 +259,6 @@ class QuickAddDialog(QDialog):
         # Purchase Prices Group
         # ---------------------------------------------------------
         grp_achat = QGroupBox("Prix d'Achat")
-        grp_achat.setStyleSheet(grp_prod.styleSheet())
         lay_achat = QGridLayout(grp_achat)
         lay_achat.setSpacing(10)
 
@@ -281,7 +284,7 @@ class QuickAddDialog(QDialog):
         self.chk_tva.setVisible(False)
 
         self.lbl_item_ttc = QLabel("Total : 0.00 DA")
-        self.lbl_item_ttc.setStyleSheet("color: #e74c3c; font-weight: bold; font-size: 14px;")
+        self.lbl_item_ttc.setStyleSheet(f"color: {STATUS_DANGER}; font-weight: 700; font-size: 14px;")
 
         lay_achat.addWidget(QLabel("Prix d'Achat :"), 0, 0)
         lay_achat.addWidget(self.inp_price, 0, 1)
@@ -306,7 +309,6 @@ class QuickAddDialog(QDialog):
         # Selling Prices Group
         # ---------------------------------------------------------
         grp_vente = QGroupBox("Prix de Vente")
-        grp_vente.setStyleSheet(grp_prod.styleSheet())
         lay_vente = QGridLayout(grp_vente)
         lay_vente.setSpacing(10)
 
@@ -325,7 +327,7 @@ class QuickAddDialog(QDialog):
         self.chk_sell_tva.setVisible(False)
 
         self.lbl_sell_ttc = QLabel("Prix Vente : 0.00 DA")
-        self.lbl_sell_ttc.setStyleSheet("color: #27ae60; font-weight: bold; font-size: 14px;")
+        self.lbl_sell_ttc.setStyleSheet(f"color: {STATUS_SUCCESS}; font-weight: 700; font-size: 14px;")
         self.lbl_sell_ttc.setVisible(False)
 
         lay_vente.addWidget(QLabel("Vente 1 :"), 0, 0)
@@ -359,7 +361,7 @@ class QuickAddDialog(QDialog):
 
         self.chk_print = QCheckBox("Imprimer l'étiquette après l'ajout")
         self.chk_print.setChecked(True)
-        self.chk_print.setStyleSheet("color: #8e44ad; font-weight: bold;")
+        self.chk_print.setStyleSheet(f"color: {BRAND_TEAL}; font-weight: 700;")
         main_layout.addWidget(self.chk_print)
 
         line = QFrame()
@@ -371,16 +373,14 @@ class QuickAddDialog(QDialog):
         btns.addStretch()
 
         self.btn_cancel = QPushButton("Annuler")
+        self.btn_cancel.setMinimumHeight(34)
+        self.btn_cancel.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_cancel.clicked.connect(self.reject)
 
         self.btn_add = QPushButton(" Ajouter")
         self.btn_add.setIcon(qta.icon('fa5s.plus', color='white'))
-        self.btn_add.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60; color: white; font-weight: bold; padding: 6px 15px; border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #2ecc71; }
-        """)
+        self.btn_add.setMinimumHeight(36)
+        self.btn_add.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_add.clicked.connect(self.validate_and_accept)
 
         btns.addWidget(self.btn_cancel)
@@ -534,13 +534,13 @@ class QuickAddDialog(QDialog):
 
         if not product_data:
             self.cb_ref.addItem("--- Sélectionnez un produit ---", "")
-            self.cb_ref.setEnabled(False)
-            self.btn_add_ref.setEnabled(False)
+            set_enabled_with_reason(self.cb_ref, False, "Sélectionnez d'abord un produit.")
+            set_enabled_with_reason(self.btn_add_ref, False, "Sélectionnez d'abord un produit pour définir sa Réf.")
             self.cb_ref.blockSignals(False)
             return
 
-        self.cb_ref.setEnabled(True)
-        self.btn_add_ref.setEnabled(True)
+        set_enabled_with_reason(self.cb_ref, True, "", "Réf du produit sélectionné")
+        set_enabled_with_reason(self.btn_add_ref, True, "", "Définir ou modifier l'unique Réf du produit sélectionné")
 
         direct_ref = str(
             selected_ref

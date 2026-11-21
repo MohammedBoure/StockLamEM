@@ -28,13 +28,15 @@ class SuppliersTab(QWidget):
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_suppliers_data)
 
-        self.add_button = QPushButton("➕ Ajouter Fournisseur")
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS
+        self.add_button = QPushButton("+ Ajouter Fournisseur")
         self.add_button.setMinimumHeight(35)
-        self.add_button.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        self.add_button.setStyleSheet(PRIMARY_CTA_QSS)
         self.add_button.clicked.connect(self.open_add_dialog)
         
         self.refresh_button = QPushButton("Actualiser")
         self.refresh_button.setMinimumHeight(35)
+        self.refresh_button.setStyleSheet(SLATE_OUTLINE_QSS)
         self.refresh_button.clicked.connect(self.load_suppliers_data)
         
         control_layout.addWidget(self.search_input, 1)
@@ -44,6 +46,7 @@ class SuppliersTab(QWidget):
 
         # --- Tableau (Table) ---
         self.suppliers_table = QTableWidget()
+        self.suppliers_table.setStyleSheet(CLEAN_TABLE_QSS)
         columns = ["ID", "Nom du Fournisseur", "Contact", "Téléphone", "Email", "Ville"]
         self.suppliers_table.setColumnCount(len(columns))
         self.suppliers_table.setHorizontalHeaderLabels(columns)
@@ -68,11 +71,14 @@ class SuppliersTab(QWidget):
 
         # --- Actions Inferieures ---
         actions_layout = QHBoxLayout()
-        self.edit_button = QPushButton("✏️ Modifier le Fournisseur")
+        self.edit_button = QPushButton("Modifier le Fournisseur")
+        self.edit_button.setMinimumHeight(34)
+        self.edit_button.setStyleSheet(SLATE_OUTLINE_QSS)
         self.edit_button.clicked.connect(self.open_edit_dialog)
         
         self.delete_button = QPushButton("Supprimer")
-        self.delete_button.setStyleSheet("color: #c0392b;")
+        self.delete_button.setMinimumHeight(34)
+        self.delete_button.setStyleSheet(DANGER_OUTLINE_QSS)
         self.delete_button.clicked.connect(self.delete_supplier)
         
         actions_layout.addStretch()

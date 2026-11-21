@@ -3,6 +3,7 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QDialogButtonBox, 
                                QSpinBox, QLabel, QMessageBox)
 from ui.formatting import quantity_to_int
+from ui.theme_tokens import STATUS_DANGER, scoped_dialog_qss
 from .location_tree_combo import LocationTreeComboBox # تأكد من المسار الصحيح
 
 class QuickTransferDialog(QDialog):
@@ -12,14 +13,17 @@ class QuickTransferDialog(QDialog):
     """
     def __init__(self, batch_data, location_manager, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🚚 Transfert Rapide")
+        self.setObjectName("QuickTransferDialog")
+        self.setWindowTitle("Transfert Rapide")
         self.setModal(True)
-        self.resize(350, 200)
+        self.resize(360, 210)
+        self.setStyleSheet(scoped_dialog_qss("QuickTransferDialog"))
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         # 1. عرض معلومات المنتج واللوت
-        info_style = "font-size: 12px; color: #2c3e50; margin-bottom: 10px;"
         info_text = (f"<b>Produit :</b> {batch_data.get('Product_Name')}<br>"
                      f"<b>Lot :</b> {batch_data.get('Lot_Number')}<br>"
                      f"<b>Lieu Actuel :</b> {batch_data.get('Location_Name')}")
@@ -30,7 +34,7 @@ class QuickTransferDialog(QDialog):
 
         # اختيار الوجهة
         self.dest_combo = LocationTreeComboBox(location_manager)
-        self.dest_combo.setPlaceholderText("📍 Sélectionner la destination...")
+        self.dest_combo.setPlaceholderText("Sélectionner la destination...")
         form.addRow("Vers (Destination):", self.dest_combo)
 
         # اختيار الكمية
@@ -64,11 +68,15 @@ class QuickConsumeDialog(QDialog):
     """
     def __init__(self, batch_data, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("📉 Consommation Rapide")
+        self.setObjectName("QuickConsumeDialog")
+        self.setWindowTitle("Consommation Rapide")
         self.setModal(True)
-        self.resize(300, 150)
+        self.resize(320, 165)
+        self.setStyleSheet(scoped_dialog_qss("QuickConsumeDialog"))
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         # 1. معلومات
         info_text = (f"<b>Sortie de Stock (Consommation)</b><br>"
@@ -82,7 +90,7 @@ class QuickConsumeDialog(QDialog):
         self.qty_spin.setRange(1, max_qty)
         self.qty_spin.setValue(1)
         self.qty_spin.setSuffix("")
-        self.qty_spin.setStyleSheet("font-weight: bold; font-size: 14px; color: #c0392b;")
+        self.qty_spin.setStyleSheet(f"font-weight: 700; font-size: 14px; color: {STATUS_DANGER};")
         form.addRow("Quantité à sortir:", self.qty_spin)
         layout.addLayout(form)
 

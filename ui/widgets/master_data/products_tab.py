@@ -29,13 +29,15 @@ class ProductsTab(QWidget):
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_products_data)
 
-        self.btn_add = QPushButton("➕ Ajouter un Nouveau Produit")
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS
+        self.btn_add = QPushButton("+ Ajouter un Nouveau Produit")
         self.btn_add.setMinimumHeight(35)
-        self.btn_add.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        self.btn_add.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_add.clicked.connect(self.open_add_dialog)
 
         self.btn_refresh = QPushButton("Actualiser")
         self.btn_refresh.setMinimumHeight(35)
+        self.btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_refresh.clicked.connect(self.load_products_data)
         
         toolbar.addWidget(self.search_input, 1)
@@ -45,6 +47,7 @@ class ProductsTab(QWidget):
 
         # --- Tableau avec colonnes sélectionnées ---
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         columns = [
             "ID",                  # 0 - مخفية
             "Nom du Produit",      # 1
@@ -56,7 +59,7 @@ class ProductsTab(QWidget):
             "Seuil Min",           # 7
             "Température",         # 8
             "Automate Préféré",    # 9
-            "Alertes (🔔)",       # 10
+            "Alertes",             # 10
             "Groupe Vente"         # 11
         ]
         self.table.setColumnCount(len(columns))
@@ -75,11 +78,14 @@ class ProductsTab(QWidget):
 
         # --- Boutons d'actions ---
         actions = QHBoxLayout()
-        self.btn_edit = QPushButton("✏️ Modifier le Produit Sélectionné")
+        self.btn_edit = QPushButton("Modifier le Produit Sélectionné")
+        self.btn_edit.setMinimumHeight(34)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.clicked.connect(self.open_edit_dialog)
         
         self.btn_delete = QPushButton("Supprimer")
-        self.btn_delete.setStyleSheet("color: #c0392b;")
+        self.btn_delete.setMinimumHeight(34)
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_delete.clicked.connect(self.delete_product)
         
         actions.addStretch()
@@ -163,12 +169,12 @@ class ProductsTab(QWidget):
 
                 # 10. Alertes
                 show_alerts = product.get('Show_In_Alerts', False)
-                alert_text = "🔔 Oui" if show_alerts else "🔕 Non"
+                alert_text = "Oui" if show_alerts else "Non"
                 self.table.setItem(row_idx, 10, self._create_centered_item(alert_text))
 
                 # 11. Groupe Vente (Caisse)
                 pos_grp = product.get('POS_Priority_Group')
-                grp_text = f"⭐ Liste {pos_grp}" if pos_grp else "---"
+                grp_text = f"Liste {pos_grp}" if pos_grp else "---"
                 self.table.setItem(row_idx, 11, self._create_centered_item(grp_text))
 
             self.table.setSortingEnabled(True)

@@ -102,12 +102,13 @@ class LocationsTab(QWidget):
         self.lbl_selected_name.setWordWrap(True)
         self.details_layout.addWidget(self.lbl_selected_name)
         
+        from ui.theme_tokens import (
+            PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, BRAND_TEAL, SUBTLE_BG, BORDER_HAIRLINE,
+            scoped_card_qss, set_enabled_with_reason,
+        )
         info_frame = QFrame()
         info_frame.setObjectName("LocationInfoCard")
-        info_frame.setStyleSheet(
-            "QFrame#LocationInfoCard { background-color: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; }"
-            "QFrame#LocationInfoCard QLabel { border: none; background: transparent; padding: 0px; }"
-        )
+        info_frame.setStyleSheet(scoped_card_qss("LocationInfoCard", bg=SUBTLE_BG, border=BORDER_HAIRLINE, radius=6))
         info_layout = QFormLayout(info_frame)
         self.lbl_id = QLabel("-")
         self.lbl_type = QLabel("-")
@@ -133,14 +134,19 @@ class LocationsTab(QWidget):
 
         # أزرار الإجراءات مع أيقونات qta
         self.btn_add_child = QPushButton(" Ajouter Sous-Emplacement")
+        self.btn_add_child.setMinimumHeight(34)
+        self.btn_add_child.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_add_child.setIcon(qta.icon('fa5s.plus-circle', color='#2c3e50'))
         
         self.btn_edit = QPushButton(" Modifier les détails")
+        self.btn_edit.setMinimumHeight(34)
+        self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.setIcon(qta.icon('fa5s.edit', color='#2c3e50'))
         
         self.btn_delete = QPushButton(" Supprimer cet emplacement")
-        self.btn_delete.setIcon(qta.icon('fa5s.trash-alt', color='white'))
-        self.btn_delete.setProperty("class", "danger")
+        self.btn_delete.setMinimumHeight(34)
+        self.btn_delete.setIcon(qta.icon('fa5s.trash-alt', color='#DC2626'))
+        self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
 
         self.btn_add_child.clicked.connect(self.add_child_location)
         self.btn_edit.clicked.connect(self.edit_location)
@@ -207,9 +213,11 @@ class LocationsTab(QWidget):
         self.set_actions_enabled(True)
 
     def set_actions_enabled(self, enabled):
-        self.btn_add_child.setEnabled(enabled)
-        self.btn_edit.setEnabled(enabled)
-        self.btn_delete.setEnabled(enabled)
+        from ui.theme_tokens import set_enabled_with_reason
+        reason = "Sélectionnez un emplacement dans l'arborescence pour activer cette action."
+        set_enabled_with_reason(self.btn_add_child, enabled, reason, "Ajouter un sous-emplacement")
+        set_enabled_with_reason(self.btn_edit, enabled, reason, "Modifier l'emplacement sélectionné")
+        set_enabled_with_reason(self.btn_delete, enabled, reason, "Supprimer l'emplacement sélectionné")
         if not enabled:
             self.lbl_selected_name.setText("Aucune sélection")
             self.lbl_id.setText("-")
@@ -227,8 +235,8 @@ class LocationsTab(QWidget):
         if not item: return
         menu = QMenu()
         menu.setStyleSheet("QMenu::item:selected { background-color: #007572; color: white; }")
-        act_add = QAction("➕ Ajouter Sous-Emplacement", self)
-        act_edit = QAction("✏️ Modifier", self)
+        act_add = QAction("Ajouter Sous-Emplacement", self)
+        act_edit = QAction("Modifier", self)
         act_del = QAction("Supprimer", self)
         act_add.triggered.connect(self.add_child_location)
         act_edit.triggered.connect(self.edit_location)

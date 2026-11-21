@@ -71,8 +71,9 @@ class ReceptionHistoryTab(QWidget):
         self.date_to.setDate(current_date)
         self.date_to.dateChanged.connect(self.load_data)
 
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Rechercher...")
+        self.search_input.setPlaceholderText("Rechercher...")
         self.search_input.textChanged.connect(self.load_data)
         
         # --- [جديد] فلتر الموردين ---
@@ -87,20 +88,25 @@ class ReceptionHistoryTab(QWidget):
         self.status_filter.addItems(["Tous", "Terminée", "Variance détectée", "Pending Audit", "Avec notes"])
         self.status_filter.currentTextChanged.connect(self.load_data)
         
-        btn_refresh = QPushButton("🔄 Actualiser")
+        btn_refresh = QPushButton("Actualiser")
+        btn_refresh.setMinimumHeight(34)
+        btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.load_data)
 
-        self.btn_new_direct_bl = QPushButton("➕ Nouveau BL Direct")
-        self.btn_new_direct_bl.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        self.btn_new_direct_bl = QPushButton("+ Nouveau BL Direct")
+        self.btn_new_direct_bl.setMinimumHeight(34)
+        self.btn_new_direct_bl.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_new_direct_bl.setToolTip("Créer un Bon de Livraison directement lié à un fournisseur sans Bon de Commande")
         self.btn_new_direct_bl.clicked.connect(self.create_direct_reception)
         
-        btn_edit = QPushButton("✏️ Modifier")
-        btn_edit.setStyleSheet("background-color: #f39c12; color: white; font-weight: bold;")
+        btn_edit = QPushButton("Modifier")
+        btn_edit.setMinimumHeight(34)
+        btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_edit.clicked.connect(self.edit_reception)
 
-        btn_pdf = QPushButton("📄 PDF")
-        btn_pdf.setStyleSheet("background-color: #e74c3c; color: white; font-weight: bold;")
+        btn_pdf = QPushButton("PDF")
+        btn_pdf.setMinimumHeight(34)
+        btn_pdf.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_pdf.clicked.connect(self.export_reception_pdf)
         
         toolbar.addWidget(self.lbl_date)
@@ -192,26 +198,26 @@ class ReceptionHistoryTab(QWidget):
         menu = QMenu(self)
         
         # خيار التعديل
-        action_edit = QAction("✏️ Modifier la réception", self)
+        action_edit = QAction("Modifier la réception", self)
         action_edit.triggered.connect(self.edit_reception)
         menu.addAction(action_edit)
 
         # [جديد] خيار إضافة/تعديل ملاحظة
-        action_note = QAction("📝 Ajouter une Réclamation / Note", self)
+        action_note = QAction("Ajouter une Réclamation / Note", self)
         action_note.triggered.connect(self.open_reclamation_dialog)
         menu.addAction(action_note)
 
         menu.addSeparator()
 
         # خيار الـ PDF
-        action_pdf = QAction("📄 Exporter PDF", self)
+        action_pdf = QAction("Exporter PDF", self)
         action_pdf.triggered.connect(self.export_reception_pdf)
         menu.addAction(action_pdf)
 
         menu.addSeparator()
 
         # خيار الـ Avoir
-        action_avoir = QAction("↩️ Créer un Avoir (Retour)", self)
+        action_avoir = QAction("Créer un Avoir (Retour)", self)
         action_avoir.triggered.connect(self.trigger_create_avoir)
         menu.addAction(action_avoir)
 

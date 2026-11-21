@@ -855,8 +855,11 @@ class PdfConfigWidget(QWidget):
         self.btn_delete_stamp = QPushButton("Supprimer le cachet")
         self.btn_deactivate_stamp = QPushButton("Desactiver le cachet")
         self.btn_activate_stamp = QPushButton("Definir comme actif")
-        self.btn_delete_stamp.setStyleSheet("color: #c0392b;")
-        self.btn_activate_stamp.setStyleSheet("background-color: #2980b9; color: white; font-weight: bold;")
+        from ui.theme_tokens import PRIMARY_CTA_QSS, DANGER_OUTLINE_QSS
+        self.btn_delete_stamp.setMinimumHeight(32)
+        self.btn_delete_stamp.setStyleSheet(DANGER_OUTLINE_QSS)
+        self.btn_activate_stamp.setMinimumHeight(32)
+        self.btn_activate_stamp.setStyleSheet(PRIMARY_CTA_QSS)
         stamps_actions.addWidget(self.btn_add_stamp)
         stamps_actions.addWidget(self.btn_delete_stamp)
         stamps_actions.addWidget(self.btn_activate_stamp)
@@ -902,8 +905,10 @@ class PdfConfigWidget(QWidget):
         wy_lbl.setWordWrap(True)
         wy_lbl.setAlignment(Qt.AlignCenter)
 
-        self.btn_open_visual = QPushButton("🚀 Ouvrir l'Éditeur Visuel Plein Écran")
-        self.btn_open_visual.setStyleSheet("background-color: #9b59b6; color: white; font-weight: bold; padding: 15px; font-size: 16px; border-radius: 5px;")
+        from ui.theme_tokens import PRIMARY_CTA_QSS
+        self.btn_open_visual = QPushButton("Ouvrir l'Éditeur Visuel Plein Écran")
+        self.btn_open_visual.setMinimumHeight(46)
+        self.btn_open_visual.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_open_visual.setCursor(Qt.PointingHandCursor)
         self.btn_open_visual.clicked.connect(self.open_visual_editor_dialog)
 

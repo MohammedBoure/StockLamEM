@@ -31,8 +31,8 @@ class CreditNoteTab(QWidget):
         self.form_tab = CreditNoteForm(data_manager)
         self.list_tab = CreditNoteList(data_manager)
         
-        self.tabs.addTab(self.list_tab, "📜 Avoirs")  # Index 0
-        self.tabs.addTab(self.form_tab, "📝 Saisie Avoir") # Index 1
+        self.tabs.addTab(self.list_tab, "Avoirs")  # Index 0
+        self.tabs.addTab(self.form_tab, "Saisie Avoir") # Index 1
         
         self.list_tab.request_edit.connect(self.handle_edit_request)
         self.list_tab.request_new.connect(self.handle_new_request)

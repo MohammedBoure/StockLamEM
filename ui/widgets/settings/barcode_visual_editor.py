@@ -98,7 +98,7 @@ class BarcodeVisualEditor(QWidget):
 
         # 1. General Settings
         # 0. Template Management
-        grp_tpl = QGroupBox("📋 0. Modèles (Templates)")
+        grp_tpl = QGroupBox("0. Modèles (Templates)")
         v_tpl = QVBoxLayout(grp_tpl)
         
         h_combo = QHBoxLayout()
@@ -108,10 +108,10 @@ class BarcodeVisualEditor(QWidget):
         h_combo.addWidget(self.cmb_template, 1)
         
         h_btn = QHBoxLayout()
-        btn_new = QPushButton("➕ Nouveau")
-        btn_save = QPushButton("💾 Enregistrer")
-        btn_ren = QPushButton("✏️ Renommer")
-        btn_del = QPushButton("🗑️ Supprimer")
+        btn_new = QPushButton("+ Nouveau")
+        btn_save = QPushButton("Enregistrer")
+        btn_ren = QPushButton("Renommer")
+        btn_del = QPushButton("Supprimer")
         
         btn_new.clicked.connect(self.new_template)
         btn_save.clicked.connect(self.save_template)
@@ -127,7 +127,7 @@ class BarcodeVisualEditor(QWidget):
         v_tpl.addLayout(h_btn)
         form_layout.addWidget(grp_tpl)
 
-        grp_gen = QGroupBox("🖨️ 1. Dimensions (mm)")
+        grp_gen = QGroupBox("1. Dimensions (mm)")
         f_gen = QFormLayout(grp_gen)
         
         self.sp_w = QDoubleSpinBox()
@@ -145,7 +145,7 @@ class BarcodeVisualEditor(QWidget):
         form_layout.addWidget(grp_gen)
 
         # 2. Elements Settings
-        grp_el = QGroupBox("📝 2. Éléments et Positions (mm)")
+        grp_el = QGroupBox("2. Éléments et Positions (mm)")
         v_el = QVBoxLayout(grp_el)
 
         # Helper to create row
@@ -236,13 +236,13 @@ class BarcodeVisualEditor(QWidget):
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         
-        grp_prev = QGroupBox("👁️ Aperçu (Prévisualisation)")
+        grp_prev = QGroupBox("Aperçu (Prévisualisation)")
         l_prev = QVBoxLayout(grp_prev)
         
         tools_h = QHBoxLayout()
-        btn_zout = QPushButton("➖ Zoom Out"); btn_zout.clicked.connect(self.zoom_out)
-        btn_zres = QPushButton("🔄 Reset Zoom"); btn_zres.clicked.connect(self.zoom_reset)
-        btn_zin = QPushButton("➕ Zoom In"); btn_zin.clicked.connect(self.zoom_in)
+        btn_zout = QPushButton("- Zoom Out"); btn_zout.clicked.connect(self.zoom_out)
+        btn_zres = QPushButton("Reset Zoom"); btn_zres.clicked.connect(self.zoom_reset)
+        btn_zin = QPushButton("+ Zoom In"); btn_zin.clicked.connect(self.zoom_in)
         tools_h.addWidget(btn_zout); tools_h.addWidget(btn_zres); tools_h.addWidget(btn_zin)
         l_prev.addLayout(tools_h)
 

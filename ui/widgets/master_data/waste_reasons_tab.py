@@ -26,13 +26,15 @@ class WasteReasonsTab(QWidget):
         self.search_input.setMinimumHeight(35)
         self.search_input.textChanged.connect(self.load_data)
         
-        btn_add = QPushButton("➕ Ajouter une Raison")
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS
+        btn_add = QPushButton("+ Ajouter une Raison")
         btn_add.setMinimumHeight(35)
-        btn_add.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        btn_add.setStyleSheet(PRIMARY_CTA_QSS)
         btn_add.clicked.connect(self.open_add_dialog)
 
         btn_refresh = QPushButton("Actualiser")
         btn_refresh.setMinimumHeight(35)
+        btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.load_data)
         
         toolbar.addWidget(self.search_input, 1)
@@ -42,6 +44,7 @@ class WasteReasonsTab(QWidget):
 
         # --- Tableau (Table) ---
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         # "ID" موجود برمجياً في العمود 0 ولكن سيتم إخفاؤه عن المستخدم
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["ID", "Raison", "Statut (Active)"])
@@ -66,11 +69,14 @@ class WasteReasonsTab(QWidget):
         
         # --- Actions Inferieures ---
         actions = QHBoxLayout()
-        btn_edit = QPushButton("✏️ Modifier")
+        btn_edit = QPushButton("Modifier")
+        btn_edit.setMinimumHeight(34)
+        btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_edit.clicked.connect(self.open_edit_dialog)
         
         btn_delete = QPushButton("Désactiver la Raison")
-        btn_delete.setStyleSheet("color: red;")
+        btn_delete.setMinimumHeight(34)
+        btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         btn_delete.clicked.connect(self.delete_reason)
         
         actions.addStretch()
@@ -135,7 +141,7 @@ class WasteReasonsTab(QWidget):
                 self.table.setItem(row_idx, 1, name_item)
                 
                 # 2. Statut (الحالة)
-                active_str = "✅ Oui" if is_active else "❌ Non"
+                active_str = "Oui" if is_active else "Non"
                 self.table.setItem(row_idx, 2, self._create_centered_item(active_str))
                 
                 row_idx += 1

@@ -25,18 +25,25 @@ class ReclamationDialog(QDialog):
         self.manager = manager
         self.br_id = self.header.get('BR_ID')
 
+        self.setObjectName("ReclamationDialog")
+        from ui.theme_tokens import (
+            scoped_dialog_qss, PRIMARY_CTA_QSS, AMBER_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS,
+        )
+        self.setStyleSheet(scoped_dialog_qss("ReclamationDialog"))
         self.setWindowTitle(f"Gestion Réclamation - BR #{self.br_id}")
         self.resize(1000, 750)
         self.init_ui()
 
     def init_ui(self):
+        from ui.theme_tokens import (
+            PRIMARY_CTA_QSS, AMBER_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS,
+        )
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
 
         # --- 1. Header Info ---
         info_group = QGroupBox("Informations Générales")
-        info_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #E2E8F0; border-radius: 6px; margin-top: 10px; }")
         info_layout = QHBoxLayout(info_group)
 
         form1 = QFormLayout()
@@ -53,7 +60,6 @@ class ReclamationDialog(QDialog):
 
         # --- 2. Edit Note Section (General) ---
         note_group = QGroupBox("Note Générale (Facture / BL)")
-        note_group.setStyleSheet("QGroupBox { font-weight: bold; color: #007572; border: 1px solid #E2E8F0; border-radius: 6px; margin-top: 10px; }")
         note_layout = QVBoxLayout(note_group)
 
         self.txt_note = QTextEdit()
@@ -66,7 +72,9 @@ class ReclamationDialog(QDialog):
         self.txt_note.setMaximumHeight(60)
 
         btn_save_note = QPushButton("Enregistrer Note Générale")
-        btn_save_note.setFixedWidth(200)
+        btn_save_note.setMinimumHeight(34)
+        btn_save_note.setFixedWidth(210)
+        btn_save_note.setStyleSheet(PRIMARY_CTA_QSS)
         btn_save_note.clicked.connect(self.save_general_note)
 
         note_layout.addWidget(self.txt_note)
@@ -77,20 +85,20 @@ class ReclamationDialog(QDialog):
         # --- 3. Products Table ---
         prod_layout = QHBoxLayout()
         lbl_table = QLabel("Produits Non-Conformes :")
-        lbl_table.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px;")
+        lbl_table.setStyleSheet("font-weight: 700; font-size: 14px; margin-top: 8px;")
         prod_layout.addWidget(lbl_table)
         prod_layout.addStretch()
 
         # زر تعديل ملاحظة المنتج
         btn_edit_prod_note = QPushButton("Modifier Note")
-        btn_edit_prod_note.setIcon(qta.icon('fa5s.edit', color='white'))
-        btn_edit_prod_note.setStyleSheet("background-color: #f39c12; color: white; font-weight: bold; padding: 5px 10px;")
+        btn_edit_prod_note.setMinimumHeight(34)
+        btn_edit_prod_note.setStyleSheet(AMBER_OUTLINE_QSS)
         btn_edit_prod_note.clicked.connect(self.edit_product_note)
 
         # زر حذف الملاحظة (جديد)
         btn_remove_note = QPushButton("Supprimer Note(s)")
-        btn_remove_note.setIcon(qta.icon('fa5s.trash', color='white'))
-        btn_remove_note.setStyleSheet("background-color: #c0392b; color: white; font-weight: bold; padding: 5px 10px;")
+        btn_remove_note.setMinimumHeight(34)
+        btn_remove_note.setStyleSheet(DANGER_OUTLINE_QSS)
         btn_remove_note.clicked.connect(self.remove_selected_notes)
 
         prod_layout.addWidget(btn_edit_prod_note)
@@ -99,6 +107,7 @@ class ReclamationDialog(QDialog):
         layout.addLayout(prod_layout)
 
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         cols = ["ID", "Produit", "Lot", "Qté", "Note / Réclamation"]
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels(cols)

@@ -63,12 +63,16 @@ class BulkBarcodeSelectionDialog(QDialog):
         layout.addWidget(self.table)
 
         # Boutons
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS
         btn_box = QHBoxLayout()
         self.btn_print = QPushButton(qta.icon('fa5s.print', color='white'), " Lancer l'impression")
-        self.btn_print.setStyleSheet("background-color: #2c3e50; color: white; padding: 8px;")
+        self.btn_print.setMinimumHeight(34)
+        self.btn_print.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_print.clicked.connect(self.accept_selection)
         
         self.btn_cancel = QPushButton("Annuler")
+        self.btn_cancel.setMinimumHeight(34)
+        self.btn_cancel.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_cancel.clicked.connect(self.reject)
 
         btn_box.addStretch()

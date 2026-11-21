@@ -19,19 +19,20 @@ class LogDetailsDialog(QDialog):
         
         layout = QVBoxLayout(self)
         
+        from ui.theme_tokens import CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, SUBTLE_BG, BORDER_CONTROL, TEXT_PRIMARY
         self.text_view = QTextEdit()
         self.text_view.setReadOnly(True)
         self.text_view.setFont(QFont("Consolas", 11))
-        self.text_view.setStyleSheet("background-color: #f8f9fa; color: #2c3e50; border: 1px solid #bdc3c7; padding: 10px;")
+        self.text_view.setStyleSheet(f"background-color: {SUBTLE_BG}; color: {TEXT_PRIMARY}; border: 1px solid {BORDER_CONTROL}; padding: 10px; border-radius: 6px;")
         self.text_view.setPlainText(details_json_str)
         
         layout.addWidget(self.text_view)
         
         btn_close = QPushButton(" Fermer")
-        btn_close.setIcon(qta.icon("fa5s.times"))
+        btn_close.setIcon(qta.icon("fa5s.times", color="#334155"))
         btn_close.clicked.connect(self.accept)
-        btn_close.setMinimumHeight(40)
-        btn_close.setStyleSheet("background-color: #e74c3c; color: white; font-weight: bold; border-radius: 5px;")
+        btn_close.setMinimumHeight(36)
+        btn_close.setStyleSheet(SLATE_OUTLINE_QSS)
         
         layout.addWidget(btn_close)
 
@@ -71,13 +72,17 @@ class SystemLogsTab(QWidget):
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Chercher...")
 
+        from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, CLEAN_TABLE_QSS
         btn_search = QPushButton(" Filtrer")
         btn_search.setIcon(qta.icon("fa5s.search", color="white"))
-        btn_search.setStyleSheet("background-color: #2980b9; color: white; font-weight: bold; padding: 5px 15px;")
+        btn_search.setMinimumHeight(34)
+        btn_search.setStyleSheet(PRIMARY_CTA_QSS)
         btn_search.clicked.connect(self.on_search)
 
         btn_clear = QPushButton(" Réinitialiser")
-        btn_clear.setIcon(qta.icon("fa5s.sync", color="#333"))
+        btn_clear.setIcon(qta.icon("fa5s.sync", color="#334155"))
+        btn_clear.setMinimumHeight(34)
+        btn_clear.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_clear.clicked.connect(self.clear_filters)
 
         filter_layout.addWidget(QLabel("Du:"))
@@ -110,7 +115,7 @@ class SystemLogsTab(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet("QTableWidget::item { padding: 5px; } alternate-background-color: #f4f6f7;")
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         self.table.setCursor(Qt.PointingHandCursor)
         self.table.cellClicked.connect(self.on_row_clicked)
         
@@ -204,7 +209,7 @@ class SystemLogsTab(QWidget):
                     preview_text = (raw_json[:60] + '...') if len(raw_json) > 60 else raw_json
 
                 self.table.setItem(row_idx, 0, QTableWidgetItem(str(log['log_date'])))
-                self.table.setItem(row_idx, 1, QTableWidgetItem(f"👤 {log['username']}"))
+                self.table.setItem(row_idx, 1, QTableWidgetItem(str(log['username'])))
                 
                 item_action = QTableWidgetItem(action_display)
                 item_action.setFont(QFont("Arial", 10, QFont.Bold))

@@ -17,6 +17,11 @@ from PySide6.QtGui import QFont, QPixmap, QPainter, QBrush, QPen, QColor, QIcon
 
 from .auto_select_widgets import AutoSelectLineEdit, AutoSelectSpinBox, AutoSelectDoubleSpinBox
 from ..location_tree_combo import LocationTreeComboBox
+from ui.theme_tokens import (
+    BRAND_TEAL, SUBTLE_BG, CARD_BG, BORDER_HAIRLINE, TEXT_PRIMARY, TEXT_MUTED,
+    STATUS_INFO, CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, AMBER_OUTLINE_QSS,
+    SECONDARY_OUTLINE_QSS, set_enabled_with_reason,
+)
 
 
 class ReceptionDialogUIMixin:
@@ -32,39 +37,17 @@ class ReceptionDialogUIMixin:
         self.btn_validate_ref = QPushButton(" Valider & Verrouiller")
         self.btn_validate_ref.setIcon(qta.icon('fa5s.check-circle', color='white'))
         self.btn_validate_ref.setCursor(Qt.PointingHandCursor)
+        self.btn_validate_ref.setMinimumHeight(34)
         self.btn_validate_ref.setToolTip("Valider les références pour commencer")
-        self.btn_validate_ref.setStyleSheet("""
-            QPushButton {
-                background-color: #2980b9;
-                color: white;
-                font-weight: bold;
-                padding: 6px 15px;
-                border-radius: 4px;
-                font-size: 13px;
-            }
-            QPushButton:hover { background-color: #3498db; }
-            QPushButton:disabled {
-                background-color: #27ae60;
-                color: white;
-                border: 1px solid #2ecc71;
-            }
-        """)
+        self.btn_validate_ref.setStyleSheet(PRIMARY_CTA_QSS)
 
         self.btn_unlock_header = QPushButton("")
-        self.btn_unlock_header.setIcon(qta.icon('fa5s.pen', color='white'))
+        self.btn_unlock_header.setIcon(qta.icon('fa5s.pen', color='#B45309'))
         self.btn_unlock_header.setToolTip("Modifier les informations de l'en-tête")
         self.btn_unlock_header.setCursor(Qt.PointingHandCursor)
         self.btn_unlock_header.setVisible(False)
-        self.btn_unlock_header.setFixedSize(30, 30)
-        self.btn_unlock_header.setStyleSheet("""
-            QPushButton {
-                background-color: #f39c12;
-                color: white;
-                border-radius: 4px;
-                padding: 4px;
-            }
-            QPushButton:hover { background-color: #d35400; }
-        """)
+        self.btn_unlock_header.setFixedSize(32, 32)
+        self.btn_unlock_header.setStyleSheet(AMBER_OUTLINE_QSS)
 
         self.reception_date = QDateEdit(QDate.currentDate())
         self.reception_date.setCalendarPopup(True)
@@ -142,14 +125,14 @@ class ReceptionDialogUIMixin:
             self.cb_product.addItem(f"{p['Product_Name']}  |  Réf: {ref}  ({brand})", p)
 
         self.cb_ref = QComboBox()
-        self.cb_ref.setEnabled(False)
+        set_enabled_with_reason(self.cb_ref, False, "Sélectionnez d'abord un produit.")
         self.cb_ref.addItem("--- Réf ---", "")
 
         self.btn_add_ref = QPushButton("+")
         self.btn_add_ref.setFixedSize(28, 26)
         self.btn_add_ref.setCursor(Qt.PointingHandCursor)
         self.btn_add_ref.setEnabled(False)
-        self.btn_add_ref.setToolTip("Définir ou modifier l'unique Réf du produit sélectionné")
+        self.btn_add_ref.setToolTip("Sélectionnez d'abord un produit pour définir sa Réf.")
         self.btn_add_ref.setStyleSheet(
             "QPushButton { background-color: #e6f4f1; color: #007572; border: 1px solid #007572; "
             "border-radius: 4px; font-weight: bold; font-size: 14px; padding: 0px; margin: 0px; }"
@@ -231,12 +214,14 @@ class ReceptionDialogUIMixin:
         self.btn_delete = QPushButton(qta.icon('fa5s.trash-alt', color='white'), " Supprimer")
         self.btn_print  = QPushButton(qta.icon('fa5s.print',     color='white'), " Imprimer")
 
-        self.btn_print_all = QPushButton(qta.icon('fa5s.copy', color='white'), " Imprimer Tout")
+        self.btn_print_all = QPushButton(qta.icon('fa5s.copy', color=BRAND_TEAL), " Imprimer Tout")
         self.btn_print_all.setToolTip("Imprimer les étiquettes pour tous les articles de la liste")
-        self.btn_print_all.setStyleSheet("background-color: #8e44ad; color: white; font-weight: bold;")
+        self.btn_print_all.setMinimumHeight(34)
+        self.btn_print_all.setStyleSheet(SECONDARY_OUTLINE_QSS)
 
         # إعداد الجدول
-        self.table_items = QTableWidget() 
+        self.table_items = QTableWidget()
+        self.table_items.setStyleSheet(CLEAN_TABLE_QSS) 
         self.table_items.setColumnCount(15)
         
         headers = [
@@ -278,19 +263,20 @@ class ReceptionDialogUIMixin:
 
         is_direct_bl = not bool(self.po_data.get('PO_ID'))
         if is_direct_bl:
-            header_text = "<b>Mode:</b> Bon de Livraison Direct (Sans Bon de Commande)"
-            border_color = "#27ae60"
+            header_text = "<b>Mode :</b> Bon de Livraison Direct (Sans Bon de Commande)"
+            border_color = BRAND_TEAL
         else:
             header_text = (
-                f"<b>Fournisseur:</b> {self.po_data.get('Supplier_Name', 'N/A')} "
-                f"| <b>N°BC:</b> #{self.po_data.get('PO_ID', 'N/A')}"
+                f"<b>Fournisseur :</b> {self.po_data.get('Supplier_Name', 'N/A')} "
+                f"| <b>N°BC :</b> #{self.po_data.get('PO_ID', 'N/A')}"
             )
-            border_color = "#3498db"
+            border_color = STATUS_INFO
 
         header_info = QLabel(header_text)
         header_info.setStyleSheet(
-            f"font-size: 14px; color: #2c3e50; background: #ecf0f1; "
-            f"padding: 8px; border-radius: 4px; border-left: 4px solid {border_color};"
+            f"font-size: 13.5px; color: {TEXT_PRIMARY}; background: {SUBTLE_BG}; "
+            f"border: 1px solid {BORDER_HAIRLINE}; padding: 8px 12px; border-radius: 6px; "
+            f"border-left: 3px solid {border_color};"
         )
         main_layout.addWidget(header_info)
 

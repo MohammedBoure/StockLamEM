@@ -16,6 +16,8 @@ This test suite enforces strict software quality gatekeeping across:
 ## 2. Itemized Breakdown of Test Files & Harness Modules
 
 ### 2.1. Specialized Appliance Retail, Concurrency & Security Gatekeeping
+- **`test_ui_consistency_overhaul.py`**:
+  - *Scope*: Verifies the shared StockLam design tokens (`ui/theme_tokens.py`), `#ObjectName`-scoped container QSS helpers (`scoped_card_qss`, `scoped_banner_qss`, `scoped_dialog_qss`), `set_enabled_with_reason` tooltips on disabled controls, emoji-free toolbar/group/combo controls across Inventory/Procurement/Dashboard/Master Data/Settings/Users, and complete absence of legacy slop backgrounds (`#ecf0f1`, `#bdc3c7`, `#f4f7fa`).
 - **`test_task1_global_theme_and_sidebar.py`**:
   - *Scope*: Verifies Task #1 (`Global Theme & Navigation`): single sidebar toggle (`btn_sidebar_toggle`) aligned at top in compact mode, `QCheckBox::indicator` visibility with `check_white.svg`, `:disabled` button contrast (`#475569` on `#F1F5F9`), `16x16` white vector icons with `QIcon.Disabled` tinting on primary buttons, and scoped `QFrame#ObjectName` QSS.
 - **`test_task2_caisse_ui_hierarchy.py`**:

@@ -12,6 +12,10 @@ import qtawesome as qta
 
 from database.system_logger import active_user_id
 from ui.formatting import format_money, _to_decimal
+from ui.theme_tokens import (
+    BRAND_TEAL, CARD_BG, BORDER_HAIRLINE, CLEAN_TABLE_QSS,
+    PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS,
+)
 
 
 class NumericTableWidgetItem(QTableWidgetItem):
@@ -44,8 +48,13 @@ class CreditNoteList(QWidget):
         layout = QVBoxLayout(self)
         
         # --- شريط الفلترة العلوي ---
-        filter_group = QGroupBox("🔍 Recherche et Filtres")
-        filter_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #ccc; border-radius: 5px; margin-top: 5px; }")
+        filter_group = QGroupBox("Recherche et Filtres")
+        filter_group.setObjectName("CreditNoteFilterGroup")
+        filter_group.setStyleSheet(
+            f"QGroupBox#CreditNoteFilterGroup {{ background: {CARD_BG}; font-weight: 700; color: {BRAND_TEAL}; "
+            f"border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; margin-top: 8px; padding-top: 12px; }}"
+            "QGroupBox#CreditNoteFilterGroup::title { subcontrol-origin: margin; left: 12px; padding: 0 6px; }"
+        )
         filter_layout = QHBoxLayout(filter_group)
         
         self.date_from = QDateEdit(QDate.currentDate().addMonths(-1)) 
@@ -57,13 +66,14 @@ class CreditNoteList(QWidget):
         self.date_to.setDisplayFormat("yyyy-MM-dd")
         
         btn_search = QPushButton("Rechercher")
-        btn_search.setIcon(qta.icon("fa5s.search"))
-        btn_search.setStyleSheet("background-color: #2980b9; color: white; padding: 5px 15px;")
+        btn_search.setMinimumHeight(34)
+        btn_search.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_search.clicked.connect(self.load_data)
 
         # زر إنشاء جديد
-        btn_new = QPushButton("➕ Nouveau Avoir")
-        btn_new.setStyleSheet("background-color: #27ae60; color: white; padding: 5px 15px; font-weight: bold;")
+        btn_new = QPushButton("+ Nouveau Avoir")
+        btn_new.setMinimumHeight(34)
+        btn_new.setStyleSheet(PRIMARY_CTA_QSS)
         btn_new.clicked.connect(self.request_new.emit)
 
         filter_layout.addWidget(QLabel("Du:"))
@@ -77,6 +87,7 @@ class CreditNoteList(QWidget):
         layout.addWidget(filter_group)
 
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         cols = ["ID", "Réf. Avoir", "Fournisseur", "Date", "Type", "Montant TTC"]
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels(cols)
@@ -140,7 +151,7 @@ class CreditNoteList(QWidget):
         reply = QMessageBox.question(
             self, "Confirmation", 
             "Voulez-vous vraiment supprimer cet Avoir ?\n\n"
-            "⚠️ Attention : Si c'est un retour marchandise, le stock sera restauré.",
+            "Attention : Si c'est un retour marchandise, le stock sera restauré.",
             QMessageBox.Yes | QMessageBox.No
         )
         

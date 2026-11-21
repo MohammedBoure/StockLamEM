@@ -30,8 +30,11 @@ class DashboardTab(QWidget):
         # --- Toolbar ---
         toolbar = QFrame()
         toolbar.setObjectName("DashboardToolbar")
+        from ui.theme_tokens import (
+            PRIMARY_CTA_QSS, BORDER_HAIRLINE, BORDER_CONTROL, CARD_BG, TEXT_PRIMARY, FLAT_SUBTABS_QSS,
+        )
         toolbar.setStyleSheet(
-            "QFrame#DashboardToolbar { background-color: white; border-bottom: 1px solid #dcdde1; }"
+            f"QFrame#DashboardToolbar {{ background-color: {CARD_BG}; border-bottom: 1px solid {BORDER_HAIRLINE}; }}"
             "QFrame#DashboardToolbar QLabel { border: none; background: transparent; }"
         )
         toolbar.setFixedHeight(46)
@@ -43,18 +46,12 @@ class DashboardTab(QWidget):
         for d in [self.date_from, self.date_to]:
             d.setCalendarPopup(True)
             d.setFixedWidth(120)
-            d.setStyleSheet("padding: 5px; border: 1px solid #bdc3c7; border-radius: 4px;")
+            d.setStyleSheet(f"padding: 4px 6px; border: 1px solid {BORDER_CONTROL}; border-radius: 6px;")
 
-        self.btn_refresh = QPushButton("ACTUALISER")
+        self.btn_refresh = QPushButton("Actualiser")
         self.btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_refresh.setStyleSheet("""
-            QPushButton { 
-                background-color: #007572; color: white; font-weight: bold; 
-                border-radius: 4px; padding: 8px 20px; border: none;
-            }
-            QPushButton:hover { background-color: #005a58; }
-            QPushButton:disabled { background-color: #bdc3c7; color: #7f8c8d; }
-        """)
+        self.btn_refresh.setMinimumHeight(34)
+        self.btn_refresh.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_refresh.clicked.connect(self.refresh_all)
 
         tool_layout.addStretch()
@@ -107,6 +104,7 @@ class DashboardTab(QWidget):
     def refresh_all(self):
         if not self.btn_refresh.isEnabled(): return
         self.btn_refresh.setEnabled(False)
+        self.btn_refresh.setToolTip("Actualisation des données en cours...")
         self.btn_refresh.setText("Chargement...")
         QApplication.processEvents()
 

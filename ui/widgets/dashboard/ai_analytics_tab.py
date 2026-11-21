@@ -194,6 +194,7 @@ class AiAnalyticsTab(QWidget):
             return
 
         self.btn_refresh.setEnabled(False)
+        self.btn_refresh.setToolTip("Analyse IA en cours de calcul...")
         self.progress_bar.setVisible(True)
 
         self.worker = AIWorkerThread(self.db)
@@ -202,6 +203,7 @@ class AiAnalyticsTab(QWidget):
 
     def _on_ai_data_loaded(self, data: dict):
         self.btn_refresh.setEnabled(True)
+        self.btn_refresh.setToolTip("Actualiser les prédictions IA")
         self.progress_bar.setVisible(False)
 
         kpis = data.get('kpis', {})

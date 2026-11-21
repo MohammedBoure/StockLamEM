@@ -192,6 +192,7 @@ class SerialBatchRegistryWidget(QWidget):
         self.requires_serial_chk = QCheckBox()
         self.save_product_btn = QPushButton("+ Enregistrer le Produit")
         self.save_product_btn.setEnabled(False)
+        self.save_product_btn.setToolTip("Création de produit réservée à la section Données de Base.")
         self.save_product_btn.clicked.connect(self._on_create_product)
 
         self.product_combo = QComboBox()
@@ -202,6 +203,7 @@ class SerialBatchRegistryWidget(QWidget):
         self.serials_text = QPlainTextEdit()
         self.receive_batch_btn = QPushButton("Réceptionner le Lot && Enregistrer les N° de Série")
         self.receive_batch_btn.setEnabled(False)
+        self.receive_batch_btn.setToolTip("Réception de lots réservée à la section Achats & Entrées.")
         self.receive_batch_btn.clicked.connect(self._on_receive_batch)
 
         # -------------------------------------------------------------

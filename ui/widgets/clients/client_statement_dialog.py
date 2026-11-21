@@ -55,13 +55,14 @@ class TransactionDetailsDialog(QDialog):
         pal.setColor(self.backgroundRole(), QColor("#FFFFFF"))
         self.setPalette(pal)
 
+        self.setObjectName("ClientTxDetailDialog")
         self.setStyleSheet("""
-            QDialog {
+            QDialog#ClientTxDetailDialog {
                 background-color: #FFFFFF;
                 border: 1px solid #DDE3EA;
                 border-radius: 8px;
             }
-            QLabel {
+            QDialog#ClientTxDetailDialog QLabel {
                 border: none;
                 background: transparent;
             }
@@ -892,7 +893,7 @@ class ClientStatementDialog(QDialog):
         tier = client.get('Price_Tier') or "Prix_1"
         limit = float(client.get('Credit_Limit') or 0.0)
 
-        self.lbl_client_title.setText(f"👤 {name}")
+        self.lbl_client_title.setText(name)
         self.lbl_client_meta.setText(
             f"Tél: {contact} | Ville: {city} | Catégorie: {tier} | Plafond Crédit: {format_money(limit)} DA"
         )

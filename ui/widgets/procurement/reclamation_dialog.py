@@ -8,6 +8,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QBrush, QFont
 import qtawesome as qta
 from ui.formatting import format_quantity
+from ui.theme_tokens import (
+    BRAND_TEAL, AMBER_OUTLINE_QSS, DANGER_OUTLINE_QSS, PRIMARY_CTA_QSS,
+    CLEAN_TABLE_QSS, scoped_dialog_qss,
+)
 
 class ReclamationDialog(QDialog):
     """
@@ -17,6 +21,7 @@ class ReclamationDialog(QDialog):
     """
     def __init__(self, reception_data, manager, parent=None):
         super().__init__(parent)
+        self.setObjectName("ProcurementReclamationDialog")
         self.data = reception_data
         self.header = reception_data.get('Header', {})
         self.batches = reception_data.get('Batches', [])
@@ -25,16 +30,16 @@ class ReclamationDialog(QDialog):
         
         self.setWindowTitle(f"Gestion Réclamation - BR #{self.br_id}")
         self.resize(1000, 750)
+        self.setStyleSheet(scoped_dialog_qss("ProcurementReclamationDialog"))
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
+        layout.setSpacing(14)
         layout.setContentsMargins(20, 20, 20, 20)
 
         # --- 1. Header Info ---
-        info_group = QGroupBox("📋 Informations Générales")
-        info_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #bdc3c7; border-radius: 6px; margin-top: 10px; }")
+        info_group = QGroupBox("Informations Générales")
         info_layout = QHBoxLayout(info_group)
         
         form1 = QFormLayout()
@@ -50,8 +55,7 @@ class ReclamationDialog(QDialog):
         layout.addWidget(info_group)
         
         # --- 2. Edit Note Section (General) ---
-        note_group = QGroupBox("📝 Note Générale (Facture / BL)")
-        note_group.setStyleSheet("QGroupBox { font-weight: bold; color: #2980b9; border: 1px solid #2980b9; border-radius: 6px; margin-top: 10px; }")
+        note_group = QGroupBox("Note Générale (Facture / BL)")
         note_layout = QVBoxLayout(note_group)
         
         self.txt_note = QTextEdit()
@@ -60,7 +64,9 @@ class ReclamationDialog(QDialog):
         self.txt_note.setMaximumHeight(60)
         
         btn_save_note = QPushButton("Enregistrer Note Générale")
-        btn_save_note.setFixedWidth(200)
+        btn_save_note.setMinimumHeight(34)
+        btn_save_note.setFixedWidth(210)
+        btn_save_note.setStyleSheet(PRIMARY_CTA_QSS)
         btn_save_note.clicked.connect(self.save_general_note)
         
         note_layout.addWidget(self.txt_note)
@@ -70,21 +76,21 @@ class ReclamationDialog(QDialog):
 
         # --- 3. Products Table ---
         prod_layout = QHBoxLayout()
-        lbl_table = QLabel("📦 Produits avec Réclamations (Non-Conformes) :")
-        lbl_table.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px;")
+        lbl_table = QLabel("Produits avec Réclamations (Non-Conformes) :")
+        lbl_table.setStyleSheet("font-weight: 700; font-size: 13.5px; margin-top: 8px;")
         prod_layout.addWidget(lbl_table)
         prod_layout.addStretch()
         
         # زر تعديل ملاحظة المنتج
         btn_edit_prod_note = QPushButton("Modifier Note")
-        btn_edit_prod_note.setIcon(qta.icon('fa5s.edit', color='white'))
-        btn_edit_prod_note.setStyleSheet("background-color: #f39c12; color: white; font-weight: bold; padding: 5px 10px;")
+        btn_edit_prod_note.setMinimumHeight(34)
+        btn_edit_prod_note.setStyleSheet(AMBER_OUTLINE_QSS)
         btn_edit_prod_note.clicked.connect(self.edit_product_note)
         
         # زر حذف الملاحظة (جديد)
         btn_remove_note = QPushButton("Supprimer Note(s)")
-        btn_remove_note.setIcon(qta.icon('fa5s.trash', color='white'))
-        btn_remove_note.setStyleSheet("background-color: #c0392b; color: white; font-weight: bold; padding: 5px 10px;")
+        btn_remove_note.setMinimumHeight(34)
+        btn_remove_note.setStyleSheet(DANGER_OUTLINE_QSS)
         btn_remove_note.clicked.connect(self.remove_selected_notes)
         
         prod_layout.addWidget(btn_edit_prod_note)

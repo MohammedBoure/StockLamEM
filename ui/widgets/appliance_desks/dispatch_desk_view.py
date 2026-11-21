@@ -311,12 +311,12 @@ class DispatchDeskWidget(QWidget):
         input_row.addWidget(self.txt_scan, stretch=2)
 
         self.btn_emit_sortie = QPushButton("Valider && Imprimer Bon de Sortie")
-        self.btn_emit_sortie.setToolTip("Valider la sortie physique et imprimer le Bon de Sortie (0.00 DA impact Caisse)")
         self.btn_emit_sortie.setIcon(get_duotone_icon("print_white", 16))
         self.btn_emit_sortie.setIconSize(QSize(16, 16))
         self.btn_emit_sortie.setCursor(Qt.PointingHandCursor)
         self.btn_emit_sortie.setFixedHeight(40)
         self.btn_emit_sortie.setEnabled(False)
+        self.btn_emit_sortie.setToolTip("Sélectionnez un bon payé/validé puis scannez les appareils pour activer la sortie.")
         self.btn_emit_sortie.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { font-size: 12.5px; }")
         self.btn_emit_sortie.clicked.connect(self._emit_bon_sortie)
         input_row.addWidget(self.btn_emit_sortie, stretch=1)

@@ -4,7 +4,11 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTableWidget, QDateEdit,
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QColor, QFont
 import logging
-from .reception_dialog import ReceptionDialog 
+from .reception_dialog import ReceptionDialog
+from ui.theme_tokens import (
+    CLEAN_TABLE_QSS, INPUT_QSS, COMBO_QSS,
+    PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, TEXT_PRIMARY, CARD_BG, BORDER_HAIRLINE,
+)
 
 class ReceptionTab(QWidget):
     """
@@ -24,36 +28,40 @@ class ReceptionTab(QWidget):
         top_frame = QFrame()
         top_frame.setObjectName("ReceptionTopToolbar")
         top_frame.setStyleSheet(
-            "QFrame#ReceptionTopToolbar { background-color: #FFFFFF; border: none; border-bottom: 1px solid #E2E8F0; }"
+            f"QFrame#ReceptionTopToolbar {{ background-color: {CARD_BG}; border: none; border-bottom: 1px solid {BORDER_HAIRLINE}; }}"
             "QFrame#ReceptionTopToolbar QLabel { border: none; background: transparent; }"
         )
         top_layout = QHBoxLayout(top_frame)
         top_layout.setContentsMargins(10, 10, 10, 10)
         
         lbl_title = QLabel("Réception des Commandes")
-        lbl_title.setStyleSheet("border: none; font-size: 14px; font-weight: bold; color: #2c3e50;")
+        lbl_title.setStyleSheet(f"border: none; font-size: 14px; font-weight: 700; color: {TEXT_PRIMARY};")
         
         # مربع البحث
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("ID...")
-        self.search_input.setStyleSheet("background: white; border: 1px solid #ccc; padding: 5px; border-radius: 4px;")
-        self.search_input.setFixedWidth(150)
+        self.search_input.setPlaceholderText("Rechercher (ID)...")
+        self.search_input.setStyleSheet(INPUT_QSS)
+        self.search_input.setFixedWidth(160)
+        self.search_input.setMinimumHeight(34)
         self.search_input.textChanged.connect(self.load_pending_pos)
 
         # فلتر الموردين (موجود ومفعل)
         self.supplier_filter = QComboBox()
-        self.supplier_filter.setStyleSheet("background: white; border: 1px solid #ccc; padding: 5px; border-radius: 4px;")
-        self.supplier_filter.setFixedWidth(200)
+        self.supplier_filter.setStyleSheet(COMBO_QSS)
+        self.supplier_filter.setFixedWidth(210)
+        self.supplier_filter.setMinimumHeight(34)
         self.supplier_filter.addItem("Tous les fournisseurs")
         self.load_suppliers() # تعبئة القائمة
         self.supplier_filter.currentTextChanged.connect(self.load_pending_pos)
 
         btn_refresh = QPushButton("Actualiser")
-        btn_refresh.setStyleSheet("QPushButton { background-color: #ecf0f1; border: 1px solid #bdc3c7; border-radius: 4px; padding: 6px 12px; } QPushButton:hover { background-color: #dfe6e9; }")
+        btn_refresh.setMinimumHeight(34)
+        btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.load_pending_pos)
         
         btn_receive = QPushButton("Réceptionner")
-        btn_receive.setStyleSheet("QPushButton { background-color: #27ae60; color: white; font-weight: bold; border-radius: 4px; padding: 6px 15px; border: none;} QPushButton:hover { background-color: #2ecc71; }")
+        btn_receive.setMinimumHeight(34)
+        btn_receive.setStyleSheet(PRIMARY_CTA_QSS)
         btn_receive.clicked.connect(self.open_receive_dialog)
 
         top_layout.addWidget(lbl_title)
@@ -75,7 +83,7 @@ class ReceptionTab(QWidget):
         self.table.verticalHeader().setDefaultAlignment(Qt.AlignCenter)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet("border: 1px solid #e0e0e0;")
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         self.table.doubleClicked.connect(self.open_receive_dialog)
         
         layout.addWidget(self.table)

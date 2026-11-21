@@ -395,12 +395,14 @@ class VersementAmountApplyDialog(QDialog):
             self.lbl_error.setText(err_msg)
             self.lbl_error.setVisible(True)
             self.btn_confirm.setEnabled(False)
+            self.btn_confirm.setToolTip(err_msg)
         else:
             self.lbl_client_remaining.setStyleSheet(
                 f"font-size: 15px; font-weight: 800; color: {STATUS_SUCCESS};"
             )
             self.lbl_error.setVisible(False)
             self.btn_confirm.setEnabled(True)
+            self.btn_confirm.setToolTip("Valider et encaisser le versement")
 
     def _confirm(self) -> None:
         self._recalculate_preview()

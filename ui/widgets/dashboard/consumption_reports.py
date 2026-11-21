@@ -30,15 +30,19 @@ class ConsumptionReportSection(QFrame):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
+        from ui.theme_tokens import (
+            CARD_BG, TEXT_PRIMARY, INPUT_QSS, COMBO_QSS, CLEAN_TABLE_QSS,
+        )
         # --- 1. شريط العنوان ونوع التقرير ---
         top_bar = QHBoxLayout()
-        header_lbl = QLabel("📊 Rapport de Consommation")
-        header_lbl.setStyleSheet("font-weight: bold; font-size: 15px; color: #2c3e50;")
+        header_lbl = QLabel("Rapport de Consommation")
+        header_lbl.setStyleSheet(f"font-weight: 700; font-size: 15px; color: {TEXT_PRIMARY};")
 
         self.filter_type = QComboBox()
         self.filter_type.addItems(["Produits Consommés", "Produits Supprimés (Rebut)"])
-        self.filter_type.setFixedWidth(210)
-        self.filter_type.setStyleSheet("QComboBox { padding: 4px; font-size: 13px; }")
+        self.filter_type.setFixedWidth(220)
+        self.filter_type.setMinimumHeight(32)
+        self.filter_type.setStyleSheet(COMBO_QSS)
         self.filter_type.currentIndexChanged.connect(self.refresh_report)
 
         top_bar.addWidget(header_lbl)
@@ -52,22 +56,25 @@ class ConsumptionReportSection(QFrame):
 
         self.combo_family = QComboBox()
         self.combo_family.setMinimumWidth(160)
-        self.combo_family.setStyleSheet("QComboBox { padding: 4px; font-size: 12px; }")
+        self.combo_family.setMinimumHeight(32)
+        self.combo_family.setStyleSheet(COMBO_QSS)
         self.combo_family.currentIndexChanged.connect(self.refresh_report)
 
         self.combo_manuf = QComboBox()
         self.combo_manuf.setMinimumWidth(160)
-        self.combo_manuf.setStyleSheet("QComboBox { padding: 4px; font-size: 12px; }")
+        self.combo_manuf.setMinimumHeight(32)
+        self.combo_manuf.setStyleSheet(COMBO_QSS)
         self.combo_manuf.currentIndexChanged.connect(self.refresh_report)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Rechercher un produit...")
-        self.search_input.setStyleSheet("QLineEdit { padding: 4px; font-size: 12px; }")
+        self.search_input.setPlaceholderText("Rechercher un produit...")
+        self.search_input.setMinimumHeight(32)
+        self.search_input.setStyleSheet(INPUT_QSS)
         self.search_input.textChanged.connect(self.on_search_text_changed)
 
-        filter_bar.addWidget(QLabel("<b>Famille:</b>"))
+        filter_bar.addWidget(QLabel("<b>Famille :</b>"))
         filter_bar.addWidget(self.combo_family)
-        filter_bar.addWidget(QLabel("<b>Marque:</b>"))
+        filter_bar.addWidget(QLabel("<b>Marque :</b>"))
         filter_bar.addWidget(self.combo_manuf)
         filter_bar.addWidget(self.search_input, stretch=1)
 
@@ -82,10 +89,10 @@ class ConsumptionReportSection(QFrame):
         self.table.setSortingEnabled(True)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Désignation يأخذ المساحة المتبقية
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents if False else QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet("border: none; gridline-color: #f5f7f9;")
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         layout.addWidget(self.table)
 
         # تحميل خيارات العائلات والمصنعين
@@ -95,7 +102,7 @@ class ConsumptionReportSection(QFrame):
         # 1. تحميل العائلات
         self.combo_family.blockSignals(True)
         self.combo_family.clear()
-        self.combo_family.addItem("🏷️ Toutes les familles", None)
+        self.combo_family.addItem("Toutes les familles", None)
         try:
             families = self.stats_manager.get_all_families()
             for f in families:
@@ -107,7 +114,7 @@ class ConsumptionReportSection(QFrame):
         # 2. تحميل الماركات (المصنعين)
         self.combo_manuf.blockSignals(True)
         self.combo_manuf.clear()
-        self.combo_manuf.addItem("🏭 Toutes les marques", None)
+        self.combo_manuf.addItem("Toutes les marques", None)
         try:
             manufacturers = self.stats_manager.get_all_manufacturers()
             for m in manufacturers:

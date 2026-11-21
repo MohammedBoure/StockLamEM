@@ -38,16 +38,20 @@ class QuickClientDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self) -> None:
+        self.setObjectName("QuickClientDialog")
         self.setStyleSheet("""
-            QDialog {
+            QDialog#QuickClientDialog {
                 background-color: #FFFFFF;
             }
-            QLabel {
+            QDialog#QuickClientDialog QLabel {
                 font-size: 12px;
                 font-weight: 600;
                 color: #2C3E50;
+                border: none;
+                background: transparent;
             }
-            QLineEdit, QComboBox {
+            QDialog#QuickClientDialog QLineEdit,
+            QDialog#QuickClientDialog QComboBox {
                 background-color: #FFFFFF;
                 border: 1px solid #CED4DA;
                 border-radius: 4px;

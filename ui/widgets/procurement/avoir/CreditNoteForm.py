@@ -14,6 +14,12 @@ from ui.widgets.inventory.dialogs import BarcodeLineEdit, NumericSpinBox
 from database.system_logger import active_user_id
 from .BatchSelectionDialog import BatchSelectionDialog
 from ui.formatting import format_money, format_quantity, quantity_to_int, _to_decimal
+from ui.theme_tokens import (
+    BRAND_TEAL, BRAND_TEAL_BORDER, CARD_BG, SUBTLE_BG, BORDER_HAIRLINE,
+    TEXT_PRIMARY, TEXT_MUTED, STATUS_INFO, STATUS_WARN, STATUS_DANGER, STATUS_SUCCESS,
+    CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, SECONDARY_OUTLINE_QSS, SLATE_OUTLINE_QSS,
+    DANGER_OUTLINE_QSS, AMBER_OUTLINE_QSS, set_enabled_with_reason,
+)
 
 # ==============================================================================
 # 2. نموذج الإدخال والتعديل (Form)
@@ -46,8 +52,13 @@ class CreditNoteForm(QWidget):
         main_layout.setSpacing(10)
         
         # --- Header ---
-        header_group = QGroupBox("📄 Informations Générales")
-        header_group.setStyleSheet("QGroupBox { font-weight: bold; color: #2c3e50; border: 1px solid #bdc3c7; border-radius: 6px; margin-top: 10px; }")
+        header_group = QGroupBox("Informations Générales")
+        header_group.setObjectName("CreditNoteHeaderGroup")
+        header_group.setStyleSheet(
+            f"QGroupBox#CreditNoteHeaderGroup {{ background: {CARD_BG}; font-weight: 700; color: {TEXT_PRIMARY}; "
+            f"border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; margin-top: 10px; padding-top: 12px; }}"
+            "QGroupBox#CreditNoteHeaderGroup::title { subcontrol-origin: margin; left: 12px; padding: 0 6px; }"
+        )
         header_layout = QHBoxLayout(header_group)
 
         self.combo_supplier = QComboBox()
@@ -57,8 +68,9 @@ class CreditNoteForm(QWidget):
         # [NOUVEAU] إضافة حقل وزر البحث عن وصل الاستلام
         self.txt_search_br = QLineEdit()
         self.txt_search_br.setPlaceholderText("N° Facture ou N° BL...")
-        self.btn_search_br = QPushButton("🔍 Lier BR")
-        self.btn_search_br.setStyleSheet("background-color: #8e44ad; color: white; font-weight: bold; padding: 4px 10px; border-radius: 4px;")
+        self.btn_search_br = QPushButton("Lier BR")
+        self.btn_search_br.setMinimumHeight(32)
+        self.btn_search_br.setStyleSheet(SECONDARY_OUTLINE_QSS)
         self.btn_search_br.clicked.connect(self.search_and_link_br)
 
         layout_br_search = QHBoxLayout()
@@ -75,8 +87,8 @@ class CreditNoteForm(QWidget):
         self.date_edit.setFixedWidth(120)
 
         self.combo_type = QComboBox()
-        self.combo_type.addItem("📦 Retour Marchandise (Avec Stock)", "Return_Goods")
-        self.combo_type.addItem("💰 Correction Financière (Prix)", "Price_Correction")
+        self.combo_type.addItem("Retour Marchandise (Avec Stock)", "Return_Goods")
+        self.combo_type.addItem("Correction Financière (Prix)", "Price_Correction")
         self.combo_type.currentIndexChanged.connect(self.toggle_stock_fields)
 
         form_left = QFormLayout()
@@ -88,8 +100,9 @@ class CreditNoteForm(QWidget):
         form_right.addRow("Date:", self.date_edit)
         form_right.addRow("Type:", self.combo_type)
         
-        self.btn_validate_header = QPushButton("✅ Valider l'En-tête")
-        self.btn_validate_header.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; padding: 6px; border-radius: 4px;")
+        self.btn_validate_header = QPushButton("Valider l'En-tête")
+        self.btn_validate_header.setMinimumHeight(34)
+        self.btn_validate_header.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_validate_header.clicked.connect(self.handle_header_click)
         form_right.addRow("", self.btn_validate_header)
 
@@ -98,8 +111,13 @@ class CreditNoteForm(QWidget):
         main_layout.addWidget(header_group)
 
         # --- Entry Area ---
-        entry_group = QGroupBox("📦 Ajout des Lignes")
-        entry_group.setStyleSheet("QGroupBox { font-weight: bold; color: #007572; border: 1px solid #007572; border-radius: 6px; margin-top: 10px; }")
+        entry_group = QGroupBox("Ajout des Lignes")
+        entry_group.setObjectName("CreditNoteEntryGroup")
+        entry_group.setStyleSheet(
+            f"QGroupBox#CreditNoteEntryGroup {{ background: {CARD_BG}; font-weight: 700; color: {BRAND_TEAL}; "
+            f"border: 1px solid {BRAND_TEAL_BORDER}; border-radius: 8px; margin-top: 10px; padding-top: 12px; }}"
+            "QGroupBox#CreditNoteEntryGroup::title { subcontrol-origin: margin; left: 12px; padding: 0 6px; }"
+        )
         entry_layout = QHBoxLayout(entry_group)
 
         search_layout = QVBoxLayout()
@@ -115,7 +133,7 @@ class CreditNoteForm(QWidget):
         self.txt_search.setCompleter(self.completer)
 
         self.lbl_product_name = QLabel("---")
-        self.lbl_product_name.setStyleSheet("color: #2980b9; font-weight: bold; font-size: 13px;")
+        self.lbl_product_name.setStyleSheet(f"color: {BRAND_TEAL}; font-weight: 700; font-size: 13px;")
         
         search_layout.addWidget(self.lbl_search_info)
         search_layout.addWidget(self.txt_search)
@@ -148,7 +166,8 @@ class CreditNoteForm(QWidget):
         qty_layout.addLayout(qty_form)
 
         self.btn_add_line = QPushButton("Ajouter")
-        self.btn_add_line.setStyleSheet("background-color: #27ae60; color: white; border-radius: 4px; padding: 10px; font-weight: bold;")
+        self.btn_add_line.setMinimumHeight(36)
+        self.btn_add_line.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_add_line.clicked.connect(self.add_line_to_table)
 
         entry_layout.addLayout(search_layout, stretch=2)
@@ -159,6 +178,7 @@ class CreditNoteForm(QWidget):
 
         # --- Table ---
         self.table = QTableWidget()
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         cols = ["ID", "Désignation", "Lot", "Péremption", "Qté", "P.U (HT)", "Total Ligne", "Action"]
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels(cols)
@@ -176,30 +196,34 @@ class CreditNoteForm(QWidget):
         footer_frame = QFrame()
         footer_frame.setObjectName("CreditNoteFooter")
         footer_frame.setStyleSheet(
-            "QFrame#CreditNoteFooter { background-color: #ecf0f1; border-radius: 6px; padding: 5px; }"
+            f"QFrame#CreditNoteFooter {{ background-color: {SUBTLE_BG}; border: 1px solid {BORDER_HAIRLINE}; border-radius: 8px; padding: 6px; }}"
             "QFrame#CreditNoteFooter QLabel { border: none; background: transparent; }"
         )
         footer_layout = QHBoxLayout(footer_frame)
         
-        self.btn_back = QPushButton("⬅ Retour à la liste")
-        self.btn_back.setStyleSheet("background-color: #34495e; color: white; padding: 10px; font-weight: bold; border-radius: 4px;")
+        self.btn_back = QPushButton("Retour à la liste")
+        self.btn_back.setMinimumHeight(36)
+        self.btn_back.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_back.clicked.connect(self.request_back.emit)
         
         self.btn_reset = QPushButton("Réinitialiser")
-        self.btn_reset.setStyleSheet("background-color: #95a5a6; color: white;")
+        self.btn_reset.setMinimumHeight(36)
+        self.btn_reset.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_reset.clicked.connect(self.reset_form)
         
         self.btn_cancel_edit = QPushButton("Annuler Modif")
-        self.btn_cancel_edit.setStyleSheet("background-color: #e74c3c; color: white;")
+        self.btn_cancel_edit.setMinimumHeight(36)
+        self.btn_cancel_edit.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_cancel_edit.clicked.connect(self.cancel_edit_mode)
         self.btn_cancel_edit.hide()
         
         self.lbl_total = QLabel("Total TTC: 0,00 DA")
-        self.lbl_total.setStyleSheet("font-size: 18px; font-weight: 900; color: #c0392b;")
+        self.lbl_total.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {STATUS_DANGER};")
         
         self.btn_save = QPushButton(" Valider l'Avoir")
         self.btn_save.setIcon(qta.icon("fa5s.save", color="white"))
-        self.btn_save.setStyleSheet("background-color: #2980b9; color: white; padding: 10px 20px; font-size: 14px; font-weight: bold;")
+        self.btn_save.setMinimumHeight(38)
+        self.btn_save.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_save.clicked.connect(self.save_credit_note)
         self.btn_save.hide()
 
@@ -288,15 +312,18 @@ class CreditNoteForm(QWidget):
         idx = self.combo_supplier.findData(supplier_id)
         if idx >= 0:
             self.combo_supplier.setCurrentIndex(idx)
-            self.combo_supplier.setEnabled(False)
+            set_enabled_with_reason(
+                self.combo_supplier, False,
+                "Fournisseur verrouillé par le Bon de Réception lié."
+            )
 
         br_ref = header.get('Supplier_Invoice_Ref') or header.get('Supplier_BL_Ref') or str(self.linked_br_id or "")
         self.txt_search_br.setText(br_ref)
-        self.txt_search_br.setStyleSheet("border: 2px solid #27ae60; background-color: #e8f8f5;")
+        self.txt_search_br.setStyleSheet(f"border: 1.5px solid {BRAND_TEAL}; background-color: #E6F4F1;")
 
         self.update_completer(self.reception_batches_cache)
         self.lbl_search_info.setText(f"Recherche (Limitee au Bon #{self.linked_br_id}):")
-        self.lbl_search_info.setStyleSheet("color: #d35400; font-weight: bold;")
+        self.lbl_search_info.setStyleSheet(f"color: {STATUS_WARN}; font-weight: 700;")
 
     def on_barcode_scanned(self):
         text = self.txt_search.text().strip()
@@ -323,7 +350,8 @@ class CreditNoteForm(QWidget):
 
         if not matches:
             self.selected_product = None
-            self.lbl_product_name.setText("❌ Produit introuvable" + (" (dans ce Bon)" if reception_scoped else ""))
+            self.lbl_product_name.setText("Produit introuvable" + (" (dans ce Bon)" if reception_scoped else ""))
+            self.lbl_product_name.setStyleSheet(f"color: {STATUS_DANGER}; font-weight: 700; font-size: 13px;")
             self.clear_entry_fields(keep_search=True)
             return
 
@@ -342,7 +370,8 @@ class CreditNoteForm(QWidget):
 
     def _apply_selected_product(self, found):
         self.selected_product = found
-        self.lbl_product_name.setText(f"✅ {found['Product_Name']}")
+        self.lbl_product_name.setText(f"{found['Product_Name']}")
+        self.lbl_product_name.setStyleSheet(f"color: {BRAND_TEAL}; font-weight: 700; font-size: 13px;")
         
         lot = found.get('Lot_Number', '')
         price = float(_to_decimal(found.get('Unit_Price_Received') or found.get('Purchase_Price') or found.get('Unit_Price', 0)))
@@ -357,7 +386,7 @@ class CreditNoteForm(QWidget):
         if self.is_reception_scoped():
             self.txt_lot.setText(lot)
             self.txt_lot.setReadOnly(True)
-            self.txt_lot.setStyleSheet("background-color: #ecf0f1; color: #7f8c8d;")
+            self.txt_lot.setStyleSheet(f"background-color: {SUBTLE_BG}; color: {TEXT_MUTED};")
             self.date_expiry.setReadOnly(True)
             self.spin_price.setValue(price)
             self.spin_price.setReadOnly(True)
@@ -374,8 +403,8 @@ class CreditNoteForm(QWidget):
 
     def toggle_stock_fields(self):
         is_return = (self.combo_type.currentData() == "Return_Goods")
-        self.txt_lot.setEnabled(is_return)
-        self.date_expiry.setEnabled(is_return)
+        set_enabled_with_reason(self.txt_lot, is_return, "Non requis pour une correction financière (prix uniquement).")
+        set_enabled_with_reason(self.date_expiry, is_return, "Non requis pour une correction financière (prix uniquement).")
         if self.is_reception_scoped():
             self.txt_lot.setReadOnly(True)
 
@@ -393,7 +422,8 @@ class CreditNoteForm(QWidget):
         
         if product_data:
             self.selected_product = product_data
-            self.lbl_product_name.setText(f"✏️ MODIFICATION: {product_data['Product_Name']}")
+            self.lbl_product_name.setText(f"MODIFICATION : {product_data['Product_Name']}")
+            self.lbl_product_name.setStyleSheet(f"color: {STATUS_WARN}; font-weight: 700; font-size: 13px;")
             
             self.txt_lot.setText(self.table.item(row, 2).text().replace("---", ""))
             
@@ -413,7 +443,7 @@ class CreditNoteForm(QWidget):
             
             self.editing_row = row
             self.btn_add_line.setText("Modifier la ligne")
-            self.btn_add_line.setStyleSheet("background-color: #f39c12; color: white; border-radius: 4px; padding: 10px; font-weight: bold;")
+            self.btn_add_line.setStyleSheet(AMBER_OUTLINE_QSS)
             
             self.spin_qty.setFocus()
             self.spin_qty.selectAll()
@@ -659,8 +689,8 @@ class CreditNoteForm(QWidget):
             self.current_edit_id = credit_note_id
             self.linked_br_id = header.get('BR_ID')
             
-            self.btn_save.setText("💾 Modifier l'Avoir")
-            self.btn_save.setStyleSheet("background-color: #d35400; color: white; padding: 10px 20px; font-weight: bold;")
+            self.btn_save.setText("Modifier l'Avoir")
+            self.btn_save.setStyleSheet(AMBER_OUTLINE_QSS)
             self.btn_save.hide()
             self.btn_cancel_edit.show()
             
@@ -894,11 +924,11 @@ class CreditNoteForm(QWidget):
         self.combo_type.setEnabled(enabled)
         
         if enabled:
-            self.btn_validate_header.setText("✅ Valider l'En-tête")
-            self.btn_validate_header.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; padding: 6px; border-radius: 4px;")
+            self.btn_validate_header.setText("Valider l'En-tête")
+            self.btn_validate_header.setStyleSheet(PRIMARY_CTA_QSS)
         else:
-            self.btn_validate_header.setText("✏️ Modifier l'En-tête")
-            self.btn_validate_header.setStyleSheet("background-color: #e67e22; color: white; font-weight: bold; padding: 6px; border-radius: 4px;")
+            self.btn_validate_header.setText("Modifier l'En-tête")
+            self.btn_validate_header.setStyleSheet(AMBER_OUTLINE_QSS)
     def handle_header_click(self):
         """تبديل حالة الرأس بين التعديل والتأكيد"""
         if "Modifier" in self.btn_validate_header.text():

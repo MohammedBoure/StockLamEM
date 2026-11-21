@@ -11,6 +11,11 @@ from PySide6.QtCore import Qt, Signal, QTimer, QStringListModel
 from PySide6.QtGui import QColor, QFont,QAction
 
 from ui.formatting import format_quantity, quantity_to_int
+from ui.theme_tokens import (
+    BRAND_TEAL, CARD_BG, SUBTLE_BG, BORDER_CONTROL, BORDER_HAIRLINE, TEXT_PRIMARY,
+    STATUS_DANGER, STATUS_DANGER_BG, STATUS_WARN, STATUS_WARN_BG, STATUS_WARN_BORDER,
+    CLEAN_TABLE_QSS, PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, scoped_dialog_qss,
+)
 
 try:
     from .location_tree_combo import LocationTreeComboBox
@@ -60,8 +65,10 @@ class NumericSpinBox(QSpinBox):
 class FEFOSelectionDialog(QDialog):
     def __init__(self, product_name, batches_list, recommended_batch, current_scanned_batch, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"⚠️ Respect du FEFO - {product_name}")
+        self.setObjectName("FEFOSelectionDialog")
+        self.setWindowTitle(f"Respect du FEFO - {product_name}")
         self.resize(1100, 550)
+        self.setStyleSheet(scoped_dialog_qss("FEFOSelectionDialog"))
         
         self.selected_batch = None
         self.product_name = product_name
@@ -78,19 +85,20 @@ class FEFOSelectionDialog(QDialog):
         header_frame = QFrame()
         header_frame.setObjectName("FefoWarningHeader")
         header_frame.setStyleSheet(
-            "QFrame#FefoWarningHeader { background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px; }"
+            f"QFrame#FefoWarningHeader {{ background-color: {STATUS_WARN_BG}; border: 1px solid {STATUS_WARN_BORDER}; "
+            f"border-left: 3px solid {STATUS_WARN}; border-radius: 6px; }}"
             "QFrame#FefoWarningHeader QLabel { border: none; background: transparent; }"
         )
         header_layout = QVBoxLayout(header_frame)
         
-        lbl_title = QLabel(f"📦 Produit : {self.product_name}")
-        lbl_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #856404;")
+        lbl_title = QLabel(f"Produit : {self.product_name}")
+        lbl_title.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {STATUS_WARN};")
         
         lbl_desc = QLabel(
-            "⚠️ <b>Alerte FEFO :</b> Vous avez sélectionné un lot récent, mais des lots plus anciens sont disponibles.<br>"
-            "Veuillez choisir ci-dessous le lot à consommer (Le lot recommandé est surligné en vert)."
+            "<b>Alerte FEFO :</b> Vous avez sélectionné un lot récent, mais des lots plus anciens sont disponibles.<br>"
+            "Veuillez choisir ci-dessous le lot à consommer (le lot recommandé est surligné en vert)."
         )
-        lbl_desc.setStyleSheet("color: #856404; font-size: 13px;")
+        lbl_desc.setStyleSheet(f"color: {STATUS_WARN}; font-size: 12.5px;")
         
         header_layout.addWidget(lbl_title)
         header_layout.addWidget(lbl_desc)
@@ -125,12 +133,14 @@ class FEFOSelectionDialog(QDialog):
         btn_box = QHBoxLayout()
         
         btn_cancel = QPushButton("Annuler l'opération")
-        btn_cancel.setStyleSheet("background-color: #95a5a6; color: white; padding: 8px;")
+        btn_cancel.setMinimumHeight(34)
+        btn_cancel.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_cancel.clicked.connect(self.reject)
         
-        btn_confirm = QPushButton("✅ Confirmer le lot sélectionné")
+        btn_confirm = QPushButton("Confirmer le lot sélectionné")
         btn_confirm.setCursor(Qt.PointingHandCursor)
-        btn_confirm.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; padding: 10px 20px; font-size: 14px; border-radius: 5px;")
+        btn_confirm.setMinimumHeight(36)
+        btn_confirm.setStyleSheet(PRIMARY_CTA_QSS)
         btn_confirm.clicked.connect(self.confirm_selection)
 
         btn_box.addStretch()
@@ -146,12 +156,12 @@ class FEFOSelectionDialog(QDialog):
 
         menu = QMenu(self)
         
-        action_history = QAction("📜 Voir Historique du Produit", self)
+        action_history = QAction("Voir Historique du Produit", self)
         action_history.triggered.connect(self.open_history_via_barcode)
         menu.addAction(action_history)
         
         # خيار حذف من السلة (مفيد أيضاً)
-        action_remove = QAction("🗑️ Retirer de la liste", self)
+        action_remove = QAction("Retirer de la liste", self)
         action_remove.triggered.connect(self.remove_selected_row)
         menu.addAction(action_remove)
 
@@ -230,8 +240,8 @@ class FEFOSelectionDialog(QDialog):
             
             # 0. État (Status)
             status_text = ""
-            if is_recommended: status_text = "⭐ RECOMMANDÉ"
-            elif is_scanned: status_text = "✋ SÉLECTIONNÉ"
+            if is_recommended: status_text = "RECOMMANDÉ"
+            elif is_scanned: status_text = "SÉLECTIONNÉ"
             
             item_status = QTableWidgetItem(status_text)
             item_status.setTextAlignment(Qt.AlignCenter)
@@ -323,24 +333,40 @@ class DispatchTab(QWidget):
         layout.setContentsMargins(15, 15, 15, 15)
 
         # --- Scan Area ---
-        scan_group = QGroupBox("")
-        scan_group.setStyleSheet("""
-            QGroupBox { font-weight: bold; font-size: 14px; color: #2c3e50; border: 2px solid #2980b9; border-radius: 10px; padding-top: 25px; margin-top: 10px; }
-            QGroupBox::title { subcontrol-origin: margin; left: 15px; top: -10px; padding: 0 5px; background-color: white; }
+        scan_group = QGroupBox("Terminal de scan")
+        scan_group.setObjectName("DispatchScanGroup")
+        scan_group.setStyleSheet(f"""
+            QGroupBox#DispatchScanGroup {{
+                background-color: {CARD_BG};
+                font-weight: 700;
+                font-size: 13px;
+                color: {BRAND_TEAL};
+                border: 1px solid {BORDER_HAIRLINE};
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 14px;
+            }}
+            QGroupBox#DispatchScanGroup::title {{
+                subcontrol-origin: margin;
+                left: 12px;
+                padding: 0 6px;
+            }}
         """)
         scan_layout = QHBoxLayout(scan_group)
         scan_layout.setContentsMargins(10, 10, 10, 10)
 
         self.barcode_input = BarcodeLineEdit()
         self.barcode_input.setPlaceholderText("Scannez (Code-Barres) ou Écrivez (Nom/Lot)...")
-        self.barcode_input.setMinimumHeight(60)
-        self.barcode_input.setStyleSheet("""
-            QLineEdit { 
-                font-size: 18px; font-weight: bold; background-color: #f1f2f6; 
-                border: 2px solid #bdc3c7; border-radius: 8px; padding-left: 15px; color: #2c3e50;
-            }
-            QLineEdit:focus { border: 2px solid #2980b9; background-color: #ffffff; }
-        """)
+        self.barcode_input.setMinimumHeight(48)
+        self._barcode_base_qss = f"""
+            QLineEdit {{
+                font-size: 16px; font-weight: 700; background-color: {SUBTLE_BG};
+                border: 1px solid {BORDER_CONTROL}; border-radius: 6px;
+                padding-left: 14px; color: {TEXT_PRIMARY};
+            }}
+            QLineEdit:focus {{ border: 1.5px solid {BRAND_TEAL}; background-color: {CARD_BG}; }}
+        """
+        self.barcode_input.setStyleSheet(self._barcode_base_qss)
 
         self.completer = QCompleter(self)
         self.completer.setCaseSensitivity(Qt.CaseInsensitive)
@@ -368,42 +394,37 @@ class DispatchTab(QWidget):
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         
-        self.table.verticalHeader().setDefaultSectionSize(50)
+        self.table.verticalHeader().setDefaultSectionSize(46)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         
-        self.table.setStyleSheet("""
-            QTableWidget { background-color: white; border: 1px solid #dcdde1; border-radius: 5px; font-size: 13px; }
-            QHeaderView::section { background-color: #ecf0f1; padding: 5px; font-weight: bold; border: none; }
-            QTableWidget::item { padding: 5px; }
-            QComboBox { padding: 5px; border: 1px solid #bdc3c7; border-radius: 3px; }
-        """)
+        self.table.setStyleSheet(CLEAN_TABLE_QSS)
         layout.addWidget(self.table)
 
         # --- Buttons ---
         btns_frame = QFrame()
         btns_frame.setObjectName("DispatchActionFooter")
         btns_frame.setStyleSheet(
-            "QFrame#DispatchActionFooter { background-color: #f8f9fa; border-top: 1px solid #dcdde1; }"
+            f"QFrame#DispatchActionFooter {{ background-color: {SUBTLE_BG}; border-top: 1px solid {BORDER_HAIRLINE}; }}"
         )
         btns_layout = QHBoxLayout(btns_frame)
         btns_layout.setContentsMargins(10, 10, 10, 10)
 
         self.btn_clear = QPushButton("Vider la liste")
-        self.btn_clear.setFixedWidth(120)
-        self.btn_clear.setMinimumHeight(45)
-        self.btn_clear.setStyleSheet("background-color: #95a5a6; color: white; font-weight: bold; border-radius: 5px;")
+        self.btn_clear.setFixedWidth(130)
+        self.btn_clear.setMinimumHeight(38)
+        self.btn_clear.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_clear.clicked.connect(lambda: self.table.setRowCount(0))
 
-        self.btn_consume = QPushButton("📉 CONSOMMATION")
-        self.btn_consume.setMinimumHeight(55)
-        self.btn_consume.setStyleSheet("QPushButton { background-color: #c0392b; color: white; font-weight: bold; font-size: 16px; border-radius: 8px; } QPushButton:hover { background-color: #e74c3c; }")
+        self.btn_consume = QPushButton("Consommation")
+        self.btn_consume.setMinimumHeight(44)
+        self.btn_consume.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_consume.clicked.connect(lambda: self.execute_bulk_action("consume"))
 
-        self.btn_transfer = QPushButton("🚚 TRANSFERT")
-        self.btn_transfer.setMinimumHeight(55)
-        self.btn_transfer.setStyleSheet("QPushButton { background-color: #2980b9; color: white; font-weight: bold; font-size: 16px; border-radius: 8px; } QPushButton:hover { background-color: #3498db; }")
+        self.btn_transfer = QPushButton("Transfert")
+        self.btn_transfer.setMinimumHeight(44)
+        self.btn_transfer.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_transfer.clicked.connect(lambda: self.execute_bulk_action("transfer"))
 
         btns_layout.addWidget(self.btn_clear)
@@ -428,7 +449,7 @@ class DispatchTab(QWidget):
                 if qty <= 0: continue
                 
                 loc_name = b.get('Location_Name', '---')
-                display_text = f"{b['Product_Name']} | Lot: {b['Lot_Number']} | 📍 {loc_name} (Qté: {format_quantity(qty)})"
+                display_text = f"{b['Product_Name']} | Lot: {b['Lot_Number']} | {loc_name} (Qté: {format_quantity(qty)})"
                 
                 suggestions.append(display_text)
                 self.search_map[display_text] = b
@@ -483,10 +504,9 @@ class DispatchTab(QWidget):
         self.barcode_input.setFocus()
 
     def flash_input(self, color_hex):
-        original_style = self.barcode_input.styleSheet()
-        temp_style = f"background-color: {color_hex};"
+        temp_style = f"background-color: {color_hex}; border: 1.5px solid {BRAND_TEAL}; border-radius: 6px; padding-left: 14px; font-size: 16px; font-weight: 700;"
         self.barcode_input.setStyleSheet(temp_style)
-        QTimer.singleShot(300, lambda: self.barcode_input.setStyleSheet(original_style))
+        QTimer.singleShot(300, lambda: self.barcode_input.setStyleSheet(self._barcode_base_qss))
 
     def add_to_table(self, batches_list):
         if not batches_list: return
@@ -520,7 +540,7 @@ class DispatchTab(QWidget):
 
         # 3. Dest
         dest_picker = LocationTreeComboBox(self.manager.locations)
-        dest_picker.setPlaceholderText("📍 Destination...")
+        dest_picker.setPlaceholderText("Destination...")
         self.table.setCellWidget(row, 3, dest_picker)
 
         # 4. Qty
@@ -791,13 +811,13 @@ class DispatchTab(QWidget):
 
         # التقرير النهائي
         summary = []
-        if success_count > 0: summary.append(f"✅ {success_count} opérations réussies.")
-        if swapped_count > 0: summary.append(f"🔄 {swapped_count} lots changés (FEFO).")
-        if skipped_count > 0: summary.append(f"⛔ {skipped_count} opérations annulées.")
+        if success_count > 0: summary.append(f"{success_count} opérations réussies.")
+        if swapped_count > 0: summary.append(f"{swapped_count} lots changés (FEFO).")
+        if skipped_count > 0: summary.append(f"{skipped_count} opérations annulées.")
         
         final_msg = "\n".join(summary)
         if errors:
-            final_msg += "\n\n❌ Erreurs :\n" + "\n".join(errors[:5])
+            final_msg += "\n\nErreurs :\n" + "\n".join(errors[:5])
             QMessageBox.warning(self, "Résultat Partiel", final_msg)
         else:
             if success_count > 0 or skipped_count > 0:

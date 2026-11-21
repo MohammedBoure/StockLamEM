@@ -74,18 +74,19 @@ class ColorDialog(QDialog):
         super().__init__(parent)
         self.color_data = color_data or {}
         is_edit = bool(self.color_data.get("Color_ID"))
+        self.setObjectName("ColorEditDialog")
         self.setWindowTitle("Modifier la Couleur" if is_edit else "Nouvelle Couleur de Produit")
         self.setMinimumWidth(440)
         self.setStyleSheet("""
-            QDialog {
+            QDialog#ColorEditDialog {
                 background-color: #F8FAFC;
             }
-            QLabel {
+            QDialog#ColorEditDialog QLabel {
                 font-size: 11px;
                 font-weight: 700;
                 color: #334155;
             }
-            QLineEdit {
+            QDialog#ColorEditDialog QLineEdit {
                 background-color: #FFFFFF;
                 border: 1px solid #CBD5E1;
                 border-radius: 6px;
@@ -93,10 +94,10 @@ class ColorDialog(QDialog):
                 font-size: 11.5px;
                 color: #0F172A;
             }
-            QLineEdit:focus {
+            QDialog#ColorEditDialog QLineEdit:focus {
                 border: 1.5px solid #007572;
             }
-            QCheckBox {
+            QDialog#ColorEditDialog QCheckBox {
                 font-size: 11.5px;
                 font-weight: 600;
                 color: #334155;
@@ -295,7 +296,7 @@ class ProductColorsTab(QWidget):
                 border: 1px solid #DDE3EA;
                 border-radius: 6px;
             }
-            QLabel {
+            QFrame#ColorsHeaderCard QLabel {
                 border: none;
                 background: transparent;
             }
