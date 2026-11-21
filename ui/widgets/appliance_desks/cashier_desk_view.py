@@ -2983,6 +2983,7 @@ class CashierDeskWidget(QWidget):
             parent=self,
         )
         if modal.exec() == QDialog.Accepted and modal.approved:
+            pay_method = self.selected_payment_method()
             try:
                 if self.data_manager and hasattr(self.data_manager, "bonds"):
                     uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
@@ -2994,6 +2995,7 @@ class CashierDeskWidget(QWidget):
                         "admin_pin_or_pwd": modal.admin_secret,
                         "downpayment_cash": Decimal(str(dp_cash)),
                         "downpayment_wallet": Decimal(str(dp_wallet)),
+                        "payment_method": pay_method,
                     }
                     if dp_wallet > 0 and self._custom_wallet_source in ("REAL", "VIRTUAL"):
                         cr_kwargs["wallet_source"] = self._custom_wallet_source
@@ -3024,6 +3026,7 @@ class CashierDeskWidget(QWidget):
         status = str(self._selected_order.get("Status") or "")
         w_ded = self._get_wallet_deduction()
         cash_val = self._parse_cash_input()
+        pay_method = self.selected_payment_method()
 
         try:
             uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
@@ -3035,6 +3038,7 @@ class CashierDeskWidget(QWidget):
                         cashier_user_id=uid,
                         cash_session_id=1,
                         collected_cash=Decimal(str(cash_val)),
+                        payment_method=pay_method,
                     )
                 self.orderSettled.emit(order_num, "BON_LIVRAISON_COD_SETTLED")
                 QMessageBox.information(
@@ -3059,6 +3063,7 @@ class CashierDeskWidget(QWidget):
                         "cash_session_id": 1,
                         "advance_cash": Decimal(str(cash_val)),
                         "advance_wallet": Decimal(str(w_ded)),
+                        "payment_method": pay_method,
                     }
                     if w_ded > 0 and self._custom_wallet_source in ("REAL", "VIRTUAL"):
                         bl_kwargs["wallet_source"] = self._custom_wallet_source

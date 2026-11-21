@@ -142,6 +142,15 @@ SYSTEM_PERMISSIONS = {
         "perms": {
             "nav_paiement_livraison": "Accès au Paiement Livraison"
         }
+    },
+    "14. TRESORERIE": {
+        "label": "Trésorerie & Caisse",
+        "icon": "fa5s.coins",
+        "perms": {
+            "nav_treasury": "Accès à la Trésorerie",
+            "tab_treasury_journal": "Journal des Mouvements",
+            "tab_treasury_balances": "Synthèse par Mode de Paiement"
+        }
     }
 }
 # =================================================================================

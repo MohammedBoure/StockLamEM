@@ -148,6 +148,11 @@ NAVIGATION_PERMISSION_FALLBACKS = {
         "tab_desk_caisse",
         "tab_desk_dispatch",
     ),
+    "nav_treasury": (
+        "tab_treasury_journal",
+        "tab_treasury_balances",
+        "tab_desk_caisse",
+    ),
 }
 
 

@@ -1263,6 +1263,7 @@ class BondLifecycleManager:
         downpayment_wallet: Decimal = Decimal("0.00"),
         installments_count: int = 1,
         wallet_source: str = "AUTO",
+        payment_method: str = "Cash",
     ) -> Dict[str, Any]:
         """
         Authorizes a Bon Crédit (بيع بالأجل) at the Caisse Desk.
@@ -1350,31 +1351,58 @@ class BondLifecycleManager:
             inv_num = f"FAC-CR-{datetime.now().strftime('%Y%m%d')}-{order_id}"
             total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
             total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
-
-            cursor.execute(
-                """
-                INSERT INTO Sales_Invoices (
-                    Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
-                    Total_Amount_HT, Total_TVA, Total_Amount_TTC,
-                    Created_By, Cash_Session_ID, Payment_Method,
-                    Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Wallet,
-                    Amount_Remaining_Credit
-                ) VALUES (%s, %s, %s, CURDATE(), 'Validated', %s, %s, %s, %s, %s, 'Other', 'BON_CREDIT', %s, %s, %s)
-                """,
-                (
-                    inv_num,
-                    int(order_id),
-                    int(res["Client_ID"]),
-                    total_ht,
-                    total_tva,
-                    total_ttc,
-                    int(cashier_user_id),
-                    int(cash_session_id) if cash_session_id else None,
-                    dp_cash,
-                    dp_wallet,
-                    remaining_credit,
-                ),
-            )
+            norm_method = payment_method if payment_method in ("Cash", "BaridiMob", "TPE", "CCP") else "Cash"
+            if dp_cash > Decimal("0.00") and norm_method != "Cash":
+                cursor.execute(
+                    """
+                    INSERT INTO Sales_Invoices (
+                        Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
+                        Total_Amount_HT, Total_TVA, Total_Amount_TTC,
+                        Created_By, Cash_Session_ID, Payment_Method,
+                        Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Card,
+                        Amount_Paid_Wallet, Amount_Remaining_Credit
+                    ) VALUES (%s, %s, %s, CURDATE(), 'Validated', %s, %s, %s, %s, %s, %s, 'BON_CREDIT', 0.00, %s, %s, %s)
+                    """,
+                    (
+                        inv_num,
+                        int(order_id),
+                        int(res["Client_ID"]),
+                        total_ht,
+                        total_tva,
+                        total_ttc,
+                        int(cashier_user_id),
+                        int(cash_session_id) if cash_session_id else None,
+                        norm_method,
+                        dp_cash,
+                        dp_wallet,
+                        remaining_credit,
+                    ),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO Sales_Invoices (
+                        Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
+                        Total_Amount_HT, Total_TVA, Total_Amount_TTC,
+                        Created_By, Cash_Session_ID, Payment_Method,
+                        Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Wallet,
+                        Amount_Remaining_Credit
+                    ) VALUES (%s, %s, %s, CURDATE(), 'Validated', %s, %s, %s, %s, %s, 'Other', 'BON_CREDIT', %s, %s, %s)
+                    """,
+                    (
+                        inv_num,
+                        int(order_id),
+                        int(res["Client_ID"]),
+                        total_ht,
+                        total_tva,
+                        total_ttc,
+                        int(cashier_user_id),
+                        int(cash_session_id) if cash_session_id else None,
+                        dp_cash,
+                        dp_wallet,
+                        remaining_credit,
+                    ),
+                )
             invoice_id = cursor.lastrowid
 
             # 4. Debit wallet if downpayment_wallet > 0
@@ -1492,6 +1520,7 @@ class BondLifecycleManager:
         advance_cash: Decimal = Decimal("0.00"),
         advance_wallet: Decimal = Decimal("0.00"),
         wallet_source: str = "AUTO",
+        payment_method: str = "Cash",
     ) -> Dict[str, Any]:
         """
         Validates a Bon de Livraison (سند توصيل مع الدفع عند الاستلام) at the Caisse before dispatch.
@@ -1534,32 +1563,60 @@ class BondLifecycleManager:
             total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
             total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
             inv_status = "Paid" if remaining_cod == Decimal("0.00") else "Validated"
-
-            cursor.execute(
-                """
-                INSERT INTO Sales_Invoices (
-                    Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
-                    Total_Amount_HT, Total_TVA, Total_Amount_TTC,
-                    Created_By, Cash_Session_ID, Payment_Method,
-                    Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Wallet,
-                    Amount_Remaining_Credit, Delivery_Status
-                ) VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, %s, %s, %s, 'Cash', 'BON_LIVRAISON', %s, %s, %s, 'PENDING_DISPATCH')
-                """,
-                (
-                    inv_num,
-                    int(order_id),
-                    int(order["Client_ID"]),
-                    inv_status,
-                    total_ht,
-                    total_tva,
-                    total_ttc,
-                    int(cashier_user_id),
-                    int(cash_session_id) if cash_session_id else None,
-                    adv_cash,
-                    adv_wallet,
-                    remaining_cod,
-                ),
-            )
+            norm_method = payment_method if payment_method in ("Cash", "BaridiMob", "TPE", "CCP") else "Cash"
+            if adv_cash > Decimal("0.00") and norm_method != "Cash":
+                cursor.execute(
+                    """
+                    INSERT INTO Sales_Invoices (
+                        Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
+                        Total_Amount_HT, Total_TVA, Total_Amount_TTC,
+                        Created_By, Cash_Session_ID, Payment_Method,
+                        Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Card,
+                        Amount_Paid_Wallet, Amount_Remaining_Credit, Delivery_Status
+                    ) VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, %s, %s, %s, %s, 'BON_LIVRAISON', 0.00, %s, %s, %s, 'PENDING_DISPATCH')
+                    """,
+                    (
+                        inv_num,
+                        int(order_id),
+                        int(order["Client_ID"]),
+                        inv_status,
+                        total_ht,
+                        total_tva,
+                        total_ttc,
+                        int(cashier_user_id),
+                        int(cash_session_id) if cash_session_id else None,
+                        norm_method,
+                        adv_cash,
+                        adv_wallet,
+                        remaining_cod,
+                    ),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO Sales_Invoices (
+                        Invoice_No, Order_ID, Client_ID, Invoice_Date, Status,
+                        Total_Amount_HT, Total_TVA, Total_Amount_TTC,
+                        Created_By, Cash_Session_ID, Payment_Method,
+                        Bond_Settlement_Type, Amount_Paid_Cash, Amount_Paid_Wallet,
+                        Amount_Remaining_Credit, Delivery_Status
+                    ) VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, %s, %s, %s, 'Cash', 'BON_LIVRAISON', %s, %s, %s, 'PENDING_DISPATCH')
+                    """,
+                    (
+                        inv_num,
+                        int(order_id),
+                        int(order["Client_ID"]),
+                        inv_status,
+                        total_ht,
+                        total_tva,
+                        total_ttc,
+                        int(cashier_user_id),
+                        int(cash_session_id) if cash_session_id else None,
+                        adv_cash,
+                        adv_wallet,
+                        remaining_cod,
+                    ),
+                )
             invoice_id = cursor.lastrowid
 
             if adv_wallet > Decimal("0.00"):
@@ -1617,6 +1674,7 @@ class BondLifecycleManager:
         cashier_user_id: int,
         cash_session_id: Optional[int],
         collected_cash: Decimal,
+        payment_method: str = "Cash",
     ) -> Dict[str, Any]:
         """
         Completes the remaining payment of a Bon de Livraison after delivery to the customer (استكمال الباقي بعد التوصيل).
@@ -1645,17 +1703,32 @@ class BondLifecycleManager:
             if cash_in < rem_due:
                 raise ValueError(f"Collected COD cash ({cash_in}) is less than remaining balance ({rem_due}).")
 
-            cursor.execute(
-                """
-                UPDATE Sales_Invoices
-                SET Status = 'Paid',
-                    Amount_Paid_Cash = COALESCE(Amount_Paid_Cash, 0.00) + %s,
-                    Amount_Remaining_Credit = 0.00,
-                    Delivery_Status = 'DELIVERED_PAID'
-                WHERE Invoice_ID = %s
-                """,
-                (rem_due, int(invoice_id)),
-            )
+            norm_method = payment_method if payment_method in ("Cash", "BaridiMob", "TPE", "CCP") else "Cash"
+            if norm_method == "Cash":
+                cursor.execute(
+                    """
+                    UPDATE Sales_Invoices
+                    SET Status = 'Paid',
+                        Amount_Paid_Cash = COALESCE(Amount_Paid_Cash, 0.00) + %s,
+                        Amount_Remaining_Credit = 0.00,
+                        Delivery_Status = 'DELIVERED_PAID'
+                    WHERE Invoice_ID = %s
+                    """,
+                    (rem_due, int(invoice_id)),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE Sales_Invoices
+                    SET Status = 'Paid',
+                        Amount_Paid_Card = COALESCE(Amount_Paid_Card, 0.00) + %s,
+                        Payment_Method = %s,
+                        Amount_Remaining_Credit = 0.00,
+                        Delivery_Status = 'DELIVERED_PAID'
+                    WHERE Invoice_ID = %s
+                    """,
+                    (rem_due, norm_method, int(invoice_id)),
+                )
 
             if cash_session_id and rem_due > Decimal("0.00"):
                 cursor.execute(

@@ -46,6 +46,7 @@ from .bond_lifecycle_manager import (
 )
 from .sav_workflow_manager import SAVWorkflowManager, SAVWorkflowService
 from .product_color_manager import ProductColorManager
+from .treasury_manager import TreasuryManager
 class LabDataManager:
 
     def __init__(self, db_instance: Database):
@@ -103,3 +104,4 @@ class LabDataManager:
         self.serials = SerialTrackingManager(db_instance)
         self.bonds = BondLifecycleManager(db_instance)
         self.sav = SAVWorkflowManager(db_instance)
+        self.treasury = TreasuryManager(db_instance)

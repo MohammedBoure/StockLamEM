@@ -75,6 +75,7 @@ class MainWindow(QMainWindow):
             15: "Service Après-Vente (SAV) & Réparations",
             17: "Gestion des Versements",
             18: "Suivi Paiement à la Livraison",
+            19: "Trésorerie & Flux Financiers (Solde, Entrées, Sorties, Transferts)",
         }
 
         full_name = self.current_user.get('Full_Name', 'Utilisateur') if self.current_user else 'Invité'
@@ -119,6 +120,7 @@ class MainWindow(QMainWindow):
                 14: "nav_appliance_workflow",
                 17: "nav_versement",
                 18: "nav_paiement_livraison",
+                19: "nav_treasury",
                 15: "nav_sav",
                 5: "tab_users",
                 4: "nav_settings"
@@ -296,6 +298,7 @@ class MainWindow(QMainWindow):
             (14, "Bureaux", "barcode_scan"),
             (17, "Versement", "kpi_wallet"),
             (18, "Paiement Livraison", "truck_delivery"),
+            (19, "Trésorerie", "treasury"),
             (15, "SAV", "wrench_sav"),
             (7, "Traçabilité", "history"),
             (5, "Utilisateurs", "users"),
@@ -430,6 +433,7 @@ class MainWindow(QMainWindow):
             14: "nav_appliance_workflow",
             17: "nav_versement",
             18: "nav_paiement_livraison",
+            19: "nav_treasury",
             15: "nav_sav",
             7: "nav_history",  # واجهة السجل المستقلة
             5: "tab_users",
@@ -649,6 +653,11 @@ class MainWindow(QMainWindow):
             from .widgets.paiement_livraison import PaiementLivraisonTab
             widget = PaiementLivraisonTab(self.data_manager, current_user=self.current_user)
 
+        # --- 19. Trésorerie ---
+        elif page_id == 19:
+            from .widgets.treasury import TreasuryTab
+            widget = TreasuryTab(self.data_manager, current_user=self.current_user)
+
         if widget:
             old_widget = self.content_area.widget(page_id)
             self.content_area.removeWidget(old_widget)
@@ -674,6 +683,7 @@ class MainWindow(QMainWindow):
             14: "nav_appliance_workflow",
             17: "nav_versement",
             18: "nav_paiement_livraison",
+            19: "nav_treasury",
             15: "nav_sav",
             7: "nav_history",
             5: "tab_users",
@@ -686,5 +696,8 @@ class MainWindow(QMainWindow):
             logging.warning(f"Unauthorized access attempt to page {page_id}")
             return
 
-        self._load_page(page_id)
+        already_loaded = page_id in self.loaded_pages
+        widget = self._load_page(page_id)
+        if already_loaded and page_id == 19 and widget is not None and hasattr(widget, "refresh_data"):
+            widget.refresh_data()
         self.content_area.setCurrentIndex(page_id)

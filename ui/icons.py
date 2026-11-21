@@ -399,6 +399,14 @@ DUOTONE_SVGS: Dict[str, str] = {
         <line x1="7" y1="13" x2="13" y2="13" stroke="#0E7471"/>
         <line x1="14.5" y1="15.5" x2="17.5" y2="15.5" stroke="#1E293B"/>
     </svg>''',
+
+    # Treasury / Trésorerie & Flux Financiers
+    "treasury": '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0E7471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2.5" fill="#E6F4F1"/>
+        <path d="M6 12h12" stroke="#1E293B"/>
+        <path d="M9 8.5l3-2.5 3 2.5" stroke="#0E7471"/>
+        <path d="M9 15.5l3 2.5 3-2.5" stroke="#0E7471"/>
+    </svg>''',
 }
 
 def get_duotone_icon(
