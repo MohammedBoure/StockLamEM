@@ -113,10 +113,10 @@ def build_ui(self):
 # ---------------------------------------------------------------------------
 
 def _build_filter_group(self):
-    filter_group = QGroupBox("🔍 Recherche & Filtres Avancés")
+    filter_group = QGroupBox("Recherche & Filtres")
 
     main_filter_layout = QHBoxLayout(filter_group)
-    main_filter_layout.setContentsMargins(10, 15, 10, 10)
+    main_filter_layout.setContentsMargins(10, 14, 10, 10)
 
     left_layout = _build_left_filters(self)
     main_filter_layout.addLayout(left_layout, 2)
@@ -139,13 +139,13 @@ def _build_left_filters(self):
     # الصف 1: بحث نصي + موقع
     row1 = QHBoxLayout()
     self.search_input = QLineEdit()
-    self.search_input.setPlaceholderText("🔎 Produit, Code-barres, Lot...")
+    self.search_input.setPlaceholderText("Rechercher produit, référence, code-barres, n° lot...")
     self.search_input.setClearButtonEnabled(True)
     self.search_input.returnPressed.connect(self.load_data)
     self.search_input.textChanged.connect(self.apply_filters_local)
 
     self.loc_filter = LocationTreeComboBox(self.manager.locations)
-    self.loc_filter.setPlaceholderText("📍 Emplacement")
+    self.loc_filter.setPlaceholderText("Emplacement")
     self.loc_filter.setMinimumWidth(180)
     self.loc_filter.currentIndexChanged.connect(self.apply_filters_local)
 
@@ -157,41 +157,41 @@ def _build_left_filters(self):
     row2 = QHBoxLayout()
 
     self.combo_family = QComboBox()
-    self.combo_family.addItem("📁 Familles", None)
+    self.combo_family.addItem("Familles", None)
     self.combo_family.setMinimumWidth(125)
     self.populate_families()
     self.combo_family.currentIndexChanged.connect(self.apply_filters_local)
 
     self.combo_manuf = QComboBox()
-    self.combo_manuf.addItem("🏭 Marques", None)
+    self.combo_manuf.addItem("Marques", None)
     self.combo_manuf.setMinimumWidth(125)
     self.populate_manufacturers()
     self.combo_manuf.currentIndexChanged.connect(self.apply_filters_local)
 
     self.combo_automate = QComboBox()
-    self.combo_automate.addItem("⚙️ Automates", None)
+    self.combo_automate.addItem("Automates", None)
     self.combo_automate.setMinimumWidth(125)
     self.populate_automates()
     self.combo_automate.currentIndexChanged.connect(self.apply_filters_local)
     self.combo_automate.setVisible(False)
 
     self.combo_supplier = QComboBox()
-    self.combo_supplier.addItem("🚚 Fournisseurs", None)
+    self.combo_supplier.addItem("Fournisseurs", None)
     self.combo_supplier.setMinimumWidth(130)
     self.populate_suppliers()
     self.combo_supplier.currentIndexChanged.connect(self.apply_filters_local)
 
     self.combo_status = QComboBox()
     self.combo_status.addItems([
-        "📋 Tous (>0)", "✅ En Stock", "⚠️ Faible (Seuil)",
-        "⭕ Épuisé (Qté=0)", "🗑️ Rebuts / Pertes"
+        "Tous (>0)", "En Stock", "Faible (Seuil)",
+        "Épuisé (Qté=0)", "Rebuts / Pertes"
     ])
     self.combo_status.setMinimumWidth(130)
     self.combo_status.setCurrentIndex(1)
     self.combo_status.currentIndexChanged.connect(self.load_data)
 
     self.combo_priority_group = QComboBox()
-    self.combo_priority_group.addItem("⭐ Groupes Vente", None)
+    self.combo_priority_group.addItem("Groupes Vente", None)
     self.combo_priority_group.setMinimumWidth(130)
     self.combo_priority_group.currentIndexChanged.connect(self.apply_filters_local)
 
@@ -281,18 +281,24 @@ def _build_right_filters(self):
     reset_layout.addStretch()
 
     btn_refresh = QPushButton("Actualiser")
-    btn_refresh.setFixedWidth(100)
+    btn_refresh.setFixedWidth(104)
     btn_refresh.setCursor(Qt.PointingHandCursor)
+    btn_refresh.setIcon(get_duotone_icon("refresh", 14))
+    btn_refresh.setIconSize(QSize(14, 14))
+    btn_refresh.setToolTip("Actualiser le stock (F5 / Ctrl+R)")
     btn_refresh.setStyleSheet(
-        "background-color: #007572; color: white; font-weight: bold; border-radius: 4px; padding: 4px 10px; border: none; min-height: 28px;"
+        "QPushButton { background-color: #ffffff; color: #334155; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; min-height: 28px; }"
+        "QPushButton:hover { background-color: #f8fafc; border-color: #94a3b8; color: #0f172a; }"
     )
     btn_refresh.clicked.connect(self.load_data)
 
     btn_reset = QPushButton("Réinitialiser")
-    btn_reset.setFixedWidth(100)
+    btn_reset.setFixedWidth(104)
     btn_reset.setCursor(Qt.PointingHandCursor)
+    btn_reset.setToolTip("Réinitialiser les filtres (Échap)")
     btn_reset.setStyleSheet(
-        "background-color: #ffffff; color: #495057; border: 1px solid #ced4da; border-radius: 4px; padding: 4px 10px; min-height: 28px;"
+        "QPushButton { background-color: #ffffff; color: #475569; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; min-height: 28px; }"
+        "QPushButton:hover { background-color: #f8fafc; border-color: #94a3b8; color: #0f172a; }"
     )
     btn_reset.clicked.connect(self.reset_filters)
 
@@ -318,7 +324,7 @@ def _build_table(self):
         "Code-Barres", "Code Ext", "Emplacement", "Famille", "Marque",
         "Automate", "Fournisseur", "Ref PO", "Date Entrée",
         "Prix Vente 2", "Prix Vente 3", "Prix Vente 4", "Réclamation",
-        "Groupe Vente", "Réf"
+        "Groupe Vente", "Réf", "Qté Dispo"
     ]
     self.table.setColumnCount(len(cols))
     self.table.setHorizontalHeaderLabels(cols)
@@ -326,6 +332,10 @@ def _build_table(self):
         hdr_it = self.table.horizontalHeaderItem(m_col)
         if hdr_it is not None:
             hdr_it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+    for qty_col in (1, 9, 25):
+        hdr_it = self.table.horizontalHeaderItem(qty_col)
+        if hdr_it is not None:
+            hdr_it.setTextAlignment(Qt.AlignCenter)
     self.table.setColumnHidden(3, True)   # Prix U. HT non requis
     self.table.setColumnHidden(8, True)   # Date Exp. non requise
     self.table.setColumnHidden(15, True)  # Automate non requis
@@ -333,6 +343,8 @@ def _build_table(self):
     header = self.table.horizontalHeader()
     for c in range(len(cols)):
         header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
+    # Place Qté Dispo visually right beside Stock (Actuel) while keeping logical indices 0..24 intact
+    header.moveSection(25, 2)
 
     self.table.setWordWrap(True)
     self.table.setSortingEnabled(False)
@@ -515,69 +527,82 @@ def _build_bottom_bar(self):
     bottom_frame.setStyleSheet("""
         QFrame#BatchesBottomBar {
             background-color: #f8fafc;
-            border-top: 2px solid #cbd5e1;
+            border-top: 1px solid #cbd5e1;
             border-radius: 0px;
         }
     """)
     bottom_bar = QHBoxLayout(bottom_frame)
-    bottom_bar.setContentsMargins(6, 6, 6, 6)
+    bottom_bar.setContentsMargins(10, 8, 10, 8)
     bottom_bar.setSpacing(8)
 
-    self.lbl_total_value = QLabel("Valeur Totale : 0,00 DA")
-    self.lbl_total_value.setFont(QFont("Arial", 11, QFont.Bold))
-    self.lbl_total_value.setStyleSheet("""
-        QLabel {
-            color: #007572; border: 1px solid #a3e4d7; border-radius: 4px;
-            padding: 6px 12px; background-color: #e8f8f5;
-        }
-    """)
+    self.lbl_total_value = QLabel("Total Filtré : 0,00 DA")
+    self.lbl_total_value.setFont(QFont("Segoe UI", 11, QFont.Bold))
+    self.lbl_total_value.setStyleSheet(
+        "color: #0E7471; font-weight: 800; padding: 4px 8px; background: transparent; border: none;"
+    )
     bottom_bar.addWidget(self.lbl_total_value)
 
     self.lbl_total_quantity = QLabel("Stock disponible affiché : 0")
-    self.lbl_total_quantity.setFont(QFont("Arial", 11, QFont.Bold))
-    self.lbl_total_quantity.setStyleSheet("""
-        QLabel {
-            color: #1e8449; border: 1px solid #82e0aa; border-radius: 4px;
-            padding: 6px 12px; background-color: #eafaf1;
-        }
-    """)
+    self.lbl_total_quantity.setFont(QFont("Segoe UI", 11, QFont.Bold))
+    self.lbl_total_quantity.setStyleSheet(
+        "color: #0F172A; font-weight: 700; padding: 4px 8px; background: transparent; border: none;"
+    )
     bottom_bar.addWidget(self.lbl_total_quantity)
 
     self.lbl_count_info = QLabel("0 éléments")
     self.lbl_count_info.setStyleSheet(
-        "color: #7f8c8d; font-weight: bold; margin-left: 10px;"
+        "color: #64748B; font-weight: 600; font-size: 11.5px; margin-left: 4px;"
     )
     bottom_bar.addWidget(self.lbl_count_info)
     bottom_bar.addStretch()
 
-    btn_style = (
-        "QPushButton { font-weight: bold; border-radius: 4px; "
-        "padding: 6px 14px; font-size: 12px; min-height: 28px; }"
-    )
-
-    def _btn(label, color, slot):
+    def _primary_btn(label, slot):
         b = QPushButton(label)
         b.setCursor(Qt.PointingHandCursor)
-        b.setStyleSheet(btn_style + f"background-color: {color}; color: white; border: none;")
+        b.setFixedHeight(32)
+        b.setStyleSheet(
+            "QPushButton { background-color: #0E7471; color: #FFFFFF; font-weight: 700; border: none; border-radius: 5px; padding: 0 14px; font-size: 12px; }"
+            "QPushButton:hover { background-color: #0A5C59; }"
+        )
         b.clicked.connect(slot)
         return b
 
-    bottom_bar.addWidget(_btn("➕ Ajout Rapide", "#8e44ad", self.open_quick_add))
-    bottom_bar.addWidget(_btn("📝 Éditer",       "#2980b9", self.open_quick_edit))
-    self.btn_sales_price = _btn("💲 Prix de Vente", "#16a085", self.open_modify_sales_prices)
+    def _outline_btn(label, slot, icon_name=None, danger=False):
+        b = QPushButton(label)
+        b.setCursor(Qt.PointingHandCursor)
+        b.setFixedHeight(32)
+        if icon_name:
+            b.setIcon(get_duotone_icon(icon_name, 14))
+            b.setIconSize(QSize(14, 14))
+        if danger:
+            b.setStyleSheet(
+                "QPushButton { background-color: #FFFFFF; color: #DC2626; font-weight: 600; border: 1px solid #FCA5A5; border-radius: 5px; padding: 0 11px; font-size: 12px; }"
+                "QPushButton:hover { background-color: #FEF2F2; border-color: #DC2626; }"
+            )
+        else:
+            b.setStyleSheet(
+                "QPushButton { background-color: #FFFFFF; color: #334155; font-weight: 600; border: 1px solid #CBD5E1; border-radius: 5px; padding: 0 11px; font-size: 12px; }"
+                "QPushButton:hover { background-color: #F1F5F9; border-color: #94A3B8; color: #0F172A; }"
+            )
+        b.clicked.connect(slot)
+        return b
+
+    bottom_bar.addWidget(_primary_btn("+ Ajout Rapide", self.open_quick_add))
+    bottom_bar.addWidget(_outline_btn("Éditer", self.open_quick_edit, icon_name="edit"))
+    self.btn_sales_price = _outline_btn("Prix de Vente", self.open_modify_sales_prices, icon_name="payment")
     bottom_bar.addWidget(self.btn_sales_price)
-    bottom_bar.addWidget(_btn("⚡ Sortie",      "#27ae60", self.direct_use_process))
-    bottom_bar.addWidget(_btn("✏️ Ajustement",  "#f39c12", self.adjust_stock))
-    bottom_bar.addWidget(_btn("🗑️ Rebut",       "#c0392b", self.waste_batch))
-    bottom_bar.addWidget(_btn("🖨️ Étiquette",   "#34495e", self.print_batch_label))
+    bottom_bar.addWidget(_outline_btn("Sortie", self.direct_use_process))
+    bottom_bar.addWidget(_outline_btn("Ajustement", self.adjust_stock))
+    bottom_bar.addWidget(_outline_btn("Rebut", self.waste_batch, icon_name="trash", danger=True))
+    bottom_bar.addWidget(_outline_btn("Étiquette", self.print_batch_label, icon_name="print"))
 
     line_sep = QFrame()
     line_sep.setFrameShape(QFrame.VLine)
     line_sep.setFrameShadow(QFrame.Sunken)
-    line_sep.setStyleSheet("color: #e2e8f0;")
+    line_sep.setStyleSheet("color: #cbd5e1;")
     bottom_bar.addWidget(line_sep)
 
-    bottom_bar.addWidget(_btn("📗 Excel", "#217346", self.export_to_excel))
-    bottom_bar.addWidget(_btn("📕 PDF",   "#e74c3c", self.export_to_pdf))
+    bottom_bar.addWidget(_outline_btn("Excel", self.export_to_excel, icon_name="export"))
+    bottom_bar.addWidget(_outline_btn("PDF", self.export_to_pdf, icon_name="export"))
 
     return bottom_frame

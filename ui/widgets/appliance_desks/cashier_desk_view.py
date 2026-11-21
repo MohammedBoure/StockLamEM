@@ -921,6 +921,18 @@ class OrderArticlesDialog(QDialog):
             self.table.setItem(row, 7, it_tot)
 
 
+def _resolve_active_cash_session_id(data_manager: Any, user_id: Optional[int] = None) -> Optional[int]:
+    """Returns the active POS_Cash_Sessions.Cash_Session_ID if open, else None."""
+    if data_manager is not None and hasattr(data_manager, "cash_sessions"):
+        try:
+            sess = data_manager.cash_sessions.get_any_open_session(user_id=user_id)
+            if isinstance(sess, dict) and sess.get("Cash_Session_ID"):
+                return int(sess["Cash_Session_ID"])
+        except Exception:
+            pass
+    return None
+
+
 class VersementDialog(QDialog):
     """Dialogue modal d'enregistrement d'un versement espèces client (Caisse physique)."""
 
@@ -1245,7 +1257,7 @@ class VersementDialog(QDialog):
                     client_id=int(cid),
                     amount_cash=amt,
                     cashier_user_id=uid,
-                    cash_session_id=1,
+                    cash_session_id=_resolve_active_cash_session_id(self.data_manager, uid),
                     notes=notes,
                 )
             else:
@@ -2898,7 +2910,7 @@ class CashierDeskWidget(QWidget):
                     vrs_kwargs = {
                         "order_id": order_id,
                         "cashier_user_id": uid,
-                        "cash_session_id": 1,
+                        "cash_session_id": _resolve_active_cash_session_id(self.data_manager, uid),
                         "amount_paid_cash": Decimal(str(cash_val)),
                         "amount_paid_wallet": Decimal(str(w_ded)),
                         "payment_method": pay_method,
@@ -2934,7 +2946,7 @@ class CashierDeskWidget(QWidget):
                 bon_c_kwargs = {
                     "order_id": order_id,
                     "cashier_user_id": uid,
-                    "cash_session_id": 1,
+                    "cash_session_id": _resolve_active_cash_session_id(self.data_manager, uid),
                     "amount_paid_cash": paid_cash_dec,
                     "amount_paid_card": paid_card_dec,
                     "amount_paid_wallet": Decimal(str(w_ded)),
@@ -2990,7 +3002,7 @@ class CashierDeskWidget(QWidget):
                     cr_kwargs = {
                         "order_id": order_id,
                         "cashier_user_id": uid,
-                        "cash_session_id": 1,
+                        "cash_session_id": _resolve_active_cash_session_id(self.data_manager, uid),
                         "admin_user_id": modal.admin_user_id,
                         "admin_pin_or_pwd": modal.admin_secret,
                         "downpayment_cash": Decimal(str(dp_cash)),
@@ -3036,7 +3048,7 @@ class CashierDeskWidget(QWidget):
                     self.data_manager.bonds.settle_bon_livraison_cod(
                         invoice_id=inv_id,
                         cashier_user_id=uid,
-                        cash_session_id=1,
+                        cash_session_id=_resolve_active_cash_session_id(self.data_manager, uid),
                         collected_cash=Decimal(str(cash_val)),
                         payment_method=pay_method,
                     )
@@ -3060,7 +3072,7 @@ class CashierDeskWidget(QWidget):
                     bl_kwargs = {
                         "order_id": order_id,
                         "cashier_user_id": uid,
-                        "cash_session_id": 1,
+                        "cash_session_id": _resolve_active_cash_session_id(self.data_manager, uid),
                         "advance_cash": Decimal(str(cash_val)),
                         "advance_wallet": Decimal(str(w_ded)),
                         "payment_method": pay_method,
@@ -3095,7 +3107,7 @@ class CashierDeskWidget(QWidget):
                 self.data_manager.bonds.validate_bon_livraison_advance(
                     order_id=order_id,
                     cashier_user_id=uid,
-                    cash_session_id=1,
+                    cash_session_id=_resolve_active_cash_session_id(self.data_manager, uid),
                     advance_cash=Decimal("0.00"),
                     advance_wallet=Decimal("0.00"),
                 )

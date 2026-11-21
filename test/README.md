@@ -129,6 +129,8 @@ This test suite enforces strict software quality gatekeeping across:
   - *Scope*: Verifies the Bureaux & Caisse UX and Theme Overhaul (`_theme.py` design tokens, `CashierDeskWidget` resizable `QSplitter`, live queue summary pill, quick type filter chips, `Exact` amount button, live `Monnaie à rendre` / `Manquant` indicator, bon type pill, Enter-key validation shortcut, `ApplianceWorkflowTab` live queue badges, and clean emoji-free `OrderDeskWidget` / `DispatchDeskWidget` controls).
 - **`test_navbar_versement_paiement_livraison.py`**:
   - *Scope*: Verifies the dedicated `Versement` (`page_id=17`, `nav_versement`) and `Paiement Livraison` (`page_id=18`, `nav_paiement_livraison`) sidebar entries, their tooltips, icons, compact-mode toggling, placeholder page switching (`VersementTab`, `PaiementLivraisonTab`), and RBAC permission/fallback checks.
+- **`test_fixes_fk1452_commandes_qtedispo.py`**:
+  - *Scope*: Verifies FK 1452 prevention on `Sales_Invoices.Cash_Session_ID` (`_resolve_cash_session_id` / `_resolve_active_cash_session_id`) and `Stock Actuel` (`BatchesTab`) `Qté Dispo` column (col 25 positioned at visual section 2) computing `Quantity_Current - Theoretical_Reserved_Qty`.
 - **`test_treasury_workspace.py`**:
   - *Scope*: Verifies the dedicated `Trésorerie` (`page_id=19`, `nav_treasury`) sidebar workspace, `TreasuryManager` multi-method balance computation (`Cash`, `BaridiMob`, `TPE`, `CCP`) across Caisse/POS/Client payments and manual `Treasury_Movements` (`Entrée`, `Sortie`, `Transfert Interne`, cancellation), empty-DB zero-fake-data compliance, UI filtering/dialogs, and RBAC permission gating.
 - **`test_sav_reception_minimal_ui.py`**:

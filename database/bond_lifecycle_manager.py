@@ -123,6 +123,36 @@ class BondLifecycleManager:
             return self.db
         raise RuntimeError("No valid database connection provider found.")
 
+    def _resolve_cash_session_id(self, cursor, cash_session_id: Optional[int]) -> Optional[int]:
+        """Returns a valid POS_Cash_Sessions.Cash_Session_ID or None to prevent FK 1452."""
+        try:
+            if cash_session_id is not None:
+                cid = int(cash_session_id)
+                cursor.execute(
+                    "SELECT COUNT(*) AS cnt FROM POS_Cash_Sessions WHERE Cash_Session_ID = %s",
+                    (cid,),
+                )
+                row = cursor.fetchone()
+                # Mock cursors in unit tests don't implement COUNT(*) and return None;
+                # keep the caller's session id intact for those tests.
+                if row is None:
+                    return cid
+                cnt = int(row.get("cnt") if isinstance(row, dict) else (row[0] or 0))
+                if cnt > 0:
+                    return cid
+
+            cursor.execute(
+                "SELECT Cash_Session_ID FROM POS_Cash_Sessions WHERE Status = 'Open' ORDER BY Opened_At DESC LIMIT 1"
+            )
+            open_row = cursor.fetchone()
+            if open_row:
+                val = open_row.get("Cash_Session_ID") if isinstance(open_row, dict) else open_row[0]
+                return int(val) if val is not None else None
+            return None
+        except Exception as err:
+            logger.debug(f"Cash session lookup skipped: {err}")
+            return int(cash_session_id) if cash_session_id is not None else None
+
     # =========================================================================
     # 1. ORDER DESK (مكتب الطلبات - البيع النظري)
     # =========================================================================
@@ -787,6 +817,7 @@ class BondLifecycleManager:
                 raise ValueError(f"Le client avec l'ID #{client_id} n'existe pas dans la base de données.")
 
             wallet = self._get_or_create_wallet_locked(cursor, client_id)
+            cash_session_id = self._resolve_cash_session_id(cursor, cash_session_id)
             bal_before = wallet["Current_Balance"]
             bal_after = (bal_before + deposit).quantize(Decimal("0.01"))
             real_after = (wallet["Real_Deposit_Balance"] + deposit).quantize(Decimal("0.01"))
@@ -1005,6 +1036,7 @@ class BondLifecycleManager:
             if order["Status"] != "CONFIRMED_PENDING_PAYMENT":
                 raise ValueError(f"Order cannot be paid in current status: {order['Status']}")
 
+            cash_session_id = self._resolve_cash_session_id(cursor, cash_session_id)
             total_ttc = Decimal(str(order["Total_Amount_TTC"])).quantize(Decimal("0.01"))
             cash_dec = Decimal(str(amount_paid_cash or "0.00")).quantize(Decimal("0.01"))
             card_dec = Decimal(str(amount_paid_card or "0.00")).quantize(Decimal("0.01"))
@@ -1140,6 +1172,7 @@ class BondLifecycleManager:
             if order["Status"] != "CONFIRMED_PENDING_PAYMENT":
                 raise ValueError(f"Order cannot be settled in current status: {order['Status']}")
 
+            cash_session_id = self._resolve_cash_session_id(cursor, cash_session_id)
             total_ttc = Decimal(str(order["Total_Amount_TTC"])).quantize(Decimal("0.01"))
             cash_dec = Decimal(str(amount_paid_cash or "0.00")).quantize(Decimal("0.01"))
             wallet_dec = Decimal(str(amount_paid_wallet or "0.00")).quantize(Decimal("0.01"))
@@ -1348,6 +1381,7 @@ class BondLifecycleManager:
                 )
 
             # 3. Create Bon Crédit Invoice
+            cash_session_id = self._resolve_cash_session_id(cursor, cash_session_id)
             inv_num = f"FAC-CR-{datetime.now().strftime('%Y%m%d')}-{order_id}"
             total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
             total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
@@ -1547,6 +1581,7 @@ class BondLifecycleManager:
             if not order:
                 raise ValueError("Order not found.")
 
+            cash_session_id = self._resolve_cash_session_id(cursor, cash_session_id)
             total_ttc = Decimal(str(order["Total_Amount_TTC"])).quantize(Decimal("0.01"))
             adv_cash_raw = max(Decimal("0.00"), Decimal(str(advance_cash or "0.00")).quantize(Decimal("0.01")))
             adv_wallet_raw = max(Decimal("0.00"), Decimal(str(advance_wallet or "0.00")).quantize(Decimal("0.01")))
@@ -1698,6 +1733,7 @@ class BondLifecycleManager:
             if not inv:
                 raise ValueError("Delivery invoice not found.")
 
+            cash_session_id = self._resolve_cash_session_id(cursor, cash_session_id)
             rem_due = Decimal(str(inv.get("Amount_Remaining_Credit") or "0.00")).quantize(Decimal("0.01"))
             cash_in = Decimal(str(collected_cash)).quantize(Decimal("0.01"))
             if cash_in < rem_due:
@@ -2755,6 +2791,7 @@ class BondLifecycleManager:
             if order.get("Status") == "CANCELLED":
                 raise ValueError("Impossible d'ajouter un paiement sur un bon annulé.")
 
+            cash_session_id = self._resolve_cash_session_id(cursor, cash_session_id)
             total_ttc = Decimal(str(order.get("Total_Amount_TTC") or "0.00")).quantize(Decimal("0.01"))
             total_ht = (total_ttc / Decimal("1.19")).quantize(Decimal("0.01"))
             total_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))

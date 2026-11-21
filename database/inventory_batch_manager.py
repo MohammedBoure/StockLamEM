@@ -943,6 +943,14 @@ class InventoryBatchManager:
         except Exception:
             return False
 
+    def _has_theoretical_reserved_column(self, cursor) -> bool:
+        """Checks whether Theoretical_Reserved_Qty exists on Inventory_Batches."""
+        try:
+            cursor.execute("SHOW COLUMNS FROM Inventory_Batches LIKE 'Theoretical_Reserved_Qty'")
+            return bool(cursor.fetchone())
+        except Exception:
+            return False
+
     def add_direct_batch(self, data: dict, user_id: int = None) -> bool:
         """
         Adds a batch directly to inventory without a Reception (BR) or Purchase Order (PO).
@@ -1180,6 +1188,13 @@ class InventoryBatchManager:
 
                 cursor = conn.cursor(dictionary=True)
                 has_ref_col = self._ensure_ref_code_column(cursor)
+                has_res_col = self._has_theoretical_reserved_column(cursor)
+                reserved_select = (
+                    "COALESCE(B.Theoretical_Reserved_Qty, 0) AS Theoretical_Reserved_Qty, "
+                    "GREATEST(0, B.Quantity_Current - COALESCE(B.Theoretical_Reserved_Qty, 0)) AS Available_Qty"
+                    if has_res_col
+                    else "0 AS Theoretical_Reserved_Qty, B.Quantity_Current AS Available_Qty"
+                )
                 ref_select = "B.Ref_Code" if has_ref_col else "NULL AS Ref_Code"
                 primary_ref_expr = (
                     "COALESCE(NULLIF(TRIM(B.Ref_Code), ''), NULLIF(TRIM(P.Manuf_Cat_No), ''))"
@@ -1227,6 +1242,7 @@ class InventoryBatchManager:
                         B.Lot_Number,
                         B.Expiry_Date,
                         B.Quantity_Current,
+                        {reserved_select},
                         (
                             SELECT SUM(IB2.Quantity_Initial)
                             FROM Inventory_Batches IB2

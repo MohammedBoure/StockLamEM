@@ -251,7 +251,7 @@ def populate_table(self, data):
         self.lbl_total_value.hide()
     else:
         self.lbl_total_value.show()
-        self.lbl_total_value.setText(f"💰 Total Filtré : {format_money(total_value, 'DA')}")
+        self.lbl_total_value.setText(f"Total Filtré : {format_money(total_value, 'DA')}")
 
 
 def _fill_row(table, r, b, hide_fin):
@@ -397,6 +397,29 @@ def _fill_row(table, r, b, hide_fin):
         ref_item.setToolTip(f"Références : {all_refs}")
     table.setItem(r, 24, ref_item)
 
+    # 25. Qté Dispo (Disponible à la vente = Physique - Réservé théorique)
+    reserved = float(b.get('Theoretical_Reserved_Qty') or 0)
+    if b.get('Available_Qty') is not None:
+        qty_dispo = max(0.0, float(b['Available_Qty']))
+    elif b.get('Available_Theoretical_Qty') is not None:
+        qty_dispo = max(0.0, float(b['Available_Theoretical_Qty']))
+    else:
+        qty_dispo = max(0.0, qty - reserved)
+    dispo_text = format_quantity(qty_dispo)
+    dispo_item = _make_item(
+        dispo_text,
+        align=Qt.AlignCenter,
+        color=QColor("#0E7471") if qty_dispo > 0 else QColor("#DC2626"),
+        font=QFont("", -1, QFont.Bold),
+        bg_color=bg_color,
+    )
+    dispo_item.setToolTip(
+        f"Qté Disponible : {dispo_text}"
+        + (f" {stock_unit}" if stock_unit else "")
+        + f"\nStock Physique : {stock_text} | Réservé commandes : {format_quantity(reserved)}"
+    )
+    table.setItem(r, 25, dispo_item)
+
     # تعيين الهيدر العمودي (رقم الصف وأيقونة الشكوى إذا وجدت)
     v_header_item = QTableWidgetItem(str(r + 1))
     v_header_item.setTextAlignment(Qt.AlignCenter)
@@ -422,14 +445,22 @@ COL_MAP = {
     16: 'Supplier_Name',        17: 'PO_ID',
     18: 'Date_Received',        19: 'Selling_Price_HT_2',
     20: 'Selling_Price_HT_3',   21: 'Selling_Price_HT_4',
-    22: 'Reception_Note',       23: 'POS_Priority_Group'
+    22: 'Reception_Note',       23: 'POS_Priority_Group',
+    24: 'Primary_Ref',          25: 'Available_Qty'
 }
 
-NUMERIC_COLS = {1, 3, 4, 5, 6, 9, 19, 20, 21}
+NUMERIC_COLS = {1, 3, 4, 5, 6, 9, 19, 20, 21, 25}
 DATE_COLS    = {8, 18}
 
 
 def _sort_key(col_index, item):
+    if col_index == 25:
+        try:
+            if item.get('Available_Qty') is not None:
+                return max(0.0, float(item['Available_Qty']))
+            return max(0.0, float(item.get('Quantity_Current', 0) or 0) - float(item.get('Theoretical_Reserved_Qty', 0) or 0))
+        except Exception:
+            return 0.0
     if col_index == 5:
         try:
             qty = float(item.get('Quantity_Current', 0))

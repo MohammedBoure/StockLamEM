@@ -55,6 +55,7 @@ EXPORT_COLUMN_KEYS = {
     22: 'Reception_Note',
     23: 'POS_Priority_Group',
     24: 'Primary_Ref',
+    25: 'Available_Qty',
 }
 
 
@@ -82,6 +83,12 @@ def _header_text(self, column_index):
 def _format_export_cell(row, column_index):
     if column_index == 1:
         return format_quantity(row.get('Quantity_Current', 0))
+    if column_index == 25:
+        if row.get('Available_Qty') is not None:
+            avail = max(0.0, float(row.get('Available_Qty') or 0))
+        else:
+            avail = max(0.0, float(row.get('Quantity_Current', 0) or 0) - float(row.get('Theoretical_Reserved_Qty', 0) or 0))
+        return format_quantity(avail)
     if column_index == 2:
         return str(row.get('Stock_Unit') or '---')
     if column_index == 3:

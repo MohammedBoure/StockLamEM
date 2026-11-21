@@ -3915,20 +3915,6 @@ class OrderDeskWidget(QWidget):
         if not client_info:
             return
 
-        # Versement uses ONLY the client selection dialog; amount entry happens strictly in Caisse.
-        if bond_type != "BON_VERSEMENT":
-            total_preview = sum(float(i["unit_price_ttc"]) * int(i["quantity"]) for i in cart)
-            payment_info = self._prompt_payment_confirmation(
-                sdata=sdata,
-                client_info=client_info,
-                bond_type=bond_type,
-                total_ttc=total_preview,
-            )
-            if not payment_info:
-                return
-            bond_type = str(payment_info.get("bond_type") or bond_type)
-            client_info["delivery_address"] = str(payment_info.get("delivery_address") or "")
-
         client_id = int(client_info.get("client_id") or 1)
         client_label = str(client_info.get("client_name") or "").strip() or "Client Comptoir"
         deliv_phone = str(client_info.get("client_phone") or "").strip() or None

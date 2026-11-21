@@ -170,16 +170,12 @@ def test_popup_dialog_prefills_mobile_data_allows_edit_and_client_switch(qapp):
         ) as mock_prompt, patch.object(
             desk,
             "_prompt_payment_confirmation",
-            return_value={
-                "bond_type": "BON_C",
-                "delivery_address": "Tipaza Plage",
-            },
         ) as mock_pay:
             with patch.object(QMessageBox, "information"):
                 desk.btn_bon_c.click()
 
         mock_prompt.assert_called_once()
-        mock_pay.assert_called_once()
+        mock_pay.assert_not_called()
         dm.bonds.create_sales_order_draft.assert_called_once()
         kw = dm.bonds.create_sales_order_draft.call_args.kwargs
         assert kw["client_id"] == 99

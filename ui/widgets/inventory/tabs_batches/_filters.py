@@ -17,9 +17,9 @@ from ui.formatting import format_money, format_quantity, quantity_to_int
 def load_data(self):
     """جلب كامل البيانات من قاعدة البيانات ثم تطبيق الفلاتر"""
     try:
-        status_idx  = self.combo_status.currentIndex()
+        status_txt  = self.combo_status.currentText()
         search_text = self.search_input.text().strip()
-        fetch_zero  = (status_idx in [5, 6]) or (len(search_text) > 0)
+        fetch_zero  = ("Épuisé" in status_txt or "Rebuts" in status_txt) or (len(search_text) > 0)
 
         # حفظ الصف المحدد حالياً للعودة إليه بعد التحديث
         selected_batch_id = None
@@ -66,7 +66,12 @@ def apply_filters_local(self):
         manuf_id     = self.combo_manuf.currentData()
         automate_id  = self.combo_automate.currentData()
         supplier_id  = self.combo_supplier.currentData() if hasattr(self, 'combo_supplier') else None
-        status_idx   = self.combo_status.currentIndex()
+        status_txt   = self.combo_status.currentText()
+        is_low_stock = "Faible" in status_txt
+        is_expired   = "Périmés" in status_txt
+        is_soon_exp  = "Bientôt" in status_txt
+        is_zero_st   = "Épuisé" in status_txt
+        is_waste_st  = "Rebuts" in status_txt
         priority_group = self.combo_priority_group.currentData() if hasattr(self, 'combo_priority_group') else None
 
         use_exp_date  = self.chk_date_filter.isChecked()
@@ -87,11 +92,11 @@ def apply_filters_local(self):
             has_waste = bool(row.get('Has_Waste')) or (float(row.get('Quantity_Wasted', 0) or 0) > 0)
 
             # --- فلتر الحالة ---
-            if status_idx in [0, 1, 2, 3, 4] and qty <= 0:
+            if not is_zero_st and not is_waste_st and qty <= 0:
                 continue
-            elif status_idx == 5 and qty > 0:
+            elif is_zero_st and qty > 0:
                 continue
-            elif status_idx == 6 and not has_waste:
+            elif is_waste_st and not has_waste:
                 continue
 
             # --- البحث النصي ---
@@ -144,11 +149,11 @@ def apply_filters_local(self):
 
             exp_date_obj = _parse_date(row.get('Expiry_Date'))
 
-            if status_idx == 2 and qty > min_threshold:
+            if is_low_stock and qty > min_threshold:
                 continue
-            elif status_idx == 3 and (not exp_date_obj or exp_date_obj >= current_date):
+            elif is_expired and (not exp_date_obj or exp_date_obj >= current_date):
                 continue
-            elif status_idx == 4:
+            elif is_soon_exp:
                 if not exp_date_obj:
                     continue
                 days_left = (exp_date_obj - current_date).days
@@ -251,7 +256,7 @@ def _update_total_label(self):
         except Exception:
             pass
 
-    self.lbl_total_value.setText(f"💰 Total Filtré : {format_money(total, 'DA')}")
+    self.lbl_total_value.setText(f"Total Filtré : {format_money(total, 'DA')}")
     self.lbl_total_value.show()
 
 

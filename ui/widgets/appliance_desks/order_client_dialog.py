@@ -186,6 +186,19 @@ class OrderClientDialog(QDialog):
         title_lbl = QLabel("Client & Livraison")
         title_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #007572;")
         header_row.addWidget(title_lbl)
+
+        mode_labels = {
+            "BON_C": "Paiement complet",
+            "BON_CREDIT": "Paiement à crédit",
+            "BON_LIVRAISON": "Paiement à la livraison",
+            "BON_VERSEMENT": "Versement",
+        }
+        mode_lbl = QLabel(mode_labels.get(self.bond_type, "Commande"))
+        mode_lbl.setStyleSheet(
+            "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #E6F4F1; "
+            "border: 1px solid #99F6E4; border-radius: 10px; padding: 2px 9px;"
+        )
+        header_row.addWidget(mode_lbl)
         header_row.addStretch()
 
         self.btn_quick_client = QPushButton("+ Nouveau Client")
