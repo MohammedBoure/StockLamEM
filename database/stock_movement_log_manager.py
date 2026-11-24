@@ -184,7 +184,26 @@ class StockMovementLogManager:
                 query += " GROUP BY sml.Movement_Type ORDER BY Total_Events DESC"
 
                 cursor.execute(query, tuple(params))
-                return cursor.fetchall()
+                rows = cursor.fetchall() or []
+                import re
+                price_note_re = re.compile(r"Prix:\s*([0-9]+(?:\.[0-9]+)?)\s*DA", re.IGNORECASE)
+                for row in rows:
+                    if row.get("Movement_Type") == "Sale":
+                        avg_cost = float(row.get("Avg_Purchase_Price") or 0.0)
+                        unit_sale = float(row.get("Unit_Sale_Price") or 0.0)
+                        notes_txt = str(row.get("Notes") or "")
+                        m_price = price_note_re.search(notes_txt)
+                        if m_price:
+                            try:
+                                unit_sale = float(m_price.group(1))
+                                row["Unit_Sale_Price"] = unit_sale
+                            except (TypeError, ValueError):
+                                pass
+                        qty_abs = abs(float(row.get("Qty_Change") or 0.0))
+                        row["Sale_Profit"] = round((unit_sale - avg_cost) * qty_abs, 2)
+                    else:
+                        row["Sale_Profit"] = None
+                return rows
         except mysql.connector.Error as e:
             logging.error(f"Error fetching movement summary: {e}")
             raise
@@ -271,7 +290,49 @@ class StockMovementLogManager:
 
                         COALESCE(l.Location_Name, '---') as Location_Name,
                         wr.Reason_Name,
-                        COALESCE(NULLIF(u.Full_Name, ''), u.Username, 'Système') as Operator_Name
+                        COALESCE(NULLIF(u.Full_Name, ''), u.Username, 'Système') as Operator_Name,
+                        COALESCE(
+                            (
+                                SELECT
+                                    CASE
+                                        WHEN SUM(COALESCE(ib2.Quantity_Initial, 0)) > 0
+                                        THEN SUM(COALESCE(ib2.Quantity_Initial, 0) * COALESCE(ib2.Unit_Price_Received, 0)) / SUM(COALESCE(ib2.Quantity_Initial, 0))
+                                        ELSE COALESCE(AVG(ib2.Unit_Price_Received), 0)
+                                    END
+                                FROM Inventory_Batches ib2
+                                WHERE ib2.Product_ID = m.Product_ID
+                                  AND ib2.Unit_Price_Received IS NOT NULL
+                                  AND ib2.Unit_Price_Received > 0
+                            ),
+                            COALESCE(b.Unit_Price_Received, 0)
+                        ) AS Avg_Purchase_Price,
+                        CASE
+                            WHEN m.Movement_Type = 'Sale' THEN COALESCE(
+                                (
+                                    SELECT sd.Unit_Price_HT * (1 + COALESCE(sd.TVA_Percent, 0) / 100.0)
+                                    FROM Sales_Details sd
+                                    JOIN Sales_Invoices si ON si.Invoice_ID = sd.Invoice_ID
+                                    WHERE sd.Product_ID = m.Product_ID
+                                      AND (sd.Batch_ID = m.Batch_ID OR sd.Batch_ID IS NULL)
+                                      AND DATE(si.Invoice_Date) = DATE(m.Transaction_Date)
+                                      AND si.Status != 'Cancelled'
+                                    ORDER BY ABS(TIMESTAMPDIFF(SECOND, COALESCE(si.Created_At, si.Invoice_Date), m.Transaction_Date)) ASC
+                                    LIMIT 1
+                                ),
+                                (
+                                    SELECT sol.Unit_Price_TTC
+                                    FROM Sales_Order_Lines_Theoretical sol
+                                    JOIN Sales_Orders_Theoretical so ON so.Order_ID = sol.Order_ID
+                                    WHERE sol.Product_ID = m.Product_ID
+                                      AND DATE(so.Order_Date) <= DATE(m.Transaction_Date)
+                                      AND so.Status != 'CANCELLED'
+                                    ORDER BY so.Order_ID DESC
+                                    LIMIT 1
+                                ),
+                                COALESCE(p.Default_Selling_Price_HT, 0) * (1 + COALESCE(p.Selling_TVA_Percent, 0) / 100.0)
+                            )
+                            ELSE NULL
+                        END AS Unit_Sale_Price
 
                     FROM Stock_Movement_Log m
                     JOIN Products_Master p ON m.Product_ID = p.Product_ID
@@ -306,7 +367,26 @@ class StockMovementLogManager:
                 params.extend([limit, offset])
 
                 cursor.execute(query, tuple(params))
-                return cursor.fetchall()
+                rows = cursor.fetchall() or []
+                import re
+                price_note_re = re.compile(r"Prix:\s*([0-9]+(?:\.[0-9]+)?)\s*DA", re.IGNORECASE)
+                for row in rows:
+                    if row.get("Movement_Type") == "Sale":
+                        avg_cost = float(row.get("Avg_Purchase_Price") or 0.0)
+                        unit_sale = float(row.get("Unit_Sale_Price") or 0.0)
+                        notes_txt = str(row.get("Notes") or "")
+                        m_price = price_note_re.search(notes_txt)
+                        if m_price:
+                            try:
+                                unit_sale = float(m_price.group(1))
+                                row["Unit_Sale_Price"] = unit_sale
+                            except (TypeError, ValueError):
+                                pass
+                        qty_abs = abs(float(row.get("Qty_Change") or 0.0))
+                        row["Sale_Profit"] = round((unit_sale - avg_cost) * qty_abs, 2)
+                    else:
+                        row["Sale_Profit"] = None
+                return rows
         except Exception as e:
             logging.error(f"Error fetching movement log: {e}")
             return []

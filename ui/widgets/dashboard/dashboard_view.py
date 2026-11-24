@@ -17,6 +17,7 @@ from .alerts_section import AlertsSection, is_stock_alert
 from .consumption_reports import ConsumptionReportSection
 from .statistics_tabs import StockValuationTab, WasteAnalysisTab
 from .family_reception_tab import FamilyReceptionTab
+from .monthly_profit_tab import MonthlyProfitTab
 
 class DashboardTab(QWidget):
     def __init__(self, data_manager):
@@ -88,6 +89,7 @@ class DashboardTab(QWidget):
         self.page_overview = OverviewTab(stats_manager=self.data_manager.stats if hasattr(self.data_manager, 'stats') else None)
         
         # باقي الصفحات
+        self.page_monthly_profit = MonthlyProfitTab(data_manager)
         self.page_family_reception = FamilyReceptionTab(data_manager)
         self.page_valuation = StockValuationTab()
         self.page_consumption = ConsumptionReportSection(data_manager.stats)
@@ -138,6 +140,8 @@ class DashboardTab(QWidget):
             )
             
             # 2. التبويبات الأخرى
+            if hasattr(self, "page_monthly_profit"):
+                self.page_monthly_profit.refresh()
             self.page_valuation.refresh(self.data_manager.stats)
             self.page_consumption.update_params(self.date_from.date(), self.date_to.date())
             self.page_consumption.refresh_report()

@@ -68,10 +68,10 @@ class BondLifecycleManager:
         self.db = db_instance
         self._enum_schema_verified = False
 
-    def _ensure_bond_enum_schema(self, cursor) -> None:
+    def _ensure_bond_enum_schema(self, cursor, conn=None) -> None:
         """
         Ensures Sales_Orders_Theoretical.Bond_Type / Payment_Method_Requested and
-        Sales_Invoices.Bond_Settlement_Type ENUMs include BON_VERSEMENT / VERSEMENT.
+        Sales_Invoices.Bond_Settlement_Type / Status ENUMs include BON_VERSEMENT / VERSEMENT / Partial.
         Must be called outside an active transaction (ALTER TABLE causes implicit commit).
         """
         if self._enum_schema_verified:
@@ -99,6 +99,13 @@ class BondLifecycleManager:
                     "ALTER TABLE Sales_Invoices MODIFY COLUMN Bond_Settlement_Type "
                     "ENUM('BON_C_CASH', 'BON_CREDIT', 'BON_LIVRAISON', 'BON_WALLET_AVOIR', 'BON_MIXED', 'BON_VERSEMENT') NULL",
                 ),
+                (
+                    "Sales_Invoices",
+                    "Status",
+                    "Partial",
+                    "ALTER TABLE Sales_Invoices MODIFY COLUMN Status "
+                    "ENUM('Draft', 'Validated', 'Partial', 'Paid', 'Cancelled') DEFAULT 'Draft'",
+                ),
             ]
             for table_name, col_name, required_val, alter_sql in checks:
                 cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE %s", (col_name,))
@@ -108,9 +115,24 @@ class BondLifecycleManager:
                 col_type = str(row.get("Type") or "")
                 if col_type and required_val not in col_type:
                     cursor.execute(alter_sql)
+            # Clear any implicit transaction started by SHOW COLUMNS before explicit start_transaction()
+            if conn is not None and getattr(conn, "in_transaction", False):
+                conn.commit()
             self._enum_schema_verified = True
         except Exception as err:
             logger.debug(f"Skipping ENUM auto-migration check: {err}")
+            if conn is not None and getattr(conn, "in_transaction", False):
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+
+    def _safe_start_transaction(self, conn) -> None:
+        """Starts a transaction safely without raising 'Transaction already in progress'."""
+        if hasattr(conn, "start_transaction"):
+            if getattr(conn, "in_transaction", False):
+                return
+            conn.start_transaction()
 
     def _get_connection(self):
         if hasattr(self.db, "get_raw_connection"):
@@ -180,13 +202,23 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            self._ensure_bond_enum_schema(cursor)
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._ensure_bond_enum_schema(cursor, conn)
+            self._safe_start_transaction(conn)
 
             normalized_bond = (bond_type or "BON_C").strip().upper()
             if normalized_bond not in ("BON_C", "BON_CREDIT", "BON_LIVRAISON", "BON_VERSEMENT"):
                 normalized_bond = "BON_C"
+
+            valid_pay_methods = ("CASH", "CREDIT", "LIVRAISON_COD", "CARD", "WALLET_AVOIR", "MIXED", "VERSEMENT")
+            default_pay_map = {
+                "BON_C": "CASH",
+                "BON_CREDIT": "CREDIT",
+                "BON_LIVRAISON": "LIVRAISON_COD",
+                "BON_VERSEMENT": "VERSEMENT",
+            }
+            norm_pay_req = str(payment_method_requested or "").strip().upper()
+            if norm_pay_req not in valid_pay_methods:
+                norm_pay_req = default_pay_map.get(normalized_bond, "CASH")
 
             prefix_map = {
                 "BON_C": "1-BC",
@@ -220,7 +252,7 @@ class BondLifecycleManager:
                     normalized_bond,
                     total_ht,
                     total_ttc,
-                    payment_method_requested,
+                    norm_pay_req,
                     delivery_address,
                     delivery_phone,
                     delivery_notes,
@@ -435,9 +467,8 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            self._ensure_bond_enum_schema(cursor)
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._ensure_bond_enum_schema(cursor, conn)
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """
@@ -471,7 +502,7 @@ class BondLifecycleManager:
 
             cursor.execute(
                 """
-                SELECT Invoice_ID, Amount_Paid_Cash, Amount_Paid_Wallet
+                SELECT Invoice_ID, Amount_Paid_Cash, Amount_Paid_Card, Amount_Paid_Wallet, Amount_Remaining_Credit
                 FROM Sales_Invoices
                 WHERE Order_ID = %s AND Status != 'Cancelled'
                 FOR UPDATE
@@ -479,7 +510,10 @@ class BondLifecycleManager:
                 (int(order_id),),
             )
             existing_inv = cursor.fetchone()
-            if status != "CONFIRMED_PENDING_PAYMENT" and order.get("Bond_Type") != "BON_LIVRAISON":
+            if (
+                status != "CONFIRMED_PENDING_PAYMENT"
+                and order.get("Bond_Type") not in ("BON_LIVRAISON", "BON_VERSEMENT")
+            ):
                 raise ValueError("Ce bon a déjà été validé en Caisse et ne peut plus être modifié.")
 
             # 1. Release previous theoretical reservations
@@ -625,15 +659,22 @@ class BondLifecycleManager:
             if existing_inv:
                 already_paid = (
                     Decimal(str(existing_inv.get("Amount_Paid_Cash") or "0.00"))
+                    + Decimal(str(existing_inv.get("Amount_Paid_Card") or "0.00"))
                     + Decimal(str(existing_inv.get("Amount_Paid_Wallet") or "0.00"))
                 ).quantize(Decimal("0.01"))
                 if total_ttc < already_paid:
                     raise ValueError(
-                        f"Le nouveau montant TTC ({total_ttc} DA) est inférieur à l'acompte déjà versé ({already_paid} DA)."
+                        f"Le nouveau montant TTC ({total_ttc} DA) est inférieur au montant déjà versé ({already_paid} DA)."
                     )
+                old_rem = Decimal(str(existing_inv.get("Amount_Remaining_Credit") or "0.00")).quantize(Decimal("0.01"))
                 new_rem = (total_ttc - already_paid).quantize(Decimal("0.01"))
                 new_tva = (total_ttc - total_ht).quantize(Decimal("0.01"))
-                new_inv_st = "Paid" if new_rem == Decimal("0.00") else "Validated"
+                if new_rem == Decimal("0.00"):
+                    new_inv_st = "Paid"
+                elif already_paid > Decimal("0.00"):
+                    new_inv_st = "Partial"
+                else:
+                    new_inv_st = "Validated"
                 cursor.execute(
                     """
                     UPDATE Sales_Invoices
@@ -642,7 +683,8 @@ class BondLifecycleManager:
                         Total_TVA = %s,
                         Total_Amount_TTC = %s,
                         Amount_Remaining_Credit = %s,
-                        Status = %s
+                        Status = %s,
+                        Updated_At = NOW()
                     WHERE Invoice_ID = %s
                     """,
                     (
@@ -655,6 +697,16 @@ class BondLifecycleManager:
                         int(existing_inv["Invoice_ID"]),
                     ),
                 )
+                debt_delta = (new_rem - old_rem).quantize(Decimal("0.01"))
+                if debt_delta != Decimal("0.00"):
+                    cursor.execute(
+                        """
+                        UPDATE Clients
+                        SET Current_Debt = GREATEST(0.00, COALESCE(Current_Debt, 0.00) + %s)
+                        WHERE Client_ID = %s
+                        """,
+                        (debt_delta, int(client_id)),
+                    )
 
             conn.commit()
             return {
@@ -807,8 +859,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._safe_start_transaction(conn)
 
             # Ensure client exists to prevent Foreign Key constraint error 1452
             cursor.execute("SELECT Client_ID, Client_Name FROM Clients WHERE Client_ID = %s", (int(client_id),))
@@ -1017,9 +1068,8 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            self._ensure_bond_enum_schema(cursor)
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._ensure_bond_enum_schema(cursor, conn)
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """
@@ -1153,9 +1203,8 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            self._ensure_bond_enum_schema(cursor)
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._ensure_bond_enum_schema(cursor, conn)
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """
@@ -1308,8 +1357,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._safe_start_transaction(conn)
 
             # 1. Verify Admin user & password/PIN
             cursor.execute(
@@ -1564,9 +1612,8 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            self._ensure_bond_enum_schema(cursor)
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._ensure_bond_enum_schema(cursor, conn)
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """
@@ -1717,8 +1764,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """
@@ -1815,8 +1861,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True) if hasattr(conn, "cursor") else None
         try:
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._safe_start_transaction(conn)
 
             # 1. Lock and inspect order
             cursor.execute(
@@ -1939,8 +1984,7 @@ class BondLifecycleManager:
             conn = self._get_connection()
             cursor = conn.cursor(dictionary=True)
             try:
-                if hasattr(conn, "start_transaction"):
-                    conn.start_transaction()
+                self._safe_start_transaction(conn)
 
                 cursor.execute(
                     """
@@ -2158,6 +2202,301 @@ class BondLifecycleManager:
                 if hasattr(self.db, "get_raw_connection"):
                     conn.close()
 
+    def validate_and_dispatch_items(
+        self,
+        order_id: int,
+        invoice_id: int,
+        storekeeper_user_id: int,
+        scanned_items: List[Dict[str, Any]],
+        exit_doc_type: str = "BON_SORTIE",
+    ) -> Dict[str, Any]:
+        """
+        Dispatches physical items for a confirmed order at Sortie Magasin and issues either
+        a 'Bon de Sortie' (BON_SORTIE) or a 'Bon Rouge' (BON_ROUGE).
+        Supports BOTH:
+          - Product / Réf barcode tracking (decrements Inventory_Batches FIFO for Product_ID)
+          - Unique Serial Number tracking (when scanned_code matches an IN_STOCK Product_Serials row)
+        """
+        if not scanned_items:
+            raise ValueError("Au moins un article scanné est requis pour valider la sortie.")
+
+        norm_doc_type = str(exit_doc_type or "BON_SORTIE").strip().upper()
+        if norm_doc_type not in ("BON_SORTIE", "BON_ROUGE"):
+            norm_doc_type = "BON_SORTIE"
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            conn = self._get_connection()
+            cursor = conn.cursor(dictionary=True)
+            try:
+                self._safe_start_transaction(conn)
+
+                cursor.execute(
+                    """
+                    SELECT Order_ID, Order_Number, Status, Bond_Type, Client_ID
+                    FROM Sales_Orders_Theoretical
+                    WHERE Order_ID = %s
+                    FOR UPDATE
+                    """,
+                    (int(order_id),),
+                )
+                order_row = cursor.fetchone()
+                if not order_row:
+                    raise ValueError(f"Bon #{order_id} introuvable.")
+                st = str(order_row.get("Status") or "")
+                if st in ("CANCELLED", "REJECTED"):
+                    raise SecurityViolationException(
+                        f"Sortie physique non autorisée : La commande #{order_id} est annulée/rejetée ({st})."
+                    )
+
+                # Resolve valid Invoice_ID if not provided
+                resolved_inv_id = int(invoice_id or 0)
+                if resolved_inv_id <= 0:
+                    cursor.execute(
+                        "SELECT Invoice_ID FROM Sales_Invoices WHERE Order_ID = %s AND Status != 'Cancelled' ORDER BY Invoice_ID DESC LIMIT 1",
+                        (int(order_id),),
+                    )
+                    inv_lookup = cursor.fetchone()
+                    resolved_inv_id = int(inv_lookup["Invoice_ID"]) if inv_lookup else int(order_id)
+
+                prefix = "BRG" if norm_doc_type == "BON_ROUGE" else "BS"
+                exit_num = f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{order_id}-{int(datetime.now().timestamp() * 1000) % 10000:04d}"
+                gate_pass = f"GATE-{hashlib.sha1(exit_num.encode('utf-8')).hexdigest()[:12].upper()}"
+                doc_label = "Bon Rouge" if norm_doc_type == "BON_ROUGE" else "Bon de Sortie"
+
+                cursor.execute(
+                    """
+                    INSERT INTO Delivery_Exit_Bonds (
+                        Exit_Bond_Number, Order_ID, Invoice_ID, Storekeeper_User_ID,
+                        Security_Gate_Pass_Barcode, Exit_Status, Logistics_Notes
+                    ) VALUES (%s, %s, %s, %s, %s, 'VALIDATED_EXIT', %s)
+                    """,
+                    (
+                        exit_num,
+                        int(order_id),
+                        resolved_inv_id,
+                        int(storekeeper_user_id),
+                        gate_pass,
+                        f"Type: {norm_doc_type} ({doc_label})",
+                    ),
+                )
+                exit_bond_id = cursor.lastrowid
+
+                seen_serials = set()
+                for scan in scanned_items:
+                    line_id = int(scan["order_line_id"])
+                    code_raw = str(scan.get("scanned_code") or scan.get("serial_number") or "").strip()
+                    sn_clean = SerialTrackingManager.sanitize_serial_number(code_raw) if code_raw else ""
+
+                    cursor.execute(
+                        """
+                        SELECT Line_ID, Product_ID, Quantity_Ordered, Quantity_Dispatched, Unit_Price_TTC
+                        FROM Sales_Order_Lines_Theoretical
+                        WHERE Line_ID = %s
+                        FOR UPDATE
+                        """,
+                        (line_id,),
+                    )
+                    line = cursor.fetchone()
+                    if not line:
+                        raise ValueError(f"Ligne de commande #{line_id} introuvable.")
+
+                    prod_id = int(line["Product_ID"])
+                    unit_sale_ttc = Decimal(str(line.get("Unit_Price_TTC") or "0.00")).quantize(Decimal("0.01"))
+
+                    # Check if scanned code is a registered unique serial in Product_Serials
+                    serial_record = None
+                    if sn_clean:
+                        cursor.execute(
+                            """
+                            SELECT Serial_ID, Product_ID, Batch_ID, Status
+                            FROM Product_Serials
+                            WHERE Serial_Number = %s
+                            FOR UPDATE
+                            """,
+                            (sn_clean,),
+                        )
+                        serial_record = cursor.fetchone()
+
+                    if serial_record:
+                        if sn_clean in seen_serials:
+                            raise StateCollisionException(f"Double scan du N° de Série '{sn_clean}' sur le même bon.")
+                        seen_serials.add(sn_clean)
+                        if serial_record["Status"] != "IN_STOCK":
+                            raise StateCollisionException(
+                                f"N° de Série '{sn_clean}' non disponible en stock (Statut: {serial_record['Status']})."
+                            )
+                        if int(serial_record["Product_ID"]) != prod_id:
+                            raise ValueError(
+                                f"Incohérence modèle : le N° de Série '{sn_clean}' appartient au produit #{serial_record['Product_ID']}, attendu #{prod_id}."
+                            )
+
+                        serial_id = serial_record["Serial_ID"]
+                        batch_id = serial_record["Batch_ID"]
+
+                        cursor.execute(
+                            """
+                            INSERT INTO Delivery_Exit_Serials (
+                                Exit_Bond_ID, Order_Line_ID, Product_ID, Serial_ID,
+                                Scanned_Barcode, Scanned_By_User_ID
+                            ) VALUES (%s, %s, %s, %s, %s, %s)
+                            """,
+                            (exit_bond_id, line_id, prod_id, serial_id, sn_clean, int(storekeeper_user_id)),
+                        )
+                        cursor.execute(
+                            """
+                            UPDATE Product_Serials
+                            SET Status = 'DISPATCHED',
+                                Customer_Warranty_Start = CURRENT_DATE(),
+                                Customer_Warranty_End = DATE_ADD(CURRENT_DATE(), INTERVAL 24 MONTH),
+                                Original_Sales_Invoice_ID = %s
+                            WHERE Serial_ID = %s
+                            """,
+                            (resolved_inv_id, serial_id),
+                        )
+                        cursor.execute(
+                            """
+                            INSERT INTO Product_Serial_History (
+                                Serial_ID, Previous_Status, New_Status, Voucher_Type,
+                                Voucher_ID, Changed_By_User_ID, Action_Notes
+                            ) VALUES (%s, 'IN_STOCK', 'DISPATCHED', 'BON_SORTIE', %s, %s, %s)
+                            """,
+                            (serial_id, exit_bond_id, int(storekeeper_user_id), f"{doc_label} Scan"),
+                        )
+                        cursor.execute(
+                            """
+                            UPDATE Inventory_Batches
+                            SET Quantity_Current = GREATEST(0, Quantity_Current - 1),
+                                Theoretical_Reserved_Qty = GREATEST(0, COALESCE(Theoretical_Reserved_Qty, 1) - 1)
+                            WHERE Batch_ID = %s
+                            """,
+                            (batch_id,),
+                        )
+                        note_detail = f"{doc_label} {exit_num} - N° Série: {sn_clean} (Réf Commande #{order_id} | Prix: {unit_sale_ttc} DA)"
+                    else:
+                        # Product / Réf barcode tracking: decrement FIFO batch for Product_ID
+                        cursor.execute(
+                            """
+                            SELECT Batch_ID, Quantity_Current, COALESCE(Theoretical_Reserved_Qty, 0) AS Theoretical_Reserved_Qty
+                            FROM Inventory_Batches
+                            WHERE Product_ID = %s AND Quantity_Current > 0
+                            ORDER BY Batch_ID ASC
+                            LIMIT 1
+                            FOR UPDATE
+                            """,
+                            (prod_id,),
+                        )
+                        batch_row = cursor.fetchone()
+                        batch_id = int(batch_row["Batch_ID"]) if batch_row else None
+                        if batch_id is not None:
+                            cursor.execute(
+                                """
+                                UPDATE Inventory_Batches
+                                SET Quantity_Current = GREATEST(0, Quantity_Current - 1),
+                                    Theoretical_Reserved_Qty = GREATEST(0, COALESCE(Theoretical_Reserved_Qty, 1) - 1)
+                                WHERE Batch_ID = %s
+                                """,
+                                (batch_id,),
+                            )
+                        note_detail = f"{doc_label} {exit_num} - Code: {code_raw or 'REF'} (Réf Commande #{order_id} | Prix: {unit_sale_ttc} DA)"
+
+                    cursor.execute(
+                        """
+                        UPDATE Sales_Order_Lines_Theoretical
+                        SET Quantity_Dispatched = Quantity_Dispatched + 1
+                        WHERE Line_ID = %s
+                        """,
+                        (line_id,),
+                    )
+
+                    # Record Physical Exit in Stock_Movement_Log (Traçabilité)
+                    try:
+                        cursor.execute(
+                            "SELECT COALESCE(SUM(Quantity_Current), 0) AS Total_Stock FROM Inventory_Batches WHERE Product_ID = %s",
+                            (prod_id,),
+                        )
+                        stk_row = cursor.fetchone()
+                        stk_after = (stk_row.get("Total_Stock") if isinstance(stk_row, dict) else stk_row[0]) if stk_row else 0
+                        cursor.execute(
+                            """
+                            INSERT INTO Stock_Movement_Log (
+                                Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used,
+                                Notes, User_ID, Transaction_Date, Stock_After
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                            """,
+                            (
+                                prod_id,
+                                batch_id,
+                                "Sale",
+                                -1,
+                                "Pièce",
+                                note_detail,
+                                int(storekeeper_user_id),
+                                stk_after,
+                            ),
+                        )
+                    except Exception as log_err:
+                        logger.warning(f"Could not record Stock_Movement_Log for item exit {code_raw}: {log_err}")
+
+                # Check if all order lines are fully dispatched
+                cursor.execute(
+                    """
+                    SELECT SUM(GREATEST(0, Quantity_Ordered - Quantity_Dispatched)) AS Remaining_Units
+                    FROM Sales_Order_Lines_Theoretical
+                    WHERE Order_ID = %s
+                    """,
+                    (int(order_id),),
+                )
+                rem_row = cursor.fetchone()
+                rem_units = int((rem_row.get("Remaining_Units") if isinstance(rem_row, dict) else rem_row[0]) or 0) if rem_row else 0
+
+                if rem_units > 0:
+                    next_status = "PARTIALLY_DISPATCHED"
+                else:
+                    next_status = "COMPLETED"
+                    if order_row.get("Bond_Type") == "BON_LIVRAISON":
+                        cursor.execute(
+                            "SELECT Amount_Remaining_Credit FROM Sales_Invoices WHERE Invoice_ID = %s",
+                            (resolved_inv_id,),
+                        )
+                        inv_row = cursor.fetchone()
+                        if inv_row and Decimal(str(inv_row.get("Amount_Remaining_Credit") or "0.00")) > Decimal("0.00"):
+                            next_status = "DISPATCHED_PENDING_COD"
+
+                cursor.execute(
+                    """
+                    UPDATE Sales_Orders_Theoretical
+                    SET Status = %s, Updated_At = NOW()
+                    WHERE Order_ID = %s
+                    """,
+                    (next_status, int(order_id)),
+                )
+
+                conn.commit()
+                return {
+                    "success": True,
+                    "exit_bond_id": exit_bond_id,
+                    "exit_bond_number": exit_num,
+                    "exit_doc_type": norm_doc_type,
+                    "gate_pass": gate_pass,
+                    "financial_impact": "NONE",
+                    "order_status": next_status,
+                }
+            except mysql.connector.Error as db_err:
+                conn.rollback()
+                if getattr(db_err, "errno", None) in (1213, 1205) and attempt < max_retries - 1:
+                    wait_sec = ((2 ** attempt) * 0.025) + random.uniform(0.0, 0.015)
+                    time.sleep(wait_sec)
+                    continue
+                raise
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cursor.close()
+                if hasattr(self.db, "get_raw_connection"):
+                    conn.close()
+
     # =========================================================================
     # 5. BON DE RETOUR & VERSEMENT VIRTUEL (إرجاع السلع مع حماية سيولة الصندوق)
     # =========================================================================
@@ -2186,8 +2525,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._safe_start_transaction(conn)
 
             total_return_val = sum(
                 Decimal(str(item["unit_credit_value"])).quantize(Decimal("0.01"))
@@ -2475,34 +2813,85 @@ class BondLifecycleManager:
             logger.error(f"Error fetching order lines for order #{order_id}: {err}")
             return []
 
-    def get_dispatch_order_queue(self) -> List[Dict[str, Any]]:
-        """Returns paid or approved orders awaiting physical serial scan at the Dispatch Desk."""
+    def get_dispatch_order_queue(self, include_completed: bool = True) -> List[Dict[str, Any]]:
+        """
+        Returns paid/approved orders awaiting physical scan AND (when include_completed=True)
+        already-completed orders for the Sortie Magasin view with status filtering.
+        """
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute(
+                status_filter = (
                     """
-                    SELECT
-                        o.Order_ID, o.Order_Number, o.Client_ID,
-                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
-                        COALESCE(c.Phone, '') AS Client_Phone,
-                        o.Bond_Type, o.Total_Amount_TTC, o.Status, o.Order_Date,
-                        i.Invoice_ID, i.Invoice_No
-                    FROM Sales_Orders_Theoretical o
-                    LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
-                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID
-                    WHERE o.Status IN (
+                    o.Status IN (
+                        'PAID_PENDING_DISPATCH',
+                        'APPROVED_CREDIT_PENDING_DISPATCH',
+                        'APPROVED_LIVRAISON_PENDING_DISPATCH',
+                        'PARTIALLY_DISPATCHED',
+                        'DISPATCHED_PENDING_COD',
+                        'COMPLETED'
+                    )
+                    """
+                    if include_completed
+                    else """
+                    o.Status IN (
                         'PAID_PENDING_DISPATCH',
                         'APPROVED_CREDIT_PENDING_DISPATCH',
                         'APPROVED_LIVRAISON_PENDING_DISPATCH',
                         'PARTIALLY_DISPATCHED'
                     )
-                    ORDER BY o.Updated_At DESC
-                    LIMIT 200
+                    """
+                )
+                cursor.execute(
+                    f"""
+                    SELECT
+                        o.Order_ID, o.Order_Number, o.Client_ID,
+                        COALESCE(c.Client_Name, 'Client Comptoir') AS Client_Name,
+                        COALESCE(c.Phone, '') AS Client_Phone,
+                        o.Delivery_Address,
+                        o.Bond_Type, o.Total_Amount_TTC, o.Status, o.Order_Date, o.Updated_At,
+                        i.Invoice_ID, i.Invoice_No,
+                        (
+                            SELECT deb.Exit_Bond_Number
+                            FROM Delivery_Exit_Bonds deb
+                            WHERE deb.Order_ID = o.Order_ID AND deb.Exit_Status = 'VALIDATED_EXIT'
+                            ORDER BY deb.Exit_Bond_ID DESC LIMIT 1
+                        ) AS Exit_Bond_Number,
+                        (
+                            SELECT deb.Logistics_Notes
+                            FROM Delivery_Exit_Bonds deb
+                            WHERE deb.Order_ID = o.Order_ID AND deb.Exit_Status = 'VALIDATED_EXIT'
+                            ORDER BY deb.Exit_Bond_ID DESC LIMIT 1
+                        ) AS Exit_Logistics_Notes,
+                        (
+                            SELECT deb.Exit_Timestamp
+                            FROM Delivery_Exit_Bonds deb
+                            WHERE deb.Order_ID = o.Order_ID AND deb.Exit_Status = 'VALIDATED_EXIT'
+                            ORDER BY deb.Exit_Bond_ID DESC LIMIT 1
+                        ) AS Exit_Timestamp
+                    FROM Sales_Orders_Theoretical o
+                    LEFT JOIN Clients c ON o.Client_ID = c.Client_ID
+                    LEFT JOIN Sales_Invoices i ON o.Order_ID = i.Order_ID AND i.Status != 'Cancelled'
+                    WHERE {status_filter}
+                    ORDER BY
+                        CASE WHEN o.Status IN ('COMPLETED', 'DISPATCHED_PENDING_COD') THEN 1 ELSE 0 END ASC,
+                        o.Updated_At DESC
+                    LIMIT 300
                     """
                 )
                 orders = cursor.fetchall() or []
                 for ord_item in orders:
+                    st_up = str(ord_item.get("Status") or "").upper()
+                    ord_item["Is_Completed"] = st_up in ("COMPLETED", "DISPATCHED_PENDING_COD")
+                    notes_str = str(ord_item.get("Exit_Logistics_Notes") or "")
+                    exit_no = str(ord_item.get("Exit_Bond_Number") or "")
+                    if "BON_ROUGE" in notes_str.upper() or exit_no.upper().startswith("BRG-"):
+                        ord_item["Exit_Doc_Type"] = "BON_ROUGE"
+                    elif exit_no:
+                        ord_item["Exit_Doc_Type"] = "BON_SORTIE"
+                    else:
+                        ord_item["Exit_Doc_Type"] = ""
+
                     cursor.execute(
                         """
                         SELECT
@@ -2510,10 +2899,28 @@ class BondLifecycleManager:
                             COALESCE(p.Brand_Mark, '') AS Brand_Mark,
                             COALESCE(l.Requested_Color, p.Color_Finish, '') AS Color_Finish,
                             COALESCE(p.Barcode, '') AS Barcode,
-                            l.Quantity_Ordered, l.Quantity_Dispatched, l.Unit_Price_TTC
+                            COALESCE(p.Manuf_Cat_No, '') AS Manuf_Cat_No,
+                            COALESCE(
+                                (
+                                    SELECT GROUP_CONCAT(DISTINCT NULLIF(TRIM(b.Internal_Barcode), '') SEPARATOR ',')
+                                    FROM Inventory_Batches b
+                                    WHERE b.Product_ID = l.Product_ID
+                                ),
+                                ''
+                            ) AS Batch_Barcodes,
+                            COALESCE(
+                                (
+                                    SELECT GROUP_CONCAT(DISTINCT NULLIF(TRIM(b.Ref_Code), '') SEPARATOR ',')
+                                    FROM Inventory_Batches b
+                                    WHERE b.Product_ID = l.Product_ID
+                                ),
+                                ''
+                            ) AS Batch_Refs,
+                            l.Quantity_Ordered, l.Quantity_Dispatched, l.Unit_Price_TTC, l.Line_Total_TTC
                         FROM Sales_Order_Lines_Theoretical l
                         JOIN Products_Master p ON l.Product_ID = p.Product_ID
                         WHERE l.Order_ID = %s
+                        ORDER BY l.Line_ID ASC
                         """,
                         (ord_item["Order_ID"],),
                     )
@@ -2772,9 +3179,8 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            self._ensure_bond_enum_schema(cursor)
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._ensure_bond_enum_schema(cursor, conn)
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """
@@ -3004,8 +3410,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """
@@ -3143,8 +3548,7 @@ class BondLifecycleManager:
         conn = self._get_connection()
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
-                conn.start_transaction()
+            self._safe_start_transaction(conn)
 
             cursor.execute(
                 """

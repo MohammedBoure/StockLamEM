@@ -3,26 +3,25 @@
 ui/widgets/appliance_desks/dispatch_desk_view.py
 ================================================
 Dispatch Desk UI (Bureau de Sortie & Magasin - مكتب الإخراج والمخزن).
-Responsible exclusively for:
-- Scanning the literal product barcode and unique serial number (N° de Série) of the physical unit leaving the store.
-- Validating serial state (IN_STOCK) and product model match against paid/authorized vouchers.
-- Generating and printing the logistical Bon de Sortie (سند الخروج) with zero cash impact.
+Displays all Caisse-confirmed Bons (both pending/incomplete and completed) with
+status & type filters. Opening any Bon launches the large DispatchBonScanDialog
+where the storekeeper performs a fresh complete scan of all pre-selected products
+and confirms to emit a Bon de Sortie or Bon Rouge.
 """
 
-from datetime import datetime
+import logging
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QButtonGroup,
-    QComboBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -30,34 +29,31 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.formatting import format_money
 from ui.hardware.raw_input_filter import MultiScannerHIDManager
 from ui.icons import get_duotone_icon
 from ui.widgets.appliance_desks._theme import (
     BORDER_SUBTLE,
     BRAND_TEAL,
-    BRAND_TEAL_BORDER,
     BRAND_TEAL_TINT,
     BUREAUX_TABLE_QSS,
-    CANVAS_BG,
     CARD_BG,
-    COMBO_QSS,
     FILTER_CHIP_QSS,
     INPUT_QSS,
     PRIMARY_CTA_QSS,
-    SECONDARY_OUTLINE_QSS,
     SLATE_OUTLINE_QSS,
-    TEXT_BODY,
     TEXT_PRIMARY,
 )
-from ui.widgets.appliance_desks.order_desk_view import (
-    OUTLINE_BTN_STYLE,
-    PRIMARY_BTN_STYLE,
-    TABLE_STYLE,
-)
+from ui.widgets.appliance_desks.dispatch_bon_scan_dialog import DispatchBonScanDialog
+
+logger = logging.getLogger("StockLam.UI.DispatchDesk")
 
 
 class DispatchDeskWidget(QWidget):
-    """Dispatch & Warehouse Exit Desk UI for scanning physical serial numbers and emitting Bon de Sortie."""
+    """
+    Sortie Magasin workspace listing pending and completed Bons with filters
+    and launching the large DispatchBonScanDialog for fresh scanning & Bon de Sortie / Bon Rouge confirmation.
+    """
 
     stockDispatched = Signal(str, list)
 
@@ -76,9 +72,9 @@ class DispatchDeskWidget(QWidget):
             lambda dev_id, code: self.process_scanned_barcode(code),
         )
 
+        self._all_dispatch_orders: List[Dict[str, Any]] = []
         self._dispatch_orders: List[Dict[str, Any]] = []
-        self._active_order: Optional[Dict[str, Any]] = None
-        self._expected_items: List[Dict[str, Any]] = []
+        self._active_dialog: Optional[DispatchBonScanDialog] = None
         self._init_ui()
         self.refresh_dispatch_queue()
 
@@ -87,12 +83,12 @@ class DispatchDeskWidget(QWidget):
         QTimer.singleShot(0, self._focus_primary_input)
 
     def _focus_primary_input(self) -> None:
-        if self._active_order and hasattr(self, "txt_scan"):
-            self.txt_scan.setFocus()
-        elif hasattr(self, "txt_order_search"):
+        if hasattr(self, "txt_order_search"):
             self.txt_order_search.setFocus()
 
     def _reset_order_filters(self) -> None:
+        if hasattr(self, "btn_status_all"):
+            self.btn_status_all.setChecked(True)
         if hasattr(self, "btn_filter_all"):
             self.btn_filter_all.setChecked(True)
         if hasattr(self, "txt_order_search"):
@@ -105,10 +101,10 @@ class DispatchDeskWidget(QWidget):
         self.setStyleSheet(f"QWidget#DispatchDeskRoot {{ background-color: {CARD_BG}; }}")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 8)
+        layout.setContentsMargins(10, 8, 10, 10)
         layout.setSpacing(10)
 
-        # 1. Flat Top Order & Filter Section
+        # 1. Flat Top Header + Filters Section
         header = QFrame()
         header.setObjectName("DispatchHeaderCard")
         header.setStyleSheet(f"""
@@ -126,56 +122,79 @@ class DispatchDeskWidget(QWidget):
         header_v.setContentsMargins(4, 4, 4, 10)
         header_v.setSpacing(8)
 
-        h_layout = QHBoxLayout()
-        h_layout.setSpacing(10)
+        # Row 1: Title + Status Filter Chips + Refresh
+        top_row = QHBoxLayout()
+        top_row.setSpacing(10)
 
         ic = QLabel()
         ic.setPixmap(get_duotone_icon("barcode_scan", 18).pixmap(18, 18))
-        h_layout.addWidget(ic)
+        top_row.addWidget(ic)
 
-        lbl_title = QLabel("Sortie Magasin")
-        lbl_title.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {TEXT_PRIMARY};")
-        h_layout.addWidget(lbl_title)
+        lbl_title = QLabel("Sortie Magasin — Bons Confirmés")
+        lbl_title.setStyleSheet(f"font-size: 14.5px; font-weight: 800; color: {TEXT_PRIMARY};")
+        top_row.addWidget(lbl_title)
 
-        self.cbo_orders = QComboBox()
-        self.cbo_orders.setFixedHeight(34)
-        self.cbo_orders.setMinimumWidth(300)
-        self.cbo_orders.setStyleSheet(COMBO_QSS)
-        self.cbo_orders.currentIndexChanged.connect(self._on_order_changed)
-        h_layout.addWidget(self.cbo_orders, stretch=1)
+        top_row.addSpacing(8)
+
+        # Status Filter Group: Tous / Non complétés (En attente) / Complétés
+        self._status_filter_group = QButtonGroup(self)
+        self._status_filter_group.setExclusive(True)
+
+        self.btn_status_pending = QPushButton("En attente (0)")
+        self.btn_status_completed = QPushButton("Complétés (0)")
+        self.btn_status_all = QPushButton("Tous (0)")
+
+        for btn, code, tip in [
+            (self.btn_status_pending, "PENDING", "Bons confirmés en Caisse en attente de scan et sortie"),
+            (self.btn_status_completed, "COMPLETED", "Bons déjà scannés et sortis (Bon de Sortie / Bon Rouge)"),
+            (self.btn_status_all, "ALL", "Afficher tous les bons (en attente et complétés)"),
+        ]:
+            btn.setCheckable(True)
+            btn.setFixedHeight(32)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setStyleSheet(FILTER_CHIP_QSS)
+            btn.setToolTip(tip)
+            btn.setProperty("status_code", code)
+            self._status_filter_group.addButton(btn)
+            top_row.addWidget(btn)
+
+        self.btn_status_pending.setChecked(True)
+        self._status_filter_group.buttonClicked.connect(lambda _b: self._apply_order_filters())
+
+        top_row.addStretch(1)
+
+        self.lbl_status = QLabel("Double-cliquez sur un bon pour scanner")
+        self.lbl_status.setStyleSheet(
+            f"font-size: 11.5px; font-weight: 700; color: {BRAND_TEAL}; background-color: {BRAND_TEAL_TINT}; "
+            f"border: none; border-radius: 6px; padding: 5px 10px;"
+        )
+        top_row.addWidget(self.lbl_status)
 
         btn_refresh = QPushButton("Actualiser")
         btn_refresh.setIcon(get_duotone_icon("refresh", 16))
         btn_refresh.setIconSize(QSize(16, 16))
         btn_refresh.setCursor(Qt.PointingHandCursor)
         btn_refresh.setFixedHeight(34)
-        btn_refresh.setToolTip("Actualiser la file d'attente (F5 / Ctrl+R)")
+        btn_refresh.setToolTip("Actualiser la liste des bons (F5 / Ctrl+R)")
         btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.refresh_dispatch_queue)
-        h_layout.addWidget(btn_refresh)
+        top_row.addWidget(btn_refresh)
+        header_v.addLayout(top_row)
 
-        self.lbl_status = QLabel("Prêt")
-        self.lbl_status.setStyleSheet(
-            f"font-size: 11px; font-weight: 700; color: {BRAND_TEAL}; background-color: {BRAND_TEAL_TINT}; "
-            f"border: none; border-radius: 4px; padding: 4px 10px;"
-        )
-        h_layout.addWidget(self.lbl_status)
-        header_v.addLayout(h_layout)
-
-        # Filter & Search Row
+        # Row 2: Type Filter Chips (Tous / PC / PL / CR) + Search Input
         f_layout = QHBoxLayout()
         f_layout.setSpacing(8)
 
         self._type_filter_group = QButtonGroup(self)
         self._type_filter_group.setExclusive(True)
 
-        self.btn_filter_all = QPushButton("Tous (0)")
+        self.btn_filter_all = QPushButton("Tous types (0)")
         self.btn_filter_pc = QPushButton("PC (0)")
         self.btn_filter_pl = QPushButton("PL (0)")
         self.btn_filter_cr = QPushButton("CR (0)")
 
         for btn, code, tip in [
-            (self.btn_filter_all, "ALL", "Afficher tous les bons en attente de sortie"),
+            (self.btn_filter_all, "ALL", "Afficher tous les types de bons"),
             (self.btn_filter_pc, "PC", "Paiement Complet / Versement (PC)"),
             (self.btn_filter_pl, "PL", "Paiement à la Livraison (PL)"),
             (self.btn_filter_cr, "CR", "Paiement à Crédit (CR)"),
@@ -193,46 +212,54 @@ class DispatchDeskWidget(QWidget):
         self._type_filter_group.buttonClicked.connect(lambda _b: self._apply_order_filters())
 
         self.txt_order_search = QLineEdit()
-        self.txt_order_search.setFixedHeight(32)
+        self.txt_order_search.setFixedHeight(34)
         self.txt_order_search.setClearButtonEnabled(True)
         self.txt_order_search.setStyleSheet(INPUT_QSS)
         self.txt_order_search.setPlaceholderText(
-            "Rechercher bon, client ou tél..."
+            "Rechercher ou scanner N° Bon, N° Sortie, Client ou Téléphone..."
         )
         self.txt_order_search.textChanged.connect(self._apply_order_filters)
-        self.txt_order_search.returnPressed.connect(self._apply_order_filters)
+        self.txt_order_search.returnPressed.connect(self._on_search_enter)
         f_layout.addWidget(self.txt_order_search, stretch=1)
         header_v.addLayout(f_layout)
         layout.addWidget(header)
 
-        # 2. Expected Items Table Requiring Physical Serial Scan
-        self.table = QTableWidget(0, 6)
+        # 2. Bons Table (Pending & Completed)
+        self.table = QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels([
-            "Produit",
-            "Couleur",
-            "Réf",
-            "N° de Série",
-            "Statut",
-            "Heure",
+            "N° Bon",
+            "Type",
+            "Client",
+            "Date",
+            "Articles",
+            "Total TTC",
+            "Statut Sortie",
+            "Action",
         ])
         self.table.setStyleSheet(BUREAUX_TABLE_QSS)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(40)
+        self.table.verticalHeader().setDefaultSectionSize(46)
         self.table.horizontalHeader().setFixedHeight(38)
         self.table.setShowGrid(True)
         self.table.setAlternatingRowColors(True)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.doubleClicked.connect(self._on_table_double_clicked)
 
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        hdr = self.table.horizontalHeader()
+        hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(2, QHeaderView.Stretch)
+        hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(7, QHeaderView.Fixed)
+        self.table.setColumnWidth(7, 155)
         layout.addWidget(self.table, 1)
 
-        # Empty State when no orders / items match
+        # Empty State
         self.dispatch_empty_state = QFrame()
         self.dispatch_empty_state.setObjectName("DispatchEmptyState")
         self.dispatch_empty_state.setStyleSheet(
@@ -248,17 +275,19 @@ class DispatchDeskWidget(QWidget):
         de_icon.setPixmap(get_duotone_icon("truck_delivery", 40).pixmap(40, 40))
         de_lay.addWidget(de_icon)
 
-        self.lbl_dispatch_empty_title = QLabel("Aucun bon en attente de sortie")
+        self.lbl_dispatch_empty_title = QLabel("Aucun bon trouvé")
         self.lbl_dispatch_empty_title.setAlignment(Qt.AlignCenter)
         self.lbl_dispatch_empty_title.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {TEXT_PRIMARY};")
         de_lay.addWidget(self.lbl_dispatch_empty_title)
 
-        self.lbl_dispatch_empty_desc = QLabel("Aucun bon prêt pour expédition ne correspond aux filtres actifs.")
+        self.lbl_dispatch_empty_desc = QLabel(
+            "Aucun bon ne correspond aux filtres sélectionnés (En attente / Complétés)."
+        )
         self.lbl_dispatch_empty_desc.setAlignment(Qt.AlignCenter)
         self.lbl_dispatch_empty_desc.setStyleSheet("font-size: 12px; color: #64748B;")
         de_lay.addWidget(self.lbl_dispatch_empty_desc)
 
-        self.btn_empty_reset = QPushButton("Réinitialiser les filtres")
+        self.btn_empty_reset = QPushButton("Afficher tous les bons")
         self.btn_empty_reset.setIcon(get_duotone_icon("refresh", 16))
         self.btn_empty_reset.setIconSize(QSize(16, 16))
         self.btn_empty_reset.setFixedHeight(34)
@@ -269,6 +298,7 @@ class DispatchDeskWidget(QWidget):
         self.dispatch_empty_state.setVisible(False)
         layout.addWidget(self.dispatch_empty_state, 1)
 
+        # Shortcuts
         self._shortcut_f5 = QShortcut(QKeySequence(Qt.Key_F5), self)
         self._shortcut_f5.setContext(Qt.WidgetWithChildrenShortcut)
         self._shortcut_f5.activated.connect(self.refresh_dispatch_queue)
@@ -281,60 +311,19 @@ class DispatchDeskWidget(QWidget):
         self._shortcut_esc.setContext(Qt.WidgetWithChildrenShortcut)
         self._shortcut_esc.activated.connect(self._reset_order_filters)
 
-        # 3. Flat Bottom Scanner Console
-        scan_box = QFrame()
-        scan_box.setObjectName("DispatchScanConsole")
-        scan_box.setStyleSheet(f"""
-            QFrame#DispatchScanConsole {{
-                background-color: {CARD_BG};
-                border: none;
-                border-top: 1px solid {BORDER_SUBTLE};
-            }}
-            QFrame#DispatchScanConsole QLabel {{
-                border: none;
-                background: transparent;
-            }}
-        """)
-        s_layout = QVBoxLayout(scan_box)
-        s_layout.setContentsMargins(4, 10, 4, 4)
-        s_layout.setSpacing(6)
-
-        input_row = QHBoxLayout()
-        input_row.setSpacing(10)
-        self.txt_scan = QLineEdit()
-        self.txt_scan.setFixedHeight(38)
-        self.txt_scan.setStyleSheet(INPUT_QSS + "QLineEdit { font-size: 13px; }")
-        self.txt_scan.setPlaceholderText(
-            "Scanner le N° de Série..."
-        )
-        self.txt_scan.returnPressed.connect(self._on_manual_scan_submit)
-        input_row.addWidget(self.txt_scan, stretch=2)
-
-        self.btn_emit_sortie = QPushButton("Valider && Imprimer Bon de Sortie")
-        self.btn_emit_sortie.setIcon(get_duotone_icon("print_white", 16))
-        self.btn_emit_sortie.setIconSize(QSize(16, 16))
-        self.btn_emit_sortie.setCursor(Qt.PointingHandCursor)
-        self.btn_emit_sortie.setFixedHeight(40)
-        self.btn_emit_sortie.setEnabled(False)
-        self.btn_emit_sortie.setToolTip("Sélectionnez un bon payé/validé puis scannez les appareils pour activer la sortie.")
-        self.btn_emit_sortie.setStyleSheet(PRIMARY_CTA_QSS + "QPushButton { font-size: 12.5px; }")
-        self.btn_emit_sortie.clicked.connect(self._emit_bon_sortie)
-        input_row.addWidget(self.btn_emit_sortie, stretch=1)
-
-        s_layout.addLayout(input_row)
-        layout.addWidget(scan_box)
-
     def refresh_dispatch_queue(self) -> None:
         orders: List[Dict[str, Any]] = []
         if self.data_manager and hasattr(self.data_manager, "bonds"):
             try:
+                orders = self.data_manager.bonds.get_dispatch_order_queue(include_completed=True) or []
+            except TypeError:
                 orders = self.data_manager.bonds.get_dispatch_order_queue() or []
             except Exception as err:
                 logger.error(f"Error fetching dispatch queue: {err}")
                 orders = []
 
         self._all_dispatch_orders = orders
-        self._update_type_filter_counts()
+        self._update_filter_counts()
         self._apply_order_filters()
 
     @staticmethod
@@ -346,39 +335,65 @@ class DispatchDeskWidget(QWidget):
             return "CR"
         return "PC"
 
-    def _update_type_filter_counts(self) -> None:
-        orders = getattr(self, "_all_dispatch_orders", [])
+    @staticmethod
+    def _is_order_completed(order: Dict[str, Any]) -> bool:
+        if "Is_Completed" in order:
+            return bool(order.get("Is_Completed"))
+        return str(order.get("Status") or "").upper() in ("COMPLETED", "DISPATCHED_PENDING_COD")
+
+    def _update_filter_counts(self) -> None:
+        orders = self._all_dispatch_orders
+        pending_cnt = sum(1 for o in orders if not self._is_order_completed(o))
+        completed_cnt = len(orders) - pending_cnt
+
+        self.btn_status_pending.setText(f"En attente ({pending_cnt})")
+        self.btn_status_completed.setText(f"Complétés ({completed_cnt})")
+        self.btn_status_all.setText(f"Tous ({len(orders)})")
+
         pc_cnt = sum(1 for o in orders if self._order_short_type(o) == "PC")
         pl_cnt = sum(1 for o in orders if self._order_short_type(o) == "PL")
         cr_cnt = sum(1 for o in orders if self._order_short_type(o) == "CR")
-        if hasattr(self, "btn_filter_all"):
-            self.btn_filter_all.setText(f"Tous ({len(orders)})")
-            self.btn_filter_pc.setText(f"PC ({pc_cnt})")
-            self.btn_filter_pl.setText(f"PL ({pl_cnt})")
-            self.btn_filter_cr.setText(f"CR ({cr_cnt})")
+        self.btn_filter_all.setText(f"Tous types ({len(orders)})")
+        self.btn_filter_pc.setText(f"PC ({pc_cnt})")
+        self.btn_filter_pl.setText(f"PL ({pl_cnt})")
+        self.btn_filter_cr.setText(f"CR ({cr_cnt})")
 
     def _apply_order_filters(self) -> None:
-        orders = getattr(self, "_all_dispatch_orders", [])
-        active_code = "ALL"
-        if hasattr(self, "_type_filter_group") and self._type_filter_group.checkedButton():
-            active_code = str(self._type_filter_group.checkedButton().property("filter_code") or "ALL")
-        q = self.txt_order_search.text().strip().lower() if hasattr(self, "txt_order_search") else ""
+        orders = self._all_dispatch_orders
+        status_code = "ALL"
+        if self._status_filter_group.checkedButton():
+            status_code = str(self._status_filter_group.checkedButton().property("status_code") or "ALL")
+
+        type_code = "ALL"
+        if self._type_filter_group.checkedButton():
+            type_code = str(self._type_filter_group.checkedButton().property("filter_code") or "ALL")
+
+        q = self.txt_order_search.text().strip().lower()
         q_norm = q.replace("-", "").replace(" ", "")
 
         filtered: List[Dict[str, Any]] = []
         for o in orders:
-            short_t = self._order_short_type(o)
-            if active_code != "ALL" and short_t != active_code:
+            is_comp = self._is_order_completed(o)
+            if status_code == "PENDING" and is_comp:
                 continue
+            if status_code == "COMPLETED" and not is_comp:
+                continue
+
+            short_t = self._order_short_type(o)
+            if type_code != "ALL" and short_t != type_code:
+                continue
+
             if q:
                 ord_num = str(o.get("Order_Number") or "").lower()
                 ord_norm = ord_num.replace("-", "").replace(" ", "")
+                exit_num = str(o.get("Exit_Bond_Number") or "").lower()
                 client_name = str(o.get("Client_Name") or "").lower()
                 phone = str(o.get("Client_Phone") or o.get("Phone") or "").lower()
                 phone_norm = phone.replace("-", "").replace(" ", "")
                 if not (
                     q in ord_num
                     or (q_norm and q_norm in ord_norm)
+                    or q in exit_num
                     or q in client_name
                     or q in phone
                     or (q_norm and q_norm in phone_norm)
@@ -387,201 +402,122 @@ class DispatchDeskWidget(QWidget):
             filtered.append(o)
 
         self._dispatch_orders = filtered
-        self.cbo_orders.blockSignals(True)
-        self.cbo_orders.clear()
-        for o in filtered:
-            short_t = self._order_short_type(o)
-            phone_str = str(o.get("Client_Phone") or o.get("Phone") or "").strip()
-            phone_suffix = f" • {phone_str}" if phone_str else ""
-            label = f"[{short_t}] {o.get('Order_Number')} — {o.get('Client_Name')}{phone_suffix}"
-            self.cbo_orders.addItem(label, o.get("Order_ID"))
-        self.cbo_orders.blockSignals(False)
+        self._populate_bons_table()
 
-        if filtered:
-            self._on_order_changed(0)
-        else:
-            self._active_order = None
-            self._expected_items = []
-            self.table.setRowCount(0)
-            self.btn_emit_sortie.setEnabled(False)
-            self.btn_emit_sortie.setToolTip("Sélectionnez un bon en attente de sortie avant d'émettre le Bon de Sortie")
-            if hasattr(self, "dispatch_empty_state"):
-                self.table.setVisible(False)
-                self.dispatch_empty_state.setVisible(True)
-
-    def _on_order_changed(self, idx: int) -> None:
-        if idx < 0 or idx >= len(self._dispatch_orders):
-            return
-        self._active_order = self._dispatch_orders[idx]
-        self._expected_items = []
-
-        for line in self._active_order.get("lines", []):
-            rem_qty = max(0, int(line.get("Quantity_Ordered") or 1) - int(line.get("Quantity_Dispatched") or 0))
-            for _ in range(rem_qty):
-                self._expected_items.append({
-                    "line_id": int(line.get("Line_ID") or 1),
-                    "product_id": int(line.get("Product_ID") or 0),
-                    "model": f"{line.get('Brand_Mark', '')} {line.get('Product_Name', '')}".strip(),
-                    "color": str(line.get("Color_Finish") or "Standard"),
-                    "barcode": str(line.get("Barcode") or ""),
-                    "serial": "",
-                    "status": "EN ATTENTE SCAN",
-                    "timestamp": "-",
-                })
-        self._refresh_table()
-
-    def _refresh_table(self) -> None:
+    def _populate_bons_table(self) -> None:
         self.table.setRowCount(0)
-        all_verified = len(self._expected_items) > 0
+        has_rows = len(self._dispatch_orders) > 0
+        self.table.setVisible(has_rows)
+        self.dispatch_empty_state.setVisible(not has_rows)
 
-        for item in self._expected_items:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
-            self.table.setItem(row, 0, QTableWidgetItem(item["model"]))
+        bold_font = QFont("Segoe UI", 10, QFont.Bold)
+        for row_idx, order in enumerate(self._dispatch_orders):
+            self.table.insertRow(row_idx)
+            is_comp = self._is_order_completed(order)
+            short_t = self._order_short_type(order)
+            ord_num = str(order.get("Order_Number") or f"#{order.get('Order_ID', '')}")
+            client_name = str(order.get("Client_Name") or "Client Comptoir")
+            phone = str(order.get("Client_Phone") or "").strip()
+            client_disp = f"{client_name} ({phone})" if phone else client_name
+            date_disp = str(order.get("Order_Date") or "")[:16]
 
-            it_col = QTableWidgetItem(item["color"])
-            it_col.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row, 1, it_col)
+            lines = order.get("lines") or []
+            total_units = sum(int(l.get("Quantity_Ordered") or 0) for l in lines)
+            disp_units = sum(int(l.get("Quantity_Dispatched") or 0) for l in lines)
+            articles_disp = f"{disp_units}/{total_units} unité(s) ({len(lines)} réf)"
+            total_ttc = float(order.get("Total_Amount_TTC") or 0.0)
 
-            it_bc = QTableWidgetItem(item["barcode"])
-            it_bc.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row, 2, it_bc)
+            it_num = QTableWidgetItem(ord_num)
+            it_num.setFont(bold_font)
+            it_num.setData(Qt.UserRole, order)
+            self.table.setItem(row_idx, 0, it_num)
 
-            it_sn = QTableWidgetItem(item["serial"] or "—")
-            it_sn.setFont(QFont("Consolas", 10, QFont.Bold))
-            self.table.setItem(row, 3, it_sn)
+            it_type = QTableWidgetItem(short_t)
+            it_type.setTextAlignment(Qt.AlignCenter)
+            it_type.setFont(bold_font)
+            type_colors = {"PC": "#0F766E", "PL": "#B45309", "CR": "#1D4ED8"}
+            it_type.setForeground(QColor(type_colors.get(short_t, "#334155")))
+            self.table.setItem(row_idx, 1, it_type)
 
-            st_item = QTableWidgetItem(item["status"])
-            st_item.setTextAlignment(Qt.AlignCenter)
-            st_item.setFont(QFont("Segoe UI", 10, QFont.Bold))
-            if item["status"] == "VÉRIFIÉ (IN_STOCK)":
-                st_item.setForeground(QColor("#16A34A"))
+            self.table.setItem(row_idx, 2, QTableWidgetItem(client_disp))
+
+            it_date = QTableWidgetItem(date_disp)
+            it_date.setTextAlignment(Qt.AlignCenter)
+            it_date.setForeground(QColor("#475569"))
+            self.table.setItem(row_idx, 3, it_date)
+
+            it_art = QTableWidgetItem(articles_disp)
+            it_art.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row_idx, 4, it_art)
+
+            it_tot = QTableWidgetItem(f"{format_money(total_ttc)} DA")
+            it_tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            it_tot.setFont(bold_font)
+            self.table.setItem(row_idx, 5, it_tot)
+
+            if is_comp:
+                exit_no = str(order.get("Exit_Bond_Number") or "")
+                doc_tag = "Bon Rouge" if order.get("Exit_Doc_Type") == "BON_ROUGE" else "Bon de Sortie"
+                st_text = f"Complété • {doc_tag}" + (f" ({exit_no})" if exit_no else "")
+                st_color = "#B91C1C" if order.get("Exit_Doc_Type") == "BON_ROUGE" else "#15803D"
             else:
-                st_item.setForeground(QColor("#D97706"))
-                all_verified = False
-            self.table.setItem(row, 4, st_item)
+                st_text = "En attente de scan"
+                st_color = "#D97706"
 
-            it_ts = QTableWidgetItem(item["timestamp"])
-            it_ts.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row, 5, it_ts)
+            it_st = QTableWidgetItem(st_text)
+            it_st.setTextAlignment(Qt.AlignCenter)
+            it_st.setFont(QFont("Segoe UI", 9, QFont.Bold))
+            it_st.setForeground(QColor(st_color))
+            self.table.setItem(row_idx, 6, it_st)
 
-        self.btn_emit_sortie.setEnabled(all_verified)
-        if all_verified:
-            self.btn_emit_sortie.setToolTip("Valider la sortie physique et imprimer le Bon de Sortie (0.00 DA impact Caisse)")
-        elif not self._active_order:
-            self.btn_emit_sortie.setToolTip("Sélectionnez un bon en attente de sortie")
-        else:
-            self.btn_emit_sortie.setToolTip("Scannez tous les N° de Série attendus avant d'émettre le Bon de Sortie")
+            # Action Button Cell
+            cell_w = QWidget()
+            cell_lay = QHBoxLayout(cell_w)
+            cell_lay.setContentsMargins(6, 4, 6, 4)
+            cell_lay.setAlignment(Qt.AlignCenter)
 
-        if hasattr(self, "dispatch_empty_state"):
-            has_rows = len(self._expected_items) > 0
-            self.table.setVisible(has_rows)
-            self.dispatch_empty_state.setVisible(not has_rows)
+            btn_open = QPushButton("Voir / PDF" if is_comp else "Scanner Bon")
+            btn_open.setFixedHeight(32)
+            btn_open.setCursor(Qt.PointingHandCursor)
+            btn_open.setStyleSheet(SLATE_OUTLINE_QSS if is_comp else PRIMARY_CTA_QSS)
+            btn_open.clicked.connect(lambda _=False, o=order: self.open_bon_scan_dialog(o))
+            cell_lay.addWidget(btn_open)
+            self.table.setCellWidget(row_idx, 7, cell_w)
 
-    def _on_manual_scan_submit(self) -> None:
-        raw = self.txt_scan.text().strip()
-        self.txt_scan.clear()
-        if raw:
-            self.process_scanned_barcode(raw)
+    def _on_table_double_clicked(self, index) -> None:
+        row = index.row()
+        if 0 <= row < len(self._dispatch_orders):
+            self.open_bon_scan_dialog(self._dispatch_orders[row])
+
+    def _on_search_enter(self) -> None:
+        if len(self._dispatch_orders) == 1:
+            self.open_bon_scan_dialog(self._dispatch_orders[0])
+
+    def open_bon_scan_dialog(self, order_data: Dict[str, Any]) -> None:
+        dlg = DispatchBonScanDialog(self.data_manager, order_data, parent=self)
+        self._active_dialog = dlg
+        try:
+            if dlg.exec() == DispatchBonScanDialog.Accepted and dlg.dispatch_result:
+                ord_num = str(order_data.get("Order_Number") or "")
+                codes = [
+                    c
+                    for st in dlg._line_states
+                    for c in st.get("scanned_codes", [])
+                ]
+                self.stockDispatched.emit(ord_num, codes)
+                self.refresh_dispatch_queue()
+        finally:
+            self._active_dialog = None
 
     def process_scanned_barcode(self, raw_scan: str) -> None:
-        """Validates scanned physical serial number against expected order lines."""
-        clean_scan = raw_scan.strip().upper()
-        if not clean_scan:
+        """Routes hardware HID barcode scanner input either to the active scan dialog or search bar."""
+        clean = str(raw_scan or "").strip()
+        if not clean:
             return
-
-        scanned_product_id = None
-        serial_part = clean_scan
-        if "::" in clean_scan:
-            parts = clean_scan.split("::", 1)
-            if parts[0].isdigit():
-                scanned_product_id = int(parts[0])
-                serial_part = parts[1].strip()
-
-        if any(i["serial"] == serial_part for i in self._expected_items if i["serial"]):
-            self.lbl_status.setText(f"Rejeté : N° de Série ({serial_part}) déjà scanné sur ce bon")
-            self.lbl_status.setStyleSheet(
-                "font-size: 11px; font-weight: 700; color: #DC2626; background-color: #FEF2F2; "
-                "border: 1px solid #FECACA; border-radius: 4px; padding: 4px 10px;"
-            )
-            QMessageBox.warning(self, "Doublon Détecté", f"Le N° de Série {serial_part} est déjà affecté à ce bon.")
+        if self._active_dialog is not None and self._active_dialog.isVisible():
+            self._active_dialog.process_scan(clean)
             return
-
-        db_serial = None
-        if self.data_manager and hasattr(self.data_manager, "serials"):
-            db_serial = self.data_manager.serials.get_serial_details(serial_part)
-            if db_serial:
-                if db_serial.get("Status") != "IN_STOCK":
-                    self.lbl_status.setText(
-                        f"Rejeté : {serial_part} n'est pas en stock ({db_serial.get('Status')})"
-                    )
-                    QMessageBox.critical(
-                        self,
-                        "N° de Série Non Disponible",
-                        f"Le N° de Série {serial_part} a le statut '{db_serial.get('Status')}' (Attendu: IN_STOCK).",
-                    )
-                    return
-                scanned_product_id = int(db_serial["Product_ID"])
-
-        for item in self._expected_items:
-            if item["status"] != "VÉRIFIÉ (IN_STOCK)":
-                if scanned_product_id is not None and item["product_id"] != scanned_product_id:
-                    continue
-                item["serial"] = serial_part
-                item["status"] = "VÉRIFIÉ (IN_STOCK)"
-                item["timestamp"] = datetime.now().strftime("%H:%M:%S")
-                self.lbl_status.setText(f"N° de Série vérifié : {serial_part}")
-                self.lbl_status.setStyleSheet(
-                    "font-size: 11px; font-weight: 700; color: #0E7471; background-color: #E6F4F1; "
-                    "border: 1px solid #BCE3DC; border-radius: 4px; padding: 4px 10px;"
-                )
-                self._refresh_table()
-                return
-
-        QMessageBox.warning(
-            self,
-            "Produit Non Attendu",
-            f"Le numéro de série scanné ({serial_part}) ne correspond à aucune ligne restante sur ce bon.",
-        )
-
-    def _emit_bon_sortie(self) -> None:
-        if not self._active_order:
-            return
-
-        order_id = int(self._active_order["Order_ID"])
-        order_num = str(self._active_order["Order_Number"])
-        invoice_id = int(self._active_order.get("Invoice_ID") or order_id)
-        scans_payload = [
-            {"order_line_id": item["line_id"], "serial_number": item["serial"]}
-            for item in self._expected_items
-            if item["serial"]
-        ]
-
-        try:
-            if self.data_manager and hasattr(self.data_manager, "bonds"):
-                uid = int((getattr(self.data_manager, "current_user", None) or {}).get("User_ID") or 1)
-                res = self.data_manager.bonds.validate_and_dispatch_serials(
-                    order_id=order_id,
-                    invoice_id=invoice_id,
-                    storekeeper_user_id=uid,
-                    scanned_serial_numbers=scans_payload,
-                )
-                exit_num = res["exit_bond_number"]
-                gate_pass = res["gate_pass"]
-            else:
-                exit_num = f"BS-2026-{order_id:04d}"
-                gate_pass = f"GATE-{order_id:04d}"
-
-            serials_list = [s["serial_number"] for s in scans_payload]
-            self.stockDispatched.emit(order_num, serials_list)
-            QMessageBox.information(
-                self,
-                "Bon de Sortie Émis",
-                f"Bon de Sortie ({exit_num}) généré avec succès.\n"
-                f"Code laissez-passer : {gate_pass}\n"
-                f"N° de Série sortis : {', '.join(serials_list)}\n"
-                "Impact financier Caisse : 0.00 DA (Mouvement logistique pur).",
-            )
-            self.refresh_dispatch_queue()
-        except Exception as err:
-            QMessageBox.critical(self, "Erreur Bon de Sortie", str(err))
+        self.txt_order_search.setText(clean)
+        self._apply_order_filters()
+        if len(self._dispatch_orders) == 1:
+            self.open_bon_scan_dialog(self._dispatch_orders[0])

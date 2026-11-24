@@ -7,4 +7,5 @@ Espace dédié à l'entrée **Versement** de la barre de navigation latérale (`
 - `versement_tab.py` : Vue principale `VersementTab` configurant `BonPaymentsWorkspaceWidget` pour les bons de type `BON_VERSEMENT`.
 - `bon_payments_workspace.py` : Espace générique réutilisable `BonPaymentsWorkspaceWidget` affichant les indicateurs clés, la recherche/filtres par statut et le tableau structuré de tous les bons avec actions directes par ligne (`+ Versement` et `Modifier`).
 - `bon_payments_dialogs.py` : Fenêtres modales `BonPaymentAddDialog` (ajout rapide d'une tranche avec choix visuel du mode de paiement et bouton `Tout Solder`) et `BonPaymentsManageDialog` (liste des versements d'un bon avec édition inline directe et suppression).
+- `bon_products_edit_dialog.py` : Fenêtre modale complète `BonProductsEditDialog` permettant de modifier manuellement les produits d'un bon de versement (recherche catalogue manuelle, ajout de nouveaux produits, modification des quantités/prix, suppression et recalcul atomique du total et du reste).
 - `README.md` : Documentation de ce répertoire.

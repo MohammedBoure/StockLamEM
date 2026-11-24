@@ -225,7 +225,12 @@ class ApplianceWorkflowTab(QWidget):
         if c_idx >= 0:
             self.desk_tabs.setTabText(c_idx, f"2. Caisse ({c_count})" if c_count > 0 else "2. Caisse")
 
-        d_count = len(getattr(self.dispatch_desk, "_all_dispatch_orders", getattr(self.dispatch_desk, "_dispatch_orders", [])) or [])
+        all_disp = getattr(self.dispatch_desk, "_all_dispatch_orders", getattr(self.dispatch_desk, "_dispatch_orders", [])) or []
+        d_count = sum(
+            1
+            for o in all_disp
+            if not (o.get("Is_Completed") or str(o.get("Status") or "").upper() in ("COMPLETED", "DISPATCHED_PENDING_COD"))
+        )
         d_idx = self.desk_tabs.indexOf(self.dispatch_desk)
         if d_idx >= 0:
             self.desk_tabs.setTabText(d_idx, f"3. Sortie Magasin ({d_count})" if d_count > 0 else "3. Sortie Magasin")

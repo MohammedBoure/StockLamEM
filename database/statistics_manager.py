@@ -680,3 +680,128 @@ class StatisticsManager:
         except Exception as e:
             logging.error(f"Erreur Reception Trend: {e}")
             return []
+
+    def get_available_profit_years(self):
+        """Returns distinct years that have sales records, always including current year."""
+        from datetime import datetime as _dt
+        current_year = _dt.now().year
+        years = {current_year}
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    """
+                    SELECT DISTINCT YEAR(Invoice_Date) AS yr
+                    FROM Sales_Invoices
+                    WHERE Status NOT IN ('Draft', 'Cancelled') AND Invoice_Date IS NOT NULL
+                    ORDER BY yr DESC
+                    """
+                )
+                for row in cursor.fetchall() or []:
+                    if row.get("yr"):
+                        years.add(int(row["yr"]))
+        except Exception as e:
+            logging.error(f"Error fetching profit years: {e}")
+        return sorted(years, reverse=True)
+
+    def get_monthly_profit_report(self, year: int):
+        """
+        Computes monthly sales revenue, weighted average purchase cost (PMP per Product_ID),
+        and net profit (prix_vente - prix_moyen) for each of the 12 months of `year`.
+        Covers both POS/Wholesale Sales_Details and Bureaux Sales_Order_Lines_Theoretical.
+        """
+        months = [
+            {
+                "month": m,
+                "revenue": 0.0,
+                "avg_cost": 0.0,
+                "profit": 0.0,
+                "units_sold": 0.0,
+                "sales_count": 0,
+            }
+            for m in range(1, 13)
+        ]
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                query = """
+                    SELECT
+                        m_num AS month,
+                        COALESCE(SUM(line_revenue), 0) AS revenue,
+                        COALESCE(SUM(line_avg_cost), 0) AS avg_cost,
+                        COALESCE(SUM(line_revenue - line_avg_cost), 0) AS profit,
+                        COALESCE(SUM(qty), 0) AS units_sold,
+                        COUNT(DISTINCT inv_id) AS sales_count
+                    FROM (
+                        -- 1. POS & Wholesale Sales_Details
+                        SELECT
+                            MONTH(si.Invoice_Date) AS m_num,
+                            si.Invoice_ID AS inv_id,
+                            sd.Qty_Sold AS qty,
+                            COALESCE(sd.Line_Total_TTC, sd.Qty_Sold * sd.Unit_Price_HT * (1 + COALESCE(sd.TVA_Percent, 0) / 100.0)) AS line_revenue,
+                            sd.Qty_Sold * COALESCE(pmp.avg_buy_price, 0) AS line_avg_cost
+                        FROM Sales_Invoices si
+                        JOIN Sales_Details sd ON sd.Invoice_ID = si.Invoice_ID
+                        LEFT JOIN (
+                            SELECT
+                                Product_ID,
+                                CASE
+                                    WHEN SUM(COALESCE(Quantity_Initial, 0)) > 0
+                                    THEN SUM(COALESCE(Quantity_Initial, 0) * COALESCE(Unit_Price_Received, 0)) / SUM(COALESCE(Quantity_Initial, 0))
+                                    ELSE COALESCE(AVG(Unit_Price_Received), 0)
+                                END AS avg_buy_price
+                            FROM Inventory_Batches
+                            WHERE Unit_Price_Received IS NOT NULL AND Unit_Price_Received > 0
+                            GROUP BY Product_ID
+                        ) pmp ON pmp.Product_ID = sd.Product_ID
+                        WHERE YEAR(si.Invoice_Date) = %s
+                          AND si.Status NOT IN ('Draft', 'Cancelled')
+
+                        UNION ALL
+
+                        -- 2. Bureaux Orders (Sales_Order_Lines_Theoretical) linked to non-cancelled invoices without Sales_Details
+                        SELECT
+                            MONTH(si.Invoice_Date) AS m_num,
+                            si.Invoice_ID AS inv_id,
+                            sol.Quantity_Ordered AS qty,
+                            COALESCE(sol.Line_Total_TTC, sol.Quantity_Ordered * sol.Unit_Price_TTC) AS line_revenue,
+                            sol.Quantity_Ordered * COALESCE(pmp.avg_buy_price, 0) AS line_avg_cost
+                        FROM Sales_Invoices si
+                        JOIN Sales_Order_Lines_Theoretical sol ON sol.Order_ID = si.Order_ID
+                        LEFT JOIN (
+                            SELECT
+                                Product_ID,
+                                CASE
+                                    WHEN SUM(COALESCE(Quantity_Initial, 0)) > 0
+                                    THEN SUM(COALESCE(Quantity_Initial, 0) * COALESCE(Unit_Price_Received, 0)) / SUM(COALESCE(Quantity_Initial, 0))
+                                    ELSE COALESCE(AVG(Unit_Price_Received), 0)
+                                END AS avg_buy_price
+                            FROM Inventory_Batches
+                            WHERE Unit_Price_Received IS NOT NULL AND Unit_Price_Received > 0
+                            GROUP BY Product_ID
+                        ) pmp ON pmp.Product_ID = sol.Product_ID
+                        WHERE YEAR(si.Invoice_Date) = %s
+                          AND si.Status NOT IN ('Draft', 'Cancelled')
+                          AND si.Order_ID IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM Sales_Details sd2 WHERE sd2.Invoice_ID = si.Invoice_ID
+                          )
+                    ) combined
+                    GROUP BY m_num
+                    ORDER BY m_num ASC
+                """
+                cursor.execute(query, (int(year), int(year)))
+                for row in cursor.fetchall() or []:
+                    m_idx = int(row.get("month") or 0) - 1
+                    if 0 <= m_idx < 12:
+                        months[m_idx] = {
+                            "month": m_idx + 1,
+                            "revenue": float(row.get("revenue") or 0.0),
+                            "avg_cost": float(row.get("avg_cost") or 0.0),
+                            "profit": float(row.get("profit") or 0.0),
+                            "units_sold": float(row.get("units_sold") or 0.0),
+                            "sales_count": int(row.get("sales_count") or 0),
+                        }
+        except Exception as e:
+            logging.error(f"Error computing monthly profit report for {year}: {e}")
+        return months

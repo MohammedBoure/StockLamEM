@@ -494,6 +494,8 @@ class MainWindow(QMainWindow):
             widget = DashboardTab(self.data_manager)
             if self.has_permission("tab_dash_overview"):
                 widget.tabs.addTab(widget.page_overview, "Vue d'ensemble")
+            if self.has_permission("tab_dash_overview") or self.has_permission("tab_dash_valuation"):
+                widget.tabs.addTab(widget.page_monthly_profit, "Bénéfices Mensuels")
             if self.has_permission("tab_dash_reception"):
                 widget.tabs.addTab(widget.page_family_reception, "Entrées par Famille")
             if self.has_permission("tab_dash_consumption"):

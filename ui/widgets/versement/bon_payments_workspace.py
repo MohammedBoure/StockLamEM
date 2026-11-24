@@ -38,6 +38,7 @@ from .bon_payments_dialogs import (
     BonPaymentsManageDialog,
     _resolve_bonds_manager,
 )
+from .bon_products_edit_dialog import BonProductsEditDialog
 
 try:
     import qtawesome as qta
@@ -394,7 +395,7 @@ class BonPaymentsWorkspaceWidget(QWidget):
         hdr.setSectionResizeMode(8, QHeaderView.Fixed)
         self.bons_table.setColumnWidth(8, 84)
         hdr.setSectionResizeMode(9, QHeaderView.Fixed)
-        self.bons_table.setColumnWidth(9, 260)
+        self.bons_table.setColumnWidth(9, 325)
 
         self.bons_table.cellDoubleClicked.connect(self._on_row_double_clicked)
         tc_lay.addWidget(self.bons_table, 1)
@@ -901,8 +902,35 @@ class BonPaymentsWorkspaceWidget(QWidget):
             )
             btn_edit.clicked.connect(lambda _=False, b=bon: self.open_manage_payments_for_bon(b))
 
+            btn_edit_products = QPushButton("Produits")
+            btn_edit_products.setObjectName("btn_row_edit_products")
+            btn_edit_products.setFixedHeight(28)
+            btn_edit_products.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            btn_edit_products.setCursor(Qt.PointingHandCursor)
+            btn_edit_products.setToolTip("Modifier les produits, quantités et prix de ce bon")
+            btn_edit_products.setStyleSheet(
+                """
+                QPushButton#btn_row_edit_products {
+                    background-color: #FFFFFF;
+                    border: 1px solid #0E7471;
+                    border-radius: 5px;
+                    color: #0E7471;
+                    font-size: 11px;
+                    font-weight: 700;
+                    padding: 0px 8px;
+                    min-height: 26px;
+                    max-height: 26px;
+                }
+                QPushButton#btn_row_edit_products:hover {
+                    background-color: #CCFBF1;
+                }
+                """
+            )
+            btn_edit_products.clicked.connect(lambda _=False, b=bon: self.open_edit_products_for_bon(b))
+
             a_lay.addWidget(btn_add)
             a_lay.addWidget(btn_edit)
+            a_lay.addWidget(btn_edit_products)
             self.bons_table.setCellWidget(row_idx, 9, action_cell)
 
         self._adjust_table_columns()
@@ -937,6 +965,20 @@ class BonPaymentsWorkspaceWidget(QWidget):
         )
         dlg.exec()
         if dlg.has_changes:
+            self.refresh_bons()
+            self.paymentUpdated.emit(order_id)
+            return True
+        return False
+
+    def open_edit_products_for_bon(self, bon_data: Dict[str, Any]) -> bool:
+        order_id = int(bon_data.get("Order_ID") or 0)
+        dlg = BonProductsEditDialog(
+            data_manager=self.data_manager,
+            bon_data=bon_data,
+            current_user=self.current_user,
+            parent=self,
+        )
+        if dlg.exec() == QDialog.Accepted and dlg.has_changes:
             self.refresh_bons()
             self.paymentUpdated.emit(order_id)
             return True

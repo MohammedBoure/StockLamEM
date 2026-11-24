@@ -6,6 +6,7 @@ Ce dossier regroupe les composants graphiques et les vues modulaires constituant
 
 - **`__init__.py`** : Fichier d'initialisation du module Python pour le package dashboard.
 - **`dashboard_view.py`** : Vue principale du tableau de bord (`DashboardTab`), intégrant la barre d'outils globale, les filtres de dates maîtres, et l'organisation en onglets.
+- **`monthly_profit_tab.py`** : Onglet **Bénéfices Mensuels** (`MonthlyProfitTab`) affichant en temps réel à l'ouverture le bénéfice mensuel (`Prix de Vente − Prix Moyen d'Achat PMP`) pour chacun des 12 mois de l'année sélectionnée, avec cartes KPI, graphique en barres et tableau récapitulatif annuel.
 - **`overview_tab.py`** : Onglet de vue d'ensemble (`OverviewTab`) assemblant les cartes d'indicateurs clés (KPIs) et le graphique des flux financiers.
 - **`charts_section.py`** : Section graphique professionnelle (`ChartsSection`) affichant l'analyse comparative des flux de stock sous forme de colonnes (Entrées/Achats en Vert 🟩, Sorties/Consommation en Rouge 🟥) avec filtres historiques locaux (7j, 14j, 30j, Ce Mois, 3m, 6m, YTD, 1an, personnalisé), granularités temporelles (Jour, Semaine, Mois), métriques KPI récapitulatives et infobulles riches (`ChartHoverCard`).
 - **`kpi_cards.py`** : Cartes synthétiques des indicateurs de performance (`KPICardsSection`, `KPICard`) affichant la valeur totale du stock, la consommation globale, les unités sorties et les pertes/déchets.

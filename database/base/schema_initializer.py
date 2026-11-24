@@ -657,7 +657,7 @@ SCHEMA_QUERIES = [
         Invoice_No VARCHAR(100) NULL,
         Client_ID INT UNSIGNED NULL,
         Invoice_Date DATE NOT NULL,
-        Status ENUM('Draft', 'Validated', 'Paid', 'Cancelled') DEFAULT 'Draft',
+        Status ENUM('Draft', 'Validated', 'Partial', 'Paid', 'Cancelled') DEFAULT 'Draft',
         Total_Amount_HT DECIMAL(15, 2) DEFAULT 0.00,
         Total_Discount DECIMAL(15, 2) DEFAULT 0.00,
         Total_TVA DECIMAL(15, 2) DEFAULT 0.00,
@@ -918,7 +918,7 @@ SCHEMA_QUERIES = [
         Order_Desk_User_ID INT UNSIGNED NOT NULL,
         Scanner_Session_ID VARCHAR(64) NULL,
         Order_Date DATETIME DEFAULT CURRENT_TIMESTAMP,
-        Bond_Type ENUM('BON_C', 'BON_CREDIT', 'BON_LIVRAISON') NOT NULL DEFAULT 'BON_C',
+        Bond_Type ENUM('BON_C', 'BON_CREDIT', 'BON_LIVRAISON', 'BON_VERSEMENT') NOT NULL DEFAULT 'BON_C',
         Total_Amount_HT DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
         Total_Amount_TTC DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
         Status ENUM(
@@ -932,7 +932,7 @@ SCHEMA_QUERIES = [
             'COMPLETED',
             'CANCELLED'
         ) NOT NULL DEFAULT 'CONFIRMED_PENDING_PAYMENT',
-        Payment_Method_Requested ENUM('CASH', 'CREDIT', 'LIVRAISON_COD', 'CARD', 'WALLET_AVOIR', 'MIXED') NOT NULL DEFAULT 'CASH',
+        Payment_Method_Requested ENUM('CASH', 'CREDIT', 'LIVRAISON_COD', 'CARD', 'WALLET_AVOIR', 'MIXED', 'VERSEMENT') NOT NULL DEFAULT 'CASH',
         Delivery_Address VARCHAR(255) NULL,
         Delivery_Phone VARCHAR(50) NULL,
         Delivery_Notes VARCHAR(255) NULL,
@@ -955,7 +955,7 @@ SCHEMA_QUERIES = [
         CONSTRAINT fk_sol_prod FOREIGN KEY (Product_ID) REFERENCES Products_Master(Product_ID) ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;""",
     """ALTER TABLE Sales_Invoices ADD COLUMN Order_ID BIGINT UNSIGNED NULL;""",
-    """ALTER TABLE Sales_Invoices ADD COLUMN Bond_Settlement_Type ENUM('BON_C_CASH', 'BON_CREDIT', 'BON_LIVRAISON', 'BON_WALLET_AVOIR', 'BON_MIXED') NULL;""",
+    """ALTER TABLE Sales_Invoices ADD COLUMN Bond_Settlement_Type ENUM('BON_C_CASH', 'BON_CREDIT', 'BON_LIVRAISON', 'BON_WALLET_AVOIR', 'BON_MIXED', 'BON_VERSEMENT') NULL;""",
     """ALTER TABLE Sales_Invoices ADD COLUMN Amount_Paid_Cash DECIMAL(15, 2) NOT NULL DEFAULT 0.00;""",
     """ALTER TABLE Sales_Invoices ADD COLUMN Amount_Paid_Card DECIMAL(15, 2) NOT NULL DEFAULT 0.00;""",
     """ALTER TABLE Sales_Invoices ADD COLUMN Amount_Paid_Wallet DECIMAL(15, 2) NOT NULL DEFAULT 0.00;""",

@@ -22,7 +22,7 @@ from PySide6.QtGui import QColor, QBrush, QFont
 
 from ui.icons import get_duotone_icon
 from ui.widgets.inventory.dialogs import BarcodeLineEdit
-from ui.formatting import format_quantity
+from ui.formatting import format_money, format_quantity
 
 
 class MovementDetailsDialog(QDialog):
@@ -262,6 +262,7 @@ class MovementHistoryTab(QWidget):
         self.serial_audit_banner.setVisible(False)
         layout.addWidget(self.serial_audit_banner)
 
+        self.PROFIT_COL = 10
         self.table = QTableWidget()
         columns = [
             "Date",
@@ -274,6 +275,7 @@ class MovementHistoryTab(QWidget):
             "Emplacement",
             "Utilisateur",
             "Notes",
+            "Bénéfice",
         ]
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
@@ -287,6 +289,8 @@ class MovementHistoryTab(QWidget):
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(8, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(9, QHeaderView.Stretch)
+        header.setSectionResizeMode(self.PROFIT_COL, QHeaderView.ResizeToContents)
+        self.table.setColumnHidden(self.PROFIT_COL, True)
 
         self.table.verticalHeader().setDefaultSectionSize(28)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -333,6 +337,8 @@ class MovementHistoryTab(QWidget):
         self.table.setRowCount(0)
         self.total_records = 0
         self.raw_data = []
+        is_sales_filter = self.combo_type.currentData() == "Sale"
+        self.table.setColumnHidden(self.PROFIT_COL, not is_sales_filter)
         self.load_next_batch()
 
     def load_data(self):
@@ -499,6 +505,31 @@ class MovementHistoryTab(QWidget):
             )
             note = f'{mov.get("Reason_Name", "") or ""} {mov.get("Notes", "") or ""}'.strip()
             self.table.setItem(row, 9, item(note, Qt.AlignLeft | Qt.AlignVCenter))
+
+            # Conditional Sales Profit column (Prix Vente - Prix Moyen PMP)
+            profit_val = mov.get("Sale_Profit")
+            if profit_val is not None:
+                try:
+                    p_float = float(profit_val)
+                    p_color = "#15803D" if p_float > 0 else ("#DC2626" if p_float < 0 else "#64748B")
+                    p_item = item(
+                        f"{format_money(p_float)} DA",
+                        Qt.AlignRight | Qt.AlignVCenter,
+                        p_color,
+                        QFont("Segoe UI", 9, QFont.Bold),
+                    )
+                    u_sale = float(mov.get("Unit_Sale_Price") or 0.0)
+                    u_avg = float(mov.get("Avg_Purchase_Price") or 0.0)
+                    p_item.setToolTip(
+                        f"Prix Vente : {format_money(u_sale)} DA\n"
+                        f"Prix Moyen d'Achat (PMP) : {format_money(u_avg)} DA\n"
+                        f"Quantité : {abs(qty):g}"
+                    )
+                except (TypeError, ValueError):
+                    p_item = item("—", Qt.AlignRight | Qt.AlignVCenter, "#64748B")
+            else:
+                p_item = item("—", Qt.AlignRight | Qt.AlignVCenter, "#94A3B8")
+            self.table.setItem(row, self.PROFIT_COL, p_item)
 
         self.table.setSortingEnabled(True)
 
