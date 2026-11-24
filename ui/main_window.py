@@ -121,6 +121,7 @@ class MainWindow(QMainWindow):
                 17: "nav_versement",
                 18: "nav_paiement_livraison",
                 19: "nav_treasury",
+                20: "nav_decharges",
                 15: "nav_sav",
                 5: "tab_users",
                 4: "nav_settings"
@@ -299,6 +300,7 @@ class MainWindow(QMainWindow):
             (17, "Versement", "kpi_wallet"),
             (18, "Paiement Livraison", "truck_delivery"),
             (19, "Trésorerie", "treasury"),
+            (20, "Décharges", "return_arrow"),
             (15, "SAV", "wrench_sav"),
             (7, "Traçabilité", "history"),
             (5, "Utilisateurs", "users"),
@@ -434,6 +436,7 @@ class MainWindow(QMainWindow):
             17: "nav_versement",
             18: "nav_paiement_livraison",
             19: "nav_treasury",
+            20: "nav_decharges",
             15: "nav_sav",
             7: "nav_history",  # واجهة السجل المستقلة
             5: "tab_users",
@@ -473,7 +476,7 @@ class MainWindow(QMainWindow):
             self.close()
 
     def _init_placeholders(self):
-        for i in range(20):
+        for i in range(21):
             self.content_area.addWidget(QWidget())
 
     def has_permission(self, perm_key):
@@ -536,6 +539,10 @@ class MainWindow(QMainWindow):
                 widget.tabs.addTab(widget.tab_caisses, get_duotone_icon("pos", 16), "Caisses")
             if hasattr(widget, 'tab_colors') and self.has_permission("tab_data_colors"):
                 widget.tabs.addTab(widget.tab_colors, get_duotone_icon("palette_color", 16), "Couleurs")
+            if hasattr(widget, 'tab_decharge_types') and (
+                self.has_permission("tab_data_decharge_types") or self.has_permission("nav_data")
+            ):
+                widget.tabs.addTab(widget.tab_decharge_types, get_duotone_icon("return_arrow", 16), "Types de Décharges")
 
         # --- 2. Procurement (Achats) ---
         elif page_id == 2:
@@ -665,6 +672,11 @@ class MainWindow(QMainWindow):
             from .widgets.treasury import TreasuryTab
             widget = TreasuryTab(self.data_manager, current_user=self.current_user)
 
+        # --- 20. Décharges ---
+        elif page_id == 20:
+            from .widgets.decharges import DechargesTab
+            widget = DechargesTab(self.data_manager, current_user=self.current_user)
+
         if widget:
             old_widget = self.content_area.widget(page_id)
             self.content_area.removeWidget(old_widget)
@@ -691,6 +703,7 @@ class MainWindow(QMainWindow):
             17: "nav_versement",
             18: "nav_paiement_livraison",
             19: "nav_treasury",
+            20: "nav_decharges",
             15: "nav_sav",
             7: "nav_history",
             5: "tab_users",

@@ -1058,32 +1058,6 @@ class VersementDialog(QDialog):
         self.spin_amount.valueChanged.connect(self._recalc_projected)
         layout.addWidget(self.spin_amount)
 
-        # Quick Add Amount Chips
-        chips_layout = QHBoxLayout()
-        chips_layout.setSpacing(6)
-        for add_v in (5000, 10000, 20000, 50000, 100000):
-            btn_chip = QPushButton(f"+{add_v:,.0f}".replace(",", " "))
-            btn_chip.setFixedHeight(26)
-            btn_chip.setCursor(Qt.PointingHandCursor)
-            btn_chip.setStyleSheet("""
-                QPushButton {
-                    background-color: #F1F5F9;
-                    color: #334155;
-                    border: 1px solid #CBD5E1;
-                    border-radius: 4px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    padding: 0 8px;
-                }
-                QPushButton:hover {
-                    background-color: #E2E8F0;
-                    border-color: #94A3B8;
-                }
-            """)
-            btn_chip.clicked.connect(lambda _, v=add_v: self.spin_amount.setValue(self.spin_amount.value() + v))
-            chips_layout.addWidget(btn_chip)
-        layout.addLayout(chips_layout)
-
         # Notes / Reference
         lbl_notes_title = QLabel("Observation / Motif :")
         lbl_notes_title.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155;")
@@ -1883,35 +1857,8 @@ class CashierDeskWidget(QWidget):
         form.addLayout(cash_input_row, 0, 1)
         r_layout.addLayout(form)
 
-        # Quick Cash Tender Chips (uniform equal-width grid)
-        cash_chips_row = QHBoxLayout()
-        cash_chips_row.setSpacing(6)
+        # Quick cash increment chips removed per UX request; keep attribute for compatibility
         self.quick_cash_buttons = []
-        for amt_val, lbl_txt in [
-            (1000, "+1 000"),
-            (2000, "+2 000"),
-            (5000, "+5 000"),
-            (10000, "+10 000"),
-        ]:
-            chip = QPushButton(lbl_txt)
-            chip.setCursor(Qt.PointingHandCursor)
-            chip.setFixedHeight(30)
-            chip.setMinimumWidth(0)
-            chip.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 6px; }")
-            chip.clicked.connect(lambda _, a=amt_val: self._add_cash_increment(a))
-            cash_chips_row.addWidget(chip, 1)
-            self.quick_cash_buttons.append(chip)
-
-        btn_zero_cash = QPushButton("0 DA")
-        btn_zero_cash.setCursor(Qt.PointingHandCursor)
-        btn_zero_cash.setFixedHeight(30)
-        btn_zero_cash.setMinimumWidth(0)
-        btn_zero_cash.setToolTip("Réinitialiser le montant reçu à 0")
-        btn_zero_cash.setStyleSheet(SLATE_OUTLINE_QSS + "QPushButton { font-size: 11px; padding: 0 6px; }")
-        btn_zero_cash.clicked.connect(lambda: self.txt_cash.setText("0"))
-        cash_chips_row.addWidget(btn_zero_cash, 1)
-        self.quick_cash_buttons.append(btn_zero_cash)
-        r_layout.addLayout(cash_chips_row)
 
         r_layout.addStretch(1)
 

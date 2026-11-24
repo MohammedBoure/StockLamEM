@@ -359,6 +359,15 @@ class QuickAddDialog(QDialog):
         lay_obs.addWidget(self.inp_observation, 2)
         main_layout.addLayout(lay_obs)
 
+        lay_recl = QHBoxLayout()
+        self.inp_reclamation = AutoSelectLineEdit()
+        self.inp_reclamation.setPlaceholderText("Réclamation sur ce lot / produit (Optionnel — ex : emballage abîmé, manque accessoire...)")
+        lbl_recl = QLabel("Réclamation (Opt.):")
+        lbl_recl.setStyleSheet("color: #B91C1C; font-weight: 700;")
+        lay_recl.addWidget(lbl_recl)
+        lay_recl.addWidget(self.inp_reclamation, 1)
+        main_layout.addLayout(lay_recl)
+
         self.chk_print = QCheckBox("Imprimer l'étiquette après l'ajout")
         self.chk_print.setChecked(True)
         self.chk_print.setStyleSheet(f"color: {BRAND_TEAL}; font-weight: 700;")
@@ -767,6 +776,7 @@ class QuickAddDialog(QDialog):
             'Selling_TVA_Percent': 0.0,
 
             'Batch_Note': self.inp_observation.text().strip(),
+            'Reclamation_Note': self.inp_reclamation.text().strip(),
             'BL_Number': self.inp_bl_number.text().strip(),
             'External_Barcode': self.inp_barcode.text().strip(),
 

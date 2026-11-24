@@ -1009,6 +1009,12 @@ class InventoryBatchManager:
             if ref_code and self._ensure_ref_code_column(cursor):
                 cursor.execute("UPDATE Inventory_Batches SET Ref_Code = %s WHERE Batch_ID = %s", (ref_code, batch_id))
 
+            recl_note = str(data.get('Reclamation_Note') or '').strip()
+            if recl_note:
+                base_note = str(data.get('Batch_Note') or '').strip()
+                combined_note = f"{base_note} | Réclamation: {recl_note}" if base_note else f"Réclamation: {recl_note}"
+                cursor.execute("UPDATE Inventory_Batches SET Reception_Note = %s WHERE Batch_ID = %s", (combined_note, batch_id))
+
             cursor.execute("""
                 INSERT INTO Stock_Movement_Log
                 (Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used, User_ID, Notes)
@@ -1053,6 +1059,32 @@ class InventoryBatchManager:
         finally:
             if conn and conn.is_connected():
                 cursor.close()
+                conn.close()
+
+    def update_batch_reception_note(self, batch_id: int, note: str) -> bool:
+        """Updates Inventory_Batches.Reception_Note (Réclamation / observation) for a batch."""
+        conn = None
+        cursor = None
+        try:
+            conn = self.db.get_raw_connection()
+            cursor = conn.cursor()
+            clean_note = str(note or "").strip() or None
+            cursor.execute(
+                "UPDATE Inventory_Batches SET Reception_Note = %s WHERE Batch_ID = %s",
+                (clean_note, int(batch_id)),
+            )
+            conn.commit()
+            return True
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            import logging
+            logging.error(f"Database error in update_batch_reception_note: {e}")
+            return False
+        finally:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
                 conn.close()
 
     def update_direct_batch(self, batch_id: int, data: dict, user_id: int = None) -> bool:

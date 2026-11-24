@@ -3341,6 +3341,16 @@ class BondLifecycleManager:
                         "UPDATE Sales_Orders_Theoretical SET Status = 'COMPLETED', Updated_At = NOW() WHERE Order_ID = %s",
                         (int(order_id),),
                     )
+                elif (
+                    bond_type == "BON_VERSEMENT"
+                    and rem <= Decimal("0.00")
+                    and order.get("Status") not in ("COMPLETED", "DISPATCHED_PENDING_COD", "CANCELLED")
+                ):
+                    # Auto-transition completed Versement to PAID_PENDING_DISPATCH so it appears in Sortie Magasin as PC
+                    cursor.execute(
+                        "UPDATE Sales_Orders_Theoretical SET Status = 'PAID_PENDING_DISPATCH', Updated_At = NOW() WHERE Order_ID = %s",
+                        (int(order_id),),
+                    )
 
                 cursor.execute(
                     """

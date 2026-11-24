@@ -930,7 +930,37 @@ class BonPaymentsWorkspaceWidget(QWidget):
             )
             btn_edit_products.clicked.connect(lambda _=False, b=bon: self.open_edit_products_for_bon(b))
 
-            a_lay.addWidget(btn_add)
+            if self.bond_type == "BON_VERSEMENT" and total_ttc > 0.0 and remaining <= 0.01:
+                btn_pc_pdf = QPushButton("PC (PDF)")
+                btn_pc_pdf.setObjectName("btn_row_pc_pdf")
+                btn_pc_pdf.setFixedHeight(28)
+                btn_pc_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+                btn_pc_pdf.setCursor(Qt.PointingHandCursor)
+                btn_pc_pdf.setIcon(get_duotone_icon("print_white", 14))
+                btn_pc_pdf.setIconSize(QSize(14, 14))
+                btn_pc_pdf.setToolTip(
+                    "Versement complété : exporter le Bon Paiement Complet (PC) en PDF (déjà transféré vers Sortie Magasin)"
+                )
+                btn_pc_pdf.setStyleSheet(
+                    """
+                    QPushButton#btn_row_pc_pdf {
+                        background-color: #15803D;
+                        border: 1px solid #15803D;
+                        border-radius: 5px;
+                        color: #FFFFFF;
+                        font-size: 11px;
+                        font-weight: 700;
+                        padding: 0px 10px;
+                        min-height: 26px;
+                        max-height: 26px;
+                    }
+                    QPushButton#btn_row_pc_pdf:hover { background-color: #166534; border-color: #166534; }
+                    """
+                )
+                btn_pc_pdf.clicked.connect(lambda _=False, b=bon: self.export_pc_pdf_for_bon(b))
+                a_lay.addWidget(btn_pc_pdf)
+            else:
+                a_lay.addWidget(btn_add)
             a_lay.addWidget(btn_edit)
             a_lay.addWidget(btn_edit_products)
             self.bons_table.setCellWidget(row_idx, 9, action_cell)
@@ -953,8 +983,32 @@ class BonPaymentsWorkspaceWidget(QWidget):
             order_id = int(bon_data.get("Order_ID") or 0)
             self.refresh_bons()
             self.paymentUpdated.emit(order_id)
+            res = getattr(dlg, "result_data", None) or {}
+            if (
+                self.bond_type == "BON_VERSEMENT"
+                and float(res.get("remaining_amount") if res.get("remaining_amount") is not None else 1.0) <= 0.01
+            ):
+                from PySide6.QtWidgets import QMessageBox
+                reply = QMessageBox.question(
+                    self,
+                    "Versement Complété — PC Généré",
+                    f"Le versement du bon {bon_data.get('Order_Number') or order_id} est maintenant intégralement soldé.\n"
+                    "Un Bon Paiement Complet (PC) a été généré automatiquement et transféré vers Bureaux → Sortie Magasin.\n\n"
+                    "Souhaitez-vous exporter le PC en PDF maintenant ?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes,
+                )
+                if reply == QMessageBox.Yes:
+                    self.export_pc_pdf_for_bon(bon_data)
             return True
         return False
+
+    def export_pc_pdf_for_bon(self, bon_data: Dict[str, Any]) -> None:
+        """Exports a completed Versement bon directly as a Paiement Complet (PC) PDF."""
+        from ui.widgets.appliance_desks.bon_pdf_export import export_order_bon_to_pdf
+        pc_payload = dict(bon_data or {})
+        pc_payload["Bond_Type"] = "BON_C"
+        export_order_bon_to_pdf(self.data_manager, pc_payload, parent_widget=self)
 
     def open_manage_payments_for_bon(self, bon_data: Dict[str, Any]) -> bool:
         order_id = int(bon_data.get("Order_ID") or 0)

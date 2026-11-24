@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 
 from database.treasury_manager import ENTRY_CATEGORIES, EXIT_CATEGORIES
 from ui.formatting import format_money
-from ui.icons import get_duotone_icon
+from ui.icons import apply_button_icon, get_duotone_icon
 
 PAYMENT_METHOD_TILES = [
     ("Cash", "Espèces", "pay_cash"),
@@ -169,7 +169,7 @@ class TreasuryOperationDialog(QDialog):
         is_in = self.direction == "IN"
         self.setWindowTitle("Nouvelle Entrée en Trésorerie (دخول)" if is_in else "Nouvelle Sortie de Trésorerie (خروج)")
         self.setModal(True)
-        self.resize(540, 520)
+        self.resize(520, 480)
         self._init_ui()
         self._center_on_parent()
 
@@ -251,7 +251,7 @@ class TreasuryOperationDialog(QDialog):
         bp_lay.addWidget(self.lbl_new_bal)
         f_lay.addWidget(self.balance_preview)
 
-        # Amount + quick chips
+        # Amount (clean direct numeric entry — no quick-add chips)
         amt_lbl = QLabel("Montant (DA) * :")
         amt_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #334155;")
         f_lay.addWidget(amt_lbl)
@@ -269,25 +269,6 @@ class TreasuryOperationDialog(QDialog):
         self.spin_amount.valueChanged.connect(self._update_balance_preview)
         f_lay.addWidget(self.spin_amount)
 
-        chips_row = QHBoxLayout()
-        chips_row.setSpacing(6)
-        for inc in (1000, 5000, 10000, 50000):
-            chip = QPushButton(f"+{inc:,}".replace(",", " "))
-            chip.setFixedHeight(28)
-            chip.setCursor(Qt.PointingHandCursor)
-            chip.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 5px;
-                    color: #334155; font-size: 11px; font-weight: 700; padding: 0 8px;
-                }
-                QPushButton:hover { background-color: #E2E8F0; color: #0F172A; }
-                """
-            )
-            chip.clicked.connect(lambda _=False, v=inc: self.spin_amount.setValue(self.spin_amount.value() + v))
-            chips_row.addWidget(chip)
-        f_lay.addLayout(chips_row)
-
         # Fields
         form = QFormLayout()
         form.setSpacing(8)
@@ -295,16 +276,17 @@ class TreasuryOperationDialog(QDialog):
         self.cbo_category = QComboBox()
         self.cbo_category.setEditable(True)
         self.cbo_category.addItems(list(ENTRY_CATEGORIES if is_in else EXIT_CATEGORIES))
+        self.cbo_category.currentTextChanged.connect(self._validate_inline)
         form.addRow("Catégorie :", self.cbo_category)
 
         self.txt_reason = QLineEdit()
         self.txt_reason.setPlaceholderText(
-            "Ex : Fond de caisse matin, apport gérant..."
+            "Ex : Fond de caisse matin, apport gérant (optionnel — utilise la catégorie par défaut)"
             if is_in
-            else "Ex : Facture électricité, retrait patron, transport..."
+            else "Ex : Facture électricité, retrait patron, transport (optionnel — utilise la catégorie par défaut)"
         )
         self.txt_reason.textChanged.connect(self._validate_inline)
-        form.addRow("Motif / Libellé * :", self.txt_reason)
+        form.addRow("Motif / Libellé :", self.txt_reason)
 
         row_extra = QHBoxLayout()
         row_extra.setSpacing(8)
@@ -341,6 +323,7 @@ class TreasuryOperationDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(10)
         btn_cancel = QPushButton("Annuler")
+        apply_button_icon(btn_cancel, "close_slate", 15)
         btn_cancel.setFixedHeight(38)
         btn_cancel.setCursor(Qt.PointingHandCursor)
         btn_cancel.setStyleSheet(
@@ -355,6 +338,7 @@ class TreasuryOperationDialog(QDialog):
         btn_cancel.clicked.connect(self.reject)
 
         self.btn_submit = QPushButton("Valider l'Entrée" if is_in else "Valider la Sortie")
+        apply_button_icon(self.btn_submit, "check_white", 15)
         self.btn_submit.setObjectName("BtnTreasurySubmit")
         self.btn_submit.setFixedHeight(38)
         self.btn_submit.setCursor(Qt.PointingHandCursor)
@@ -399,15 +383,19 @@ class TreasuryOperationDialog(QDialog):
             self.lbl_warning.setVisible(False)
         self._validate_inline()
 
+    def _effective_reason(self) -> str:
+        raw = (self.txt_reason.text() or "").strip()
+        if raw:
+            return raw
+        cat = (self.cbo_category.currentText() or "").strip()
+        return cat or ("Entrée en trésorerie" if self.direction == "IN" else "Sortie de trésorerie")
+
     def _validate_inline(self) -> None:
         amt = float(self.spin_amount.value() or 0.0)
-        reason = (self.txt_reason.text() or "").strip()
-        ok = amt > 0.0 and bool(reason)
+        ok = amt > 0.0
         self.btn_submit.setEnabled(ok)
         if amt <= 0.0:
             self.btn_submit.setToolTip("Saisissez un montant strictement supérieur à 0,00 DA.")
-        elif not reason:
-            self.btn_submit.setToolTip("Saisissez le motif / libellé de l'opération.")
         else:
             self.btn_submit.setToolTip("Enregistrer l'opération dans le journal de trésorerie")
 
@@ -416,8 +404,8 @@ class TreasuryOperationDialog(QDialog):
             QMessageBox.critical(self, "Erreur", "Gestionnaire de trésorerie indisponible.")
             return
         amt = float(self.spin_amount.value() or 0.0)
-        reason = (self.txt_reason.text() or "").strip()
-        if amt <= 0 or not reason:
+        reason = self._effective_reason()
+        if amt <= 0:
             self._validate_inline()
             return
 

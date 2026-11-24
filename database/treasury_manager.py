@@ -239,7 +239,7 @@ class TreasuryManager:
             raise RuntimeError("Connexion base de données indisponible.")
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
+            if hasattr(conn, "start_transaction") and not getattr(conn, "in_transaction", False):
                 conn.start_transaction()
             cursor.execute(
                 """
@@ -316,7 +316,7 @@ class TreasuryManager:
             raise RuntimeError("Connexion base de données indisponible.")
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
+            if hasattr(conn, "start_transaction") and not getattr(conn, "in_transaction", False):
                 conn.start_transaction()
 
             code_out = f"{group_id}-OUT"
@@ -396,7 +396,7 @@ class TreasuryManager:
             raise RuntimeError("Connexion base de données indisponible.")
         cursor = conn.cursor(dictionary=True)
         try:
-            if hasattr(conn, "start_transaction"):
+            if hasattr(conn, "start_transaction") and not getattr(conn, "in_transaction", False):
                 conn.start_transaction()
 
             cursor.execute(
