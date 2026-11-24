@@ -477,6 +477,8 @@ class DispatchDeskWidget(QWidget):
             cell_lay.setAlignment(Qt.AlignCenter)
 
             btn_open = QPushButton("Voir / PDF" if is_comp else "Scanner Bon")
+            btn_open.setIcon(get_duotone_icon("print" if is_comp else "barcode_scan_white", 15))
+            btn_open.setIconSize(QSize(15, 15))
             btn_open.setFixedHeight(32)
             btn_open.setCursor(Qt.PointingHandCursor)
             btn_open.setStyleSheet(SLATE_OUTLINE_QSS if is_comp else PRIMARY_CTA_QSS)

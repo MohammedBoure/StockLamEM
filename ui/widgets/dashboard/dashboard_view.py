@@ -4,8 +4,10 @@ import logging
 import gc
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, 
                                QPushButton, QDateEdit, QLabel, QFrame, QTabWidget, QApplication)
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, QSize, Qt
 from PySide6.QtGui import QColor
+
+from ui.icons import get_duotone_icon
 
 try:
     import matplotlib.pyplot as plt
@@ -50,12 +52,17 @@ class DashboardTab(QWidget):
             d.setStyleSheet(f"padding: 4px 6px; border: 1px solid {BORDER_CONTROL}; border-radius: 6px;")
 
         self.btn_refresh = QPushButton("Actualiser")
+        self.btn_refresh.setIcon(get_duotone_icon("refresh_white", 15))
+        self.btn_refresh.setIconSize(QSize(15, 15))
         self.btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_refresh.setMinimumHeight(34)
         self.btn_refresh.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_refresh.clicked.connect(self.refresh_all)
 
         tool_layout.addStretch()
+        cal_icon = QLabel()
+        cal_icon.setPixmap(get_duotone_icon("calendar", 16).pixmap(16, 16))
+        tool_layout.addWidget(cal_icon)
         tool_layout.addWidget(QLabel("Du:"))
         tool_layout.addWidget(self.date_from)
         tool_layout.addWidget(QLabel("Au:"))

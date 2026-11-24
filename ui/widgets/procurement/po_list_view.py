@@ -87,25 +87,30 @@ class PurchaseOrderListView(QWidget):
 
         # --- أزرار الإجراءات ---
         from ui.theme_tokens import PRIMARY_CTA_QSS, SECONDARY_OUTLINE_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS
+        from ui.icons import apply_button_icon
         actions_layout = QHBoxLayout()
         
         self.btn_receive = QPushButton("Réceptionner")
+        apply_button_icon(self.btn_receive, "check_white", 15)
         self.btn_receive.setMinimumHeight(34)
         self.btn_receive.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_receive.clicked.connect(self.create_reception_for_selected)
 
         # [جديد] زر عرض الأرشيف
         self.btn_history = QPushButton("Voir Historique")
+        apply_button_icon(self.btn_history, "history", 15)
         self.btn_history.setMinimumHeight(34)
         self.btn_history.setStyleSheet(SECONDARY_OUTLINE_QSS)
         self.btn_history.clicked.connect(self.trigger_view_history)
 
         self.btn_edit = QPushButton("Modifier la Commande")
+        apply_button_icon(self.btn_edit, "edit", 15)
         self.btn_edit.setMinimumHeight(34)
         self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.clicked.connect(self.edit_selected_po)
         
         self.btn_delete = QPushButton("Supprimer la Commande")
+        apply_button_icon(self.btn_delete, "trash", 15)
         self.btn_delete.setMinimumHeight(34)
         self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_delete.clicked.connect(self.delete_selected_po)

@@ -266,6 +266,8 @@ class DispatchBonScanDialog(QDialog):
             row_in.addWidget(self.txt_scan, 1)
 
             btn_scan = QPushButton("Valider Scan")
+            btn_scan.setIcon(get_duotone_icon("check_white", 15))
+            btn_scan.setIconSize(QSize(15, 15))
             btn_scan.setFixedHeight(40)
             btn_scan.setCursor(Qt.PointingHandCursor)
             btn_scan.setStyleSheet(PRIMARY_CTA_QSS)
@@ -273,6 +275,8 @@ class DispatchBonScanDialog(QDialog):
             row_in.addWidget(btn_scan)
 
             btn_reset_scans = QPushButton("Réinitialiser")
+            btn_reset_scans.setIcon(get_duotone_icon("refresh", 15))
+            btn_reset_scans.setIconSize(QSize(15, 15))
             btn_reset_scans.setFixedHeight(40)
             btn_reset_scans.setCursor(Qt.PointingHandCursor)
             btn_reset_scans.setStyleSheet(SLATE_OUTLINE_QSS)
@@ -323,6 +327,8 @@ class DispatchBonScanDialog(QDialog):
         footer.setSpacing(10)
 
         btn_close = QPushButton("Fermer")
+        btn_close.setIcon(get_duotone_icon("close_slate", 15))
+        btn_close.setIconSize(QSize(15, 15))
         btn_close.setFixedHeight(40)
         btn_close.setCursor(Qt.PointingHandCursor)
         btn_close.setStyleSheet(SLATE_OUTLINE_QSS)

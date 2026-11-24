@@ -30,12 +30,15 @@ class ProductsTab(QWidget):
         self.search_input.textChanged.connect(self.load_products_data)
 
         from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS
-        self.btn_add = QPushButton("+ Ajouter un Nouveau Produit")
+        from ui.icons import apply_button_icon
+        self.btn_add = QPushButton("Ajouter un Nouveau Produit")
+        apply_button_icon(self.btn_add, "plus_white", 15)
         self.btn_add.setMinimumHeight(35)
         self.btn_add.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_add.clicked.connect(self.open_add_dialog)
 
         self.btn_refresh = QPushButton("Actualiser")
+        apply_button_icon(self.btn_refresh, "refresh", 15)
         self.btn_refresh.setMinimumHeight(35)
         self.btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_refresh.clicked.connect(self.load_products_data)
@@ -79,11 +82,13 @@ class ProductsTab(QWidget):
         # --- Boutons d'actions ---
         actions = QHBoxLayout()
         self.btn_edit = QPushButton("Modifier le Produit Sélectionné")
+        apply_button_icon(self.btn_edit, "edit", 15)
         self.btn_edit.setMinimumHeight(34)
         self.btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         self.btn_edit.clicked.connect(self.open_edit_dialog)
         
         self.btn_delete = QPushButton("Supprimer")
+        apply_button_icon(self.btn_delete, "trash", 15)
         self.btn_delete.setMinimumHeight(34)
         self.btn_delete.setStyleSheet(DANGER_OUTLINE_QSS)
         self.btn_delete.clicked.connect(self.delete_product)

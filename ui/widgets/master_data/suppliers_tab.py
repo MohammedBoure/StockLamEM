@@ -29,12 +29,15 @@ class SuppliersTab(QWidget):
         self.search_input.textChanged.connect(self.load_suppliers_data)
 
         from ui.theme_tokens import PRIMARY_CTA_QSS, SLATE_OUTLINE_QSS, DANGER_OUTLINE_QSS, CLEAN_TABLE_QSS
-        self.add_button = QPushButton("+ Ajouter Fournisseur")
+        from ui.icons import apply_button_icon
+        self.add_button = QPushButton("Ajouter Fournisseur")
+        apply_button_icon(self.add_button, "plus_white", 15)
         self.add_button.setMinimumHeight(35)
         self.add_button.setStyleSheet(PRIMARY_CTA_QSS)
         self.add_button.clicked.connect(self.open_add_dialog)
         
         self.refresh_button = QPushButton("Actualiser")
+        apply_button_icon(self.refresh_button, "refresh", 15)
         self.refresh_button.setMinimumHeight(35)
         self.refresh_button.setStyleSheet(SLATE_OUTLINE_QSS)
         self.refresh_button.clicked.connect(self.load_suppliers_data)
@@ -72,11 +75,13 @@ class SuppliersTab(QWidget):
         # --- Actions Inferieures ---
         actions_layout = QHBoxLayout()
         self.edit_button = QPushButton("Modifier le Fournisseur")
+        apply_button_icon(self.edit_button, "edit", 15)
         self.edit_button.setMinimumHeight(34)
         self.edit_button.setStyleSheet(SLATE_OUTLINE_QSS)
         self.edit_button.clicked.connect(self.open_edit_dialog)
         
         self.delete_button = QPushButton("Supprimer")
+        apply_button_icon(self.delete_button, "trash", 15)
         self.delete_button.setMinimumHeight(34)
         self.delete_button.setStyleSheet(DANGER_OUTLINE_QSS)
         self.delete_button.clicked.connect(self.delete_supplier)

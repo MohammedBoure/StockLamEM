@@ -9,7 +9,7 @@ computed dynamically whenever the user opens this tab using:
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.formatting import format_money
+from ui.icons import get_duotone_icon
 
 try:
     from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -99,6 +100,13 @@ class MonthlyProfitTab(QWidget):
         tb_lay.setContentsMargins(14, 10, 14, 10)
         tb_lay.setSpacing(12)
 
+        hdr_icon = QLabel()
+        hdr_icon.setFixedSize(36, 36)
+        hdr_icon.setAlignment(Qt.AlignCenter)
+        hdr_icon.setPixmap(get_duotone_icon("profit_chart", 24).pixmap(24, 24))
+        hdr_icon.setStyleSheet("background-color: #E6F4F1; border-radius: 8px;")
+        tb_lay.addWidget(hdr_icon)
+
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
         lbl_title = QLabel("Bénéfices Mensuels par Année")
@@ -110,6 +118,10 @@ class MonthlyProfitTab(QWidget):
         tb_lay.addLayout(title_col)
 
         tb_lay.addStretch(1)
+
+        yr_ic = QLabel()
+        yr_ic.setPixmap(get_duotone_icon("calendar", 16).pixmap(16, 16))
+        tb_lay.addWidget(yr_ic)
 
         lbl_yr = QLabel("Année :")
         lbl_yr.setStyleSheet("font-size: 12.5px; font-weight: 700; color: #334155;")
@@ -127,6 +139,8 @@ class MonthlyProfitTab(QWidget):
         tb_lay.addWidget(self.cbo_year)
 
         self.btn_refresh = QPushButton("Actualiser")
+        self.btn_refresh.setIcon(get_duotone_icon("refresh", 15))
+        self.btn_refresh.setIconSize(QSize(15, 15))
         self.btn_refresh.setFixedHeight(34)
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
         self.btn_refresh.setStyleSheet(
@@ -143,10 +157,10 @@ class MonthlyProfitTab(QWidget):
         kpi_row = QHBoxLayout()
         kpi_row.setSpacing(10)
 
-        self.lbl_kpi_profit, card_profit = self._make_kpi_card("BÉNÉFICE ANNUEL", "0,00 DA", "#0E7471")
-        self.lbl_kpi_rev, card_rev = self._make_kpi_card("CHIFFRE D'AFFAIRES", "0,00 DA", "#0F172A")
-        self.lbl_kpi_cost, card_cost = self._make_kpi_card("COÛT D'ACHAT MOYEN (PMP)", "0,00 DA", "#B45309")
-        self.lbl_kpi_best, card_best = self._make_kpi_card("MEILLEUR MOIS", "—", "#15803D")
+        self.lbl_kpi_profit, card_profit = self._make_kpi_card("BÉNÉFICE ANNUEL", "0,00 DA", "#0E7471", "profit_chart")
+        self.lbl_kpi_rev, card_rev = self._make_kpi_card("CHIFFRE D'AFFAIRES", "0,00 DA", "#0F172A", "kpi_wallet")
+        self.lbl_kpi_cost, card_cost = self._make_kpi_card("COÛT D'ACHAT MOYEN (PMP)", "0,00 DA", "#B45309", "valuation")
+        self.lbl_kpi_best, card_best = self._make_kpi_card("MEILLEUR MOIS", "—", "#15803D", "trophy_best")
 
         for c in (card_profit, card_rev, card_cost, card_best):
             kpi_row.addWidget(c, 1)
@@ -220,20 +234,32 @@ class MonthlyProfitTab(QWidget):
         tc_lay.addWidget(self.table, 1)
         root.addWidget(table_card, 1)
 
-    def _make_kpi_card(self, label: str, value: str, color_hex: str):
+    def _make_kpi_card(self, label: str, value: str, color_hex: str, icon_name: str = ""):
         card = QFrame()
         card.setObjectName("ProfitCard")
-        card.setFixedHeight(74)
-        lay = QVBoxLayout(card)
-        lay.setContentsMargins(14, 10, 14, 10)
-        lay.setSpacing(2)
+        card.setFixedHeight(78)
+        outer = QHBoxLayout(card)
+        outer.setContentsMargins(14, 10, 14, 10)
+        outer.setSpacing(10)
 
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
         lbl_k = QLabel(label)
         lbl_k.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B;")
         lbl_v = QLabel(value)
-        lbl_v.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {color_hex};")
-        lay.addWidget(lbl_k)
-        lay.addWidget(lbl_v)
+        lbl_v.setStyleSheet(f"font-size: 17.5px; font-weight: 800; color: {color_hex};")
+        text_col.addWidget(lbl_k)
+        text_col.addWidget(lbl_v)
+        outer.addLayout(text_col, 1)
+
+        if icon_name:
+            ic_lbl = QLabel()
+            ic_lbl.setFixedSize(38, 38)
+            ic_lbl.setAlignment(Qt.AlignCenter)
+            ic_lbl.setPixmap(get_duotone_icon(icon_name, 22).pixmap(22, 22))
+            ic_lbl.setStyleSheet(f"background-color: {color_hex}15; border-radius: 19px;")
+            outer.addWidget(ic_lbl)
+
         return lbl_v, card
 
     def _sync_years_combo(self) -> None:

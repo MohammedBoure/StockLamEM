@@ -10,7 +10,7 @@ import logging
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.formatting import format_money
+from ui.icons import get_duotone_icon
 from .bon_payments_dialogs import _resolve_bonds_manager
 
 logger = logging.getLogger("StockLam.UI.BonProductsEditDialog")
@@ -294,6 +295,8 @@ class BonProductsEditDialog(QDialog):
         footer.setSpacing(10)
 
         btn_cancel = QPushButton("Annuler")
+        btn_cancel.setIcon(get_duotone_icon("close_slate", 15))
+        btn_cancel.setIconSize(QSize(15, 15))
         btn_cancel.setFixedHeight(38)
         btn_cancel.setCursor(Qt.PointingHandCursor)
         btn_cancel.setStyleSheet(
@@ -306,6 +309,8 @@ class BonProductsEditDialog(QDialog):
         footer.addStretch(1)
 
         self.btn_save = QPushButton("Enregistrer les Modifications")
+        self.btn_save.setIcon(get_duotone_icon("save_white", 16))
+        self.btn_save.setIconSize(QSize(16, 16))
         self.btn_save.setFixedHeight(40)
         self.btn_save.setCursor(Qt.PointingHandCursor)
         self.btn_save.setStyleSheet(

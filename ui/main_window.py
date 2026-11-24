@@ -492,60 +492,63 @@ class MainWindow(QMainWindow):
         # --- 0. Dashboard ---
         if page_id == 0:
             widget = DashboardTab(self.data_manager)
+            widget.tabs.setIconSize(QSize(16, 16))
             if self.has_permission("tab_dash_overview"):
-                widget.tabs.addTab(widget.page_overview, "Vue d'ensemble")
+                widget.tabs.addTab(widget.page_overview, get_duotone_icon("dashboard", 16), "Vue d'ensemble")
             if self.has_permission("tab_dash_overview") or self.has_permission("tab_dash_valuation"):
-                widget.tabs.addTab(widget.page_monthly_profit, "Bénéfices Mensuels")
+                widget.tabs.addTab(widget.page_monthly_profit, get_duotone_icon("profit_chart", 16), "Bénéfices Mensuels")
             if self.has_permission("tab_dash_reception"):
-                widget.tabs.addTab(widget.page_family_reception, "Entrées par Famille")
+                widget.tabs.addTab(widget.page_family_reception, get_duotone_icon("receipt_in", 16), "Entrées par Famille")
             if self.has_permission("tab_dash_consumption"):
-                widget.tabs.addTab(widget.page_consumption, "Consommation")
+                widget.tabs.addTab(widget.page_consumption, get_duotone_icon("consumption", 16), "Consommation")
             if self.has_permission("tab_dash_valuation"):
-                widget.tabs.addTab(widget.page_valuation, "Valorisation")
+                widget.tabs.addTab(widget.page_valuation, get_duotone_icon("valuation", 16), "Valorisation")
             if self.has_permission("tab_dash_waste"):
-                widget.tabs.addTab(widget.page_waste, "Pertes")
+                widget.tabs.addTab(widget.page_waste, get_duotone_icon("waste_bin", 16), "Pertes")
             if self.has_permission("tab_dash_alerts"):
-                widget.tabs.addTab(widget.page_alerts, "Alertes")
+                widget.tabs.addTab(widget.page_alerts, get_duotone_icon("alert_warning", 16), "Alertes")
 
         # --- 1. Master Data (Données de Base) ---
         elif page_id == 1:
             from .widgets.master_data.master_data_tabs import MasterDataTabs
             widget = MasterDataTabs(self.data_manager)
+            widget.tabs.setIconSize(QSize(16, 16))
 
             if self.has_permission("tab_data_products"):
-                widget.tabs.addTab(widget.tab_products, "Produits")
+                widget.tabs.addTab(widget.tab_products, get_duotone_icon("box_product", 16), "Produits")
             if hasattr(self.data_manager, 'families') and self.has_permission("tab_data_families"):
-                widget.tabs.addTab(widget.tab_families, "Familles")
+                widget.tabs.addTab(widget.tab_families, get_duotone_icon("tag_family", 16), "Familles")
             if hasattr(self.data_manager, 'packaging_units') and self.has_permission("tab_data_units"):
-                widget.tabs.addTab(widget.tab_units, "Unités (Pkg)")
+                widget.tabs.addTab(widget.tab_units, get_duotone_icon("package_unit", 16), "Unités (Pkg)")
             if hasattr(self.data_manager, 'suppliers') and self.has_permission("tab_data_suppliers"):
-                widget.tabs.addTab(widget.tab_suppliers, "Fournisseurs")
+                widget.tabs.addTab(widget.tab_suppliers, get_duotone_icon("supplier", 16), "Fournisseurs")
             if hasattr(self.data_manager, 'manufacturers') and self.has_permission("tab_data_manufacturers"):
-                widget.tabs.addTab(widget.tab_manufacturers, "Marque")
+                widget.tabs.addTab(widget.tab_manufacturers, get_duotone_icon("brand_badge", 16), "Marque")
             if hasattr(self.data_manager, 'partners') and self.has_permission("tab_data_partners"):
-                widget.tabs.addTab(widget.tab_partners, "Partenaires")
+                widget.tabs.addTab(widget.tab_partners, get_duotone_icon("services", 16), "Partenaires")
             if hasattr(self.data_manager, 'automates') and self.has_permission("tab_data_automates"):
-                widget.tabs.addTab(widget.tab_automates, "Automates")
+                widget.tabs.addTab(widget.tab_automates, get_duotone_icon("cpu_automate", 16), "Automates")
             if hasattr(self.data_manager, 'locations') and self.has_permission("tab_data_locations"):
-                widget.tabs.addTab(widget.tab_locations, "Emplacements")
+                widget.tabs.addTab(widget.tab_locations, get_duotone_icon("location_pin", 16), "Emplacements")
             if hasattr(self.data_manager, 'waste_reasons') and self.has_permission("tab_data_waste_reasons"):
-                widget.tabs.addTab(widget.tab_waste, "Motifs Rebut")
+                widget.tabs.addTab(widget.tab_waste, get_duotone_icon("waste_bin", 16), "Motifs Rebut")
             if hasattr(self.data_manager, 'pos_terminals') and self.has_permission("tab_data_caisses"):
-                widget.tabs.addTab(widget.tab_caisses, "Caisses")
+                widget.tabs.addTab(widget.tab_caisses, get_duotone_icon("pos", 16), "Caisses")
             if hasattr(widget, 'tab_colors') and self.has_permission("tab_data_colors"):
-                widget.tabs.addTab(widget.tab_colors, "Couleurs")
+                widget.tabs.addTab(widget.tab_colors, get_duotone_icon("palette_color", 16), "Couleurs")
 
         # --- 2. Procurement (Achats) ---
         elif page_id == 2:
             widget = ProcurementTab(self.data_manager)
+            widget.tabs.setIconSize(QSize(16, 16))
             if self.has_permission("tab_proc_po"):
-                widget.tabs.addTab(widget.po_tab, "Bons de Commandes")
+                widget.tabs.addTab(widget.po_tab, get_duotone_icon("order_doc", 16), "Bons de Commandes")
             if self.has_permission("tab_proc_reception"):
-                widget.tabs.addTab(widget.history_tab, "Bons de Réceptions")
+                widget.tabs.addTab(widget.history_tab, get_duotone_icon("receipt_in", 16), "Bons de Réceptions")
             if self.has_permission("tab_proc_credit"):
-                widget.tabs.addTab(widget.credit_tab, "Avoirs / Retours")
+                widget.tabs.addTab(widget.credit_tab, get_duotone_icon("return_arrow", 16), "Avoirs / Retours")
             if self.has_permission("tab_proc_reclamation"):
-                widget.tabs.addTab(widget.reclamation_tab, "Réclamations")
+                widget.tabs.addTab(widget.reclamation_tab, get_duotone_icon("reclamations", 16), "Réclamations")
 
         # --- 8. Réclamations ---
         elif page_id == 8:
@@ -556,43 +559,45 @@ class MainWindow(QMainWindow):
 
         elif page_id == 3:
             widget = InventoryTab(self.data_manager)
+            widget.tabs.setIconSize(QSize(16, 16))
             if hasattr(widget, 'batches_tab'):
                 widget.batches_tab.request_product_history.connect(self.open_product_history)
             if self.has_permission("tab_inv_list"):
-                widget.tabs.addTab(widget.batches_tab, "1. Stock Actuel")
+                widget.tabs.addTab(widget.batches_tab, get_duotone_icon("inventory", 16), "1. Stock Actuel")
             if self.has_permission("tab_inv_dispatch"):
-                widget.tabs.addTab(widget.dispatch_tab, "2. Transfert & Consommation")
+                widget.tabs.addTab(widget.dispatch_tab, get_duotone_icon("transfer_arrows", 16), "2. Transfert & Consommation")
 
         # --- 4. Settings (Paramètres) ---
         elif page_id == 4:
             widget = SettingsTab(self.data_manager)
+            widget.tabs.setIconSize(QSize(16, 16))
             if self.connection_error and hasattr(widget, 'set_connection_error'):
                 widget.set_connection_error(self.connection_error)
             if self.connection_error:
-                widget.tabs.addTab(widget.tab_db, "Base de données")
+                widget.tabs.addTab(widget.tab_db, get_duotone_icon("database_icon", 16), "Base de données")
                 widget.tabs.setCurrentWidget(widget.tab_db)
             if self.has_permission("tab_config"):
                 if hasattr(widget, 'tab_lab_info'):
-                    widget.tabs.addTab(widget.tab_lab_info, "Informations du Laboratoire")
+                    widget.tabs.addTab(widget.tab_lab_info, get_duotone_icon("lab_info", 16), "Informations du Laboratoire")
                 elif hasattr(widget, 'tab_general'):
-                    widget.tabs.addTab(widget.tab_general, "Informations du Laboratoire")
+                    widget.tabs.addTab(widget.tab_general, get_duotone_icon("lab_info", 16), "Informations du Laboratoire")
             if (self.has_permission("tab_auto_backup") or self.has_permission("tab_config")) and hasattr(widget, 'tab_auto_backup'):
-                widget.tabs.addTab(widget.tab_auto_backup, "Sauvegarde Automatique")
+                widget.tabs.addTab(widget.tab_auto_backup, get_duotone_icon("cloud_backup", 16), "Sauvegarde Automatique")
             if self.has_permission("tab_set_db") and hasattr(widget, 'tab_db'):
-                widget.tabs.addTab(widget.tab_db, "Base de données")
+                widget.tabs.addTab(widget.tab_db, get_duotone_icon("database_icon", 16), "Base de données")
             if self.has_permission("tab_set_printer"):
                 if hasattr(widget, 'tab_printer'):
-                    widget.tabs.addTab(widget.tab_printer, "Imprimante")
+                    widget.tabs.addTab(widget.tab_printer, get_duotone_icon("print", 16), "Imprimante")
                 if hasattr(widget, 'tab_barcode_config'):
-                    widget.tabs.addTab(widget.tab_barcode_config, "Éditeur Étiquettes")
+                    widget.tabs.addTab(widget.tab_barcode_config, get_duotone_icon("label_tag", 16), "Éditeur Étiquettes")
                 if hasattr(widget, 'tab_receipt_config'):
-                    widget.tabs.addTab(widget.tab_receipt_config, "Facture Thermique")
+                    widget.tabs.addTab(widget.tab_receipt_config, get_duotone_icon("receipt_thermal", 16), "Facture Thermique")
             if self.has_permission("tab_set_system") and hasattr(widget, 'tab_system'):
-                widget.tabs.addTab(widget.tab_system, "Système")
+                widget.tabs.addTab(widget.tab_system, get_duotone_icon("settings", 16), "Système")
             if self.has_permission("tab_system_logs") and hasattr(widget, 'tab_system_logs'):
-                widget.tabs.addTab(widget.tab_system_logs, "Logs Système")
+                widget.tabs.addTab(widget.tab_system_logs, get_duotone_icon("terminal_logs", 16), "Logs Système")
             if self.has_permission("tab_set_pdf") and hasattr(widget, 'tab_pdf_config'):
-                widget.tabs.addTab(widget.tab_pdf_config, "Configuration PDF")
+                widget.tabs.addTab(widget.tab_pdf_config, get_duotone_icon("pdf_doc", 16), "Configuration PDF")
 
         # --- 5. Users ---
         elif page_id == 5:

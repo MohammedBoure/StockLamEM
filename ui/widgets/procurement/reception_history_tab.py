@@ -88,23 +88,28 @@ class ReceptionHistoryTab(QWidget):
         self.status_filter.addItems(["Tous", "Terminée", "Variance détectée", "Pending Audit", "Avec notes"])
         self.status_filter.currentTextChanged.connect(self.load_data)
         
+        from ui.icons import apply_button_icon
         btn_refresh = QPushButton("Actualiser")
+        apply_button_icon(btn_refresh, "refresh", 15)
         btn_refresh.setMinimumHeight(34)
         btn_refresh.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_refresh.clicked.connect(self.load_data)
 
-        self.btn_new_direct_bl = QPushButton("+ Nouveau BL Direct")
+        self.btn_new_direct_bl = QPushButton("Nouveau BL Direct")
+        apply_button_icon(self.btn_new_direct_bl, "plus_white", 15)
         self.btn_new_direct_bl.setMinimumHeight(34)
         self.btn_new_direct_bl.setStyleSheet(PRIMARY_CTA_QSS)
         self.btn_new_direct_bl.setToolTip("Créer un Bon de Livraison directement lié à un fournisseur sans Bon de Commande")
         self.btn_new_direct_bl.clicked.connect(self.create_direct_reception)
         
         btn_edit = QPushButton("Modifier")
+        apply_button_icon(btn_edit, "edit", 15)
         btn_edit.setMinimumHeight(34)
         btn_edit.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_edit.clicked.connect(self.edit_reception)
 
         btn_pdf = QPushButton("PDF")
+        apply_button_icon(btn_pdf, "pdf_doc", 15)
         btn_pdf.setMinimumHeight(34)
         btn_pdf.setStyleSheet(SLATE_OUTLINE_QSS)
         btn_pdf.clicked.connect(self.export_reception_pdf)

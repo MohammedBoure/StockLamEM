@@ -4,10 +4,11 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QFrame
 from PySide6.QtCore import Qt
 
 from ui.formatting import format_money, format_quantity
+from ui.icons import get_duotone_icon
 
 class KPICard(QFrame):
-    # أضفنا معامل جديد sub_value (اختياري)
-    def __init__(self, title, value, icon_char, color="#007572", sub_value=None):
+    # أضفنا معامل جديد sub_value (اختياري) ودعم الأيقونات المتجهة الاحترافية icon_name
+    def __init__(self, title, value, icon_char="", color="#007572", sub_value=None, icon_name=None):
         super().__init__()
         self.setObjectName("DashboardKpiCard")
         self.setMinimumHeight(112)
@@ -53,7 +54,19 @@ class KPICard(QFrame):
         
         text_side.addStretch()
         
-        if icon_char:
+        if icon_name:
+            icon_circle = QLabel()
+            icon_circle.setFixedSize(48, 48)
+            icon_circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            icon_circle.setPixmap(get_duotone_icon(icon_name, 26).pixmap(26, 26))
+            icon_circle.setStyleSheet(f"""
+                background-color: {color}15;
+                border-radius: 24px;
+                border: none;
+            """)
+            layout.addLayout(text_side, 1)
+            layout.addWidget(icon_circle)
+        elif icon_char:
             icon_circle = QLabel(icon_char)
             icon_circle.setFixedSize(48, 48)
             icon_circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -103,15 +116,16 @@ class KPICardsSection(QWidget):
         # القيمة (الرقم الصغير بالأسفل)
         waste_val_str = format_money(waste_val, "DA")
         
-        # --- إنشاء البطاقات ---
-        self.layout.addWidget(KPICard("VALEUR STOCK", stock_str, "", "#27ae60"))
-        self.layout.addWidget(KPICard("CONSOMMATION", cons_str, "", "#2980b9"))
-        self.layout.addWidget(KPICard("SORTIES STOCK", qty_str, "", "#16a085"))
+        # --- إنشاء البطاقات بأيقونات متجهة احترافية ---
+        self.layout.addWidget(KPICard("VALEUR STOCK", stock_str, "", "#27ae60", icon_name="valuation"))
+        self.layout.addWidget(KPICard("CONSOMMATION", cons_str, "", "#2980b9", icon_name="consumption"))
+        self.layout.addWidget(KPICard("SORTIES STOCK", qty_str, "", "#16a085", icon_name="truck_delivery"))
         
         self.layout.addWidget(KPICard(
             title="PERTES & DÉCHETS", 
             value=waste_qty_str,
             icon_char="", 
             color="#c0392b",
-            sub_value=waste_val_str
+            sub_value=waste_val_str,
+            icon_name="waste_bin",
         ))

@@ -904,6 +904,8 @@ class BonPaymentsWorkspaceWidget(QWidget):
 
             btn_edit_products = QPushButton("Produits")
             btn_edit_products.setObjectName("btn_row_edit_products")
+            btn_edit_products.setIcon(get_duotone_icon("box_product", 14))
+            btn_edit_products.setIconSize(QSize(14, 14))
             btn_edit_products.setFixedHeight(28)
             btn_edit_products.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             btn_edit_products.setCursor(Qt.PointingHandCursor)
