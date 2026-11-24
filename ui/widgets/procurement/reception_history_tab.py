@@ -85,7 +85,15 @@ class ReceptionHistoryTab(QWidget):
         # -----------------------------
 
         self.status_filter = QComboBox()
-        self.status_filter.addItems(["Tous", "Terminée", "Variance détectée", "Pending Audit", "Avec notes"])
+        from ui.icons import get_duotone_icon
+        for st_lbl, st_ic in [
+            ("Tous", "filter"),
+            ("Terminée", "kpi_recovered"),
+            ("Variance détectée", "alert_warning"),
+            ("Pending Audit", "kpi_overdue"),
+            ("Avec notes", "statement"),
+        ]:
+            self.status_filter.addItem(get_duotone_icon(st_ic, 15), st_lbl)
         self.status_filter.currentTextChanged.connect(self.load_data)
         
         from ui.icons import apply_button_icon
@@ -200,29 +208,30 @@ class ReceptionHistoryTab(QWidget):
         index = self.table.indexAt(pos)
         if not index.isValid(): return
 
+        from ui.icons import get_duotone_icon
         menu = QMenu(self)
         
         # خيار التعديل
-        action_edit = QAction("Modifier la réception", self)
+        action_edit = QAction(get_duotone_icon("edit", 16), "Modifier la réception", self)
         action_edit.triggered.connect(self.edit_reception)
         menu.addAction(action_edit)
 
         # [جديد] خيار إضافة/تعديل ملاحظة
-        action_note = QAction("Ajouter une Réclamation / Note", self)
+        action_note = QAction(get_duotone_icon("reclamations", 16), "Ajouter une Réclamation / Note", self)
         action_note.triggered.connect(self.open_reclamation_dialog)
         menu.addAction(action_note)
 
         menu.addSeparator()
 
         # خيار الـ PDF
-        action_pdf = QAction("Exporter PDF", self)
+        action_pdf = QAction(get_duotone_icon("pdf_doc", 16), "Exporter PDF", self)
         action_pdf.triggered.connect(self.export_reception_pdf)
         menu.addAction(action_pdf)
 
         menu.addSeparator()
 
         # خيار الـ Avoir
-        action_avoir = QAction("Créer un Avoir (Retour)", self)
+        action_avoir = QAction(get_duotone_icon("return_arrow", 16), "Créer un Avoir (Retour)", self)
         action_avoir.triggered.connect(self.trigger_create_avoir)
         menu.addAction(action_avoir)
 

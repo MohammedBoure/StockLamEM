@@ -154,14 +154,15 @@ class FEFOSelectionDialog(QDialog):
         index = self.table.indexAt(pos)
         if not index.isValid(): return
 
+        from ui.icons import get_duotone_icon
         menu = QMenu(self)
         
-        action_history = QAction("Voir Historique du Produit", self)
+        action_history = QAction(get_duotone_icon("history", 16), "Voir Historique du Produit", self)
         action_history.triggered.connect(self.open_history_via_barcode)
         menu.addAction(action_history)
         
         # خيار حذف من السلة (مفيد أيضاً)
-        action_remove = QAction("Retirer de la liste", self)
+        action_remove = QAction(get_duotone_icon("trash", 16), "Retirer de la liste", self)
         action_remove.triggered.connect(self.remove_selected_row)
         menu.addAction(action_remove)
 

@@ -182,17 +182,23 @@ def _build_left_filters(self):
     self.combo_supplier.currentIndexChanged.connect(self.apply_filters_local)
 
     self.combo_status = QComboBox()
-    self.combo_status.addItems([
-        "Tous (>0)", "En Stock", "Faible (Seuil)",
-        "Épuisé (Qté=0)", "Rebuts / Pertes"
-    ])
-    self.combo_status.setMinimumWidth(130)
+    from ui.icons import get_duotone_icon
+    status_items = [
+        ("Tous (>0)", "inventory"),
+        ("En Stock", "kpi_recovered"),
+        ("Faible (Seuil)", "alert_warning"),
+        ("Épuisé (Qté=0)", "kpi_overdue"),
+        ("Rebuts / Pertes", "waste_bin"),
+    ]
+    for st_label, st_icon in status_items:
+        self.combo_status.addItem(get_duotone_icon(st_icon, 15), st_label)
+    self.combo_status.setMinimumWidth(145)
     self.combo_status.setCurrentIndex(1)
     self.combo_status.currentIndexChanged.connect(self.load_data)
 
     self.combo_priority_group = QComboBox()
-    self.combo_priority_group.addItem("Groupes Vente", None)
-    self.combo_priority_group.setMinimumWidth(130)
+    self.combo_priority_group.addItem(get_duotone_icon("tag_family", 15), "Groupes Vente", None)
+    self.combo_priority_group.setMinimumWidth(135)
     self.combo_priority_group.currentIndexChanged.connect(self.apply_filters_local)
 
     row2.addWidget(self.combo_family)

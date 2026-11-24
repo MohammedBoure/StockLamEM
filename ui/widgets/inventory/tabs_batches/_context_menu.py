@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QMenu
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 
+from ui.icons import get_duotone_icon
+
 
 def show_context_menu(self, pos):
     index = self.table.indexAt(pos)
@@ -22,14 +24,37 @@ def show_context_menu(self, pos):
     role = get_current_role(self)
 
     menu = QMenu(self)
+    menu.setStyleSheet("""
+        QMenu {
+            background-color: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            padding: 4px;
+            border-radius: 6px;
+        }
+        QMenu::item {
+            padding: 6px 20px 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #1E293B;
+        }
+        QMenu::item:selected {
+            background-color: #E6F4F1;
+            color: #0E7471;
+        }
+        QMenu::separator {
+            height: 1px;
+            background: #E2E8F0;
+            margin: 4px 6px;
+        }
+    """)
 
     # --- متاح للجميع ---
     _add_action(menu, "Consommation Rapide",
-                lambda: self.open_quick_consume(batch_data))
+                lambda: self.open_quick_consume(batch_data), "consumption")
     _add_action(menu, "Transfert vers...",
-                lambda: self.open_quick_transfer(batch_data))
+                lambda: self.open_quick_transfer(batch_data), "transfer_arrows")
     _add_action(menu, "Déconditionner / Transférer en unité détail",
-                lambda: self.unpack_and_transfer_batch(batch_data))
+                lambda: self.unpack_and_transfer_batch(batch_data), "package_unit")
     menu.addSeparator()
 
     # --- للـ Admin فقط: سجل الباركود ---
@@ -40,41 +65,45 @@ def show_context_menu(self, pos):
             or batch_data.get('Product_Name')
         )
         _add_action(menu, "Voir Historique (Code-Barres)",
-                    lambda: self.go_to_history(search_term))
+                    lambda: self.go_to_history(search_term), "barcode_scan")
 
     # --- تفاصيل اللوط وتعديل الشكوى (للجميع) ---
-    _add_action(menu, "Détails du lot", self.show_batch_details)
-    _add_action(menu, "Modifier la réclamation", lambda: self.edit_reclamation(batch_data))
+    _add_action(menu, "Détails du lot", self.show_batch_details, "audit")
+    _add_action(menu, "Modifier la réclamation", lambda: self.edit_reclamation(batch_data), "reclamations")
 
     # --- تعديل أسعار البيع وسجل الأسعار (ليس للتقني) ---
     if role != 'Technician':
-        _add_action(menu, "Modifier les prix de vente...", lambda: self.open_modify_sales_prices(batch_data))
-        _add_action(menu, "Historique des prix...", lambda: self.open_price_history(batch_data))
-        _add_action(menu, "Assigner au Groupe de Vente (Liste N°)...", lambda: self.open_assign_pos_group(batch_data))
+        _add_action(menu, "Modifier les prix de vente...", lambda: self.open_modify_sales_prices(batch_data), "valuation")
+        _add_action(menu, "Historique des prix...", lambda: self.open_price_history(batch_data), "history")
+        _add_action(menu, "Assigner au Groupe de Vente (Liste N°)...", lambda: self.open_assign_pos_group(batch_data), "tag_family")
 
     # --- وصل الاستلام وبون الإرجاع (ليس للتقني) ---
     if role != 'Technician':
         _add_action(
             menu, "Créer Bon de Retour / Avoir",
-            lambda: self.create_direct_bon_retour(batch_data)
+            lambda: self.create_direct_bon_retour(batch_data),
+            "return_arrow",
         )
     if batch_data.get('BR_ID') and role != 'Technician':
         _add_action(
             menu, "Voir Bon de Réception",
             lambda: self.go_to_reception(
                 batch_data['BR_ID'], batch_data.get('Batch_ID')
-            )
+            ),
+            "receipt_in",
         )
 
     menu.addSeparator()
 
     # --- طباعة (للجميع) ---
-    _add_action(menu, "Imprimer Étiquette", self.print_batch_label)
+    _add_action(menu, "Imprimer Étiquette", self.print_batch_label, "label_tag")
 
     menu.exec(self.table.viewport().mapToGlobal(pos))
 
 
-def _add_action(menu, label, slot):
+def _add_action(menu, label, slot, icon_name=None):
     action = QAction(label, menu)
+    if icon_name:
+        action.setIcon(get_duotone_icon(icon_name, 16))
     action.triggered.connect(slot)
     menu.addAction(action)

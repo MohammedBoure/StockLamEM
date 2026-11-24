@@ -43,14 +43,22 @@ class PurchaseOrderListView(QWidget):
         self.search_input.textChanged.connect(self.refresh_data)
         
         filter_layout.addWidget(QLabel("Fournisseur:"))
+        from ui.icons import get_duotone_icon
         self.supplier_filter = QComboBox()
         self.supplier_filter.setMinimumWidth(150)
-        self.supplier_filter.addItem("Tous")
+        self.supplier_filter.addItem(get_duotone_icon("supplier", 15), "Tous")
         self.load_suppliers() 
         self.supplier_filter.currentTextChanged.connect(self.refresh_data)
 
         self.status_filter = QComboBox()
-        self.status_filter.addItems(["Tous", "Brouillon", "Envoyée", "Partielle", "Complétée"])
+        for st_lbl, st_ic in [
+            ("Tous", "filter"),
+            ("Brouillon", "edit"),
+            ("Envoyée", "truck_delivery"),
+            ("Partielle", "kpi_overdue"),
+            ("Complétée", "kpi_recovered"),
+        ]:
+            self.status_filter.addItem(get_duotone_icon(st_ic, 15), st_lbl)
         self.status_filter.currentTextChanged.connect(self.refresh_data)
         
         filter_layout.addWidget(self.search_input)
@@ -137,27 +145,28 @@ class PurchaseOrderListView(QWidget):
         if not index.isValid():
             return
 
+        from ui.icons import get_duotone_icon
         menu = QMenu(self)
         
         # 1. خيار إنشاء استلام
-        action_receive = QAction("Créer Bon de Réception", self)
+        action_receive = QAction(get_duotone_icon("receipt_in", 16), "Créer Bon de Réception", self)
         action_receive.triggered.connect(self.create_reception_for_selected)
         menu.addAction(action_receive)
         
         # [جديد] خيار عرض الأرشيف في القائمة
-        action_history = QAction("Voir les Réceptions associées", self)
+        action_history = QAction(get_duotone_icon("history", 16), "Voir les Réceptions associées", self)
         action_history.triggered.connect(self.trigger_view_history)
         menu.addAction(action_history)
 
         menu.addSeparator()
 
         # 2. خيار التعديل
-        action_edit = QAction("Modifier", self)
+        action_edit = QAction(get_duotone_icon("edit", 16), "Modifier", self)
         action_edit.triggered.connect(self.edit_selected_po)
         menu.addAction(action_edit)
 
         # 3. خيار الحذف
-        action_delete = QAction("Supprimer", self)
+        action_delete = QAction(get_duotone_icon("trash", 16), "Supprimer", self)
         action_delete.triggered.connect(self.delete_selected_po)
         menu.addAction(action_delete)
 

@@ -233,11 +233,12 @@ class LocationsTab(QWidget):
     def open_context_menu(self, position):
         item = self.tree.itemAt(position)
         if not item: return
+        from ui.icons import get_duotone_icon
         menu = QMenu()
         menu.setStyleSheet("QMenu::item:selected { background-color: #007572; color: white; }")
-        act_add = QAction("Ajouter Sous-Emplacement", self)
-        act_edit = QAction("Modifier", self)
-        act_del = QAction("Supprimer", self)
+        act_add = QAction(get_duotone_icon("plus_teal", 16), "Ajouter Sous-Emplacement", self)
+        act_edit = QAction(get_duotone_icon("edit", 16), "Modifier", self)
+        act_del = QAction(get_duotone_icon("trash", 16), "Supprimer", self)
         act_add.triggered.connect(self.add_child_location)
         act_edit.triggered.connect(self.edit_location)
         act_del.triggered.connect(self.delete_location)

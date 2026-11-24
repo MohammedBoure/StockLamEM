@@ -109,12 +109,13 @@ class CreditNoteList(QWidget):
         index = self.table.indexAt(pos)
         if not index.isValid(): return
 
+        from ui.icons import get_duotone_icon
         menu = QMenu(self)
-        action_edit = QAction("Modifier", self)
+        action_edit = QAction(get_duotone_icon("edit", 16), "Modifier", self)
         action_edit.triggered.connect(self.trigger_edit)
         menu.addAction(action_edit)
 
-        action_delete = QAction(" Supprimer", self)
+        action_delete = QAction(get_duotone_icon("trash", 16), "Supprimer", self)
         action_delete.triggered.connect(self.trigger_delete)
         menu.addAction(action_delete)
 

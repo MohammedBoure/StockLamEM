@@ -163,41 +163,25 @@ class MovementHistoryTab(QWidget):
 
         self.combo_type = QComboBox()
         self.combo_type.setFixedHeight(36)
-        self.combo_type.addItems([
-            "Tous les mouvements",
-            "Réceptions (Achats)",
-            "Consommations (Patients)",
-            "Contrôles Qualité (QC)",
-            "Calibrations",
-            "Ouvertures Boîtes",
-            "Ajustements Manuels",
-            "Rebuts / Pertes",
-            "Transferts Internes",
-            "Ventes / Transf. Externes",
-            "Retours Sous-traitants (BR)",
-            "Retours Fournisseurs (Avoirs)",
-            "Ventes / Sorties (POS & Bon de Sortie)",
-            "Retours Ventes (Bon de Retour)",
-        ])
-
-        movement_types = [
-            None,
-            "Purchase_Receive",
-            "Patient_Test",
-            "QC_Run",
-            "Calibration",
-            "Open_Pack",
-            "Adjustment",
-            "Waste",
-            "Transfer",
-            "External_Transfer",
-            "Transfer_Return",
-            "Return_To_Supplier",
-            "Sale",
-            "Sale_Return",
+        self.combo_type.setIconSize(QSize(15, 15))
+        movement_filter_items = [
+            ("Tous les mouvements", None, "filter"),
+            ("Réceptions (Achats)", "Purchase_Receive", "receipt_in"),
+            ("Consommations (Patients)", "Patient_Test", "consumption"),
+            ("Contrôles Qualité (QC)", "QC_Run", "shield_admin"),
+            ("Calibrations", "Calibration", "settings"),
+            ("Ouvertures Boîtes", "Open_Pack", "box_product"),
+            ("Ajustements Manuels", "Adjustment", "edit"),
+            ("Rebuts / Pertes", "Waste", "waste_bin"),
+            ("Transferts Internes", "Transfer", "transfer_arrows"),
+            ("Ventes / Transf. Externes", "External_Transfer", "truck_delivery"),
+            ("Retours Sous-traitants (BR)", "Transfer_Return", "return_arrow"),
+            ("Retours Fournisseurs (Avoirs)", "Return_To_Supplier", "return_arrow"),
+            ("Ventes / Sorties (POS & Bon de Sortie)", "Sale", "pos"),
+            ("Retours Ventes (Bon de Retour)", "Sale_Return", "return_arrow"),
         ]
-        for index, movement_type in enumerate(movement_types):
-            self.combo_type.setItemData(index, movement_type)
+        for label, movement_type, icon_name in movement_filter_items:
+            self.combo_type.addItem(get_duotone_icon(icon_name, 15), label, movement_type)
 
         self.combo_type.setMinimumWidth(220)
         self.combo_type.setStyleSheet("QComboBox { padding: 4px 8px; font-size: 13px; }")
