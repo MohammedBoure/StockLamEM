@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
@@ -225,6 +226,17 @@ class MonthlyProfitTab(QWidget):
 
         root.addWidget(top_bar)
 
+        # Scrollable content area for KPIs, Chart, and Table on smaller screens
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        body = QWidget()
+        body.setStyleSheet("background: transparent;")
+        body_lay = QVBoxLayout(body)
+        body_lay.setContentsMargins(0, 0, 0, 0)
+        body_lay.setSpacing(12)
+
         # 2. KPI Strip (5 cards including Décharges)
         kpi_row = QHBoxLayout()
         kpi_row.setSpacing(10)
@@ -247,7 +259,7 @@ class MonthlyProfitTab(QWidget):
 
         for c in (card_profit, card_rev, card_cost, card_dech, card_best):
             kpi_row.addWidget(c, 1)
-        root.addLayout(kpi_row)
+        body_lay.addLayout(kpi_row)
 
         # 3. Chart Card (optional matplotlib)
         self._canvas = None
@@ -256,7 +268,7 @@ class MonthlyProfitTab(QWidget):
             chart_card = QFrame()
             chart_card.setObjectName("ProfitCard")
             chart_card.setMinimumHeight(210)
-            chart_card.setMaximumHeight(260)
+            chart_card.setMaximumHeight(250)
             ch_lay = QVBoxLayout(chart_card)
             ch_lay.setContentsMargins(10, 8, 10, 8)
             self._figure = Figure(figsize=(8, 2.3), dpi=96)
@@ -264,7 +276,7 @@ class MonthlyProfitTab(QWidget):
             self._canvas = FigureCanvas(self._figure)
             self._canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             ch_lay.addWidget(self._canvas)
-            root.addWidget(chart_card)
+            body_lay.addWidget(chart_card)
 
         # 4. Breakdown Table (8 columns including Décharges)
         table_card = QFrame()
@@ -273,6 +285,7 @@ class MonthlyProfitTab(QWidget):
         tc_lay.setContentsMargins(10, 10, 10, 10)
 
         self.table = QTableWidget(0, 8)
+        self.table.setMinimumHeight(320)
         self.table.setHorizontalHeaderLabels([
             "Mois",
             "Ventes (Nb)",
@@ -284,8 +297,8 @@ class MonthlyProfitTab(QWidget):
             "Marge (%)",
         ])
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(34)
-        self.table.horizontalHeader().setFixedHeight(36)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.horizontalHeader().setFixedHeight(38)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setAlternatingRowColors(True)
@@ -311,36 +324,43 @@ class MonthlyProfitTab(QWidget):
             """
         )
         hdr = self.table.horizontalHeader()
-        for col in range(8):
+        hdr.setMinimumSectionSize(74)
+        for col in (0, 3, 4, 5, 6):
             hdr.setSectionResizeMode(col, QHeaderView.Stretch)
+        for col in (1, 2, 7):
+            hdr.setSectionResizeMode(col, QHeaderView.ResizeToContents)
 
         tc_lay.addWidget(self.table, 1)
-        root.addWidget(table_card, 1)
+        body_lay.addWidget(table_card, 1)
+
+        scroll.setWidget(body)
+        root.addWidget(scroll, 1)
 
     def _make_kpi_card(self, label: str, value: str, color_hex: str, icon_name: str = ""):
         card = QFrame()
         card.setObjectName("ProfitCard")
-        card.setFixedHeight(78)
+        card.setMinimumHeight(80)
         outer = QHBoxLayout(card)
-        outer.setContentsMargins(14, 10, 14, 10)
-        outer.setSpacing(10)
+        outer.setContentsMargins(12, 10, 12, 10)
+        outer.setSpacing(8)
 
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
         lbl_k = QLabel(label)
-        lbl_k.setStyleSheet("font-size: 10.5px; font-weight: 700; color: #64748B;")
+        lbl_k.setStyleSheet("font-size: 10px; font-weight: 700; color: #64748B;")
         lbl_v = QLabel(value)
-        lbl_v.setStyleSheet(f"font-size: 16.5px; font-weight: 800; color: {color_hex};")
+        lbl_v.setWordWrap(True)
+        lbl_v.setStyleSheet(f"font-size: 15.5px; font-weight: 800; color: {color_hex};")
         text_col.addWidget(lbl_k)
         text_col.addWidget(lbl_v)
         outer.addLayout(text_col, 1)
 
         if icon_name:
             ic_lbl = QLabel()
-            ic_lbl.setFixedSize(36, 36)
+            ic_lbl.setFixedSize(34, 34)
             ic_lbl.setAlignment(Qt.AlignCenter)
-            ic_lbl.setPixmap(get_duotone_icon(icon_name, 20).pixmap(20, 20))
-            ic_lbl.setStyleSheet(f"background-color: {color_hex}15; border-radius: 18px;")
+            ic_lbl.setPixmap(get_duotone_icon(icon_name, 18).pixmap(18, 18))
+            ic_lbl.setStyleSheet(f"background-color: {color_hex}15; border-radius: 17px;")
             outer.addWidget(ic_lbl)
 
         return lbl_k, lbl_v, card
@@ -455,7 +475,7 @@ class MonthlyProfitTab(QWidget):
         self.lbl_kpi_profit_title.setText(profit_label)
         self.lbl_kpi_profit.setText(f"{format_money(tot_profit)} DA")
         self.lbl_kpi_profit.setStyleSheet(
-            f"font-size: 16.5px; font-weight: 800; color: {'#0E7471' if tot_profit >= 0 else '#DC2626'};"
+            f"font-size: 15.5px; font-weight: 800; color: {'#0E7471' if tot_profit >= 0 else '#DC2626'};"
         )
         self.lbl_kpi_rev.setText(f"{format_money(tot_rev)} DA")
         self.lbl_kpi_cost.setText(f"{format_money(tot_cost)} DA")
@@ -597,7 +617,8 @@ class MonthlyProfitTab(QWidget):
             return
 
         bar_colors = ["#0E7471" if p >= 0 else "#DC2626" for p in profits]
-        bars = ax.bar(labels, profits, color=bar_colors, width=0.58, edgecolor="none")
+        x_idx = list(range(len(labels)))
+        bars = ax.bar(x_idx, profits, color=bar_colors, width=0.58, edgecolor="none")
         ax.axhline(0, color="#CBD5E1", linewidth=0.8)
         ax.set_title(title, fontsize=10.5, fontweight="bold", color="#0F172A", pad=8)
         ax.spines["top"].set_visible(False)
@@ -605,23 +626,34 @@ class MonthlyProfitTab(QWidget):
         ax.spines["left"].set_color("#E2E8F0")
         ax.spines["bottom"].set_color("#CBD5E1")
         ax.tick_params(axis="both", labelsize=8.5, colors="#475569")
-        if len(labels) > 12:
-            ax.tick_params(axis="x", rotation=35)
+
+        if len(labels) > 15:
+            step = max(1, len(labels) // 10)
+            tick_pos = x_idx[::step]
+            if x_idx[-1] not in tick_pos:
+                tick_pos.append(x_idx[-1])
+            ax.set_xticks(tick_pos)
+            ax.set_xticklabels([labels[i] for i in tick_pos], rotation=25, ha="right")
+        else:
+            ax.set_xticks(x_idx)
+            ax.set_xticklabels(labels)
+
         ax.grid(axis="y", linestyle="--", alpha=0.35, color="#94A3B8")
         ax.set_axisbelow(True)
 
-        for bar, val in zip(bars, profits):
-            if abs(val) > 0:
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2.0,
-                    bar.get_height(),
-                    f"{val:,.0f}",
-                    ha="center",
-                    va="bottom" if val >= 0 else "top",
-                    fontsize=7.5,
-                    color="#334155",
-                    fontweight="bold",
-                )
+        if len(labels) <= 15:
+            for bar, val in zip(bars, profits):
+                if abs(val) > 0:
+                    ax.text(
+                        bar.get_x() + bar.get_width() / 2.0,
+                        bar.get_height(),
+                        f"{val:,.0f}",
+                        ha="center",
+                        va="bottom" if val >= 0 else "top",
+                        fontsize=7.5,
+                        color="#334155",
+                        fontweight="bold",
+                    )
 
         self._figure.tight_layout()
         self._canvas.draw()
