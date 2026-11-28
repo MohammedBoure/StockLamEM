@@ -682,7 +682,7 @@ class StatisticsManager:
             return []
 
     def get_available_profit_years(self):
-        """Returns distinct years that have sales records, always including current year."""
+        """Returns distinct years that have sales or active décharges, always including current year."""
         from datetime import datetime as _dt
         current_year = _dt.now().year
         years = {current_year}
@@ -700,14 +700,42 @@ class StatisticsManager:
                 for row in cursor.fetchall() or []:
                     if row.get("yr"):
                         years.add(int(row["yr"]))
+                try:
+                    cursor.execute(
+                        """
+                        SELECT DISTINCT YEAR(Decharge_Date) AS yr
+                        FROM Decharges
+                        WHERE Status = 'ACTIVE' AND Decharge_Date IS NOT NULL
+                        ORDER BY yr DESC
+                        """
+                    )
+                    for row in cursor.fetchall() or []:
+                        if row.get("yr"):
+                            years.add(int(row["yr"]))
+                except Exception:
+                    pass
         except Exception as e:
             logging.error(f"Error fetching profit years: {e}")
         return sorted(years, reverse=True)
 
+    _PMP_SUBQUERY = """
+        SELECT
+            Product_ID,
+            CASE
+                WHEN SUM(COALESCE(Quantity_Initial, 0)) > 0
+                THEN SUM(COALESCE(Quantity_Initial, 0) * COALESCE(Unit_Price_Received, 0)) / SUM(COALESCE(Quantity_Initial, 0))
+                ELSE COALESCE(AVG(Unit_Price_Received), 0)
+            END AS avg_buy_price
+        FROM Inventory_Batches
+        WHERE Unit_Price_Received IS NOT NULL AND Unit_Price_Received > 0
+        GROUP BY Product_ID
+    """
+
     def get_monthly_profit_report(self, year: int):
         """
         Computes monthly sales revenue, weighted average purchase cost (PMP per Product_ID),
-        and net profit (prix_vente - prix_moyen) for each of the 12 months of `year`.
+        active Décharges, and net profit (prix_vente - prix_moyen - decharges)
+        for each of the 12 months of `year`.
         Covers both POS/Wholesale Sales_Details and Bureaux Sales_Order_Lines_Theoretical.
         """
         months = [
@@ -715,6 +743,8 @@ class StatisticsManager:
                 "month": m,
                 "revenue": 0.0,
                 "avg_cost": 0.0,
+                "decharges": 0.0,
+                "gross_profit": 0.0,
                 "profit": 0.0,
                 "units_sold": 0.0,
                 "sales_count": 0,
@@ -724,12 +754,12 @@ class StatisticsManager:
         try:
             with self.db.get_db_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                query = """
+                query = f"""
                     SELECT
                         m_num AS month,
                         COALESCE(SUM(line_revenue), 0) AS revenue,
                         COALESCE(SUM(line_avg_cost), 0) AS avg_cost,
-                        COALESCE(SUM(line_revenue - line_avg_cost), 0) AS profit,
+                        COALESCE(SUM(line_revenue - line_avg_cost), 0) AS gross_profit,
                         COALESCE(SUM(qty), 0) AS units_sold,
                         COUNT(DISTINCT inv_id) AS sales_count
                     FROM (
@@ -742,18 +772,7 @@ class StatisticsManager:
                             sd.Qty_Sold * COALESCE(pmp.avg_buy_price, 0) AS line_avg_cost
                         FROM Sales_Invoices si
                         JOIN Sales_Details sd ON sd.Invoice_ID = si.Invoice_ID
-                        LEFT JOIN (
-                            SELECT
-                                Product_ID,
-                                CASE
-                                    WHEN SUM(COALESCE(Quantity_Initial, 0)) > 0
-                                    THEN SUM(COALESCE(Quantity_Initial, 0) * COALESCE(Unit_Price_Received, 0)) / SUM(COALESCE(Quantity_Initial, 0))
-                                    ELSE COALESCE(AVG(Unit_Price_Received), 0)
-                                END AS avg_buy_price
-                            FROM Inventory_Batches
-                            WHERE Unit_Price_Received IS NOT NULL AND Unit_Price_Received > 0
-                            GROUP BY Product_ID
-                        ) pmp ON pmp.Product_ID = sd.Product_ID
+                        LEFT JOIN ({self._PMP_SUBQUERY}) pmp ON pmp.Product_ID = sd.Product_ID
                         WHERE YEAR(si.Invoice_Date) = %s
                           AND si.Status NOT IN ('Draft', 'Cancelled')
 
@@ -768,18 +787,7 @@ class StatisticsManager:
                             sol.Quantity_Ordered * COALESCE(pmp.avg_buy_price, 0) AS line_avg_cost
                         FROM Sales_Invoices si
                         JOIN Sales_Order_Lines_Theoretical sol ON sol.Order_ID = si.Order_ID
-                        LEFT JOIN (
-                            SELECT
-                                Product_ID,
-                                CASE
-                                    WHEN SUM(COALESCE(Quantity_Initial, 0)) > 0
-                                    THEN SUM(COALESCE(Quantity_Initial, 0) * COALESCE(Unit_Price_Received, 0)) / SUM(COALESCE(Quantity_Initial, 0))
-                                    ELSE COALESCE(AVG(Unit_Price_Received), 0)
-                                END AS avg_buy_price
-                            FROM Inventory_Batches
-                            WHERE Unit_Price_Received IS NOT NULL AND Unit_Price_Received > 0
-                            GROUP BY Product_ID
-                        ) pmp ON pmp.Product_ID = sol.Product_ID
+                        LEFT JOIN ({self._PMP_SUBQUERY}) pmp ON pmp.Product_ID = sol.Product_ID
                         WHERE YEAR(si.Invoice_Date) = %s
                           AND si.Status NOT IN ('Draft', 'Cancelled')
                           AND si.Order_ID IS NOT NULL
@@ -794,14 +802,153 @@ class StatisticsManager:
                 for row in cursor.fetchall() or []:
                     m_idx = int(row.get("month") or 0) - 1
                     if 0 <= m_idx < 12:
-                        months[m_idx] = {
-                            "month": m_idx + 1,
-                            "revenue": float(row.get("revenue") or 0.0),
-                            "avg_cost": float(row.get("avg_cost") or 0.0),
-                            "profit": float(row.get("profit") or 0.0),
+                        rev = float(row.get("revenue") or 0.0)
+                        cost = float(row.get("avg_cost") or 0.0)
+                        gross = float(row.get("gross_profit") or (rev - cost))
+                        months[m_idx].update({
+                            "revenue": rev,
+                            "avg_cost": cost,
+                            "gross_profit": gross,
+                            "profit": gross,
                             "units_sold": float(row.get("units_sold") or 0.0),
                             "sales_count": int(row.get("sales_count") or 0),
-                        }
+                        })
+
+                # Deduct active Décharges per month
+                try:
+                    cursor.execute(
+                        """
+                        SELECT
+                            MONTH(Decharge_Date) AS m_num,
+                            COALESCE(SUM(Amount), 0) AS decharges
+                        FROM Decharges
+                        WHERE YEAR(Decharge_Date) = %s
+                          AND Status = 'ACTIVE'
+                        GROUP BY MONTH(Decharge_Date)
+                        """,
+                        (int(year),),
+                    )
+                    for row in cursor.fetchall() or []:
+                        m_idx = int(row.get("m_num") or 0) - 1
+                        if 0 <= m_idx < 12:
+                            dch = float(row.get("decharges") or 0.0)
+                            months[m_idx]["decharges"] = dch
+                            months[m_idx]["profit"] = months[m_idx]["gross_profit"] - dch
+                except Exception as d_err:
+                    logging.warning(f"Skipping Décharges deduction for {year}: {d_err}")
         except Exception as e:
             logging.error(f"Error computing monthly profit report for {year}: {e}")
         return months
+
+    def get_period_profit_report(self, start_date: str, end_date: str):
+        """
+        Computes daily sales revenue, weighted average purchase cost (PMP),
+        active Décharges, and net profit (prix_vente - prix_moyen - decharges)
+        for each date in [start_date, end_date] that has sales or décharges.
+        """
+        by_date = {}
+        try:
+            with self.db.get_db_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                query = f"""
+                    SELECT
+                        DATE_FORMAT(sale_date, '%Y-%m-%d') AS d_str,
+                        COALESCE(SUM(line_revenue), 0) AS revenue,
+                        COALESCE(SUM(line_avg_cost), 0) AS avg_cost,
+                        COALESCE(SUM(line_revenue - line_avg_cost), 0) AS gross_profit,
+                        COALESCE(SUM(qty), 0) AS units_sold,
+                        COUNT(DISTINCT inv_id) AS sales_count
+                    FROM (
+                        SELECT
+                            DATE(si.Invoice_Date) AS sale_date,
+                            si.Invoice_ID AS inv_id,
+                            sd.Qty_Sold AS qty,
+                            COALESCE(sd.Line_Total_TTC, sd.Qty_Sold * sd.Unit_Price_HT * (1 + COALESCE(sd.TVA_Percent, 0) / 100.0)) AS line_revenue,
+                            sd.Qty_Sold * COALESCE(pmp.avg_buy_price, 0) AS line_avg_cost
+                        FROM Sales_Invoices si
+                        JOIN Sales_Details sd ON sd.Invoice_ID = si.Invoice_ID
+                        LEFT JOIN ({self._PMP_SUBQUERY}) pmp ON pmp.Product_ID = sd.Product_ID
+                        WHERE DATE(si.Invoice_Date) BETWEEN %s AND %s
+                          AND si.Status NOT IN ('Draft', 'Cancelled')
+
+                        UNION ALL
+
+                        SELECT
+                            DATE(si.Invoice_Date) AS sale_date,
+                            si.Invoice_ID AS inv_id,
+                            sol.Quantity_Ordered AS qty,
+                            COALESCE(sol.Line_Total_TTC, sol.Quantity_Ordered * sol.Unit_Price_TTC) AS line_revenue,
+                            sol.Quantity_Ordered * COALESCE(pmp.avg_buy_price, 0) AS line_avg_cost
+                        FROM Sales_Invoices si
+                        JOIN Sales_Order_Lines_Theoretical sol ON sol.Order_ID = si.Order_ID
+                        LEFT JOIN ({self._PMP_SUBQUERY}) pmp ON pmp.Product_ID = sol.Product_ID
+                        WHERE DATE(si.Invoice_Date) BETWEEN %s AND %s
+                          AND si.Status NOT IN ('Draft', 'Cancelled')
+                          AND si.Order_ID IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM Sales_Details sd2 WHERE sd2.Invoice_ID = si.Invoice_ID
+                          )
+                    ) combined
+                    GROUP BY sale_date
+                    ORDER BY sale_date ASC
+                """
+                cursor.execute(query, (start_date, end_date, start_date, end_date))
+                for row in cursor.fetchall() or []:
+                    d_str = str(row.get("d_str") or "")
+                    if not d_str:
+                        continue
+                    rev = float(row.get("revenue") or 0.0)
+                    cost = float(row.get("avg_cost") or 0.0)
+                    gross = float(row.get("gross_profit") or (rev - cost))
+                    by_date[d_str] = {
+                        "date": d_str,
+                        "revenue": rev,
+                        "avg_cost": cost,
+                        "decharges": 0.0,
+                        "gross_profit": gross,
+                        "profit": gross,
+                        "units_sold": float(row.get("units_sold") or 0.0),
+                        "sales_count": int(row.get("sales_count") or 0),
+                    }
+
+                # Deduct active Décharges per day
+                try:
+                    cursor.execute(
+                        """
+                        SELECT
+                            DATE_FORMAT(DATE(Decharge_Date), '%Y-%m-%d') AS d_str,
+                            COALESCE(SUM(Amount), 0) AS decharges
+                        FROM Decharges
+                        WHERE DATE(Decharge_Date) BETWEEN %s AND %s
+                          AND Status = 'ACTIVE'
+                        GROUP BY DATE(Decharge_Date)
+                        ORDER BY d_str ASC
+                        """,
+                        (start_date, end_date),
+                    )
+                    for row in cursor.fetchall() or []:
+                        d_str = str(row.get("d_str") or "")
+                        if not d_str:
+                            continue
+                        dch = float(row.get("decharges") or 0.0)
+                        entry = by_date.setdefault(
+                            d_str,
+                            {
+                                "date": d_str,
+                                "revenue": 0.0,
+                                "avg_cost": 0.0,
+                                "decharges": 0.0,
+                                "gross_profit": 0.0,
+                                "profit": 0.0,
+                                "units_sold": 0.0,
+                                "sales_count": 0,
+                            },
+                        )
+                        entry["decharges"] = dch
+                        entry["profit"] = entry["gross_profit"] - dch
+                except Exception as d_err:
+                    logging.warning(f"Skipping Décharges deduction for period {start_date}..{end_date}: {d_err}")
+        except Exception as e:
+            logging.error(f"Error computing period profit report ({start_date}..{end_date}): {e}")
+
+        return [by_date[k] for k in sorted(by_date.keys())]

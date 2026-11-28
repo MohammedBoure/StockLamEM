@@ -148,7 +148,7 @@ class DashboardTab(QWidget):
             
             # 2. التبويبات الأخرى
             if hasattr(self, "page_monthly_profit"):
-                self.page_monthly_profit.refresh()
+                self.page_monthly_profit.set_period_dates(self.date_from.date(), self.date_to.date(), refresh_now=True)
             self.page_valuation.refresh(self.data_manager.stats)
             self.page_consumption.update_params(self.date_from.date(), self.date_to.date())
             self.page_consumption.refresh_report()
