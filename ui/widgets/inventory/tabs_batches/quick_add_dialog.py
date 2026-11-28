@@ -115,6 +115,29 @@ class QuickAddDialog(QDialog):
         self.calculate_live_item_ttc()
         self.calculate_live_sell_ttc()
 
+        # If linked to a Bon de Réception (BR_ID), lock initial accounting values in Stock Actuel edit mode
+        if d.get('BR_ID') is not None:
+            lock_tip = (
+                "Champ verrouillé : ce lot appartient à un Bon de Réception. "
+                "Pour modifier les valeurs initiales (quantité, prix d'achat, fournisseur, BL), "
+                "passez par l'Historique des Réceptions."
+            )
+            for w in (
+                self.cb_product,
+                self.cb_supplier,
+                self.inp_qty,
+                self.cb_unit_type,
+                self.inp_price,
+                self.inp_price_ttc,
+                self.inp_remise,
+                self.cb_remise_type,
+                self.chk_tva,
+                self.inp_bl_number,
+            ):
+                if w is not None:
+                    w.setEnabled(False)
+                    w.setToolTip(lock_tip)
+
     def _build_ui(self):
         self.setStyleSheet(scoped_dialog_qss("QuickAddDialog"))
         main_layout = QVBoxLayout(self)

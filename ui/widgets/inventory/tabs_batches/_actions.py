@@ -595,7 +595,7 @@ def open_quick_add(self):
 
 
 def open_quick_edit(self):
-    """يفتح نافذة التعديل السريع للحصة المحددة (إذا لم تكن من إيصال استلام رسمي)"""
+    """يفتح نافذة التعديل السريع للحصة المحددة (مع قفل القيم الابتدائية للدفعات المرتبطة بـ Bon de Réception)"""
     selected_rows = set(item.row() for item in self.table.selectedItems())
     if not selected_rows or len(selected_rows) != 1:
         QMessageBox.warning(self, "Sélection", "Veuillez sélectionner un (1) seul lot à modifier.")
@@ -603,10 +603,6 @@ def open_quick_edit(self):
 
     row = list(selected_rows)[0]
     batch_data = self.table.item(row, 0).data(Qt.UserRole)
-
-    if batch_data.get('BR_ID') is not None:
-        QMessageBox.warning(self, "Action non permise", "Ce lot appartient à un Bon de Réception.\nVeuillez le modifier depuis l'historique des réceptions.")
-        return
 
     from .quick_add_dialog import QuickAddDialog
     dialog = QuickAddDialog(self.manager, self, batch_data=batch_data)

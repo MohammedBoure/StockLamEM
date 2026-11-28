@@ -951,15 +951,173 @@ class InventoryBatchManager:
         except Exception:
             return False
 
+    _VIRTUAL_QUICK_ADD_PO_MARKER = "[QUICK_ADD_REF]"
+
+    def _generate_custom_po_id_with_cursor(self, cursor) -> int:
+        """Generates annual PO_ID in YY + SequentialNumber format (same as PurchaseOrderManager)."""
+        current_year_prefix = datetime.now().strftime('%y')
+        cursor.execute(
+            "SELECT MAX(PO_ID) FROM Purchase_Orders WHERE CAST(PO_ID AS CHAR) LIKE %s",
+            (f"{current_year_prefix}%",),
+        )
+        row = cursor.fetchone()
+        max_id = row[0] if row else None
+        if max_id:
+            serial_part = str(max_id)[2:]
+            new_serial = 1 if not serial_part or not serial_part.isdigit() else int(serial_part) + 1
+        else:
+            new_serial = 1
+        return int(f"{current_year_prefix}{new_serial}")
+
+    def _get_or_create_virtual_po_for_supplier(self, cursor, supplier_id: int, user_id: int = None) -> int:
+        """
+        Returns the supplier's reference Purchase_Order (PO_ID) used for Ajouter Rapide,
+        creating it if it does not yet exist. Remains visible in Purchase_Orders.
+        """
+        cursor.execute(
+            """
+            SELECT PO_ID
+            FROM Purchase_Orders
+            WHERE Supplier_ID = %s
+              AND Deleted_At IS NULL
+              AND Notes LIKE %s
+            ORDER BY PO_ID DESC
+            LIMIT 1
+            """,
+            (int(supplier_id), f"%{self._VIRTUAL_QUICK_ADD_PO_MARKER}%"),
+        )
+        row = cursor.fetchone()
+        if row and row[0]:
+            return int(row[0])
+
+        po_id = self._generate_custom_po_id_with_cursor(cursor)
+        notes = f"{self._VIRTUAL_QUICK_ADD_PO_MARKER} Bon de Commande de référence (Ajout Rapide)"
+        cursor.execute(
+            """
+            INSERT INTO Purchase_Orders
+                (PO_ID, Supplier_ID, Order_Date, Status, Notes, Created_By)
+            VALUES (%s, %s, CURDATE(), 'Partial_Received', %s, %s)
+            """,
+            (po_id, int(supplier_id), notes, user_id),
+        )
+        return po_id
+
+    def _get_or_create_quick_reception(
+        self,
+        cursor,
+        po_id: int,
+        supplier_id: int,
+        bl_number: str = "",
+        user_id: int = None,
+    ) -> int:
+        """
+        Finds or creates a Reception_Log (BR_ID) for Ajouter Rapide:
+        - If `bl_number` is provided: reuse BR matching (Supplier_ID, Supplier_BL_Ref);
+          if not found (or different BL), create a new BR with Document_Type='BL'.
+        - If `bl_number` is empty: reuse today's BR for (Supplier_ID, PO_ID) with no BL;
+          if not found, create a new BR with Document_Type='None'.
+        """
+        bl_clean = str(bl_number or "").strip() or None
+
+        if bl_clean:
+            cursor.execute(
+                """
+                SELECT BR_ID
+                FROM Reception_Log
+                WHERE Supplier_ID = %s AND Supplier_BL_Ref = %s
+                ORDER BY BR_ID DESC
+                LIMIT 1
+                """,
+                (int(supplier_id), bl_clean),
+            )
+            existing = cursor.fetchone()
+            if existing and existing[0]:
+                return int(existing[0])
+
+            cursor.execute(
+                """
+                INSERT INTO Reception_Log
+                    (PO_ID, Supplier_ID, Supplier_BL_Ref, Document_Type,
+                     Reception_Date, Status, Receiver_User_ID, Received_By)
+                VALUES (%s, %s, %s, 'BL', NOW(), 'Completed', %s, %s)
+                """,
+                (po_id, int(supplier_id), bl_clean, user_id, user_id),
+            )
+            return int(cursor.lastrowid)
+
+        # No BL provided -> merge into today's BR for the same supplier & virtual PO (without BL)
+        cursor.execute(
+            """
+            SELECT BR_ID
+            FROM Reception_Log
+            WHERE Supplier_ID = %s
+              AND PO_ID = %s
+              AND (Supplier_BL_Ref IS NULL OR Supplier_BL_Ref = '')
+              AND DATE(Reception_Date) = CURDATE()
+            ORDER BY BR_ID DESC
+            LIMIT 1
+            """,
+            (int(supplier_id), po_id),
+        )
+        existing = cursor.fetchone()
+        if existing and existing[0]:
+            return int(existing[0])
+
+        cursor.execute(
+            """
+            INSERT INTO Reception_Log
+                (PO_ID, Supplier_ID, Supplier_BL_Ref, Document_Type,
+                 Reception_Date, Status, Receiver_User_ID, Received_By)
+            VALUES (%s, %s, NULL, 'None', NOW(), 'Completed', %s, %s)
+            """,
+            (po_id, int(supplier_id), user_id, user_id),
+        )
+        return int(cursor.lastrowid)
+
+    def _generate_next_po_barcode(self, cursor, po_id: int) -> str:
+        """
+        Generates the next smart barcode (<PO_ID><NNN>, e.g. 2618001) scoped across
+        the entire PO_ID so multiple BRs under a supplier's reference PO never collide.
+        """
+        prefix = self.get_barcode_prefix_for_po(po_id)
+        cursor.execute(
+            """
+            SELECT Internal_Barcode
+            FROM Inventory_Batches
+            WHERE PO_ID = %s AND Internal_Barcode LIKE %s
+            """,
+            (po_id, f"{prefix}%"),
+        )
+        max_serial = 0
+        for row in cursor.fetchall() or []:
+            bc = row[0] if not isinstance(row, dict) else row.get("Internal_Barcode")
+            serial = self.extract_smart_barcode_serial(bc, prefix)
+            if serial is not None:
+                max_serial = max(max_serial, serial)
+
+        next_serial = max_serial + 1
+        while True:
+            candidate = self.generate_smart_barcode(prefix, next_serial)
+            cursor.execute(
+                "SELECT Batch_ID FROM Inventory_Batches WHERE Internal_Barcode = %s LIMIT 1",
+                (candidate,),
+            )
+            if not cursor.fetchone():
+                return candidate
+            next_serial += 1
+
     def add_direct_batch(self, data: dict, user_id: int = None) -> bool:
         """
-        Adds a batch directly to inventory without a Reception (BR) or Purchase Order (PO).
-        Generates robust EAN-13 barcode after insert. Enforces complete product & batch data.
+        Adds a batch via Ajouter Rapide by linking it to the supplier's reference
+        Purchase Order (PO_ID) and an auto-created/merged Reception_Log (BR_ID).
+        Generates smart PO-based barcode (<PO_ID><NNN>) consistent with Bon de Réception.
         """
         if not data.get('Product_ID'):
             raise ValueError("Product_ID est obligatoire pour enregistrer un lot.")
         if not data.get('Location_ID'):
             raise ValueError("Location_ID est obligatoire pour enregistrer un lot.")
+        if not data.get('Supplier_ID'):
+            raise ValueError("Supplier_ID est obligatoire pour enregistrer un lot.")
         raw_lot = str(data.get('Lot_Number') or '').strip()
         if not raw_lot or raw_lot.upper() in ['N/A', 'NONE', 'NULL', '']:
             raw_lot = f"LOT-{datetime.now().strftime('%y%m%d%H%M%S')}"
@@ -975,33 +1133,75 @@ class InventoryBatchManager:
             conn.start_transaction()
             cursor = conn.cursor()
 
+            supplier_id = int(data['Supplier_ID'])
+            bl_number = str(data.get('BL_Number') or '').strip()
+
+            # 1. Reference PO per supplier + auto-merged/created Bon de Réception
+            po_id = self._get_or_create_virtual_po_for_supplier(cursor, supplier_id, user_id=user_id)
+            br_id = self._get_or_create_quick_reception(
+                cursor, po_id, supplier_id, bl_number=bl_number, user_id=user_id
+            )
+            final_barcode = self._generate_next_po_barcode(cursor, po_id)
+
             query = """
                 INSERT INTO Inventory_Batches
                 (Product_ID, Location_ID, Lot_Number, Expiry_Date,
-                 Quantity_Initial, Quantity_Current, Status, Created_At,
+                 Quantity_Initial, Quantity_Current, PO_ID, BR_ID, Status, Created_At,
                  Unit_Price_Received, Tax_Rate_Percent, Discount_Percent,
                  Selling_Price_HT, Selling_Price_HT_2, Selling_Price_HT_3, Selling_Price_HT_4,
                  Selling_TVA_Percent, Reception_Note, Supplier_ID, External_Barcode, Internal_Barcode)
-                VALUES (%s, %s, %s, %s, %s, %s, 'Available', NOW(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'TMP')
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Available', NOW(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
+
+            qty_val = float(data['Quantity'])
+            unit_ht = float(data.get('Unit_Price_HT', 0.0))
+            tva_pct = float(data.get('Tax_Rate_Percent', 0.0))
+            disc_pct = float(data.get('Discount_Percent', 0.0))
 
             params = (
                 data['Product_ID'], data['Location_ID'], data['Lot_Number'], data['Expiry_Date'],
-                data['Quantity'], data['Quantity'],
-                data.get('Unit_Price_HT', 0.0), data.get('Tax_Rate_Percent', 19.0), data.get('Discount_Percent', 0.0),
+                qty_val, qty_val, po_id, br_id,
+                unit_ht, tva_pct, disc_pct,
                 data.get('Selling_Price_HT', 0.0), data.get('Selling_Price_HT_2', 0.0),
                 data.get('Selling_Price_HT_3', 0.0), data.get('Selling_Price_HT_4', 0.0),
-                data.get('Selling_TVA_Percent', 19.0), data.get('Batch_Note', ''),
-                data.get('Supplier_ID'), data.get('External_Barcode', '').strip()
+                data.get('Selling_TVA_Percent', 0.0), data.get('Batch_Note', ''),
+                supplier_id, data.get('External_Barcode', '').strip(), final_barcode,
             )
 
             cursor.execute(query, params)
             batch_id = cursor.lastrowid
 
-            final_barcode = self.generate_ean13_for_batch(batch_id)
-            cursor.execute("UPDATE Inventory_Batches SET Internal_Barcode = %s WHERE Batch_ID = %s", (final_barcode, batch_id))
+            # Update Reception_Log & Purchase_Orders financial totals
+            line_gross_ht = qty_val * unit_ht
+            line_discount = line_gross_ht * (disc_pct / 100.0)
+            line_net_ht = max(0.0, line_gross_ht - line_discount)
+            line_tva = line_net_ht * (tva_pct / 100.0)
+            line_ttc = line_net_ht + line_tva
 
-            bl_number = str(data.get('BL_Number') or '').strip()
+            cursor.execute(
+                """
+                UPDATE Reception_Log
+                SET Invoice_Total_HT = COALESCE(Invoice_Total_HT, 0) + %s,
+                    Invoice_Total_TVA = COALESCE(Invoice_Total_TVA, 0) + %s,
+                    Invoice_Total_TTC = COALESCE(Invoice_Total_TTC, 0) + %s,
+                    Total_Discount = COALESCE(Total_Discount, 0) + %s
+                WHERE BR_ID = %s
+                """,
+                (line_net_ht, line_tva, line_ttc, line_discount, br_id),
+            )
+            cursor.execute(
+                """
+                UPDATE Purchase_Orders
+                SET Total_Amount_HT = COALESCE(Total_Amount_HT, 0) + %s,
+                    Total_Tax_Amount = COALESCE(Total_Tax_Amount, 0) + %s,
+                    Total_Amount_TTC = COALESCE(Total_Amount_TTC, 0) + %s,
+                    Reception_Date = NOW(),
+                    Updated_At = NOW()
+                WHERE PO_ID = %s
+                """,
+                (line_net_ht, line_tva, line_ttc, po_id),
+            )
+
             if bl_number and self._ensure_bl_number_column(cursor):
                 cursor.execute("UPDATE Inventory_Batches SET BL_Number = %s WHERE Batch_ID = %s", (bl_number, batch_id))
 
@@ -1018,8 +1218,8 @@ class InventoryBatchManager:
             cursor.execute("""
                 INSERT INTO Stock_Movement_Log
                 (Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used, User_ID, Notes)
-                VALUES (%s, %s, 'Purchase_Receive', %s, 'Unité', %s, 'Ajout rapide direct')
-            """, (data['Product_ID'], batch_id, data['Quantity'], user_id))
+                VALUES (%s, %s, 'Purchase_Receive', %s, 'Unité', %s, %s)
+            """, (data['Product_ID'], batch_id, qty_val, user_id, f"Ajout rapide (BR #{br_id} / PO #{po_id})"))
 
             ext_barcode = data.get('External_Barcode', '').strip()
             if ext_barcode:
@@ -1049,6 +1249,8 @@ class InventoryBatchManager:
 
             conn.commit()
             data['Generated_Barcode'] = final_barcode
+            data['PO_ID'] = po_id
+            data['BR_ID'] = br_id
             return True
 
         except Exception as e:
@@ -1089,7 +1291,13 @@ class InventoryBatchManager:
 
     def update_direct_batch(self, batch_id: int, data: dict, user_id: int = None) -> bool:
         """
-        Updates an existing directly-added batch (BR_ID is NULL).
+        Updates an existing batch from Stock Actuel.
+        - If linked to a Reception Log (BR_ID is NOT NULL): updates ONLY non-initial
+          operational fields (Location, Lot, Expiry, Selling Prices, Notes, External Barcode,
+          Ref_Code, Color_Finish) without modifying initial reception values
+          (Product_ID, Supplier_ID, Quantity_Initial, Quantity_Current, Unit_Price_Received,
+          Tax_Rate_Percent, Discount_Percent, BL_Number).
+        - If legacy direct batch (BR_ID is NULL): performs full update.
         """
         conn = None
         try:
@@ -1097,41 +1305,58 @@ class InventoryBatchManager:
             conn.start_transaction()
             cursor = conn.cursor()
 
-            # Optional validation: check if BR_ID is NULL
-            cursor.execute("SELECT BR_ID FROM Inventory_Batches WHERE Batch_ID = %s", (batch_id,))
+            cursor.execute("SELECT BR_ID, Product_ID FROM Inventory_Batches WHERE Batch_ID = %s", (batch_id,))
             res = cursor.fetchone()
-            if res and res[0] is not None:
-                raise ValueError("Cannot edit a batch associated with a Reception Log (BR_ID is not NULL).")
+            has_br = bool(res and res[0] is not None)
+            effective_product_id = (res[1] if (has_br and res and len(res) > 1 and res[1]) else data['Product_ID'])
 
-            query = """
-                UPDATE Inventory_Batches SET
-                Product_ID = %s, Location_ID = %s, Lot_Number = %s, Expiry_Date = %s,
-                Quantity_Initial = %s, Quantity_Current = %s,
-                Unit_Price_Received = %s, Tax_Rate_Percent = %s, Discount_Percent = %s,
-                Selling_Price_HT = %s, Selling_Price_HT_2 = %s, Selling_Price_HT_3 = %s, Selling_Price_HT_4 = %s,
-                Selling_TVA_Percent = %s, Reception_Note = %s, Supplier_ID = %s, External_Barcode = %s
-                WHERE Batch_ID = %s
-            """
-
-            params = (
-                data['Product_ID'], data['Location_ID'], data['Lot_Number'], data['Expiry_Date'],
-                data['Quantity'], data['Quantity'],
-                data.get('Unit_Price_HT', 0.0), data.get('Tax_Rate_Percent', 19.0), data.get('Discount_Percent', 0.0),
-                data.get('Selling_Price_HT', 0.0), data.get('Selling_Price_HT_2', 0.0),
-                data.get('Selling_Price_HT_3', 0.0), data.get('Selling_Price_HT_4', 0.0),
-                data.get('Selling_TVA_Percent', 19.0), data.get('Batch_Note', ''), data.get('Supplier_ID'),
-                data.get('External_Barcode', '').strip(),
-                batch_id
-            )
-
-            cursor.execute(query, params)
-
-            bl_number = str(data.get('BL_Number') or '').strip()
-            if 'BL_Number' in data and self._ensure_bl_number_column(cursor):
-                cursor.execute(
-                    "UPDATE Inventory_Batches SET BL_Number = %s WHERE Batch_ID = %s",
-                    (bl_number or None, batch_id)
+            if has_br:
+                query = """
+                    UPDATE Inventory_Batches SET
+                    Location_ID = %s, Lot_Number = %s, Expiry_Date = %s,
+                    Selling_Price_HT = %s, Selling_Price_HT_2 = %s, Selling_Price_HT_3 = %s, Selling_Price_HT_4 = %s,
+                    Selling_TVA_Percent = %s, Reception_Note = %s, External_Barcode = %s
+                    WHERE Batch_ID = %s
+                """
+                params = (
+                    data['Location_ID'], data['Lot_Number'], data['Expiry_Date'],
+                    data.get('Selling_Price_HT', 0.0), data.get('Selling_Price_HT_2', 0.0),
+                    data.get('Selling_Price_HT_3', 0.0), data.get('Selling_Price_HT_4', 0.0),
+                    data.get('Selling_TVA_Percent', 0.0), data.get('Batch_Note', ''),
+                    data.get('External_Barcode', '').strip(),
+                    batch_id,
                 )
+                cursor.execute(query, params)
+                movement_note = "Modification opérationnelle du lot (valeurs initiales verrouillées — BR)"
+            else:
+                query = """
+                    UPDATE Inventory_Batches SET
+                    Product_ID = %s, Location_ID = %s, Lot_Number = %s, Expiry_Date = %s,
+                    Quantity_Initial = %s, Quantity_Current = %s,
+                    Unit_Price_Received = %s, Tax_Rate_Percent = %s, Discount_Percent = %s,
+                    Selling_Price_HT = %s, Selling_Price_HT_2 = %s, Selling_Price_HT_3 = %s, Selling_Price_HT_4 = %s,
+                    Selling_TVA_Percent = %s, Reception_Note = %s, Supplier_ID = %s, External_Barcode = %s
+                    WHERE Batch_ID = %s
+                """
+                params = (
+                    data['Product_ID'], data['Location_ID'], data['Lot_Number'], data['Expiry_Date'],
+                    data['Quantity'], data['Quantity'],
+                    data.get('Unit_Price_HT', 0.0), data.get('Tax_Rate_Percent', 19.0), data.get('Discount_Percent', 0.0),
+                    data.get('Selling_Price_HT', 0.0), data.get('Selling_Price_HT_2', 0.0),
+                    data.get('Selling_Price_HT_3', 0.0), data.get('Selling_Price_HT_4', 0.0),
+                    data.get('Selling_TVA_Percent', 19.0), data.get('Batch_Note', ''), data.get('Supplier_ID'),
+                    data.get('External_Barcode', '').strip(),
+                    batch_id,
+                )
+                cursor.execute(query, params)
+
+                bl_number = str(data.get('BL_Number') or '').strip()
+                if 'BL_Number' in data and self._ensure_bl_number_column(cursor):
+                    cursor.execute(
+                        "UPDATE Inventory_Batches SET BL_Number = %s WHERE Batch_ID = %s",
+                        (bl_number or None, batch_id)
+                    )
+                movement_note = "Modification complète du lot direct"
 
             ref_code = str(data.get('Ref_Code') or '').strip()
             if 'Ref_Code' in data and self._ensure_ref_code_column(cursor):
@@ -1143,12 +1368,12 @@ class InventoryBatchManager:
             cursor.execute("""
                 INSERT INTO Stock_Movement_Log
                 (Product_ID, Batch_ID, Movement_Type, Qty_Change, Unit_Used, User_ID, Notes)
-                VALUES (%s, %s, 'Adjustment', 0, 'Unité', %s, 'Modification complète du lot direct')
-            """, (data['Product_ID'], batch_id, user_id))
+                VALUES (%s, %s, 'Adjustment', 0, 'Unité', %s, %s)
+            """, (effective_product_id, batch_id, user_id, movement_note))
 
             ext_barcode = data.get('External_Barcode', '').strip()
             if ext_barcode:
-                cursor.execute("SELECT Barcode FROM Products_Master WHERE Product_ID = %s", (data['Product_ID'],))
+                cursor.execute("SELECT Barcode FROM Products_Master WHERE Product_ID = %s", (effective_product_id,))
                 res = cursor.fetchone()
                 existing_barcodes = res[0] if res and res[0] else ''
                 barcodes_list = [b.strip() for b in existing_barcodes.split(',')] if existing_barcodes else []
@@ -1156,13 +1381,13 @@ class InventoryBatchManager:
                     barcodes_list.append(ext_barcode)
                     new_barcodes_str = ','.join(barcodes_list)
                     cursor.execute("UPDATE Products_Master SET Barcode = %s WHERE Product_ID = %s",
-                                   (new_barcodes_str, data['Product_ID']))
+                                   (new_barcodes_str, effective_product_id))
 
             color_finish = str(data.get('Color_Finish') or '').strip()
             if color_finish:
                 cursor.execute(
                     "UPDATE Products_Master SET Color_Finish = %s WHERE Product_ID = %s",
-                    (color_finish, data['Product_ID'])
+                    (color_finish, effective_product_id)
                 )
                 try:
                     cursor.execute(
